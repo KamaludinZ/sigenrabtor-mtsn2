@@ -46,6 +46,7 @@
         <div class="flex gap-2">
             @foreach ($this->sections as $section)
                 <a href="#{{ $section['id'] }}"
+                   x-effect="if (active === @js($section['id'])) $el.closest('.overflow-x-auto').scrollTo({ left: $el.offsetLeft - 16, behavior: 'smooth' })"
                    class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset transition"
                    :class="active === @js($section['id']) ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-stone-600 ring-stone-300'">
                     {{ $loop->iteration }}. {{ $section['title'] }}

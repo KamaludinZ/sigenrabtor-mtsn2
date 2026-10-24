@@ -8,7 +8,7 @@ Generator KAK/TOR & RAB madrasah. PRD lengkap: `npx ngodingpakeai plan get fe0f4
 
 ## Perintah
 - Jalankan: `php artisan serve` + `npm run dev` (atau `npm run build`).
-- Tes: `php artisan test` · Format: `vendor/bin/pint`.
+- Tes: `php artisan test` · E2E: `npm run test:e2e` (Playwright, channel chrome, server port 8010) · Format: `vendor/bin/pint`.
 
 ## Konvensi
 - Bahasa UI & domain: Indonesia (nama tabel/kolom mengikuti PRD: `activities`, `anggaran_kegiatan`, `budget_items`, ...).

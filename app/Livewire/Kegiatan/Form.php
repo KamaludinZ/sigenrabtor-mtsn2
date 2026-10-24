@@ -56,6 +56,50 @@ class Form extends Component
         $this->form->validateOnly('nama_kegiatan_cover');
     }
 
+    public function tambahPanitia(): void
+    {
+        if (! $this->form->tambahPanitia()) {
+            $this->dispatch('notify', message: 'Susunan tim sudah mencapai batas '.KegiatanForm::MAKS_PANITIA.' orang.', type: 'error');
+
+            return;
+        }
+
+        $this->dispatch('panitia-ditambah');
+    }
+
+    public function hapusPanitia(int $index): void
+    {
+        $this->form->hapusPanitia($index);
+        $this->resetErrorPanitia();
+    }
+
+    public function geserPanitia(int $index, int $arah): void
+    {
+        $this->form->geserPanitia($index, $arah > 0 ? 1 : -1);
+        $this->resetErrorPanitia();
+    }
+
+    public function isiSusunanBaku(): void
+    {
+        $this->form->isiSusunanBaku();
+        $this->dispatch('panitia-ditambah', posisi: 'awal');
+    }
+
+    /**
+     * Pesan error baris panitia terikat ke indeks; buang setelah urutan berubah agar tidak salah tempat.
+     */
+    private function resetErrorPanitia(): void
+    {
+        $keys = array_filter(
+            array_keys($this->getErrorBag()->messages()),
+            fn (string $key) => str_starts_with($key, 'form.panitia.'),
+        );
+
+        if ($keys !== []) {
+            $this->resetErrorBag($keys);
+        }
+    }
+
     /**
      * @return list<array{id: string, title: string, description: string, icon: string, fields: list<string>}>
      */

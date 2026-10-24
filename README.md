@@ -18,7 +18,8 @@ php artisan serve             # http://127.0.0.1:8000
 
 ## Pengujian
 ```bash
-php artisan test
+php artisan test     # unit & feature (PHPUnit, database sigenrabtor_testing)
+npm run test:e2e     # end-to-end Playwright di Google Chrome terpasang (desktop & mobile)
 ```
 
 ## Status

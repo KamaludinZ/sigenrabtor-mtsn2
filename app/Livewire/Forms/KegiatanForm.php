@@ -4,6 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Rules\KalimatUtuh;
 use App\Support\Teks;
+use Illuminate\Support\Str;
 use Livewire\Form;
 
 /**
@@ -35,6 +36,18 @@ class KegiatanForm extends Form
 
     public ?string $tanggal_laporan = null;
 
+    // Pelaksana & Panitia
+    /** @var list<array{key: string, nama: string, jabatan: string, peran: string}> */
+    public array $panitia = [];
+
+    /** Batas jumlah anggota tim agar tabel KAK tetap wajar. */
+    public const MAKS_PANITIA = 50;
+
+    /** Saran peran tim; isian tetap bebas. */
+    public const PERAN_PANITIA = [
+        'Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator', 'Anggota', 'Narasumber', 'Pengarah',
+    ];
+
     /**
      * @return array<string, mixed>
      */
@@ -48,6 +61,10 @@ class KegiatanForm extends Form
             'sasaran' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
             'tanggal_dokumen' => ['nullable', 'date'],
             'tanggal_laporan' => ['nullable', 'date', 'after_or_equal:tanggal_dokumen'],
+            'panitia' => ['array', 'max:'.self::MAKS_PANITIA],
+            'panitia.*.nama' => ['required', 'string', 'max:150'],
+            'panitia.*.jabatan' => ['nullable', 'string', 'max:150'],
+            'panitia.*.peran' => ['required', 'string', 'max:100'],
         ];
     }
 
@@ -64,6 +81,9 @@ class KegiatanForm extends Form
             'sasaran' => 'sasaran',
             'tanggal_dokumen' => 'tanggal dokumen',
             'tanggal_laporan' => 'tanggal pelaporan',
+            'panitia.*.nama' => 'nama anggota',
+            'panitia.*.jabatan' => 'jabatan anggota',
+            'panitia.*.peran' => 'peran anggota',
         ];
     }
 
@@ -78,7 +98,53 @@ class KegiatanForm extends Form
             'max' => 'Kolom :attribute maksimal :max karakter.',
             'date' => 'Kolom :attribute harus berupa tanggal yang valid.',
             'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
+            'panitia.max' => 'Susunan tim maksimal :max orang.',
         ];
+    }
+
+    public function tambahPanitia(string $peran = 'Anggota', string $nama = '', string $jabatan = ''): bool
+    {
+        if (count($this->panitia) >= self::MAKS_PANITIA) {
+            return false;
+        }
+
+        $this->panitia[] = ['key' => (string) Str::uuid(), 'nama' => $nama, 'jabatan' => $jabatan, 'peran' => $peran];
+
+        return true;
+    }
+
+    public function hapusPanitia(int $index): void
+    {
+        unset($this->panitia[$index]);
+        $this->panitia = array_values($this->panitia);
+    }
+
+    /**
+     * Geser anggota ke atas (-1) atau ke bawah (+1); urutan ini yang tercetak di KAK.
+     */
+    public function geserPanitia(int $index, int $arah): void
+    {
+        $tujuan = $index + $arah;
+
+        if (! isset($this->panitia[$index], $this->panitia[$tujuan])) {
+            return;
+        }
+
+        [$this->panitia[$index], $this->panitia[$tujuan]] = [$this->panitia[$tujuan], $this->panitia[$index]];
+    }
+
+    /**
+     * Susunan baku panitia kegiatan madrasah; hanya dipakai saat daftar masih kosong.
+     */
+    public function isiSusunanBaku(): void
+    {
+        if ($this->panitia !== []) {
+            return;
+        }
+
+        foreach (['Ketua', 'Sekretaris', 'Bendahara', 'Anggota'] as $peran) {
+            $this->tambahPanitia($peran);
+        }
     }
 
     public function rapikanUraian(string $field): void
