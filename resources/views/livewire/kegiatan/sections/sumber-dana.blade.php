@@ -32,6 +32,18 @@
                     <x-ui.rupiah :id="$idPagu" :model="'form.'.$idPagu" :disabled="! $aktif" :aktif-jika="'form.dana_'.$opsi['kunci']" />
                     @error('form.'.$idPagu) <p class="form-error" id="{{ $idPagu }}-error">{{ $message }}</p> @enderror
                 </div>
+
+                @if ($aktif && ($rekap = $this->rekapRab[$opsi['label']] ?? null))
+                    <p class="mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-stone-200/70 pt-2.5 text-xs" data-testid="rekap-rab-{{ $opsi['kunci'] }}">
+                        <span class="text-stone-500">RAB tersusun ({{ $rekap->jumlahItem() }} item)</span>
+                        <span @class([
+                            'font-semibold tabular-nums',
+                            'text-brand-700' => in_array($rekap->statusPagu(), ['sesuai', 'sisa'], true),
+                            'text-red-600' => $rekap->statusPagu() === 'melebihi',
+                            'text-stone-700' => $rekap->statusPagu() === 'tanpa_pagu',
+                        ])>{{ Format::rupiah($rekap->total) }}</span>
+                    </p>
+                @endif
             </div>
         @endforeach
     </div>

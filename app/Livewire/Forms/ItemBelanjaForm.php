@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Support\Format;
+use App\Support\Rab\KalkulatorRab;
 use Closure;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
@@ -165,7 +166,7 @@ class ItemBelanjaForm extends Form
         $volume = self::angkaVolume($this->volume);
         $harga = Format::parseRupiah($this->harga_satuan);
 
-        return $volume && $harga ? (int) round($volume * $harga) : null;
+        return $volume && $harga ? KalkulatorRab::jumlah($volume, $harga) : null;
     }
 
     /**

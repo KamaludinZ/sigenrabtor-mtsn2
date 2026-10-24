@@ -8,7 +8,7 @@ test.describe('Halaman RAB (data tiruan)', () => {
         await expect(page.getByTestId('header-rab')).toContainText('Tim Penjamin Mutu');
         await expect(page.getByTestId('header-rab')).toContainText('6.17.12');
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp10.000.000');
-        await expect(page.getByTestId('ringkasan-rab')).toContainText('Sisa pagu');
+        await expect(page.getByTestId('status-pagu')).toHaveText('Sesuai pagu');
         if (testInfo.project.name === 'desktop') {
             await expect(page.getByTestId('total-rab')).toHaveText('10.000.000');
         }
@@ -121,5 +121,10 @@ test.describe('Ubah & hapus item belanja', () => {
         await page.screenshot({ path: `storage/playwright/shots/hapus-urungkan-${testInfo.project.name}.png` });
         await page.getByRole('button', { name: 'Urungkan' }).click();
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp400.000');
+
+        // Total KAK = total RAB: halaman Data Kegiatan menampilkan angka yang sama.
+        await page.getByRole('link', { name: 'Data Kegiatan' }).last().click();
+        await expect(page.getByTestId('rekap-rab-komite')).toContainText('Rp400.000');
+        await expect(page.getByTestId('lanjut-rab')).toContainText('Rp400.000 dari pagu Rp5.000.000');
     });
 });

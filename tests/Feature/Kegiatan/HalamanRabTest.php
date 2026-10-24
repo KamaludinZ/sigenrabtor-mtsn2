@@ -30,7 +30,7 @@ class HalamanRabTest extends TestCase
         $this->assertCount(15, $komponen->instance()->rincian);
         $this->assertSame(3_600_000, $komponen->instance()->rincian[0]['jumlah']);
         $this->assertSame(10_000_000, $komponen->instance()->total);
-        $komponen->assertSee('Sisa pagu');
+        $komponen->assertSee('Sesuai pagu');
     }
 
     public function test_per_kelompok_belanja_dijumlahkan(): void

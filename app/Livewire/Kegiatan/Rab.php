@@ -7,6 +7,8 @@ use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Format;
+use App\Support\Rab\HasilRab;
+use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubMaster;
@@ -144,7 +146,7 @@ class Rab extends Component
 
     private function segarkanRincian(): void
     {
-        unset($this->rincian, $this->total, $this->kelompokRincian);
+        unset($this->hasil, $this->rincian, $this->total, $this->kelompokRincian);
     }
 
     public function updated(string $property): void
@@ -178,7 +180,7 @@ class Rab extends Component
         $this->item->validate();
 
         $data = $this->item->dataItem();
-        $jumlah = Format::rupiah((int) round($data['volume'] * $data['harga_satuan']));
+        $jumlah = Format::rupiah(KalkulatorRab::jumlah($data['volume'], $data['harga_satuan']));
         $repo = app(RabRepository::class);
         $this->itemTerhapus = null;
 
@@ -231,17 +233,25 @@ class Rab extends Component
     }
 
     /**
-     * Rincian belanja sumber dana aktif; jumlah = volume × harga satuan.
+     * Hasil hitung RAB sumber dana aktif (jumlah per baris, total, subtotal, status pagu).
+     */
+    #[Computed]
+    public function hasil(): HasilRab
+    {
+        $rincian = $this->sumber === '' ? [] : app(RabRepository::class)->rincian($this->kegiatanId, $this->sumber);
+
+        return KalkulatorRab::hitung($rincian, $this->pagu());
+    }
+
+    /**
+     * Rincian belanja sumber dana aktif beserta jumlah hasil hitung.
      *
-     * @return list<array{id: string, kode: string, uraian: string, kategori: string, volume: float|int, satuan: string, harga_satuan: int, jumlah: int}>
+     * @return list<array<string, mixed>>
      */
     #[Computed]
     public function rincian(): array
     {
-        return array_map(
-            fn (array $item) => $item + ['jumlah' => (int) round($item['volume'] * $item['harga_satuan'])],
-            $this->sumber === '' ? [] : app(RabRepository::class)->rincian($this->kegiatanId, $this->sumber),
-        );
+        return $this->hasil->rincian;
     }
 
     /**
@@ -263,7 +273,7 @@ class Rab extends Component
     #[Computed]
     public function total(): int
     {
-        return array_sum(array_column($this->rincian, 'jumlah'));
+        return $this->hasil->total;
     }
 
     /**

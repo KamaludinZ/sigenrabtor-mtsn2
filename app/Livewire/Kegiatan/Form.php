@@ -3,9 +3,12 @@
 namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
+use App\Support\Rab\HasilRab;
+use App\Support\Rab\KalkulatorRab;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubMaster;
 use Illuminate\Support\Facades\Route;
@@ -372,6 +375,27 @@ class Form extends Component
         $this->form->syncNamaCover();
         $this->adaPerubahan = true;
         $this->form->validateOnly('nama_kegiatan');
+    }
+
+    /**
+     * Hasil hitung RAB yang sudah tersusun untuk tiap sumber dana terpilih (total KAK = total RAB).
+     *
+     * @return array<string, HasilRab>
+     */
+    #[Computed]
+    public function rekapRab(): array
+    {
+        if ($this->kegiatanId === null) {
+            return [];
+        }
+
+        $rekap = [];
+        foreach ($this->form->sumberDana() as $sumber) {
+            $rincian = app(RabRepository::class)->rincian($this->kegiatanId, $sumber['sumber']);
+            $rekap[$sumber['sumber']] = KalkulatorRab::hitung($rincian, $sumber['pagu']);
+        }
+
+        return $rekap;
     }
 
     /**

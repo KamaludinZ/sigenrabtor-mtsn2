@@ -2,10 +2,10 @@
 @use('App\Livewire\Forms\ItemBelanjaForm')
 
 @php
-    $pagu = $this->pagu();
-    $selisih = $pagu !== null ? $pagu - $this->total : null;
-    $persen = $pagu ? min(100, round($this->total / $pagu * 100)) : 0;
-    $perKategori = collect($this->rincian)->groupBy('kategori')->map(fn ($baris) => $baris->sum('jumlah'));
+    $hasil = $this->hasil;
+    $pagu = $hasil->pagu;
+    $selisih = $hasil->selisih();
+    $statusPagu = $hasil->statusPagu();
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -148,23 +148,23 @@
                         <div class="flex justify-between"><span class="text-stone-500">Pagu</span><span class="font-medium tabular-nums">{{ $pagu !== null ? Format::rupiah($pagu) : '—' }}</span></div>
                         @if ($selisih !== null)
                             <div class="flex justify-between">
-                                <span class="text-stone-500">{{ $selisih >= 0 ? 'Sisa pagu' : 'Melebihi pagu' }}</span>
+                                <span class="text-stone-500" data-testid="status-pagu">{{ ['sesuai' => 'Sesuai pagu', 'sisa' => 'Sisa pagu', 'melebihi' => 'Melebihi pagu'][$statusPagu] }}</span>
                                 <span @class(['font-semibold tabular-nums', 'text-brand-700' => $selisih >= 0, 'text-red-600' => $selisih < 0])>{{ Format::rupiah(abs($selisih)) }}</span>
                             </div>
                             <div class="h-1.5 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
-                                <div @class(['h-full rounded-full', 'bg-brand-600' => $selisih >= 0, 'bg-red-500' => $selisih < 0]) style="width: {{ $persen }}%"></div>
+                                <div @class(['h-full rounded-full', 'bg-brand-600' => $selisih >= 0, 'bg-red-500' => $selisih < 0]) style="width: {{ $hasil->persenPagu() }}%"></div>
                             </div>
                         @endif
                     </div>
 
-                    @if ($perKategori->isNotEmpty())
+                    @if ($hasil->jumlahItem() > 0)
                         <div class="mt-4 border-t border-stone-100 pt-3">
                             <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Per kelompok belanja</p>
                             <dl class="mt-2 space-y-1 text-sm">
                                 @foreach (ItemBelanjaForm::LABEL_KATEGORI as $kunci => $label)
                                     <div class="flex justify-between">
                                         <dt class="text-stone-500">{{ $label }}</dt>
-                                        <dd class="tabular-nums">{{ Format::rupiah($perKategori[$kunci] ?? 0) }}</dd>
+                                        <dd class="tabular-nums">{{ Format::rupiah($hasil->perKategori[$kunci] ?? 0) }}</dd>
                                     </div>
                                 @endforeach
                             </dl>

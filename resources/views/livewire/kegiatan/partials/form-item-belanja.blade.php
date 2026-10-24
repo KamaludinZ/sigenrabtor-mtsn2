@@ -9,7 +9,8 @@
               t = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t);
               const v = parseFloat(t);
               const h = parseInt(String($wire.item.harga_satuan ?? '').replace(/\D/g, ''), 10);
-              return (v > 0 && h > 0) ? Math.round(v * h) : null;
+              // Sama dengan KalkulatorRab::jumlah: volume × 100 dibulatkan, lalu dibulatkan setengah-ke-atas ke rupiah.
+              return (v > 0 && h > 0) ? Math.floor((Math.round(v * 100) * h + 50) / 100) : null;
           },
       }"
       x-on:form-item-dibuka.window="$nextTick(() => $refs.uraian?.focus())"
