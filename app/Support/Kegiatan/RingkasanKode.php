@@ -12,6 +12,12 @@ class RingkasanKode
     /** Isian kegiatan yang membentuk ringkasan, urut seperti header RAB. */
     public const ISIAN = ['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu'];
 
+    /** Label isian kode, dipakai ringkasan, notifikasi, dan riwayat perubahan. */
+    public const LABEL = [
+        'leading' => 'Leading sektor', 'kode_rktm' => 'Kode RKTM', 'kode_sk' => 'Kode SK',
+        'kode_iksk' => 'IKSK', 'kode_edm' => 'Kode EDM', 'budaya_mutu' => '5 Budaya Mutu',
+    ];
+
     /** Kartu di halaman Kode & Klasifikasi tempat tiap kode dipilih (id section untuk tautan #). */
     public const KARTU = ['leading' => 'kode-leading', 'rktm' => 'kode-rktm', 'sk' => 'kode-perkin', 'iksk' => 'kode-perkin', 'edm' => 'kode-edm', 'budaya' => 'kode-budaya'];
 
@@ -30,12 +36,12 @@ class RingkasanKode
         $komponen = MasterKode::komponenEdm();
 
         return [
-            ['kunci' => 'leading', 'label' => 'Leading sektor', 'kode' => $leading['kode'] ?? null, 'uraian' => $leading['nama_unit'] ?? null, 'detail' => isset($leading) ? 'Penanda tangan: '.$leading['jabatan_penanda_tangan'] : null],
-            ['kunci' => 'rktm', 'label' => 'Kode RKTM', 'kode' => $rktm['kode'] ?? null, 'uraian' => $rktm['sub_kegiatan'] ?? null, 'detail' => isset($rktm) ? $rktm['snp'].' · '.$rktm['kegiatan'] : null],
-            ['kunci' => 'sk', 'label' => 'Kode SK', 'kode' => $sk['kode'] ?? null, 'uraian' => $sk['uraian'] ?? null, 'detail' => null],
-            ['kunci' => 'iksk', 'label' => 'IKSK', 'kode' => $iksk['kode'] ?? null, 'uraian' => $iksk['uraian'] ?? null, 'detail' => null],
-            ['kunci' => 'edm', 'label' => 'Kode EDM', 'kode' => $edm['kode'] ?? null, 'uraian' => $edm['uraian'] ?? null, 'detail' => isset($edm) ? 'Komponen '.$edm['komponen'].' · '.($komponen[$edm['komponen']] ?? '') : null],
-            ['kunci' => 'budaya', 'label' => '5 Budaya Mutu', 'kode' => isset($budaya) ? (string) $budaya['nomor'] : null, 'uraian' => $budaya['nama'] ?? null, 'detail' => null],
+            ['kunci' => 'leading', 'label' => self::LABEL['leading'], 'kode' => $leading['kode'] ?? null, 'uraian' => $leading['nama_unit'] ?? null, 'detail' => isset($leading) ? 'Penanda tangan: '.$leading['jabatan_penanda_tangan'] : null],
+            ['kunci' => 'rktm', 'label' => self::LABEL['kode_rktm'], 'kode' => $rktm['kode'] ?? null, 'uraian' => $rktm['sub_kegiatan'] ?? null, 'detail' => isset($rktm) ? $rktm['snp'].' · '.$rktm['kegiatan'] : null],
+            ['kunci' => 'sk', 'label' => self::LABEL['kode_sk'], 'kode' => $sk['kode'] ?? null, 'uraian' => $sk['uraian'] ?? null, 'detail' => null],
+            ['kunci' => 'iksk', 'label' => self::LABEL['kode_iksk'], 'kode' => $iksk['kode'] ?? null, 'uraian' => $iksk['uraian'] ?? null, 'detail' => null],
+            ['kunci' => 'edm', 'label' => self::LABEL['kode_edm'], 'kode' => $edm['kode'] ?? null, 'uraian' => $edm['uraian'] ?? null, 'detail' => isset($edm) ? 'Komponen '.$edm['komponen'].' · '.($komponen[$edm['komponen']] ?? '') : null],
+            ['kunci' => 'budaya', 'label' => self::LABEL['budaya_mutu'], 'kode' => isset($budaya) ? (string) $budaya['nomor'] : null, 'uraian' => $budaya['nama'] ?? null, 'detail' => null],
         ];
     }
 
@@ -45,6 +51,58 @@ class RingkasanKode
     public static function jumlahTerisi(array $ringkasan): int
     {
         return count(array_filter($ringkasan, fn ($baris) => filled($baris['kode'])));
+    }
+
+    /**
+     * Nilai kode dari data kegiatan dalam bentuk baku (kosong → null, budaya mutu → int) agar bisa dibandingkan.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, string|int|null>
+     */
+    public static function nilaiBaku(array $data): array
+    {
+        $baku = [];
+
+        foreach (self::ISIAN as $isian) {
+            $nilai = blank($data[$isian] ?? null) ? null : $data[$isian];
+            $baku[$isian] = $isian === 'budaya_mutu' && $nilai !== null ? (int) $nilai : $nilai;
+        }
+
+        return $baku;
+    }
+
+    /** Nilai baku untuk dibaca manusia di riwayat/bentrok: null → "kosong", budaya mutu → "2. Profesionalitas". */
+    public static function tampilNilai(string $isian, string|int|null $nilai): string
+    {
+        if ($nilai === null) {
+            return 'kosong';
+        }
+
+        if ($isian === 'budaya_mutu') {
+            return $nilai.'. '.(MasterKode::cari(MasterKode::budayaMutu(), $nilai, 'nomor')['nama'] ?? '?');
+        }
+
+        return (string) $nilai;
+    }
+
+    /**
+     * Isian yang nilainya berbeda antara dua versi, beserta nilai lama → baru.
+     *
+     * @param  array<string, string|int|null>  $lama
+     * @param  array<string, string|int|null>  $baru
+     * @return array<string, array{0: string|int|null, 1: string|int|null}>
+     */
+    public static function selisih(array $lama, array $baru): array
+    {
+        $selisih = [];
+
+        foreach (self::ISIAN as $isian) {
+            if (($lama[$isian] ?? null) !== ($baru[$isian] ?? null)) {
+                $selisih[$isian] = [$lama[$isian] ?? null, $baru[$isian] ?? null];
+            }
+        }
+
+        return $selisih;
     }
 
     /**

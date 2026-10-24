@@ -137,6 +137,58 @@ test.describe('Kode & Klasifikasi', () => {
         await expect(banner).toHaveAttribute('data-status', 'lengkap');
     });
 
+    test('submit kode: Ctrl+S, riwayat, bentrok antartab, batalkan', async ({ page, context }, testInfo) => {
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Simpan Kode ${testInfo.project.name}`);
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        await expect(page.locator('#pagu_dipa')).toBeEnabled();
+        await page.locator('#pagu_dipa').pressSequentially('1000000');
+        await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+        await expect(page).toHaveURL(/\/rab/);
+        const urlKode = page.url().replace(/\/rab.*$/, '/kode');
+
+        // Tab A: pilih SK lalu simpan dengan Ctrl+S.
+        await page.goto(urlKode);
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.12');
+        await page.locator('#kode_sk-cari').press('Enter');
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+        await page.keyboard.press('Control+s');
+        await expect(page.getByText(/Kode & klasifikasi tersimpan\./)).toBeVisible();
+        await expect(page.getByTestId('belum-disimpan')).toBeHidden();
+        await expect(page.getByTestId('info-simpan')).toContainText('Terakhir disimpan');
+        await page.getByTestId('riwayat-kode').locator('summary').click();
+        await expect(page.getByTestId('riwayat-kode')).toContainText('Kode SK: kosong → SK.12');
+
+        // Tab B menyimpan EDM lebih dulu.
+        const tabB = await context.newPage();
+        await tabB.goto(urlKode);
+        await tabB.locator('#kode_edm').click();
+        await tabB.locator('#kode_edm-cari').fill('C1');
+        await tabB.locator('#kode_edm-cari').press('Enter');
+        await tabB.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(tabB.getByText(/Kode & klasifikasi tersimpan\./)).toBeVisible();
+        await tabB.close();
+
+        // Tab A: simpan budaya mutu → bentrok, lalu muat versi terbaru.
+        await page.getByText('3. Inovasi').click();
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        const bentrok = page.getByTestId('banner-bentrok');
+        await expect(bentrok).toContainText('Kode EDM: kosong → C1');
+        await page.screenshot({ path: `storage/playwright/shots/bentrok-kode-${testInfo.project.name}.png` });
+        await bentrok.getByRole('button', { name: 'Muat versi terbaru' }).click();
+        await expect(bentrok).toBeHidden();
+        await expect(page.locator('#kode_edm')).toContainText('C1');
+        await expect(page.getByRole('radio', { name: '3. Inovasi' })).not.toBeChecked();
+
+        // Batalkan perubahan yang belum disimpan.
+        await page.getByText('4. Tanggung Jawab').click();
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+        await page.getByRole('button', { name: 'Batalkan' }).click();
+        await expect(page.getByTestId('belum-disimpan')).toBeHidden();
+        await expect(page.getByRole('radio', { name: '4. Tanggung Jawab' })).not.toBeChecked();
+    });
+
     test('ringkasan kode di Data Kegiatan memuat uraian kode', async ({ page }) => {
         await page.goto('/kegiatan/1/edit');
         const ringkasan = page.getByTestId('ringkasan-kode');

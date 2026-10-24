@@ -23,7 +23,10 @@ use Livewire\Component;
 class Klasifikasi extends Component
 {
     /** Isian halaman ini; isian kegiatan lainnya tidak disentuh. */
-    public const ISIAN = ['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu'];
+    public const ISIAN = RingkasanKode::ISIAN;
+
+    /** Batas entri riwayat perubahan kode yang disimpan per kegiatan. */
+    public const BATAS_RIWAYAT = 20;
 
     #[Locked]
     public int $kegiatanId;
@@ -36,11 +39,26 @@ class Klasifikasi extends Component
 
     public bool $adaPerubahan = false;
 
+    /**
+     * Kode tersimpan ketika halaman dimuat/terakhir disimpan; pembanding untuk perubahan dan bentrok.
+     *
+     * @var array<string, string|int|null>
+     */
+    #[Locked]
+    public array $kodeDimuat = [];
+
+    /**
+     * Kode yang disimpan pihak lain sejak halaman dimuat (isian → [versi dimuat, versi tersimpan]); null bila tidak bentrok.
+     *
+     * @var array<string, array{0: string|int|null, 1: string|int|null}>|null
+     */
+    #[Locked]
+    public ?array $bentrok = null;
+
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
-        $this->dataKegiatan = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
         $this->kegiatanId = $kegiatan;
-        $this->form->isiDari($this->dataKegiatan);
+        $this->muatDari($repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.'));
     }
 
     public function status(): StatusKegiatan
@@ -68,7 +86,6 @@ class Klasifikasi extends Component
         }
 
         $field = substr($property, 5);
-        $this->adaPerubahan = true;
 
         if ($field === 'kode_sk') {
             $this->form->sinkronIksk();
@@ -80,7 +97,29 @@ class Klasifikasi extends Component
             $this->validasiDiam('kode_iksk');
         }
 
+        $this->adaPerubahan = $this->isianBerubah() !== [];
         $this->form->validateOnly($field);
+    }
+
+    /**
+     * Isian yang berbeda dari versi tersimpan (lama → baru).
+     *
+     * @return array<string, array{0: string|int|null, 1: string|int|null}>
+     */
+    public function isianBerubah(): array
+    {
+        return RingkasanKode::selisih($this->kodeDimuat, RingkasanKode::nilaiBaku($this->form->dataUntukDisimpan()));
+    }
+
+    /**
+     * Riwayat perubahan kode terbaru lebih dulu.
+     *
+     * @return list<array{pada: string, oleh: string, perubahan: array<string, array{0: string|int|null, 1: string|int|null}>}>
+     */
+    #[Computed]
+    public function riwayatKode(): array
+    {
+        return array_reverse($this->dataKegiatan['riwayat_kode'] ?? []);
     }
 
     /**
@@ -150,7 +189,11 @@ class Klasifikasi extends Component
         return RingkasanKode::status($this->ringkasanKode);
     }
 
-    public function simpan(bool $lanjutKeRab = false): void
+    /**
+     * Simpan kode ke penyimpanan. Bila kode tersimpan telah diubah pihak lain sejak halaman dimuat, penyimpanan
+     * ditahan (bentrok) sampai pengguna memuat versi terbaru atau memilih menimpa ($timpa).
+     */
+    public function simpan(bool $lanjutKeRab = false, bool $timpa = false): void
     {
         $this->pastikanDapatDiedit();
 
@@ -169,14 +212,28 @@ class Klasifikasi extends Component
         }
 
         $repo = app(KegiatanRepository::class);
-        $simpanan = $this->form->dataUntukDisimpan();
-        $data = array_merge($repo->temukan($this->kegiatanId) ?? $this->dataKegiatan, array_intersect_key($simpanan, array_flip(self::ISIAN)));
-        $repo->simpan($data, $this->kegiatanId);
+        $tersimpan = $repo->temukan($this->kegiatanId) ?? $this->dataKegiatan;
+        $kodeTersimpan = RingkasanKode::nilaiBaku($tersimpan);
+        $kodeBaru = RingkasanKode::nilaiBaku($this->form->dataUntukDisimpan());
 
-        $this->dataKegiatan = $repo->temukan($this->kegiatanId) ?? $data;
-        $this->adaPerubahan = false;
+        if (! $timpa && ($bentrok = RingkasanKode::selisih($this->kodeDimuat, $kodeTersimpan))) {
+            $this->bentrok = $bentrok;
+            $this->dispatch('notify', message: 'Kode kegiatan ini baru diubah di tempat lain — pilih muat versi terbaru atau timpa.', type: 'error');
 
-        $notifikasi = RingkasanKode::notifikasiSimpan($this->statusKode);
+            return;
+        }
+
+        if ($perubahan = RingkasanKode::selisih($kodeTersimpan, $kodeBaru)) {
+            $riwayat = $tersimpan['riwayat_kode'] ?? [];
+            $riwayat[] = ['pada' => now()->toIso8601String(), 'oleh' => StubData::currentUser()['name'], 'perubahan' => $perubahan];
+            $repo->simpan(array_merge($tersimpan, $kodeBaru, ['riwayat_kode' => array_slice($riwayat, -self::BATAS_RIWAYAT)]), $this->kegiatanId);
+        }
+
+        $this->muatDari($repo->temukan($this->kegiatanId) ?? $tersimpan);
+
+        $notifikasi = $perubahan
+            ? RingkasanKode::notifikasiSimpan($this->statusKode)
+            : ['message' => 'Tidak ada perubahan kode untuk disimpan.', 'type' => 'info'];
 
         if ($lanjutKeRab && Route::has('kegiatan.rab')) {
             session()->flash('notify', $notifikasi);
@@ -188,6 +245,20 @@ class Klasifikasi extends Component
         $this->dispatch('notify', ...$notifikasi);
     }
 
+    /** Buang pilihan yang belum disimpan dan kembali ke kode tersimpan. */
+    public function batalkanPerubahan(): void
+    {
+        $this->muatDari(app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? $this->dataKegiatan);
+        $this->dispatch('notify', message: 'Perubahan kode dibatalkan.', type: 'info');
+    }
+
+    /** Saat bentrok: ambil kode yang disimpan pihak lain (pilihan di layar ini dibuang). */
+    public function muatVersiTerbaru(): void
+    {
+        $this->muatDari(app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? $this->dataKegiatan);
+        $this->dispatch('notify', message: 'Kode terbaru dimuat.', type: 'info');
+    }
+
     /**
      * @return array{id: int, tahun: int, is_locked: bool}
      */
@@ -195,6 +266,20 @@ class Klasifikasi extends Component
     public function tahunAktif(): array
     {
         return StubData::tahunAktif();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function muatDari(array $data): void
+    {
+        $this->dataKegiatan = $data;
+        $this->form->isiDari($data);
+        $this->kodeDimuat = RingkasanKode::nilaiBaku($data);
+        $this->adaPerubahan = false;
+        $this->bentrok = null;
+        $this->resetValidation();
+        unset($this->riwayatKode, $this->ringkasanKode, $this->statusKode, $this->kelengkapan, $this->pratinjauHeader);
     }
 
     private function validasiDiam(string $field): void

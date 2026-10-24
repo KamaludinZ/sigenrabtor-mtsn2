@@ -1,6 +1,8 @@
 @use('App\Support\Stub\StubData')
 @use('App\Support\MasterKode')
 @use('Illuminate\Support\Str')
+@use('Illuminate\Support\Carbon')
+@use('App\Support\Kegiatan\RingkasanKode')
 
 @php
     $tahunMaster = $this->tahunAktif['tahun'];
@@ -22,7 +24,8 @@
 
 <div class="mx-auto max-w-7xl"
      x-data="{ dirty: $wire.entangle('adaPerubahan') }"
-     x-on:beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }">
+     x-on:beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }"
+     @if ($bisaUbah) x-on:keydown.window.ctrl.s.prevent="$wire.simpan()" x-on:keydown.window.meta.s.prevent="$wire.simpan()" @endif>
     {{-- Kepala halaman --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="min-w-0">
@@ -37,18 +40,26 @@
                 <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Kode &amp; Klasifikasi</h1>
                 <x-ui.status-badge :status="$this->status()->value" />
             </div>
-            <p class="mt-1 text-sm text-stone-500">{{ $dataKegiatan['nama_kegiatan'] }}</p>
+            <p class="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-stone-500">
+                <span>{{ $dataKegiatan['nama_kegiatan'] }}</span>
+                @if ($dataKegiatan['diperbarui_pada'] ?? null)
+                    <span class="text-stone-300" aria-hidden="true">·</span>
+                    <span data-testid="info-simpan">Terakhir disimpan {{ Carbon::parse($dataKegiatan['diperbarui_pada'])->locale('id')->translatedFormat('j F Y, H.i') }}</span>
+                @endif
+            </p>
         </div>
         @if ($bisaUbah)
-            <div class="flex shrink-0 items-center gap-2">
+            <div class="flex shrink-0 flex-wrap items-center gap-2">
                 @if ($adaPerubahan)
                     <span class="inline-flex items-center gap-1 text-sm font-medium text-gold-700" data-testid="belum-disimpan">
                         <span class="size-1.5 rounded-full bg-gold-500"></span> Belum disimpan
                     </span>
+                    <button type="button" class="btn-ghost" wire:click="batalkanPerubahan" wire:loading.attr="disabled">Batalkan</button>
                 @endif
-                <button type="button" class="btn-primary" wire:click="simpan" wire:loading.attr="disabled" wire:target="simpan">
+                <button type="button" class="btn-primary" wire:click="simpan" wire:loading.attr="disabled" wire:target="simpan" title="Simpan (Ctrl+S)">
                     <x-ui.icon name="save" class="size-4" />
-                    Simpan
+                    <span wire:loading.remove wire:target="simpan">Simpan</span>
+                    <span wire:loading wire:target="simpan">Menyimpan…</span>
                 </button>
             </div>
         @endif
@@ -71,6 +82,24 @@
     @endif
 
     <x-kode.status-kelengkapan :status="$this->statusKode" class="mt-4" />
+
+    @if ($bentrok)
+        <div class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-900 ring-1 ring-red-200" role="alert" data-testid="banner-bentrok">
+            <p class="flex items-start gap-2 font-medium">
+                <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0 text-red-600" />
+                Kode kegiatan ini diubah di tempat lain sejak halaman dibuka. Pilihan Anda belum disimpan.
+            </p>
+            <ul class="mt-1.5 ml-6 list-disc space-y-0.5 text-xs">
+                @foreach ($bentrok as $isian => [$lama, $baru])
+                    <li>{{ RingkasanKode::LABEL[$isian] }}: {{ RingkasanKode::tampilNilai($isian, $lama) }} → {{ RingkasanKode::tampilNilai($isian, $baru) }}</li>
+                @endforeach
+            </ul>
+            <div class="mt-3 ml-6 flex flex-wrap gap-2">
+                <button type="button" class="btn-secondary" wire:click="muatVersiTerbaru">Muat versi terbaru</button>
+                <button type="button" class="btn-ghost text-red-700" wire:click="simpan(false, true)">Timpa dengan pilihan saya</button>
+            </div>
+        </div>
+    @endif
 
     @unless ($bisaUbah)
         <p class="mt-4 flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200" role="status" data-testid="banner-terkunci">
@@ -188,9 +217,28 @@
                     </dl>
                 </details>
 
+                @if ($this->riwayatKode)
+                    <details class="group mt-3 border-t border-stone-100 pt-3" data-testid="riwayat-kode" wire:ignore.self>
+                        <summary class="flex cursor-pointer list-none items-center justify-between text-[11px] font-semibold tracking-wider text-stone-400 uppercase hover:text-stone-600">
+                            Riwayat perubahan ({{ count($this->riwayatKode) }})
+                            <x-ui.icon name="chevron-down" class="size-3.5 transition group-open:rotate-180" />
+                        </summary>
+                        <ol class="mt-2 space-y-2.5 text-xs">
+                            @foreach (array_slice($this->riwayatKode, 0, 5) as $entri)
+                                <li>
+                                    <p class="text-stone-500">{{ Carbon::parse($entri['pada'])->locale('id')->translatedFormat('j M Y, H.i') }} · {{ $entri['oleh'] }}</p>
+                                    @foreach ($entri['perubahan'] as $isian => [$lama, $baru])
+                                        <p class="text-stone-700"><span class="font-medium">{{ RingkasanKode::LABEL[$isian] }}</span>: {{ RingkasanKode::tampilNilai($isian, $lama) }} → {{ RingkasanKode::tampilNilai($isian, $baru) }}</p>
+                                    @endforeach
+                                </li>
+                            @endforeach
+                        </ol>
+                    </details>
+                @endif
+
                 @if ($bisaUbah)
                     <div class="mt-4 space-y-2 border-t border-stone-100 pt-4">
-                        <button type="button" wire:click="simpan(true)" wire:loading.attr="disabled" class="btn-primary w-full">
+                        <button type="button" wire:click="simpan(true)" wire:loading.attr="disabled" wire:target="simpan" class="btn-primary w-full">
                             Simpan &amp; lanjut ke RAB
                             <x-ui.icon name="chevron-right" class="size-4" />
                         </button>
