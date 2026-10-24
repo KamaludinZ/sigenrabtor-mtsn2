@@ -162,9 +162,13 @@
                             <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Per kelompok belanja</p>
                             <dl class="mt-2 space-y-1 text-sm">
                                 @foreach (ItemBelanjaForm::LABEL_KATEGORI as $kunci => $label)
-                                    <div class="flex justify-between">
-                                        <dt class="text-stone-500">{{ $label }}</dt>
-                                        <dd class="tabular-nums">{{ Format::rupiah($hasil->perKategori[$kunci] ?? 0) }}</dd>
+                                    <div>
+                                        <button type="button" class="-mx-1.5 flex w-[calc(100%+0.75rem)] justify-between rounded-md px-1.5 py-0.5 text-left hover:bg-stone-100"
+                                                title="Tampilkan kelompok {{ $label }}"
+                                                x-on:click="$wire.$set('kelompok', 'kategori').then(() => $nextTick(() => [...document.querySelectorAll('[data-kelompok-anchor={{ $kunci }}]')].find(el => el.offsetParent !== null)?.scrollIntoView({ behavior: 'smooth', block: 'center' })))">
+                                            <dt class="text-stone-500 underline decoration-stone-300 underline-offset-2">{{ $label }}</dt>
+                                            <dd class="tabular-nums">{{ Format::rupiah($hasil->perKategori[$kunci] ?? 0) }}</dd>
+                                        </button>
                                     </div>
                                 @endforeach
                             </dl>

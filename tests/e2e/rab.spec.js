@@ -128,3 +128,70 @@ test.describe('Ubah & hapus item belanja', () => {
         await expect(page.getByTestId('lanjut-rab')).toContainText('Rp400.000 dari pagu Rp5.000.000');
     });
 });
+
+async function buatKegiatanDenganItem(page, nama, items) {
+    await page.goto('/kegiatan/buat');
+    await page.locator('#nama_kegiatan').fill(nama);
+    await page.getByTestId('sumber-komite').getByRole('checkbox').check();
+    await expect(page.locator('#pagu_komite')).toBeEnabled();
+    await page.locator('#pagu_komite').pressSequentially('5000000');
+    await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+    await expect(page).toHaveURL(/\/rab/);
+    for (const [uraian, volume, harga] of items) {
+        await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+        await page.locator('#item_uraian').fill(uraian);
+        await page.locator('#item_volume').fill(volume);
+        await page.locator('#item_satuan').fill('buah');
+        await page.locator('#item_harga_satuan').pressSequentially(harga);
+        await page.getByRole('button', { name: 'Simpan item' }).click();
+        await expect(page.getByText(`Item ditambahkan: ${uraian}`)).toBeVisible();
+    }
+}
+
+test.describe('Kelompok kategori interaktif', () => {
+    test('pindah kategori (seret di desktop, pilihan di mobile), ciutkan, dan lompat dari ringkasan', async ({ page }, testInfo) => {
+        await buatKegiatanDenganItem(page, `Kegiatan Kelompok ${testInfo.project.name}`, [
+            ['Air Mineral', '3', '40000'],
+            ['Honorarium Narasumber', '2', '500000'],
+        ]);
+        await page.getByRole('button', { name: 'Per kelompok belanja' }).click();
+        await expect(page).toHaveURL(/tampil=kategori/);
+
+        if (testInfo.project.name === 'desktop') {
+            // Gerakan bertahap & bidik ulang: baris bergeser selama diseret, jadi posisi sasaran dihitung ulang.
+            const pegangan = page.getByLabel('Seret item 1');
+            // Pastikan asal & sasaran sama-sama di dalam layar.
+            await page.locator('tbody[data-kelompok="lain"]').evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
+            const asal = await pegangan.boundingBox();
+            await page.mouse.move(asal.x + asal.width / 2, asal.y + asal.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(asal.x + 30, asal.y + 20, { steps: 5 });
+            const sasaran = page.locator('tbody[data-kelompok="lain"] td').first();
+            for (let i = 0; i < 3; i++) {
+                const kotak = await sasaran.boundingBox();
+                await page.mouse.move(kotak.x + 60, kotak.y + kotak.height / 2, { steps: 10 });
+            }
+            await page.mouse.up();
+        } else {
+            await page.getByLabel('Kelompok belanja item 1').selectOption('lain');
+        }
+        await expect(page.getByText('“Air Mineral” dipindah ke kelompok Lain-lain.')).toBeVisible();
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Lain-lain');
+
+        if (testInfo.project.name === 'desktop') {
+            await expect(page.locator('tbody[data-kelompok="lain"]')).toContainText('Air Mineral');
+            await page.screenshot({ path: 'storage/playwright/shots/kelompok-interaktif-desktop.png' });
+
+            // Ciutkan semua lalu buka lagi.
+            await page.getByRole('button', { name: 'Ciutkan semua' }).click();
+            await expect(page.locator('tbody[data-kelompok="jasa"] tr[data-item]')).toBeHidden();
+            await page.getByRole('button', { name: 'Buka semua' }).click();
+            await expect(page.locator('tbody[data-kelompok="jasa"] tr[data-item]')).toBeVisible();
+        }
+
+        // Klik "Jasa" di ringkasan: tampilan kategori + gulir ke kelompoknya.
+        await page.getByRole('button', { name: 'Urutan cetak' }).click();
+        await page.getByTitle('Tampilkan kelompok Jasa').click();
+        await expect(page).toHaveURL(/tampil=kategori/);
+    });
+});

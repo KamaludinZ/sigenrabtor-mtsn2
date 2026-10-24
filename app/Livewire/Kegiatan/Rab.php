@@ -12,6 +12,7 @@ use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubMaster;
+use Illuminate\Support\Arr;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -128,6 +129,35 @@ class Rab extends Component
         }
 
         $this->itemTerhapus = $terhapus + ['sumber' => $this->sumber];
+        $this->segarkanRincian();
+    }
+
+    /**
+     * Handler seret-lepas antar kelompok (wire:sort): item dilepas di kelompok $kategori.
+     */
+    public function pindahKategoriItem(string $id, int $posisi, string $kategori): void
+    {
+        $this->ubahKategoriItem($id, $kategori);
+    }
+
+    public function ubahKategoriItem(string $id, string $kategori): void
+    {
+        $this->pastikanDapatDiedit();
+        $item = collect($this->rincian)->firstWhere('id', $id);
+
+        if ($item === null || ! in_array($kategori, ItemBelanjaForm::KATEGORI, true)) {
+            $this->segarkanRincian();
+
+            return;
+        }
+
+        if ($item['kategori'] !== $kategori) {
+            $data = Arr::only($item, ['kode', 'uraian', 'kategori', 'volume', 'satuan', 'harga_satuan']);
+            app(RabRepository::class)->ubahItem($this->kegiatanId, $this->sumber, $id, ['kategori' => $kategori] + $data);
+            $this->dispatch('notify', message: "“{$item['uraian']}” dipindah ke kelompok ".ItemBelanjaForm::LABEL_KATEGORI[$kategori].'.');
+        }
+
+        // Selalu segarkan agar DOM yang digeser seret-lepas kembali sesuai data.
         $this->segarkanRincian();
     }
 
@@ -260,7 +290,7 @@ class Rab extends Component
     #[Computed]
     public function kelompokRincian(): array
     {
-        return KelompokRincian::kelompokkan($this->rincian, $this->kelompok);
+        return KelompokRincian::kelompokkan($this->rincian, $this->kelompok, sertakanKosong: $this->dapatDiedit());
     }
 
     public function updatedKelompok(): void

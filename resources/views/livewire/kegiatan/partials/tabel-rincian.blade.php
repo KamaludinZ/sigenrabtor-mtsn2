@@ -6,6 +6,8 @@
     $berkelompok = $kelompok !== 'urutan';
     $bisaUbah = $this->dapatDiedit();
     $kolom = $bisaUbah ? 8 : 7;
+    $seret = $bisaUbah && $kelompok === 'kategori';
+    $kunciSimpan = "rab-{$kegiatanId}-{$sumber}-{$kelompok}-";
 @endphp
 
 {{-- Pilihan tampilan rincian --}}
@@ -19,7 +21,22 @@
                     'text-stone-600 hover:bg-stone-100' => $kelompok !== $mode,
                 ])>{{ $label }}</button>
     @endforeach
+
+    @if ($berkelompok)
+        <span class="ml-auto flex items-center gap-1">
+            <button type="button" x-on:click="$dispatch('rab-grup', { buka: false })" class="rounded-md px-2 py-1 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800">Ciutkan semua</button>
+            <button type="button" x-on:click="$dispatch('rab-grup', { buka: true })" class="rounded-md px-2 py-1 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800">Buka semua</button>
+        </span>
+    @endif
 </div>
+
+@if ($seret)
+    <p class="flex items-center gap-1.5 border-b border-stone-100 bg-brand-50/40 px-5 py-2 text-xs text-brand-900 sm:px-6">
+        <x-ui.icon name="grip" class="size-3.5" />
+        <span class="hidden sm:inline">Seret nomor item ke kelompok lain untuk memindahkan kategorinya.</span>
+        <span class="sm:hidden">Ubah kelompok lewat pilihan di tiap item.</span>
+    </p>
+@endif
 
 {{-- Tabel (layar sedang ke atas) --}}
 <div class="hidden overflow-x-auto sm:block">
@@ -39,19 +56,50 @@
             </tr>
         </thead>
         @foreach ($this->kelompokRincian as $grup)
-            <tbody class="divide-y divide-stone-100" data-kelompok="{{ $grup['kunci'] }}">
+            <tbody class="divide-y divide-stone-100" data-kelompok="{{ $grup['kunci'] }}" data-kelompok-anchor="{{ $grup['kunci'] }}"
+                   wire:key="grup-{{ $kelompok }}-{{ $grup['kunci'] ?: 'tanpa' }}"
+                   @if ($berkelompok)
+                       x-data="{ buka: $persist(true).as(@js($kunciSimpan.($grup['kunci'] ?: 'tanpa'))) }"
+                       x-on:rab-grup.window="buka = $event.detail.buka"
+                   @endif
+                   @if ($seret)
+                       wire:sort="pindahKategoriItem" wire:sort:group="kategori-rab" wire:sort:group-id="{{ $grup['kunci'] }}"
+                   @endif>
                 @if ($berkelompok)
                     <tr class="bg-brand-50/60">
-                        <th scope="colgroup" colspan="{{ $kolom }}" class="px-4 py-2 text-left text-xs font-semibold text-brand-900">
-                            {{ $grup['label'] }}
-                            <span class="font-normal text-brand-700">· {{ count($grup['item']) }} item</span>
+                        <th scope="colgroup" colspan="{{ $kolom }}" class="px-2 py-1.5 text-left text-xs font-semibold text-brand-900">
+                            <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
+                                    class="flex w-full items-center gap-2 rounded-md px-2 py-0.5 text-left hover:bg-brand-100/60">
+                                <x-ui.icon name="chevron-down" class="size-3.5 transition-transform" x-bind:class="buka ? '' : '-rotate-90'" />
+                                {{ $grup['label'] }}
+                                <span class="font-normal text-brand-700">· {{ count($grup['item']) }} item</span>
+                                <span class="ml-auto font-semibold tabular-nums" x-show="! buka" x-cloak>{{ Format::rupiah($grup['subtotal']) }}</span>
+                            </button>
                         </th>
+                    </tr>
+                @endif
+                @if ($grup['item'] === [])
+                    <tr x-show="buka">
+                        <td colspan="{{ $kolom }}" class="px-4 py-3 text-center text-xs text-stone-400">
+                            Belum ada item{{ $seret ? ' — seret item ke sini untuk memindahkannya ke kelompok ini' : '' }}.
+                        </td>
                     </tr>
                 @endif
                 @foreach ($grup['item'] as $baris)
                     <tr wire:key="item-{{ $baris['id'] ?? $baris['nomor'] }}" data-item="{{ $baris['nomor'] }}"
+                        @if ($berkelompok) x-show="buka" @endif
+                        @if ($seret) wire:sort:item="{{ $baris['id'] }}" @endif
                         @class(['align-top', 'bg-gold-50 ring-1 ring-gold-300 ring-inset' => $itemDiedit === ($baris['id'] ?? null), 'hover:bg-stone-50/60' => $itemDiedit !== ($baris['id'] ?? null)])>
-                        <td class="px-4 py-2.5 text-stone-500 tabular-nums">{{ $baris['nomor'] }}.</td>
+                        @if ($seret)
+                            <td class="px-4 py-2.5 text-stone-500 tabular-nums">
+                                <span wire:sort:handle class="group/pegang -mx-1.5 inline-flex cursor-grab items-center gap-1 rounded px-1.5 hover:bg-brand-100 hover:text-brand-800 active:cursor-grabbing"
+                                      title="Seret ke kelompok lain" aria-label="Seret item {{ $baris['nomor'] }}">
+                                    <x-ui.icon name="grip" class="size-3.5 opacity-40 group-hover/pegang:opacity-100" />{{ $baris['nomor'] }}.
+                                </span>
+                            </td>
+                        @else
+                            <td class="px-4 py-2.5 text-stone-500 tabular-nums">{{ $baris['nomor'] }}.</td>
+                        @endif
                         <td class="px-2 py-2.5 font-mono text-xs text-stone-500">{{ $baris['kode'] }}</td>
                         <td class="px-2 py-2.5 text-stone-800">
                             {{ $baris['uraian'] }}
@@ -78,7 +126,7 @@
                     </tr>
                 @endforeach
                 @if ($berkelompok)
-                    <tr class="bg-stone-50/80" data-testid="subtotal-{{ $grup['kunci'] ?: 'tanpa-kode' }}">
+                    <tr class="bg-stone-50/80" data-testid="subtotal-{{ $grup['kunci'] ?: 'tanpa-kode' }}" x-show="buka">
                         <th scope="row" colspan="6" class="px-4 py-2 text-right text-xs font-semibold text-stone-600">
                             Subtotal {{ $grup['label'] }}
                             <span class="font-normal text-stone-400">({{ Format::angka($grup['persen']) }}%)</span>
@@ -103,7 +151,7 @@
 <div class="sm:hidden" data-testid="rincian-kartu">
     @foreach ($this->kelompokRincian as $grup)
         @if ($berkelompok)
-            <p class="bg-brand-50/60 px-5 py-2 text-xs font-semibold text-brand-900">{{ $grup['label'] }} <span class="font-normal text-brand-700">· {{ count($grup['item']) }} item</span></p>
+            <p class="bg-brand-50/60 px-5 py-2 text-xs font-semibold text-brand-900" data-kelompok-anchor="{{ $grup['kunci'] }}">{{ $grup['label'] }} <span class="font-normal text-brand-700">· {{ count($grup['item']) }} item</span></p>
         @endif
         <ol class="divide-y divide-stone-100">
             @foreach ($grup['item'] as $baris)
@@ -116,7 +164,14 @@
                         {{ Format::angka($baris['volume']) }} {{ $baris['satuan'] }} × {{ Format::rupiah($baris['harga_satuan']) }}@if ($baris['kode']) · {{ $baris['kode'] }}@endif
                     </p>
                     @if ($bisaUbah)
-                        <div class="mt-2 flex justify-end gap-1">
+                        <div class="mt-2 flex items-center justify-end gap-1">
+                            <label class="sr-only" for="kategori-{{ $baris['id'] }}">Kelompok belanja item {{ $baris['nomor'] }}</label>
+                            <select id="kategori-{{ $baris['id'] }}" wire:change="ubahKategoriItem('{{ $baris['id'] }}', $event.target.value)"
+                                    class="mr-auto rounded-md border-0 bg-stone-100 py-1 pr-7 pl-2 text-xs font-medium text-stone-700 focus:ring-2 focus:ring-brand-600">
+                                @foreach (ItemBelanjaForm::LABEL_KATEGORI as $kunciKategori => $labelKategori)
+                                    <option value="{{ $kunciKategori }}" @selected($baris['kategori'] === $kunciKategori)>{{ $labelKategori }}</option>
+                                @endforeach
+                            </select>
                             <button type="button" wire:click="ubahItem('{{ $baris['id'] }}')" class="btn-ghost px-2 py-1 text-xs" aria-label="Ubah item {{ $baris['nomor'] }}">
                                 <x-ui.icon name="pencil" class="size-3.5" /> Ubah
                             </button>

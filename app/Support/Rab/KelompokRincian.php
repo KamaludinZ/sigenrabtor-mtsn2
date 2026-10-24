@@ -18,11 +18,12 @@ class KelompokRincian
     /**
      * Kelompokkan item (yang sudah memiliki 'jumlah'). Mode "urutan" menghasilkan satu kelompok tanpa judul.
      * Setiap item diberi 'nomor' sesuai urutan cetak agar tetap bisa dirujuk walau dikelompokkan.
+     * $sertakanKosong (mode kategori): tampilkan juga kelompok tanpa item, mis. sebagai sasaran seret-lepas.
      *
      * @param  list<array<string, mixed>>  $rincian
      * @return list<array{kunci: string, label: string|null, item: list<array<string, mixed>>, subtotal: int, persen: float}>
      */
-    public static function kelompokkan(array $rincian, string $mode): array
+    public static function kelompokkan(array $rincian, string $mode, bool $sertakanKosong = false): array
     {
         $bernomor = array_map(fn (array $item, int $i) => $item + ['nomor' => $i + 1], $rincian, array_keys($rincian));
         $total = array_sum(array_column($rincian, 'jumlah'));
@@ -31,7 +32,9 @@ class KelompokRincian
             return [self::kelompok('semua', null, $bernomor, $total)];
         }
 
-        $kelompok = [];
+        $kelompok = $mode === 'kategori' && $sertakanKosong
+            ? array_fill_keys(array_keys(ItemBelanjaForm::LABEL_KATEGORI), [])
+            : [];
         foreach ($bernomor as $item) {
             $kunci = $mode === 'kategori' ? ($item['kategori'] ?: 'lain') : ($item['kode'] ?: '');
             $kelompok[$kunci][] = $item;
