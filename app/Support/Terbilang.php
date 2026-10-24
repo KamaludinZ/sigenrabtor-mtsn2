@@ -32,6 +32,15 @@ class Terbilang
     }
 
     /**
+     * Terbilang untuk ditampilkan: null bila nilai kosong atau nol, agar layar/dokumen menampilkan keterangan
+     * kontekstual (mis. "belum ada rincian") alih-alih "Nol Rupiah" untuk anggaran yang belum diisi.
+     */
+    public static function tampil(?int $nilai): ?string
+    {
+        return $nilai === null || $nilai === 0 ? null : self::rupiah($nilai);
+    }
+
+    /**
      * Terbilang huruf kecil tanpa satuan mata uang: 1001001 → "satu juta seribu satu".
      */
     public static function kata(int $nilai): string

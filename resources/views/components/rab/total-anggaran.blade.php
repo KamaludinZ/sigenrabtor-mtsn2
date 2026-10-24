@@ -4,6 +4,7 @@
     'pagu' => null,
     'terbilang' => null,
     'ringkas' => false,
+    'kosong' => 'Belum ada rincian belanja — terbilang muncul setelah item ditambahkan.',
 ])
 
 @use('App\Support\Format')
@@ -11,15 +12,17 @@
 
 @php
     // Terbilang selalu diturunkan dari angka (PRD F3); prop hanya untuk menimpa dalam kasus khusus.
-    $terbilang ??= Terbilang::rupiah((int) $nilai);
-    $selisih = $pagu !== null ? $pagu - $nilai : null;
+    // Nilai nol/kosong tidak diterbilangkan ("Nol Rupiah" menyesatkan untuk RAB yang belum diisi).
+    $nilai = $nilai === null ? null : (int) $nilai;
+    $terbilang ??= Terbilang::tampil($nilai);
+    $selisih = $pagu !== null ? $pagu - (int) $nilai : null;
     $status = match (true) {
         $pagu === null => ['Pagu belum diisi', 'info', 'text-stone-500'],
         $nilai === $pagu => ['Sesuai pagu', 'check-circle', 'text-brand-700'],
         $nilai < $pagu => ['Sisa pagu '.Format::rupiah($selisih), 'check-circle', 'text-brand-700'],
         default => ['Melebihi pagu '.Format::rupiah(-$selisih), 'alert', 'text-red-600'],
     };
-    $teksSalin = Format::rupiahDokumen($nilai).($terbilang ? ' ('.$terbilang.')' : '');
+    $teksSalin = Format::rupiahDokumen((int) $nilai).($terbilang ? ' ('.$terbilang.')' : '');
 @endphp
 
 {{--
@@ -32,7 +35,7 @@
     </p>
 
     <div class="mt-1 flex items-start justify-between gap-2">
-        <x-ui.uang :nilai="$nilai" @class(['font-bold text-stone-900', 'text-xl' => $ringkas, 'text-3xl' => ! $ringkas]) data-testid="total-anggaran-nilai" />
+        <x-ui.uang :nilai="(int) $nilai" @class(['font-bold text-stone-900', 'text-xl' => $ringkas, 'text-3xl' => ! $ringkas]) data-testid="total-anggaran-nilai" />
         <button type="button" title="Salin nominal & terbilang" aria-label="Salin nominal dan terbilang"
                 class="shrink-0 rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
                 x-on:click="navigator.clipboard?.writeText(@js($teksSalin)).then(() => { tersalin = true; setTimeout(() => tersalin = false, 1500) })">
@@ -41,7 +44,11 @@
         </button>
     </div>
 
-    <p @class(['mt-1 italic leading-snug text-stone-600', 'text-xs' => $ringkas, 'text-sm' => ! $ringkas]) data-testid="total-anggaran-terbilang">“{{ $terbilang }}”</p>
+    @if ($terbilang)
+        <p @class(['mt-1 italic leading-snug text-stone-600', 'text-xs' => $ringkas, 'text-sm' => ! $ringkas]) data-testid="total-anggaran-terbilang">“{{ $terbilang }}”</p>
+    @else
+        <p class="mt-1 text-xs leading-snug text-stone-400" data-testid="total-anggaran-terbilang-kosong">{{ $kosong }}</p>
+    @endif
 
     @if ($status)
         <p class="mt-2 flex items-center gap-1.5 text-xs font-medium {{ $status[2] }}" data-testid="total-anggaran-status">

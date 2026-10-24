@@ -35,14 +35,16 @@
 
                 @if ($aktif && ($rekap = $this->rekapRab[$opsi['label']] ?? null))
                     <p class="mt-3 flex flex-wrap items-center justify-between gap-1 border-t border-stone-200/70 pt-2.5 text-xs" data-testid="rekap-rab-{{ $opsi['kunci'] }}">
-                        <span class="text-stone-500">RAB tersusun ({{ $rekap->jumlahItem() }} item)</span>
+                        <span class="text-stone-500">{{ $rekap->jumlahItem() > 0 ? 'RAB tersusun ('.$rekap->jumlahItem().' item)' : 'RAB belum berisi rincian' }}</span>
                         <span @class([
                             'font-semibold tabular-nums',
                             'text-brand-700' => in_array($rekap->statusPagu(), ['sesuai', 'sisa'], true),
                             'text-red-600' => $rekap->statusPagu() === 'melebihi',
                             'text-stone-700' => $rekap->statusPagu() === 'tanpa_pagu',
                         ])>{{ Format::rupiah($rekap->total) }}</span>
-                        <span class="w-full text-right text-stone-500 italic">{{ \App\Support\Terbilang::rupiah($rekap->total) }}</span>
+                        @if ($terbilangRekap = \App\Support\Terbilang::tampil($rekap->total))
+                            <span class="w-full text-right text-stone-500 italic">{{ $terbilangRekap }}</span>
+                        @endif
                     </p>
                 @endif
             </div>

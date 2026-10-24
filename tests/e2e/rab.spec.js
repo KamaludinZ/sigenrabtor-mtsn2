@@ -37,6 +37,10 @@ test.describe('Form item belanja baru', () => {
         await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
         await expect(page).toHaveURL(/\/rab/);
 
+        // RAB masih kosong: tidak ada "Nol Rupiah", kalimat pembiayaan diganti peringatan.
+        await expect(page.getByTestId('kalimat-pembiayaan-kosong')).toBeVisible();
+        await expect(page.getByText('Nol Rupiah')).toHaveCount(0);
+
         await page.getByRole('button', { name: 'Tambah item belanja' }).click();
         await expect(page.locator('#item_uraian')).toBeFocused();
         await page.locator('#item_uraian').fill('Honorarium Narasumber');

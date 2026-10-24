@@ -101,7 +101,11 @@
                         <div class="min-w-0">
                             <dt class="text-xs text-stone-500">Jumlah yang diajukan</dt>
                             <dd class="font-medium text-stone-900">{{ Format::rupiahDokumen($this->total) }}</dd>
-                            <dd class="text-xs text-stone-500 italic" data-testid="header-terbilang">{{ Terbilang::rupiah($this->total) }}</dd>
+                            @if ($terbilangTotal = Terbilang::tampil($this->total))
+                                <dd class="text-xs text-stone-500 italic" data-testid="header-terbilang">{{ $terbilangTotal }}</dd>
+                            @else
+                                <dd class="text-xs text-stone-400" data-testid="header-terbilang">belum ada rincian</dd>
+                            @endif
                         </div>
                     </dl>
 
@@ -110,7 +114,14 @@
                         <p class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">
                             <x-ui.icon name="file-text" class="size-3.5" /> Tercetak di KAK · Pembiayaan
                         </p>
-                        <p class="mt-1 text-sm leading-relaxed text-stone-700">{{ KalimatKak::pembiayaan($this->total, $sumber, $this->header['tahun'], $madrasahSingkat) }}</p>
+                        @if ($this->total > 0)
+                            <p class="mt-1 text-sm leading-relaxed text-stone-700">{{ KalimatKak::pembiayaan($this->total, $sumber, $this->header['tahun'], $madrasahSingkat) }}</p>
+                        @else
+                            <p class="mt-1 flex items-start gap-1.5 text-sm text-gold-700" data-testid="kalimat-pembiayaan-kosong">
+                                <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
+                                Kalimat pembiayaan tercetak setelah rincian RAB {{ $sumber }} diisi; tanpa rincian, KAK tidak memuat nominal dan terbilang.
+                            </p>
+                        @endif
                     </div>
                 </section>
 

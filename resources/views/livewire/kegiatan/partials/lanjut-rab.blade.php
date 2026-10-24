@@ -22,7 +22,7 @@
                         @foreach ($sumberRab as $sumber)
                             <span class="inline-flex items-center gap-1.5 rounded-md bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700">
                                 RAB {{ $sumber['sumber'] }}
-                                @if ($rekap = $this->rekapRab[$sumber['sumber']] ?? null)
+                                @if (($rekap = $this->rekapRab[$sumber['sumber']] ?? null) && $rekap->jumlahItem() > 0)
                                     <span class="text-stone-500">· {{ Format::rupiah($rekap->total) }} dari pagu {{ $sumber['pagu'] ? Format::rupiah($sumber['pagu']) : '—' }}</span>
                                 @else
                                     <span class="text-stone-500">· pagu {{ $sumber['pagu'] ? Format::rupiah($sumber['pagu']) : 'belum diisi' }}</span>
