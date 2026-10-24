@@ -15,7 +15,8 @@
         <p class="text-xs text-stone-500">Tanggal selesai, bulan pelaksanaan, dan batas laporan dihitung otomatis.</p>
 
         <div class="mt-4 grid gap-4 sm:grid-cols-3">
-            <x-ui.field label="Tanggal mulai" for="tanggal_mulai" error="form.tanggal_mulai">
+            <x-ui.field label="Tanggal mulai" for="tanggal_mulai" error="form.tanggal_mulai"
+                        :warning="$form->peringatanJadwal()['tanggal_mulai'] ?? null">
                 <input type="date" id="tanggal_mulai" wire:model.live="form.tanggal_mulai"
                        min="{{ $tahun }}-01-01" max="{{ $tahun }}-12-31" class="form-input"
                        @error('form.tanggal_mulai') aria-invalid="true" aria-describedby="tanggal_mulai-error" @enderror>
@@ -74,7 +75,7 @@
 
         <div class="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-12" role="group" aria-label="Bulan pelaksanaan">
             @foreach (JadwalPelaksanaan::NAMA_BULAN as $nomor => $nama)
-                @php($dipilih = in_array($nomor, $form->bulan_pelaksanaan, true))
+                @php $dipilih = in_array($nomor, $form->bulan_pelaksanaan, true); @endphp
                 <button type="button" wire:click="toggleBulan({{ $nomor }})" aria-pressed="{{ $dipilih ? 'true' : 'false' }}"
                         title="{{ $nama }} {{ $tahun }}"
                         @class([

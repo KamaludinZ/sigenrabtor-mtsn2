@@ -30,9 +30,9 @@ class Form extends Component
     /** Isian yang ikut divalidasi ulang ketika isian kunci berubah. */
     private const ISIAN_TERKAIT = [
         'tanggal_dokumen' => ['tanggal_laporan'],
-        'tanggal_mulai' => ['lama_hari', 'tanggal_laporan'],
-        'lama_hari' => ['tanggal_laporan'],
-        'hari_kerja' => ['lama_hari', 'tanggal_laporan'],
+        'tanggal_mulai' => ['tanggal_dokumen', 'lama_hari', 'tanggal_laporan', 'bulan_pelaksanaan'],
+        'lama_hari' => ['tanggal_laporan', 'bulan_pelaksanaan'],
+        'hari_kerja' => ['lama_hari', 'tanggal_laporan', 'bulan_pelaksanaan'],
     ];
 
     /**

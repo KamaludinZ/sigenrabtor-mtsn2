@@ -1,4 +1,9 @@
-@php($peringatan = $form->peringatan())
+@php
+    $peringatan = $form->peringatan();
+    $tahunDok = $this->tahunAktif['tahun'];
+    $mulaiDok = $form->tanggalMulai();
+    $selesaiDok = $form->tanggalSelesai();
+@endphp
 
 <div class="grid gap-5 sm:grid-cols-2">
     <x-ui.field class="sm:col-span-2" label="Nama kegiatan" for="nama_kegiatan" error="form.nama_kegiatan" required
@@ -44,13 +49,16 @@
     <x-ui.field label="Tanggal dokumen" for="tanggal_dokumen" error="form.tanggal_dokumen"
                 :hint="\App\Support\Format::tanggal($form->tanggal_dokumen) ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_dokumen) : 'Tanggal pada lembar pengesahan.'">
         <input type="date" id="tanggal_dokumen" wire:model.live="form.tanggal_dokumen" class="form-input"
+               min="{{ $tahunDok - 1 }}-01-01" max="{{ $mulaiDok?->toDateString() ?? $tahunDok.'-12-31' }}"
                @error('form.tanggal_dokumen') aria-invalid="true" aria-describedby="tanggal_dokumen-error" @enderror>
     </x-ui.field>
 
     <x-ui.field label="Tanggal pelaporan" for="tanggal_laporan" error="form.tanggal_laporan"
+                :warning="$peringatan['tanggal_laporan'] ?? null"
                 :hint="(\App\Support\Format::tanggal($form->tanggal_laporan) ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_laporan).'. ' : 'Batas penyerahan laporan ke kepala madrasah. ')
                     .($form->laporan_otomatis ? 'Otomatis 10 hari setelah kegiatan selesai.' : 'Diatur manual — kosongkan untuk kembali otomatis.')">
         <input type="date" id="tanggal_laporan" wire:model.live="form.tanggal_laporan" class="form-input"
+               @if ($selesaiDok) min="{{ $selesaiDok->toDateString() }}" @endif
                @error('form.tanggal_laporan') aria-invalid="true" aria-describedby="tanggal_laporan-error" @enderror>
     </x-ui.field>
 </div>

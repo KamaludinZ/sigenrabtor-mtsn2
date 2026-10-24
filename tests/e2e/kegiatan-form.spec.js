@@ -87,6 +87,20 @@ test.describe('Form Data Kegiatan', () => {
         await page.screenshot({ path: `storage/playwright/shots/jadwal-${test.info().project.name}.png` });
     });
 
+    test('validasi tanggal: dokumen setelah mulai & bulan tidak mencakup kegiatan', async ({ page }) => {
+        await page.locator('#pelaksanaan').getByRole('button', { name: 'Mei' }).click();
+        await page.locator('#tanggal_mulai').fill('2026-07-14');
+        await page.locator('#lama_hari').fill('2');
+        await expect(page.getByText('Bulan pelaksanaan belum mencakup bulan kegiatan berlangsung: Juli.')).toBeVisible();
+
+        await page.locator('#tanggal_dokumen').fill('2026-07-20');
+        await expect(page.getByText('harus sebelum atau sama dengan tanggal mulai kegiatan (14 Juli 2026)')).toBeVisible();
+        await expect(page.locator('#tanggal_dokumen')).toHaveAttribute('max', '2026-07-14');
+
+        await page.locator('#tanggal_dokumen').fill('2026-07-01');
+        await expect(page.getByText('harus sebelum atau sama dengan tanggal mulai kegiatan')).toHaveCount(0);
+    });
+
     test('simpan draf kosong menampilkan error nama kegiatan', async ({ page }) => {
         await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
         await expect(page.getByText('Kolom nama kegiatan wajib diisi.')).toBeVisible();

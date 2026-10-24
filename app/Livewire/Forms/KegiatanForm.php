@@ -85,12 +85,12 @@ class KegiatanForm extends Form
             'latar_belakang' => ['nullable', 'string', 'max:5000', new KalimatUtuh],
             'tujuan' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
             'sasaran' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
-            'tanggal_dokumen' => ['nullable', 'date'],
+            'tanggal_dokumen' => ['nullable', 'date', 'after_or_equal:'.($tahun - 1).'-01-01', "before_or_equal:{$tahun}-12-31", $this->aturanDokumenSebelumMulai()],
             'tanggal_laporan' => ['nullable', 'date', 'after_or_equal:tanggal_dokumen', $this->aturanLaporanSetelahSelesai()],
             'tanggal_mulai' => ['nullable', 'date', "after_or_equal:{$tahun}-01-01", "before_or_equal:{$tahun}-12-31"],
             'lama_hari' => ['nullable', 'integer', 'min:1', 'max:366', $this->aturanSelesaiDalamTahun($tahun)],
             'hari_kerja' => ['boolean'],
-            'bulan_pelaksanaan' => ['array', 'max:12'],
+            'bulan_pelaksanaan' => ['array', 'max:12', $this->aturanBulanMencakupTanggal()],
             'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
             'panitia' => ['array', 'max:'.self::MAKS_PANITIA],
             'panitia.*.nama' => ['required', 'string', 'max:150'],
@@ -126,18 +126,24 @@ class KegiatanForm extends Form
      */
     protected function messages(): array
     {
+        $tahun = StubData::tahunAktif()['tahun'];
+        $diTahunAnggaran = "Tanggal mulai harus di Tahun Anggaran {$tahun}.";
+        $rentangDokumen = 'Tanggal dokumen harus antara 1 Januari '.($tahun - 1)." dan 31 Desember {$tahun}.";
+
         return [
             'required' => 'Kolom :attribute wajib diisi.',
             'min' => 'Kolom :attribute minimal :min karakter.',
             'max' => 'Kolom :attribute maksimal :max karakter.',
             'date' => 'Kolom :attribute harus berupa tanggal yang valid.',
-            'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
-            'panitia.max' => 'Susunan tim maksimal :max orang.',
             'integer' => 'Kolom :attribute harus berupa angka bulat.',
+            'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
+            'tanggal_dokumen.after_or_equal' => $rentangDokumen,
+            'tanggal_dokumen.before_or_equal' => $rentangDokumen,
+            'tanggal_mulai.after_or_equal' => $diTahunAnggaran,
+            'tanggal_mulai.before_or_equal' => $diTahunAnggaran,
             'lama_hari.min' => 'Lama kegiatan minimal 1 hari.',
             'lama_hari.max' => 'Lama kegiatan maksimal 366 hari.',
-            'tanggal_mulai.after_or_equal' => 'Tanggal mulai harus di Tahun Anggaran '.StubData::tahunAktif()['tahun'].'.',
-            'tanggal_mulai.before_or_equal' => 'Tanggal mulai harus di Tahun Anggaran '.StubData::tahunAktif()['tahun'].'.',
+            'panitia.max' => 'Susunan tim maksimal :max orang.',
         ];
     }
 
@@ -226,7 +232,7 @@ class KegiatanForm extends Form
             $selesai = $this->tanggalSelesai();
 
             if ($selesai && $selesai->year > $tahun) {
-                $fail("Kegiatan selesai {$selesai->locale('id')->translatedFormat('j F Y')}, melewati akhir Tahun Anggaran {$tahun}.");
+                $fail('Kegiatan selesai '.self::teksTanggal($selesai).", melewati akhir Tahun Anggaran {$tahun}.");
             }
         };
     }
@@ -237,9 +243,50 @@ class KegiatanForm extends Form
             $selesai = $this->tanggalSelesai();
 
             if ($selesai && strtotime((string) $value) && CarbonImmutable::parse($value)->lt($selesai)) {
-                $fail('Tanggal pelaporan tidak boleh sebelum kegiatan selesai ('.$selesai->locale('id')->translatedFormat('j F Y').').');
+                $fail('Tanggal pelaporan tidak boleh sebelum kegiatan selesai ('.self::teksTanggal($selesai).').');
             }
         };
+    }
+
+    /**
+     * KAK adalah rencana: tanggal pengesahannya tidak boleh setelah kegiatan dimulai.
+     */
+    private function aturanDokumenSebelumMulai(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) {
+            $mulai = $this->tanggalMulai();
+
+            if ($mulai && strtotime((string) $value) && CarbonImmutable::parse($value)->gt($mulai)) {
+                $fail('Tanggal dokumen harus sebelum atau sama dengan tanggal mulai kegiatan ('.self::teksTanggal($mulai).').');
+            }
+        };
+    }
+
+    /**
+     * Bulan pelaksanaan boleh lebih luas (mis. bulan persiapan) tetapi wajib mencakup bulan kegiatan berlangsung.
+     */
+    private function aturanBulanMencakupTanggal(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) {
+            $mulai = $this->tanggalMulai();
+            $selesai = $this->tanggalSelesai();
+
+            if (! $mulai || ! $selesai || ! is_array($value) || $value === []) {
+                return;
+            }
+
+            $kurang = array_diff(JadwalPelaksanaan::bulanTercakup($mulai, $selesai), array_map('intval', $value));
+
+            if ($kurang !== []) {
+                $nama = implode(', ', array_map(fn ($b) => JadwalPelaksanaan::NAMA_BULAN[$b], $kurang));
+                $fail("Bulan pelaksanaan belum mencakup bulan kegiatan berlangsung: {$nama}.");
+            }
+        };
+    }
+
+    private static function teksTanggal(CarbonImmutable $tanggal): string
+    {
+        return $tanggal->locale('id')->translatedFormat('j F Y');
     }
 
     public function tambahPanitia(string $peran = 'Anggota', string $nama = '', string $jabatan = ''): bool
@@ -398,6 +445,28 @@ class KegiatanForm extends Form
             if ($kataPertama === $awalan) {
                 $peringatan[$field] = $pesan;
             }
+        }
+
+        return $peringatan + $this->peringatanJadwal();
+    }
+
+    /**
+     * Peringatan non-blok pada jadwal yang sah tetapi patut dicek ulang.
+     *
+     * @return array<string, string>
+     */
+    public function peringatanJadwal(): array
+    {
+        $peringatan = [];
+        $mulai = $this->tanggalMulai();
+        $tahun = StubData::tahunAktif()['tahun'];
+
+        if ($mulai?->isSunday()) {
+            $peringatan['tanggal_mulai'] = 'Tanggal mulai jatuh pada hari Minggu.';
+        }
+
+        if ($this->tanggal_laporan && strtotime($this->tanggal_laporan) && CarbonImmutable::parse($this->tanggal_laporan)->year > $tahun) {
+            $peringatan['tanggal_laporan'] = "Batas laporan melewati Tahun Anggaran {$tahun}.";
         }
 
         return $peringatan;
