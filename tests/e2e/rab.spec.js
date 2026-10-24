@@ -63,3 +63,23 @@ test.describe('Form item belanja baru', () => {
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Melebihi pagu');
     });
 });
+
+test.describe('Daftar item dengan subtotal', () => {
+    test('mode per kelompok belanja & per kode akun menampilkan subtotal', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/1/rab');
+        await page.getByRole('button', { name: 'Per kelompok belanja' }).click();
+        await expect(page).toHaveURL(/tampil=kategori/);
+        const tampilan = testInfo.project.name === 'desktop' ? page.locator('table') : page.getByTestId('rincian-kartu');
+        await expect(tampilan).toContainText('Subtotal');
+        await expect(tampilan).toContainText('3.930.000');
+        await expect(tampilan).toContainText('5.920.000');
+        await page.screenshot({ path: `storage/playwright/shots/subtotal-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByRole('button', { name: 'Per kode akun' }).click();
+        await expect(page).toHaveURL(/tampil=kode/);
+        await expect(tampilan).toContainText('521213 · Belanja Honor Output Kegiatan');
+
+        await page.reload();
+        await expect(page.getByRole('button', { name: 'Per kode akun' })).toHaveAttribute('aria-pressed', 'true');
+    });
+});

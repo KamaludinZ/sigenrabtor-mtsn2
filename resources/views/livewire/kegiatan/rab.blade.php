@@ -106,63 +106,7 @@
                             <p class="mt-0.5 text-xs text-stone-500">Rincian ditambahkan baris demi baris; jumlah, total, dan terbilang dihitung otomatis.</p>
                         </div>
                     @else
-                        {{-- Tabel (layar sedang ke atas) --}}
-                        <div class="hidden overflow-x-auto sm:block">
-                            <table class="w-full text-sm">
-                                <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
-                                    <tr>
-                                        <th scope="col" class="w-10 px-4 py-2.5 text-left">No</th>
-                                        <th scope="col" class="px-2 py-2.5 text-left">Kode</th>
-                                        <th scope="col" class="px-2 py-2.5 text-left">Uraian</th>
-                                        <th scope="col" class="px-2 py-2.5 text-right">Vol</th>
-                                        <th scope="col" class="px-2 py-2.5 text-left">Satuan</th>
-                                        <th scope="col" class="px-2 py-2.5 text-right">Harga satuan</th>
-                                        <th scope="col" class="px-4 py-2.5 text-right">Jumlah</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-stone-100">
-                                    @foreach ($this->rincian as $baris)
-                                        <tr class="align-top hover:bg-stone-50/60">
-                                            <td class="px-4 py-2.5 text-stone-500 tabular-nums">{{ $loop->iteration }}.</td>
-                                            <td class="px-2 py-2.5 font-mono text-xs text-stone-500">{{ $baris['kode'] }}</td>
-                                            <td class="px-2 py-2.5 text-stone-800">
-                                                {{ $baris['uraian'] }}
-                                                <span class="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500 uppercase">{{ ItemBelanjaForm::LABEL_KATEGORI[$baris['kategori']] ?? $baris['kategori'] }}</span>
-                                            </td>
-                                            <td class="px-2 py-2.5 text-right tabular-nums">{{ Format::angka($baris['volume']) }}</td>
-                                            <td class="px-2 py-2.5 text-stone-600">{{ $baris['satuan'] }}</td>
-                                            <td class="px-2 py-2.5 text-right tabular-nums">{{ Format::angka($baris['harga_satuan']) }}</td>
-                                            <td class="px-4 py-2.5 text-right font-medium tabular-nums">{{ Format::angka($baris['jumlah']) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot>
-                                    <tr class="border-t-2 border-stone-200 bg-stone-50">
-                                        <th scope="row" colspan="6" class="px-4 py-3 text-right text-xs font-semibold tracking-wide text-stone-600 uppercase">Total keseluruhan</th>
-                                        <td class="px-4 py-3 text-right text-base font-bold text-stone-900 tabular-nums" data-testid="total-rab">{{ Format::angka($this->total) }}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-
-                        {{-- Kartu (layar kecil) --}}
-                        <ol class="divide-y divide-stone-100 sm:hidden">
-                            @foreach ($this->rincian as $baris)
-                                <li class="px-5 py-3">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <p class="min-w-0 text-sm text-stone-800"><span class="text-stone-400">{{ $loop->iteration }}.</span> {{ $baris['uraian'] }}</p>
-                                        <p class="shrink-0 text-sm font-semibold tabular-nums">{{ Format::angka($baris['jumlah']) }}</p>
-                                    </div>
-                                    <p class="mt-0.5 text-xs text-stone-500 tabular-nums">
-                                        {{ Format::angka($baris['volume']) }} {{ $baris['satuan'] }} × {{ Format::rupiah($baris['harga_satuan']) }} · {{ $baris['kode'] }}
-                                    </p>
-                                </li>
-                            @endforeach
-                            <li class="flex items-center justify-between bg-stone-50 px-5 py-3">
-                                <span class="text-xs font-semibold text-stone-600 uppercase">Total</span>
-                                <span class="text-base font-bold tabular-nums">{{ Format::rupiah($this->total) }}</span>
-                            </li>
-                        </ol>
+                        @include('livewire.kegiatan.partials.tabel-rincian')
                     @endif
 
                     @if ($this->dapatDiedit())

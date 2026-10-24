@@ -7,6 +7,7 @@ use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Format;
+use App\Support\Rab\KelompokRincian;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubMaster;
 use Livewire\Attributes\Computed;
@@ -32,6 +33,10 @@ class Rab extends Component
     #[Url]
     public string $sumber = '';
 
+    /** Mode tampilan rincian: urutan cetak, per kelompok belanja, atau per kode akun (tersimpan di URL). */
+    #[Url(as: 'tampil')]
+    public string $kelompok = 'urutan';
+
     public ItemBelanjaForm $item;
 
     public bool $formItemTerbuka = false;
@@ -44,6 +49,8 @@ class Rab extends Component
         if (! in_array($this->sumber, $this->daftarSumber(), true)) {
             $this->sumber = $this->daftarSumber()[0] ?? '';
         }
+
+        $this->updatedKelompok();
     }
 
     public function pilihSumber(string $sumber): void
@@ -105,7 +112,7 @@ class Rab extends Component
 
         $data = $this->item->dataItem();
         app(RabRepository::class)->tambahItem($this->kegiatanId, $this->sumber, $data);
-        unset($this->rincian, $this->total);
+        unset($this->rincian, $this->total, $this->kelompokRincian);
 
         $this->item->kosongkan();
         $this->formItemTerbuka = $lanjut;
@@ -155,6 +162,22 @@ class Rab extends Component
             fn (array $item) => $item + ['jumlah' => (int) round($item['volume'] * $item['harga_satuan'])],
             $this->sumber === '' ? [] : app(RabRepository::class)->rincian($this->kegiatanId, $this->sumber),
         );
+    }
+
+    /**
+     * @return list<array{kunci: string, label: string|null, item: list<array<string, mixed>>, subtotal: int, persen: float}>
+     */
+    #[Computed]
+    public function kelompokRincian(): array
+    {
+        return KelompokRincian::kelompokkan($this->rincian, $this->kelompok);
+    }
+
+    public function updatedKelompok(): void
+    {
+        if (! isset(KelompokRincian::MODE[$this->kelompok])) {
+            $this->kelompok = 'urutan';
+        }
     }
 
     #[Computed]
