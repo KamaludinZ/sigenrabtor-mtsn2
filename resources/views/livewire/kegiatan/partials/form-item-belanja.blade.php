@@ -77,7 +77,7 @@
         </x-ui.field>
 
         <x-ui.field class="sm:col-span-2" label="Harga satuan" for="item_harga_satuan" error="item.harga_satuan" required>
-            <x-ui.rupiah id="item_harga_satuan" model="item.harga_satuan" />
+            <x-ui.rupiah id="item_harga_satuan" model="item.harga_satuan" terbilang :nilai-awal="$item->harga_satuan" />
         </x-ui.field>
 
         <div class="sm:col-span-2">

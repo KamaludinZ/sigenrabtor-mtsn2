@@ -29,7 +29,8 @@
 
                 <div class="mt-3">
                     <label for="{{ $idPagu }}" class="mb-1 block text-xs font-medium text-stone-600">Pagu {{ $opsi['label'] }}</label>
-                    <x-ui.rupiah :id="$idPagu" :model="'form.'.$idPagu" :disabled="! $aktif" :aktif-jika="'form.dana_'.$opsi['kunci']" />
+                    <x-ui.rupiah :id="$idPagu" :model="'form.'.$idPagu" :disabled="! $aktif" :aktif-jika="'form.dana_'.$opsi['kunci']"
+                                 terbilang :nilai-awal="$form->{$idPagu}" />
                     @error('form.'.$idPagu) <p class="form-error" id="{{ $idPagu }}-error">{{ $message }}</p> @enderror
                 </div>
 
