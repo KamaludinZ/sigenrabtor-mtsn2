@@ -42,6 +42,7 @@
                             'text-red-600' => $rekap->statusPagu() === 'melebihi',
                             'text-stone-700' => $rekap->statusPagu() === 'tanpa_pagu',
                         ])>{{ Format::rupiah($rekap->total) }}</span>
+                        <span class="w-full text-right text-stone-500 italic">{{ \App\Support\Terbilang::rupiah($rekap->total) }}</span>
                     </p>
                 @endif
             </div>

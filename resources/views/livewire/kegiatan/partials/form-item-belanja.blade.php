@@ -85,7 +85,8 @@
             <output for="item_volume item_harga_satuan" aria-live="polite" data-testid="jumlah-item"
                     class="flex min-h-9.5 items-center justify-end rounded-lg bg-white px-3 py-2 text-sm font-bold text-stone-900 tabular-nums ring-1 ring-stone-200 ring-inset"
                     x-text="jumlah === null ? '—' : $rupiah(jumlah)">—</output>
-            <p class="form-hint text-right">Volume × harga satuan</p>
+            <p class="form-hint text-right italic" x-show="jumlah !== null" x-text="$terbilang(jumlah)" data-testid="jumlah-item-terbilang"></p>
+            <p class="form-hint text-right" x-show="jumlah === null">Volume × harga satuan</p>
         </div>
     </div>
 

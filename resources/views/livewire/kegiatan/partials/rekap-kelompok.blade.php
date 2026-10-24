@@ -20,6 +20,7 @@
         <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:col-span-2 lg:col-span-1">
             <p class="text-xs text-stone-500">Total anggaran kegiatan</p>
             <x-ui.uang :nilai="$rekap['total']" class="mt-1 block text-3xl font-bold text-stone-900" data-testid="rekap-total" />
+            <p class="mt-1 text-sm text-stone-600 italic" data-testid="rekap-terbilang">“{{ \App\Support\Terbilang::rupiah($rekap['total']) }}”</p>
             <p class="mt-1 text-xs text-stone-500">{{ $rekap['jumlahItem'] }} item · {{ count($rekap['sumber']) }} sumber dana</p>
         </div>
         @foreach ($rekap['hasil'] as $namaSumber => $hasilSumber)

@@ -45,6 +45,7 @@ test.describe('Form item belanja baru', () => {
         await page.locator('#item_harga_satuan').pressSequentially('600000');
         await expect(page.locator('#item_harga_satuan')).toHaveValue('600.000');
         await expect(page.getByTestId('jumlah-item')).toHaveText('Rp1.800.000');
+        await expect(page.getByTestId('jumlah-item-terbilang')).toHaveText('Satu Juta Delapan Ratus Ribu Rupiah');
         await expect(page.getByRole('radio', { name: 'Jasa' })).toBeChecked();
         await page.screenshot({ path: `storage/playwright/shots/form-item-${testInfo.project.name}.png` });
 
@@ -60,6 +61,7 @@ test.describe('Form item belanja baru', () => {
         await page.getByRole('button', { name: 'Simpan item' }).click();
         await expect(page.getByTestId('form-item')).toHaveCount(0);
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp2.100.000');
+        await expect(page.getByTestId('kalimat-pembiayaan')).toContainText('(Dua Juta Seratus Ribu Rupiah) yang dibebankan pada dana DIPA');
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Melebihi pagu');
     });
 });

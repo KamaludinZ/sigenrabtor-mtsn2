@@ -1,10 +1,13 @@
 @use('App\Support\Format')
+@use('App\Support\Terbilang')
+@use('App\Support\Kegiatan\KalimatKak')
 @use('App\Livewire\Forms\ItemBelanjaForm')
 
 @php
     $hasil = $this->hasil;
     $pagu = $hasil->pagu;
     $selisih = $hasil->selisih();
+    $madrasahSingkat = \App\Support\Stub\StubData::madrasah()['nama_singkat'];
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -89,14 +92,26 @@
                             'Kode anggaran' => $this->header['kode_anggaran'],
                             'Tahun anggaran' => $this->header['tahun'],
                             'Sumber dana' => $sumber,
-                            'Jumlah yang diajukan' => Format::rupiahDokumen($this->total),
                         ] as $label => $nilai)
                             <div class="min-w-0">
                                 <dt class="text-xs text-stone-500">{{ $label }}</dt>
                                 <dd class="font-medium text-stone-900">{{ $nilai }}</dd>
                             </div>
                         @endforeach
+                        <div class="min-w-0">
+                            <dt class="text-xs text-stone-500">Jumlah yang diajukan</dt>
+                            <dd class="font-medium text-stone-900">{{ Format::rupiahDokumen($this->total) }}</dd>
+                            <dd class="text-xs text-stone-500 italic" data-testid="header-terbilang">{{ Terbilang::rupiah($this->total) }}</dd>
+                        </div>
                     </dl>
+
+                    {{-- Kalimat Pembiayaan KAK: angka & terbilang dari total yang sama --}}
+                    <div class="border-t border-stone-100 bg-stone-50/60 px-5 py-3.5 sm:px-6" data-testid="kalimat-pembiayaan">
+                        <p class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">
+                            <x-ui.icon name="file-text" class="size-3.5" /> Tercetak di KAK · Pembiayaan
+                        </p>
+                        <p class="mt-1 text-sm leading-relaxed text-stone-700">{{ KalimatKak::pembiayaan($this->total, $sumber, $this->header['tahun'], $madrasahSingkat) }}</p>
+                    </div>
                 </section>
 
                 {{-- Rincian belanja --}}
