@@ -8,7 +8,7 @@ test.describe('Halaman RAB (data tiruan)', () => {
         await expect(page.getByTestId('header-rab')).toContainText('Tim Penjamin Mutu');
         await expect(page.getByTestId('header-rab')).toContainText('6.17.12');
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp10.000.000');
-        await expect(page.getByTestId('status-pagu')).toHaveText('Sesuai pagu');
+        await expect(page.getByTestId('total-anggaran-status')).toHaveText('Sesuai pagu');
         if (testInfo.project.name === 'desktop') {
             await expect(page.getByTestId('total-rab')).toHaveText('10.000.000');
         }

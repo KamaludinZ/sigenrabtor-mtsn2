@@ -5,7 +5,6 @@
     $hasil = $this->hasil;
     $pagu = $hasil->pagu;
     $selisih = $hasil->selisih();
-    $statusPagu = $hasil->statusPagu();
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -156,22 +155,17 @@
             {{-- Ringkasan --}}
             <aside class="space-y-4">
                 <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" data-testid="ringkasan-rab">
-                    <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Ringkasan RAB {{ $sumber }}</p>
-                    <x-ui.uang :nilai="$this->total" class="mt-2 block text-2xl font-bold text-stone-900" />
-                    <p class="text-xs text-stone-500">Total RAB = total KAK = jumlah yang diajukan</p>
+                    <x-rab.total-anggaran :nilai="$this->total" :sumber="$sumber" :pagu="$pagu" />
+                    <p class="mt-2 text-xs text-stone-500">Total RAB = total KAK = jumlah yang diajukan</p>
 
-                    <div class="mt-4 space-y-1.5 text-sm">
-                        <div class="flex justify-between"><span class="text-stone-500">Pagu</span>@if ($pagu !== null)<x-ui.uang :nilai="$pagu" class="font-medium" />@else<span>—</span>@endif</div>
-                        @if ($selisih !== null)
-                            <div class="flex justify-between">
-                                <span class="text-stone-500" data-testid="status-pagu">{{ ['sesuai' => 'Sesuai pagu', 'sisa' => 'Sisa pagu', 'melebihi' => 'Melebihi pagu'][$statusPagu] }}</span>
-                                <span @class(['font-semibold tabular-nums', 'text-brand-700' => $selisih >= 0, 'text-red-600' => $selisih < 0])>{{ Format::rupiah(abs($selisih)) }}</span>
-                            </div>
+                    @if ($pagu !== null)
+                        <div class="mt-3 space-y-1.5 text-sm">
+                            <div class="flex justify-between"><span class="text-stone-500">Pagu</span><x-ui.uang :nilai="$pagu" class="font-medium" /></div>
                             <div class="h-1.5 overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
                                 <div @class(['h-full rounded-full', 'bg-brand-600' => $selisih >= 0, 'bg-red-500' => $selisih < 0]) style="width: {{ $hasil->persenPagu() }}%"></div>
                             </div>
-                        @endif
-                    </div>
+                        </div>
+                    @endif
 
                     @if ($hasil->jumlahItem() > 0)
                         <div class="mt-4 border-t border-stone-100 pt-3">

@@ -23,23 +23,8 @@
             <p class="mt-1 text-xs text-stone-500">{{ $rekap['jumlahItem'] }} item · {{ count($rekap['sumber']) }} sumber dana</p>
         </div>
         @foreach ($rekap['hasil'] as $namaSumber => $hasilSumber)
-            <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200">
-                <p class="text-xs text-stone-500">RAB {{ $namaSumber }}</p>
-                <x-ui.uang :nilai="$hasilSumber->total" class="mt-1 block text-xl font-bold text-stone-900" />
-                <p @class([
-                        'mt-1 text-xs font-medium',
-                        'text-brand-700' => in_array($hasilSumber->statusPagu(), ['sesuai', 'sisa'], true),
-                        'text-red-600' => $hasilSumber->statusPagu() === 'melebihi',
-                        'text-stone-500' => $hasilSumber->statusPagu() === 'tanpa_pagu',
-                    ])>
-                    @switch($hasilSumber->statusPagu())
-                        @case('sesuai') Sesuai pagu {{ Format::rupiah($hasilSumber->pagu) }} @break
-                        @case('sisa') Sisa pagu {{ Format::rupiah($hasilSumber->selisih()) }} @break
-                        @case('melebihi') Melebihi pagu {{ Format::rupiah(-$hasilSumber->selisih()) }} @break
-                        @default Pagu belum diisi
-                    @endswitch
-                </p>
-            </div>
+            <x-rab.total-anggaran :nilai="$hasilSumber->total" :sumber="$namaSumber" :pagu="$hasilSumber->pagu" ringkas
+                                  class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" />
         @endforeach
     </div>
 

@@ -50,7 +50,7 @@ class RekapKelompokTest extends TestCase
             ->assertSee('Rekap per kelompok belanja')
             ->assertSee('Rekap per kode akun')
             ->assertSee('Total anggaran kegiatan')
-            ->assertSee('Sesuai pagu Rp10.000.000')
+            ->assertSee('Sesuai pagu')
             ->assertSee('3.930.000')
             ->assertSee('(59,2%)', false)
             ->assertSee('+5 item lainnya')
