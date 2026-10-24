@@ -1,13 +1,11 @@
 @use('App\Support\Format')
-@use('App\Support\Terbilang')
-@use('App\Support\Kegiatan\KalimatKak')
 @use('App\Livewire\Forms\ItemBelanjaForm')
 
 @php
     $hasil = $this->hasil;
     $pagu = $hasil->pagu;
     $selisih = $hasil->selisih();
-    $madrasahSingkat = \App\Support\Stub\StubData::madrasah()['nama_singkat'];
+    $angkaDokumen = $this->angkaDokumen;
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -100,9 +98,9 @@
                         @endforeach
                         <div class="min-w-0">
                             <dt class="text-xs text-stone-500">Jumlah yang diajukan</dt>
-                            <dd class="font-medium text-stone-900">{{ Format::rupiahDokumen($this->total) }}</dd>
-                            @if ($terbilangTotal = Terbilang::tampil($this->total))
-                                <dd class="text-xs text-stone-500 italic" data-testid="header-terbilang">{{ $terbilangTotal }}</dd>
+                            <dd class="font-medium text-stone-900" data-testid="header-nominal">{{ $angkaDokumen->nominal() }}</dd>
+                            @if ($angkaDokumen->adaRincian())
+                                <dd class="text-xs text-stone-500 italic" data-testid="header-terbilang">{{ $angkaDokumen->terbilang() }}</dd>
                             @else
                                 <dd class="text-xs text-stone-400" data-testid="header-terbilang">belum ada rincian</dd>
                             @endif
@@ -114,8 +112,8 @@
                         <p class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">
                             <x-ui.icon name="file-text" class="size-3.5" /> Tercetak di KAK · Pembiayaan
                         </p>
-                        @if ($this->total > 0)
-                            <p class="mt-1 text-sm leading-relaxed text-stone-700">{{ KalimatKak::pembiayaan($this->total, $sumber, $this->header['tahun'], $madrasahSingkat) }}</p>
+                        @if ($angkaDokumen->adaRincian())
+                            <p class="mt-1 text-sm leading-relaxed text-stone-700">{{ $angkaDokumen->kalimatPembiayaan() }}</p>
                         @else
                             <p class="mt-1 flex items-start gap-1.5 text-sm text-gold-700" data-testid="kalimat-pembiayaan-kosong">
                                 <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
@@ -182,7 +180,6 @@
             <aside class="space-y-4">
                 <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" data-testid="ringkasan-rab">
                     <x-rab.total-anggaran :nilai="$this->total" :sumber="$sumber" :pagu="$pagu" />
-                    <p class="mt-2 text-xs text-stone-500">Total RAB = total KAK = jumlah yang diajukan</p>
 
                     @if ($pagu !== null)
                         <div class="mt-3 space-y-1.5 text-sm">
@@ -192,6 +189,8 @@
                             </div>
                         </div>
                     @endif
+
+                    @include('livewire.kegiatan.partials.sinkron-dokumen')
 
                     @if ($hasil->jumlahItem() > 0)
                         <div class="mt-4 border-t border-stone-100 pt-3">

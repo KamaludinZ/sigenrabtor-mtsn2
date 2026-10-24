@@ -140,7 +140,7 @@
         <tfoot>
             <tr class="border-t-2 border-stone-200 bg-stone-50">
                 <th scope="row" colspan="6" class="px-4 py-3 text-right text-xs font-semibold tracking-wide text-stone-600 uppercase">Total keseluruhan</th>
-                <td class="px-4 py-3 text-right text-base font-bold text-stone-900 tabular-nums" data-testid="total-rab">{{ Format::angka($this->total) }}</td>
+                <td class="px-4 py-3 text-right text-base font-bold text-stone-900 tabular-nums" data-testid="total-rab">{{ $this->angkaDokumen->angkaTabel() }}</td>
                 @if ($bisaUbah)<td></td>@endif
             </tr>
         </tfoot>

@@ -38,7 +38,8 @@
         <x-ui.uang :nilai="(int) $nilai" @class(['font-bold text-stone-900', 'text-xl' => $ringkas, 'text-3xl' => ! $ringkas]) data-testid="total-anggaran-nilai" />
         <button type="button" title="Salin nominal & terbilang" aria-label="Salin nominal dan terbilang"
                 class="shrink-0 rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-                x-on:click="navigator.clipboard?.writeText(@js($teksSalin)).then(() => { tersalin = true; setTimeout(() => tersalin = false, 1500) })">
+                data-teks="{{ $teksSalin }}" data-testid="salin-total-anggaran"
+                x-on:click="navigator.clipboard?.writeText($el.dataset.teks).then(() => { tersalin = true; setTimeout(() => tersalin = false, 1500) })">
             <x-ui.icon name="check" class="size-4 text-brand-700" x-show="tersalin" x-cloak />
             <x-ui.icon name="copy" class="size-4" x-show="! tersalin" />
         </button>

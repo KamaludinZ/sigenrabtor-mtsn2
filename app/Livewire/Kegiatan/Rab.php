@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
+use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Format;
 use App\Support\MasterKode;
 use App\Support\Rab\HasilRab;
@@ -343,6 +344,15 @@ class Rab extends Component
     public function total(): int
     {
         return $this->hasil->total;
+    }
+
+    /**
+     * Nominal & terbilang yang tercetak di KAK dan RAB sumber dana aktif — layar memakai objek yang sama.
+     */
+    #[Computed]
+    public function angkaDokumen(): AngkaDokumen
+    {
+        return AngkaDokumen::dari($this->hasil, $this->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']);
     }
 
     /**
