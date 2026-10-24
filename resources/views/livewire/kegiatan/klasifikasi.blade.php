@@ -6,7 +6,6 @@
     $tahunMaster = $this->tahunAktif['tahun'];
     $masterTersedia = MasterKode::tersedia();
     $opsiLeading = MasterKode::leadingsUntuk(StubData::currentUser());
-    $opsiRktm = collect(MasterKode::kodeRktm())->groupBy(fn ($r) => $r['snp'].' — '.$r['kegiatan']);
     $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
     $skTerpilih = MasterKode::cari(MasterKode::kodeSk(), $form->kode_sk);
     $opsiIksk = $form->kode_sk ? MasterKode::kodeIksk($form->kode_sk) : [];
@@ -14,6 +13,9 @@
     $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm(), $form->kode_edm);
     $leadingTerpilih = MasterKode::cari(MasterKode::leadings(), $form->leading);
     $bisaUbah = $this->dapatDiedit();
+    $opsiRktmCari = array_map(fn ($r) => ['nilai' => $r['kode'], 'label' => $r['sub_kegiatan'], 'keterangan' => null, 'grup' => $r['snp'].' — '.$r['kegiatan']], MasterKode::kodeRktm());
+    $komponenEdm = MasterKode::komponenEdm();
+    $opsiEdmCari = array_map(fn ($e) => ['nilai' => $e['kode'], 'label' => $e['uraian'], 'keterangan' => null, 'grup' => $e['komponen'].' · '.($komponenEdm[$e['komponen']] ?? '')], MasterKode::kodeEdm());
 @endphp
 
 <div class="mx-auto max-w-7xl"
@@ -93,16 +95,8 @@
                                description="Kode RKTM menempatkan kegiatan pada SNP, kegiatan, dan sub kegiatan rencana kerja tahunan."
                                :kelengkapan="$this->kelengkapan['rktm']">
                 <x-ui.field label="Kode RKTM" for="kode_rktm" error="form.kode_rktm">
-                    <select id="kode_rktm" wire:model.live="form.kode_rktm" class="form-input" @disabled(! $masterTersedia)>
-                        <option value="">— Pilih kode RKTM —</option>
-                        @foreach ($opsiRktm as $grupRktm => $daftar)
-                            <optgroup label="{{ $grupRktm }}">
-                                @foreach ($daftar as $opsi)
-                                    <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} — {{ Str::limit($opsi['sub_kegiatan'], 90) }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                    </select>
+                    <x-ui.pilih-cari id="kode_rktm" model="form.kode_rktm" :opsi="$opsiRktmCari" :disabled="! $masterTersedia || ! $bisaUbah"
+                                     placeholder="— Pilih kode RKTM —" cari-placeholder="Cari kode, SNP, atau sub kegiatan…" />
                 </x-ui.field>
                 @if ($rktmTerpilih)
                     <dl class="mt-3 grid gap-2 rounded-lg bg-stone-50 px-3 py-2.5 text-xs ring-1 ring-stone-200 sm:grid-cols-3">
@@ -143,12 +137,8 @@
                                description="Indikator EDM yang didukung kegiatan ini."
                                :kelengkapan="$this->kelengkapan['edm']">
                 <x-ui.field label="Kode EDM" for="kode_edm" error="form.kode_edm" :hint="$edmTerpilih['uraian'] ?? null">
-                    <select id="kode_edm" wire:model.live="form.kode_edm" class="form-input" @disabled(! $masterTersedia)>
-                        <option value="">— Pilih kode EDM —</option>
-                        @foreach (MasterKode::kodeEdm() as $opsi)
-                            <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} — {{ Str::limit($opsi['uraian'], 90) }}</option>
-                        @endforeach
-                    </select>
+                    <x-ui.pilih-cari id="kode_edm" model="form.kode_edm" :opsi="$opsiEdmCari" :disabled="! $masterTersedia || ! $bisaUbah"
+                                     placeholder="— Pilih kode EDM —" cari-placeholder="Cari kode atau indikator EDM…" />
                 </x-ui.field>
             </x-ui.form-section>
 

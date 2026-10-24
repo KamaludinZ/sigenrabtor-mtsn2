@@ -23,4 +23,40 @@ test.describe('Kode & Klasifikasi', () => {
         await page.locator('[data-leading="1.6"]').click();
         await expect(page.getByTestId('pratinjau-header')).toContainText('Tim Penjamin Mutu');
     });
+
+    test('combobox RKTM & EDM: cari, keyboard, kosongkan', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/1/kode');
+        const rktm = page.locator('#kode_rktm');
+        await expect(rktm).toContainText('6.17.12');
+
+        await rktm.click();
+        await expect(page.locator('#kode_rktm-cari')).toBeFocused();
+        await page.locator('#kode_rktm-cari').fill('tahfiz');
+        await expect(page.locator('#kode_rktm-daftar [role=option]')).toHaveCount(1);
+        await expect(page.locator('#kode_rktm-daftar')).toContainText('Program Tahfiz');
+        await page.screenshot({ path: `storage/playwright/shots/combobox-rktm-${testInfo.project.name}.png` });
+        await page.locator('#kode_rktm-cari').press('Enter');
+        await expect(rktm).toContainText('2.2.13');
+        await expect(page.getByTestId('pratinjau-header')).toContainText('(2.2.13)');
+
+        // Keyboard: buka dengan panah bawah, Esc menutup tanpa mengubah.
+        await rktm.focus();
+        await page.keyboard.press('ArrowDown');
+        await expect(page.locator('#kode_rktm-daftar')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#kode_rktm-daftar')).toBeHidden();
+        await expect(rktm).toContainText('2.2.13');
+
+        // EDM: cari per komponen lalu kosongkan.
+        await page.locator('#kode_edm').click();
+        await page.locator('#kode_edm-cari').fill('pembiayaan');
+        await expect(page.locator('#kode_edm-daftar [role=option]')).toHaveCount(3);
+        await page.locator('#kode_edm-daftar [data-nilai="E1"]').click();
+        await expect(page.locator('#kode_edm')).toContainText('E1');
+        await page.getByRole('button', { name: 'Kosongkan pilihan' }).nth(1).click();
+        await expect(page.locator('#kode_edm')).toContainText('Pilih kode EDM');
+
+        // Pulihkan data contoh untuk tes lain.
+        await page.reload();
+    });
 });

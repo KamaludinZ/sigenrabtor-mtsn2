@@ -32,11 +32,15 @@ test.describe('Kelengkapan data & transisi ke RAB', () => {
         // Kode & klasifikasi diatur di tab tersendiri.
         await page.getByRole('link', { name: 'Kode & Klasifikasi' }).click();
         await expect(page.getByRole('heading', { name: 'Kode & Klasifikasi' })).toBeVisible();
-        await page.locator('#kode_rktm').selectOption('1.1.7');
+        await page.locator('#kode_rktm').click();
+        await page.locator('#kode_rktm-cari').fill('Workshop KTSP');
+        await page.locator('#kode_rktm-daftar [data-nilai="1.1.7"]').click();
         await page.locator('#kode_sk').selectOption('SK.10');
         await expect(page.locator('#kode_iksk')).toBeEnabled();
         await page.locator('#kode_iksk').selectOption('IKSK 10.6');
-        await page.locator('#kode_edm').selectOption('C1');
+        await page.locator('#kode_edm').click();
+        await page.locator('#kode_edm-cari').fill('C1');
+        await page.locator('#kode_edm-cari').press('Enter');
         await page.getByText('2. Profesionalitas').click();
         await expect(page.getByTestId('pratinjau-header')).toContainText('IKSK 10.6');
         await expect(page.getByTestId('belum-disimpan')).toBeVisible();
