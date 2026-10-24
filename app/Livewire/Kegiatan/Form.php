@@ -3,6 +3,7 @@
 namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Stub\StubData;
@@ -20,7 +21,12 @@ class Form extends Component
 {
     public KegiatanForm $form;
 
+    #[Locked]
     public string $status = 'draf';
+
+    /** @var list<array{aksi: string, status: string, oleh: string, peran: string, pada: string}> Jejak perubahan status (PRD N7). */
+    #[Locked]
+    public array $riwayatStatus = [];
 
     /** Id kegiatan tersimpan; null = kegiatan baru yang belum pernah disimpan. */
     #[Locked]
@@ -54,8 +60,36 @@ class Form extends Component
 
         $this->form->isiDari($data);
         $this->kegiatanId = $kegiatan;
-        $this->status = $data['status'] ?? 'draf';
+        $this->status = StatusKegiatan::tryFrom($data['status'] ?? '')?->value ?? StatusKegiatan::Draf->value;
+        $this->riwayatStatus = array_values((array) ($data['riwayat_status'] ?? []));
         $this->diperbaruiPada = $data['diperbarui_pada'] ?? null;
+    }
+
+    public function statusKegiatan(): StatusKegiatan
+    {
+        return StatusKegiatan::from($this->status);
+    }
+
+    public function dapatDiedit(): bool
+    {
+        return $this->statusKegiatan()->dapatDiedit();
+    }
+
+    /**
+     * Penjaga sisi server: isian terkunci di luar status Draf/Dikembalikan, walau HTML-nya diakali.
+     */
+    private function pastikanDapatDiedit(): void
+    {
+        if (! $this->dapatDiedit()) {
+            abort(403, 'Kegiatan berstatus '.$this->statusKegiatan()->label().' sehingga isiannya terkunci.');
+        }
+    }
+
+    public function updating(string $property): void
+    {
+        if (str_starts_with($property, 'form.')) {
+            $this->pastikanDapatDiedit();
+        }
     }
 
     /**
@@ -102,24 +136,28 @@ class Form extends Component
 
     public function toggleBulan(int $bulan): void
     {
+        $this->pastikanDapatDiedit();
         $this->form->toggleBulan($bulan);
         $this->form->validateOnly('bulan_pelaksanaan');
     }
 
     public function sesuaikanBulan(): void
     {
+        $this->pastikanDapatDiedit();
         $this->form->sesuaikanBulanDenganTanggal();
         $this->form->validateOnly('bulan_pelaksanaan');
     }
 
     public function resetNamaCover(): void
     {
+        $this->pastikanDapatDiedit();
         $this->form->resetNamaCover();
         $this->form->validateOnly('nama_kegiatan_cover');
     }
 
     public function tambahPanitia(): void
     {
+        $this->pastikanDapatDiedit();
         $this->panitiaTerhapus = null;
 
         if (! $this->form->tambahPanitia()) {
@@ -133,6 +171,7 @@ class Form extends Component
 
     public function hapusPanitia(int $index): void
     {
+        $this->pastikanDapatDiedit();
         if (! isset($this->form->panitia[$index])) {
             return;
         }
@@ -144,6 +183,7 @@ class Form extends Component
 
     public function urungkanHapusPanitia(): void
     {
+        $this->pastikanDapatDiedit();
         if ($this->panitiaTerhapus === null) {
             return;
         }
@@ -155,6 +195,7 @@ class Form extends Component
 
     public function geserPanitia(int $index, int $arah): void
     {
+        $this->pastikanDapatDiedit();
         $this->panitiaTerhapus = null;
         $this->form->geserPanitia($index, $arah > 0 ? 1 : -1);
         $this->resetErrorPanitia();
@@ -165,6 +206,7 @@ class Form extends Component
      */
     public function pindahkanPanitia(string $key, int $posisi): void
     {
+        $this->pastikanDapatDiedit();
         $this->panitiaTerhapus = null;
         $this->form->pindahkanPanitia($key, $posisi);
         $this->resetErrorPanitia();
@@ -172,6 +214,7 @@ class Form extends Component
 
     public function urutkanPanitiaSesuaiPeran(): void
     {
+        $this->pastikanDapatDiedit();
         $this->panitiaTerhapus = null;
         $this->form->urutkanSesuaiPeran();
         $this->resetErrorPanitia();
@@ -180,6 +223,7 @@ class Form extends Component
 
     public function isiSusunanBaku(): void
     {
+        $this->pastikanDapatDiedit();
         $this->form->isiSusunanBaku();
         $this->dispatch('panitia-ditambah', posisi: 'awal');
     }
@@ -230,6 +274,7 @@ class Form extends Component
 
     public function saveDraft(): void
     {
+        $this->pastikanDapatDiedit();
         try {
             $this->form->validate();
         } catch (ValidationException $e) {
@@ -240,7 +285,12 @@ class Form extends Component
 
         $repo = app(KegiatanRepository::class);
         $baru = $this->kegiatanId === null;
-        $id = $repo->simpan(['status' => $this->status] + $this->form->dataUntukDisimpan(), $this->kegiatanId);
+
+        if ($baru) {
+            $this->catatRiwayat('dibuat', StatusKegiatan::Draf);
+        }
+
+        $id = $repo->simpan($this->dataUntukDisimpan(), $this->kegiatanId);
 
         $this->adaPerubahan = false;
 
@@ -254,6 +304,77 @@ class Form extends Component
         $this->diperbaruiPada = $repo->temukan($id)['diperbarui_pada'] ?? now()->toIso8601String();
         unset($this->drafTerbaru);
         $this->dispatch('notify', message: 'Draf tersimpan pukul '.now()->format('H.i').'.');
+    }
+
+    /**
+     * @return array<string, array{label: string, dari: list<StatusKegiatan>, ke: StatusKegiatan, peran: list<string>, gaya: string, ikon: string, konfirmasi: string}>
+     */
+    #[Computed]
+    public function aksiStatus(): array
+    {
+        return $this->kegiatanId === null ? [] : $this->statusKegiatan()->aksiUntuk($this->peran());
+    }
+
+    /**
+     * Ubah status lewat aksi alur (ajukan, setujui, kembalikan, finalkan, buka kunci, tarik).
+     */
+    public function ubahStatus(string $aksi): void
+    {
+        $definisi = $this->aksiStatus[$aksi] ?? null;
+
+        if ($definisi === null) {
+            $this->dispatch('notify', message: 'Aksi tidak tersedia untuk status atau peran ini.', type: 'error');
+
+            return;
+        }
+
+        if ($aksi === 'ajukan') {
+            try {
+                $this->form->validate();
+            } catch (ValidationException $e) {
+                $this->dispatch('notify', message: 'Lengkapi isian yang ditandai merah sebelum mengajukan.', type: 'error');
+
+                throw $e;
+            }
+        }
+
+        $this->status = $definisi['ke']->value;
+        $this->catatRiwayat($aksi, $definisi['ke']);
+
+        $repo = app(KegiatanRepository::class);
+        $repo->simpan($this->dataUntukDisimpan(), $this->kegiatanId);
+
+        $this->adaPerubahan = false;
+        $this->diperbaruiPada = $repo->temukan($this->kegiatanId)['diperbarui_pada'] ?? now()->toIso8601String();
+        unset($this->aksiStatus, $this->drafTerbaru);
+
+        $this->dispatch('notify', message: 'Status kegiatan: '.$definisi['ke']->label().'.');
+    }
+
+    private function catatRiwayat(string $aksi, StatusKegiatan $ke): void
+    {
+        $pengguna = StubData::currentUser();
+
+        $this->riwayatStatus[] = [
+            'aksi' => $aksi,
+            'status' => $ke->value,
+            'oleh' => $pengguna['name'],
+            'peran' => $pengguna['role'],
+            'pada' => now()->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dataUntukDisimpan(): array
+    {
+        return ['status' => $this->status, 'riwayat_status' => $this->riwayatStatus] + $this->form->dataUntukDisimpan();
+    }
+
+    private function peran(): string
+    {
+        return StubData::currentUser()['role'];
     }
 
     public function render()

@@ -75,11 +75,13 @@
                 <x-ui.icon name="eye" class="size-4" />
                 Pratinjau
             </button>
-            <button type="button" class="btn-primary" wire:click="saveDraft" wire:loading.attr="disabled" wire:target="saveDraft">
-                <x-ui.icon name="save" class="size-4" />
-                <span wire:loading.remove wire:target="saveDraft">Simpan Draf</span>
-                <span wire:loading wire:target="saveDraft">Menyimpan…</span>
-            </button>
+            @if ($this->dapatDiedit())
+                <button type="button" class="btn-primary" wire:click="saveDraft" wire:loading.attr="disabled" wire:target="saveDraft">
+                    <x-ui.icon name="save" class="size-4" />
+                    <span wire:loading.remove wire:target="saveDraft">Simpan Draf</span>
+                    <span wire:loading wire:target="saveDraft">Menyimpan…</span>
+                </button>
+            @endif
         </div>
     </div>
 
@@ -102,7 +104,28 @@
     </div>
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
-        <form wire:submit="saveDraft" class="space-y-6">
+        <form wire:submit="saveDraft" class="min-w-0 space-y-6">
+            {{-- Panel status versi mobile --}}
+            <div class="lg:hidden">
+                @include('livewire.kegiatan.partials.status-panel')
+            </div>
+
+            @unless ($this->dapatDiedit())
+                <div @class([
+                        'flex items-start gap-3 rounded-xl px-4 py-3 text-sm ring-1',
+                        'bg-brand-900 text-brand-50 ring-brand-900' => $status === 'final',
+                        'bg-sky-50 text-sky-900 ring-sky-200' => $status !== 'final',
+                     ]) role="status" data-testid="banner-terkunci">
+                    <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" />
+                    <div>
+                        <p class="font-semibold">Isian terkunci — status {{ $this->statusKegiatan()->label() }}</p>
+                        <p class="mt-0.5 opacity-90">{{ $this->statusKegiatan()->deskripsi() }}</p>
+                    </div>
+                </div>
+            @endunless
+
+            {{-- fieldset[disabled] mengunci semua isian & tombol di dalamnya saat status bukan Draf/Dikembalikan --}}
+            <fieldset @disabled(! $this->dapatDiedit()) class="min-w-0 space-y-6">
             @foreach ($this->sections as $section)
                 <x-ui.form-section :id="$section['id']" :number="$loop->iteration" :title="$section['title']"
                                    :description="$section['description']" :icon="$section['icon']">
@@ -120,19 +143,25 @@
                     @endif
                 </x-ui.form-section>
             @endforeach
+            </fieldset>
 
-            <div class="flex flex-col-reverse gap-3 rounded-2xl bg-white px-5 py-4 shadow-xs ring-1 ring-stone-200 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <p class="text-xs text-stone-500">Draf dapat dilanjutkan kapan saja. Dokumen yang belum lengkap tetap bisa dicetak dengan tanda “DRAF”.</p>
-                <button type="submit" class="btn-primary shrink-0">
-                    <x-ui.icon name="save" class="size-4" />
-                    Simpan Draf
-                </button>
-            </div>
+            @if ($this->dapatDiedit())
+                <div class="flex flex-col-reverse gap-3 rounded-2xl bg-white px-5 py-4 shadow-xs ring-1 ring-stone-200 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <p class="text-xs text-stone-500">Draf dapat dilanjutkan kapan saja. Dokumen yang belum lengkap tetap bisa dicetak dengan tanda “DRAF”.</p>
+                    <button type="submit" class="btn-primary shrink-0">
+                        <x-ui.icon name="save" class="size-4" />
+                        Simpan Draf
+                    </button>
+                </div>
+            @endif
         </form>
 
         {{-- Navigasi bagian versi desktop --}}
-        <aside class="hidden lg:block">
+        <aside class="hidden space-y-4 lg:block">
+            @include('livewire.kegiatan.partials.status-panel')
+
             <div class="sticky top-24 space-y-4">
+
                 <nav class="rounded-2xl bg-white p-3 shadow-xs ring-1 ring-stone-200" aria-label="Bagian form">
                     <p class="px-2 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Bagian form</p>
                     <ol class="space-y-0.5">
