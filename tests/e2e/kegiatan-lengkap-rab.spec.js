@@ -35,7 +35,12 @@ test.describe('Kelengkapan data & transisi ke RAB', () => {
         await page.screenshot({ path: `storage/playwright/shots/lanjut-rab-${testInfo.project.name}.png` });
 
         await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
-        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit$/);
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/rab(\?.*)?$/);
+        await expect(page.getByRole('heading', { name: 'Rencana Anggaran Biaya' })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /RAB Komite/ })).toHaveAttribute('aria-selected', 'true');
+
+        // Data tersimpan: kembali ke Data Kegiatan lewat tab.
+        await page.getByRole('link', { name: 'Data Kegiatan' }).last().click();
         await expect(page.locator('#pagu_komite')).toHaveValue('10.000.000');
         await expect(page.locator('#kode_iksk')).toHaveValue('IKSK 10.6');
     });

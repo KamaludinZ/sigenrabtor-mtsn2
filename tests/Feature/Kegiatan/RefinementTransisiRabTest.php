@@ -158,7 +158,7 @@ class RefinementTransisiRabTest extends TestCase
             ->set('form.pagu_komite', '5.000.000')
             ->call('lanjutKeRab')
             ->assertHasNoErrors()
-            ->assertRedirect(route('kegiatan.edit', ['kegiatan' => 2]));
+            ->assertRedirect(route('kegiatan.rab', ['kegiatan' => 2]));
 
         $this->assertSame('Kegiatan Dengan Dana', app(KegiatanRepository::class)->temukan(2)['nama_kegiatan']);
     }

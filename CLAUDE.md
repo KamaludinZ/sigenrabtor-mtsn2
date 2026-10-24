@@ -17,6 +17,7 @@ Generator KAK/TOR & RAB madrasah. PRD lengkap: `npx ngodingpakeai plan get fe0f4
 - Komponen UI Blade di `resources/views/components/ui` (`<x-ui.icon>`, `<x-ui.form-section>`, `<x-ui.status-badge>`, `<x-ui.toast>`).
 - Livewire 4: `wire:model.blur` hanya menunda state klien (tanpa request). Untuk validasi saat blur pakai `wire:model.live.blur`.
 - Blade: jangan campur `@php(...)` bentuk pendek dengan blok `@php … @endphp` dalam satu file (kompilasi Blade jadi salah); pakai satu bentuk saja.
+- Livewire mengisi otomatis properti publik yang namanya sama dengan parameter rute (mis. `{kegiatan}`); beri nama lain untuk properti data (mis. `$dataKegiatan`).
 - Notifikasi dari Livewire: `$this->dispatch('notify', message: '...', type: 'success|error|info')`.
 - Menu samping: `App\Support\Navigation` — item otomatis aktif begitu rutenya terdaftar.
 - Folder `REFERENSI/` berisi dokumen contoh asli (tidak di-commit): acuan struktur KAK/TOR, RAB, dan master kode.
