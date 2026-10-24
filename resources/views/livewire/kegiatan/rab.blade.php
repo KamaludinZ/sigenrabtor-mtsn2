@@ -40,8 +40,24 @@
             </a>
         </div>
     @else
+        {{-- Halaman di dalam RAB --}}
+        <div class="mt-6 inline-flex rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Halaman RAB">
+            @foreach (['rincian' => 'Rincian belanja', 'rekap' => 'Rekap per kelompok'] as $kunciHalaman => $labelHalaman)
+                <button type="button" role="tab" aria-selected="{{ $halaman === $kunciHalaman ? 'true' : 'false' }}"
+                        wire:click="$set('halaman', '{{ $kunciHalaman }}')"
+                        @class([
+                            'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition',
+                            'bg-white text-stone-900 shadow-xs' => $halaman === $kunciHalaman,
+                            'text-stone-500 hover:text-stone-800' => $halaman !== $kunciHalaman,
+                        ])>{{ $labelHalaman }}</button>
+            @endforeach
+        </div>
+
+        @if ($halaman === 'rekap')
+            @include('livewire.kegiatan.partials.rekap-kelompok')
+        @else
         {{-- Pilih RAB per sumber dana --}}
-        <div class="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="RAB per sumber dana">
+        <div class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="RAB per sumber dana">
             @foreach ($dataKegiatan['sumber_dana'] as $baris)
                 @php $aktif = $baris['sumber'] === $sumber; @endphp
                 <button type="button" role="tab" aria-selected="{{ $aktif ? 'true' : 'false' }}"
@@ -182,5 +198,6 @@
                 </a>
             </aside>
         </div>
+        @endif
     @endif
 </div>

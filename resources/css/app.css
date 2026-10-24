@@ -31,6 +31,11 @@
     --color-gold-500: oklch(0.74 0.16 72);
     --color-gold-600: oklch(0.64 0.15 62);
     --color-gold-700: oklch(0.53 0.13 55);
+
+    /* Warna data per kelompok belanja (palet kategori tervalidasi: slot 1–3). Warna mengikuti entitas, bukan urutan. */
+    --color-kelompok-bahan: #2a78d6;
+    --color-kelompok-jasa: #eb6834;
+    --color-kelompok-lain: #1baf7a;
 }
 
 @layer base {

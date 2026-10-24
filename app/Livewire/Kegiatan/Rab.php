@@ -10,6 +10,7 @@ use App\Support\Format;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
+use App\Support\Rab\RekapKelompok;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubMaster;
 use Illuminate\Support\Arr;
@@ -40,6 +41,10 @@ class Rab extends Component
     #[Url(as: 'tampil')]
     public string $kelompok = 'urutan';
 
+    /** Halaman di dalam RAB: rincian belanja atau rekap per kelompok (tersimpan di URL). */
+    #[Url(as: 'halaman')]
+    public string $halaman = 'rincian';
+
     public ItemBelanjaForm $item;
 
     public bool $formItemTerbuka = false;
@@ -62,6 +67,40 @@ class Rab extends Component
         }
 
         $this->updatedKelompok();
+        $this->updatedHalaman();
+    }
+
+    /**
+     * Dari rekap: buka rincian dalam tampilan per kelompok belanja.
+     */
+    public function lihatKelompokDiRincian(): void
+    {
+        $this->halaman = 'rincian';
+        $this->kelompok = 'kategori';
+    }
+
+    public function updatedHalaman(): void
+    {
+        if (! in_array($this->halaman, ['rincian', 'rekap'], true)) {
+            $this->halaman = 'rincian';
+        }
+    }
+
+    /**
+     * Rekap per kelompok belanja & kode akun untuk semua sumber dana kegiatan.
+     *
+     * @return array<string, mixed>
+     */
+    #[Computed]
+    public function rekap(): array
+    {
+        $perSumber = [];
+        foreach ($this->dataKegiatan['sumber_dana'] ?? [] as $baris) {
+            $rincian = app(RabRepository::class)->rincian($this->kegiatanId, $baris['sumber']);
+            $perSumber[$baris['sumber']] = KalkulatorRab::hitung($rincian, $baris['pagu'] !== null ? (int) $baris['pagu'] : null);
+        }
+
+        return RekapKelompok::susun($perSumber) + ['hasil' => $perSumber];
     }
 
     public function pilihSumber(string $sumber): void

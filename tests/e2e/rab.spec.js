@@ -195,3 +195,24 @@ test.describe('Kelompok kategori interaktif', () => {
         await expect(page).toHaveURL(/tampil=kategori/);
     });
 });
+
+test.describe('Rekap anggaran per kelompok', () => {
+    test('komposisi, tooltip, tabel, dan kartu per kelompok', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/1/rab');
+        await page.getByRole('tab', { name: 'Rekap per kelompok' }).click();
+        await expect(page).toHaveURL(/halaman=rekap/);
+        await expect(page.getByTestId('rekap-total')).toHaveText('Rp10.000.000');
+
+        const segmenJasa = page.getByTestId('batang-komite').getByLabel(/Jasa Rp5\.920\.000/);
+        await segmenJasa.hover();
+        await expect(page.getByRole('tooltip')).toContainText('Rp5.920.000');
+        await expect(page.getByRole('tooltip')).toContainText('Komite · Jasa');
+
+        await expect(page.getByTestId('tabel-rekap-kelompok')).toContainText('3.930.000');
+        await expect(page.getByTestId('kartu-kelompok-jasa')).toContainText('Honorarium Pemateri');
+        await page.screenshot({ path: `storage/playwright/shots/rekap-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByTestId('kartu-kelompok-bahan').getByRole('button', { name: /item lainnya/ }).click();
+        await expect(page.getByRole('button', { name: 'Per kelompok belanja' })).toHaveAttribute('aria-pressed', 'true');
+    });
+});
