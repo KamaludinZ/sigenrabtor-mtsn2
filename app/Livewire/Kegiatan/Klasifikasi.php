@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\Kegiatan\RingkasanKode;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
@@ -129,6 +130,26 @@ class Klasifikasi extends Component
         ];
     }
 
+    /**
+     * Ringkasan kode terpilih (dari isian yang sedang diubah, belum tentu tersimpan).
+     *
+     * @return list<array{kunci: string, label: string, kode: string|null, uraian: string|null, detail: string|null}>
+     */
+    #[Computed]
+    public function ringkasanKode(): array
+    {
+        return RingkasanKode::susun($this->form->only(RingkasanKode::ISIAN));
+    }
+
+    /**
+     * @return array{status: string, terisi: int, total: int, kosong: list<array{kunci: string, label: string, kartu: string}>, pesan: string}
+     */
+    #[Computed]
+    public function statusKode(): array
+    {
+        return RingkasanKode::status($this->ringkasanKode);
+    }
+
     public function simpan(bool $lanjutKeRab = false): void
     {
         $this->pastikanDapatDiedit();
@@ -155,14 +176,16 @@ class Klasifikasi extends Component
         $this->dataKegiatan = $repo->temukan($this->kegiatanId) ?? $data;
         $this->adaPerubahan = false;
 
+        $notifikasi = RingkasanKode::notifikasiSimpan($this->statusKode);
+
         if ($lanjutKeRab && Route::has('kegiatan.rab')) {
-            session()->flash('notify', ['message' => 'Kode & klasifikasi tersimpan.', 'type' => 'success']);
+            session()->flash('notify', $notifikasi);
             $this->redirectRoute('kegiatan.rab', ['kegiatan' => $this->kegiatanId], navigate: true);
 
             return;
         }
 
-        $this->dispatch('notify', message: 'Kode & klasifikasi tersimpan.');
+        $this->dispatch('notify', ...$notifikasi);
     }
 
     /**

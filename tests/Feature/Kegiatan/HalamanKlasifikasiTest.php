@@ -58,7 +58,7 @@ class HalamanKlasifikasiTest extends TestCase
             ->call('simpan')
             ->assertHasNoErrors()
             ->assertSet('adaPerubahan', false)
-            ->assertDispatched('notify', message: 'Kode & klasifikasi tersimpan.');
+            ->assertDispatched('notify', message: 'Kode & klasifikasi tersimpan. Semua kode lengkap.', type: 'success');
 
         $tersimpan = app(KegiatanRepository::class)->temukan($id);
         $this->assertSame(['1.6', '1.1.7', 'SK.10', 'IKSK 10.6', 'C1', 2], [

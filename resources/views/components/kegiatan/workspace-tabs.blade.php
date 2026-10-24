@@ -1,6 +1,14 @@
-@props(['active' => 'data', 'kegiatanId' => null])
+@props(['active' => 'data', 'kegiatanId' => null, 'statusKode' => null])
+
+@use('App\Contracts\KegiatanRepository')
+@use('App\Support\Kegiatan\RingkasanKode')
 
 @php
+    // Lencana kelengkapan di tab Kode: dari isian langsung bila dikirim halaman Kode, selain itu dari data tersimpan.
+    if (! $statusKode && $kegiatanId && ($tersimpan = app(KegiatanRepository::class)->temukan($kegiatanId))) {
+        $statusKode = RingkasanKode::status(RingkasanKode::susun(array_intersect_key($tersimpan, array_flip(RingkasanKode::ISIAN))));
+    }
+
     // Tab ruang kerja satu kegiatan. Tab tanpa rute (belum dibangun) atau yang butuh kegiatan tersimpan ditampilkan non-aktif.
     $tabs = [
         ['key' => 'data', 'label' => 'Data Kegiatan', 'icon' => 'clipboard', 'route' => $kegiatanId ? 'kegiatan.edit' : 'kegiatan.create', 'needs_id' => false],
@@ -22,12 +30,18 @@
                class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-stone-500 hover:border-stone-300 hover:text-stone-800">
                 <x-ui.icon :name="$tab['icon']" class="size-4" />
                 {{ $tab['label'] }}
+                @if ($tab['key'] === 'kode' && $statusKode)
+                    <x-kegiatan.lencana-kode :status="$statusKode" />
+                @endif
             </a>
         @elseif ($isActive)
             <span aria-current="page"
                   class="flex shrink-0 items-center gap-2 border-b-2 border-brand-700 px-3 py-2.5 text-sm font-semibold text-brand-800">
                 <x-ui.icon :name="$tab['icon']" class="size-4" />
                 {{ $tab['label'] }}
+                @if ($tab['key'] === 'kode' && $statusKode)
+                    <x-kegiatan.lencana-kode :status="$statusKode" />
+                @endif
             </span>
         @else
             <span class="flex shrink-0 cursor-not-allowed items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-stone-400"

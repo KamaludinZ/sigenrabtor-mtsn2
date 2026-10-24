@@ -27,8 +27,9 @@ test.describe.serial('Status kegiatan (Draf → Final)', () => {
         await page.locator('#kode_sk-cari').press('Enter');
         await expect(page.getByTestId('uraian-sk')).toContainText('perencanaan dan anggaran');
         await page.getByRole('button', { name: 'Simpan', exact: true }).click();
-        await expect(page.getByText('Kode & klasifikasi tersimpan.')).toBeVisible();
+        await expect(page.getByText(/Kode & klasifikasi tersimpan\. \d dari 6 kode terpilih — belum: /)).toBeVisible();
         await page.goto(urlKegiatan);
+        await expect(page.getByTestId('lencana-kode')).toHaveAttribute('data-status', 'sebagian');
 
         await jalankanAksi(page, 'Ajukan pemeriksaan');
         await expect(page.getByText('Status kegiatan: Diperiksa.')).toBeVisible();

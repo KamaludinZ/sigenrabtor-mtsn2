@@ -116,6 +116,27 @@ test.describe('Kode & Klasifikasi', () => {
         await page.reload();
     });
 
+    test('notifikasi kelengkapan kode: banner, tautan ke kartu kosong, lencana tab', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/1/kode');
+        const banner = page.getByTestId('status-kelengkapan-kode');
+        await expect(banner).toHaveAttribute('data-status', 'lengkap');
+        await expect(banner).toContainText('Semua kode lengkap');
+        await expect(page.getByTestId('lencana-kode')).toHaveAttribute('data-status', 'lengkap');
+
+        // Kosongkan EDM: banner jadi sebagian dan menautkan kartu EDM.
+        await page.locator('#kode-edm').getByRole('button', { name: 'Kosongkan pilihan' }).click();
+        await expect(banner).toHaveAttribute('data-status', 'sebagian');
+        await expect(banner).toContainText('5 dari 6 kode terpilih.');
+        await expect(page.getByTestId('lencana-kode')).toHaveText('5/6');
+        await banner.getByRole('link', { name: 'Kode EDM' }).click();
+        await expect(page).toHaveURL(/#kode-edm$/);
+        await expect(page.locator('#kode-edm')).toBeInViewport();
+        await page.screenshot({ path: `storage/playwright/shots/status-kelengkapan-${testInfo.project.name}.png` });
+
+        await page.goto('/kegiatan/1/kode');
+        await expect(banner).toHaveAttribute('data-status', 'lengkap');
+    });
+
     test('ringkasan kode di Data Kegiatan memuat uraian kode', async ({ page }) => {
         await page.goto('/kegiatan/1/edit');
         const ringkasan = page.getByTestId('ringkasan-kode');

@@ -12,6 +12,9 @@ class RingkasanKode
     /** Isian kegiatan yang membentuk ringkasan, urut seperti header RAB. */
     public const ISIAN = ['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu'];
 
+    /** Kartu di halaman Kode & Klasifikasi tempat tiap kode dipilih (id section untuk tautan #). */
+    public const KARTU = ['leading' => 'kode-leading', 'rktm' => 'kode-rktm', 'sk' => 'kode-perkin', 'iksk' => 'kode-perkin', 'edm' => 'kode-edm', 'budaya' => 'kode-budaya'];
+
     /**
      * @param  array{leading?: ?string, kode_rktm?: ?string, kode_sk?: ?string, kode_iksk?: ?string, kode_edm?: ?string, budaya_mutu?: int|string|null}  $kode
      * @return list<array{kunci: string, label: string, kode: string|null, uraian: string|null, detail: string|null}>
@@ -42,6 +45,48 @@ class RingkasanKode
     public static function jumlahTerisi(array $ringkasan): int
     {
         return count(array_filter($ringkasan, fn ($baris) => filled($baris['kode'])));
+    }
+
+    /**
+     * Status kelengkapan untuk notifikasi: 'lengkap', 'wajib' (kode SK kosong — kegiatan belum bisa diajukan), atau 'sebagian'.
+     *
+     * @param  list<array{kunci: string, label: string, kode: string|null}>  $ringkasan
+     * @return array{status: string, terisi: int, total: int, kosong: list<array{kunci: string, label: string, kartu: string}>, pesan: string}
+     */
+    public static function status(array $ringkasan): array
+    {
+        $kosong = array_values(array_map(
+            fn ($baris) => ['kunci' => $baris['kunci'], 'label' => $baris['label'], 'kartu' => self::KARTU[$baris['kunci']]],
+            array_filter($ringkasan, fn ($baris) => blank($baris['kode'])),
+        ));
+        $total = count($ringkasan);
+        $terisi = $total - count($kosong);
+
+        [$status, $pesan] = match (true) {
+            $kosong === [] => ['lengkap', 'Semua kode lengkap — header RAB siap dicetak.'],
+            in_array('sk', array_column($kosong, 'kunci'), true) => ['wajib', 'Kode SK belum dipilih — wajib sebelum kegiatan diajukan.'],
+            default => ['sebagian', "{$terisi} dari {$total} kode terpilih. Draf tetap bisa disimpan; lengkapi agar header RAB terisi penuh."],
+        };
+
+        return compact('status', 'terisi', 'total', 'kosong', 'pesan');
+    }
+
+    /**
+     * Notifikasi setelah kode disimpan, menyebut kode yang masih kosong.
+     *
+     * @param  array{status: string, terisi: int, total: int, kosong: list<array{label: string}>}  $status
+     * @return array{message: string, type: string}
+     */
+    public static function notifikasiSimpan(array $status): array
+    {
+        if ($status['kosong'] === []) {
+            return ['message' => 'Kode & klasifikasi tersimpan. Semua kode lengkap.', 'type' => 'success'];
+        }
+
+        return [
+            'message' => "Kode & klasifikasi tersimpan. {$status['terisi']} dari {$status['total']} kode terpilih — belum: ".implode(', ', array_column($status['kosong'], 'label')).'.',
+            'type' => 'warning',
+        ];
     }
 
     /**

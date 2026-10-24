@@ -10,7 +10,7 @@
 @endphp
 
 {{-- Kartu satu bagian form; atribut data-section dipakai navigasi bagian (scrollspy). --}}
-<section id="{{ $id }}" data-section="{{ $id }}" {{ $attributes->merge(['class' => 'rounded-2xl bg-white shadow-xs ring-1 ring-stone-200']) }}>
+<section id="{{ $id }}" data-section="{{ $id }}" {{ $attributes->merge(['class' => 'scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200']) }}>
     <header class="flex items-start gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
         @if ($icon)
             <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-100">

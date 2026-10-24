@@ -1,7 +1,6 @@
 @use('App\Support\Stub\StubData')
 @use('App\Support\MasterKode')
 @use('Illuminate\Support\Str')
-@use('App\Support\Kegiatan\RingkasanKode')
 
 @php
     $tahunMaster = $this->tahunAktif['tahun'];
@@ -56,7 +55,7 @@
     </div>
 
     <div class="mt-5">
-        <x-kegiatan.workspace-tabs active="kode" :kegiatan-id="$kegiatanId" />
+        <x-kegiatan.workspace-tabs active="kode" :kegiatan-id="$kegiatanId" :status-kode="$this->statusKode" />
     </div>
 
     @if ($masterTersedia)
@@ -70,6 +69,8 @@
             Master kode Tahun Anggaran {{ $tahunMaster }} belum diunggah admin, sehingga kode RKTM, SK, IKSK, dan EDM belum bisa dipilih.
         </p>
     @endif
+
+    <x-kode.status-kelengkapan :status="$this->statusKode" class="mt-4" />
 
     @unless ($bisaUbah)
         <p class="mt-4 flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200" role="status" data-testid="banner-terkunci">
@@ -167,7 +168,7 @@
         {{-- Pratinjau header RAB --}}
         <aside class="space-y-4">
             <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
-                <x-kode.ringkasan :baris="RingkasanKode::susun($form->only(RingkasanKode::ISIAN))" judul="Kode terpilih" />
+                <x-kode.ringkasan :baris="$this->ringkasanKode" judul="Kode terpilih" />
 
                 {{-- Uraian lengkap ada di ringkasan; di sini cukup baris yang tercetak di header RAB (dilipat agar tombol tetap terlihat; wire:ignore.self menjaga status buka/tutup saat render ulang). --}}
                 <details class="group mt-4 border-t border-stone-100 pt-3" data-testid="pratinjau-header" wire:ignore.self>

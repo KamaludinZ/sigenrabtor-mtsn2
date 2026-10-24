@@ -1,4 +1,4 @@
-{{-- Notifikasi singkat. Picu dari Livewire: $this->dispatch('notify', message: '...', type: 'success|error|info'). --}}
+{{-- Notifikasi singkat. Picu dari Livewire: $this->dispatch('notify', message: '...', type: 'success|error|info|warning'). --}}
 <div x-data="{
         toasts: [],
         push(detail) {
@@ -15,7 +15,7 @@
         <div x-transition.opacity
              class="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl bg-white p-3.5 shadow-lg ring-1 ring-stone-200">
             <span class="mt-0.5 size-2.5 shrink-0 rounded-full"
-                  :class="{ 'bg-brand-500': toast.type === 'success', 'bg-red-500': toast.type === 'error', 'bg-sky-500': toast.type === 'info' }"></span>
+                  :class="{ 'bg-brand-500': toast.type === 'success', 'bg-red-500': toast.type === 'error', 'bg-sky-500': toast.type === 'info', 'bg-gold-500': toast.type === 'warning' }"></span>
             <p class="flex-1 text-sm text-stone-700" x-text="toast.message"></p>
             <button type="button" class="text-stone-400 hover:text-stone-600" @click="toasts = toasts.filter(t => t.id !== toast.id)">
                 <span class="sr-only">Tutup</span>
