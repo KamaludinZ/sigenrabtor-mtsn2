@@ -20,6 +20,7 @@ Generator KAK/TOR & RAB madrasah. PRD lengkap: `npx ngodingpakeai plan get fe0f4
 - Livewire mengisi otomatis properti publik yang namanya sama dengan parameter rute (mis. `{kegiatan}`); beri nama lain untuk properti data (mis. `$dataKegiatan`).
 - E2E seret-lepas: gulir dengan `behavior: 'instant'` (CSS memakai `scroll-behavior: smooth`) dan bidik ulang sasaran selama menyeret; pilih elemen lewat label/test-id, bukan selektor atribut ber-backslash.
 - Uang: PHP `Format::rupiah()`/`angka()`/`rupiahDokumen()` ("Rp10.000.000,-"), Blade `<x-ui.uang :nilai>`, input `<x-ui.rupiah>`; klien `$rupiah`/`$angka`/`$jumlahRab` (resources/js/format.js, kembaran server). Hitung RAB hanya lewat `KalkulatorRab`.
+- Livewire 4: ketikan yang belum selesai ikut terkirim bersama request kolom lain; bila server mengubah nilainya di hook `updated` (format/kapital), respons menimpa `$wire` dan ketikan terbaru hilang. Lakukan format yang sama di klien lewat `x-on:input.capture` agar normalisasi server tidak mengubah apa pun.
 - Notifikasi dari Livewire: `$this->dispatch('notify', message: '...', type: 'success|error|info')`.
 - Menu samping: `App\Support\Navigation` — item otomatis aktif begitu rutenya terdaftar.
 - Folder `REFERENSI/` berisi dokumen contoh asli (tidak di-commit): acuan struktur KAK/TOR, RAB, dan master kode.

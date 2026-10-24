@@ -27,7 +27,8 @@
                 </span>
             @endif
         </x-slot:aside>
-        <input type="text" id="nama_kegiatan_cover" wire:model.live.blur="form.nama_kegiatan_cover" maxlength="255"
+        <input type="text" id="nama_kegiatan_cover" wire:model.live.blur="form.nama_kegiatan_cover"
+               x-on:input.capture="const [a, b] = [$el.selectionStart, $el.selectionEnd]; $el.value = $el.value.toUpperCase(); $el.setSelectionRange(a, b)" maxlength="255"
                autocomplete="off" class="form-input uppercase tracking-wide" placeholder="Terisi otomatis dari nama kegiatan"
                @error('form.nama_kegiatan_cover') aria-invalid="true" aria-describedby="nama_kegiatan_cover-error" @enderror>
     </x-ui.field>
