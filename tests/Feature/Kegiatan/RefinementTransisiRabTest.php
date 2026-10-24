@@ -60,7 +60,7 @@ class RefinementTransisiRabTest extends TestCase
     {
         Livewire::test(Form::class)
             ->set('form.kode_rktm', '1.1.7')
-            ->assertSee('Pakai sebagai nama kegiatan')
+            ->assertSee('Pakai sub kegiatan RKTM sebagai nama kegiatan')
             ->call('pakaiNamaDariRktm')
             ->assertSet('form.nama_kegiatan', 'Workshop KTSP')
             ->assertSet('form.nama_kegiatan_cover', 'WORKSHOP KTSP');
@@ -73,7 +73,7 @@ class RefinementTransisiRabTest extends TestCase
             ->call('pakaiNamaDariRktm')
             ->assertSet('form.nama_kegiatan', 'Workshop penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran')
             ->assertDontSee('awalan “Kegiatan” akan tercetak dobel')
-            ->assertDontSee('Pakai sebagai nama kegiatan');
+            ->assertDontSee('Pakai sub kegiatan RKTM sebagai nama kegiatan');
     }
 
     public function test_kartu_pelaksana_menampilkan_jabatan_leading_terpilih(): void

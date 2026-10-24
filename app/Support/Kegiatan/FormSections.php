@@ -22,7 +22,7 @@ class FormSections
             [
                 'id' => 'kode',
                 'title' => 'Kode & Klasifikasi',
-                'description' => 'Leading penanggung jawab dan kode dari master tahun aktif.',
+                'description' => 'Leading dan kode master tahun aktif; diatur di halaman Kode & Klasifikasi.',
                 'icon' => 'tag',
             ],
             [

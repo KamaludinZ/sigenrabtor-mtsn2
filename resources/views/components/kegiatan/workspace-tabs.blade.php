@@ -4,6 +4,7 @@
     // Tab ruang kerja satu kegiatan. Tab tanpa rute (belum dibangun) atau yang butuh kegiatan tersimpan ditampilkan non-aktif.
     $tabs = [
         ['key' => 'data', 'label' => 'Data Kegiatan', 'icon' => 'clipboard', 'route' => $kegiatanId ? 'kegiatan.edit' : 'kegiatan.create', 'needs_id' => false],
+        ['key' => 'kode', 'label' => 'Kode & Klasifikasi', 'icon' => 'tag', 'route' => 'kegiatan.kode', 'needs_id' => true],
         ['key' => 'rab', 'label' => 'RAB', 'icon' => 'coins', 'route' => 'kegiatan.rab', 'needs_id' => true],
         ['key' => 'matrik', 'label' => 'Matrik & Jadwal', 'icon' => 'calendar', 'route' => 'kegiatan.matrik', 'needs_id' => true],
         ['key' => 'pratinjau', 'label' => 'Pratinjau Dokumen', 'icon' => 'eye', 'route' => 'kegiatan.pratinjau', 'needs_id' => true],

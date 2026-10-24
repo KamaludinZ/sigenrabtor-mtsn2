@@ -1,21 +1,11 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Kelengkapan data & transisi ke RAB', () => {
-    test('isi kode, pelaksanaan, sumber dana; indikator kelengkapan; simpan & lanjut ke RAB', async ({ page }, testInfo) => {
+    test('isi pelaksanaan & sumber dana, lalu kode di tabnya; indikator kelengkapan; lanjut ke RAB', async ({ page }, testInfo) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/buat');
 
-        await page.locator('#kode_rktm').selectOption('1.1.7');
-        await page.getByRole('button', { name: 'Pakai sebagai nama kegiatan' }).click();
-        await expect(page.locator('#nama_kegiatan')).toHaveValue('Workshop KTSP');
-        await expect(page.locator('#nama_kegiatan_cover')).toHaveValue('WORKSHOP KTSP');
-
-        await page.locator('#kode_sk').selectOption('SK.10');
-        await expect(page.locator('#kode_iksk')).toBeEnabled();
-        await page.locator('#kode_iksk').selectOption('IKSK 10.6');
-        await page.locator('#kode_edm').selectOption('C1');
-        await page.getByText('2. Profesionalitas').click();
-        await expect(page.locator('#kode [data-kelengkapan]')).toHaveAttribute('data-kelengkapan', 'lengkap');
+        await page.locator('#nama_kegiatan').fill(`Workshop KTSP ${testInfo.project.name}`);
 
         await page.locator('#tempat').fill('Aula Madrasah');
         await page.locator('#peserta_jumlah').fill('56');
@@ -39,10 +29,27 @@ test.describe('Kelengkapan data & transisi ke RAB', () => {
         await expect(page.getByRole('heading', { name: 'Rencana Anggaran Biaya' })).toBeVisible();
         await expect(page.getByRole('tab', { name: /RAB Komite/ })).toHaveAttribute('aria-selected', 'true');
 
+        // Kode & klasifikasi diatur di tab tersendiri.
+        await page.getByRole('link', { name: 'Kode & Klasifikasi' }).click();
+        await expect(page.getByRole('heading', { name: 'Kode & Klasifikasi' })).toBeVisible();
+        await page.locator('#kode_rktm').selectOption('1.1.7');
+        await page.locator('#kode_sk').selectOption('SK.10');
+        await expect(page.locator('#kode_iksk')).toBeEnabled();
+        await page.locator('#kode_iksk').selectOption('IKSK 10.6');
+        await page.locator('#kode_edm').selectOption('C1');
+        await page.getByText('2. Profesionalitas').click();
+        await expect(page.getByTestId('pratinjau-header')).toContainText('IKSK 10.6');
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+        await page.screenshot({ path: `storage/playwright/shots/klasifikasi-${testInfo.project.name}.png`, fullPage: true });
+        await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+        await expect(page).toHaveURL(/\/rab/);
+        await expect(page.getByTestId('header-rab')).toContainText('1.1.7');
+
         // Data tersimpan: kembali ke Data Kegiatan lewat tab.
         await page.getByRole('link', { name: 'Data Kegiatan' }).last().click();
         await expect(page.locator('#pagu_komite')).toHaveValue('10.000.000');
-        await expect(page.locator('#kode_iksk')).toHaveValue('IKSK 10.6');
+        await expect(page.getByTestId('ringkasan-kode')).toContainText('IKSK 10.6');
+        await expect(page.locator('#kode [data-kelengkapan]')).toHaveAttribute('data-kelengkapan', 'lengkap');
     });
 
     test('lanjut ke RAB tanpa sumber dana ditolak', async ({ page }) => {
