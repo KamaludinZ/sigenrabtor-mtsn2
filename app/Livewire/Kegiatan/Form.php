@@ -432,6 +432,10 @@ class Form extends Component
         if ($aksi === 'ajukan') {
             try {
                 $this->form->validate();
+
+                if ($wajib = $this->form->kodeWajibKosong()) {
+                    throw ValidationException::withMessages($wajib);
+                }
             } catch (ValidationException $e) {
                 $this->dispatch('notify', message: 'Lengkapi isian yang ditandai merah sebelum mengajukan.', type: 'error');
 

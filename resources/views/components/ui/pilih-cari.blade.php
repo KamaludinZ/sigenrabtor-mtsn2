@@ -13,7 +13,7 @@
     Nilai tersambung ke Livewire lewat $wire.entangle(...).live sehingga validasi server tetap berjalan per pilihan.
     wire:key memuat sidik opsi: bila daftar opsi berubah (mis. IKSK mengikuti SK), komponen dibuat ulang.
 --}}
-<div {{ $attributes->class(['relative']) }}
+<div {{ $attributes->class(['relative min-w-0']) }}
      wire:key="pilih-cari-{{ $id }}-{{ md5(json_encode($opsi)) }}"
      x-data="{
         buka: false,
@@ -52,12 +52,12 @@
      x-on:keydown.escape.prevent.stop="if (buka) tutup()">
 
     {{-- Tombol tampilan (tertutup) --}}
-    <div class="flex items-stretch gap-1">
+    <div class="flex min-w-0 items-stretch gap-1">
         <button type="button" id="{{ $id }}" x-ref="tombol" x-on:click="buka ? tutup() : bukaDaftar()"
                 x-on:keydown.arrow-down.prevent="bukaDaftar()"
                 role="combobox" aria-haspopup="listbox" :aria-expanded="buka" aria-controls="{{ $id }}-daftar"
                 @disabled($disabled)
-                class="form-input flex min-h-9.5 flex-1 items-center justify-between gap-2 text-left disabled:cursor-not-allowed">
+                class="form-input flex min-h-9.5 min-w-0 flex-1 items-center justify-between gap-2 text-left disabled:cursor-not-allowed">
             <span class="min-w-0 truncate" x-show="terpilih">
                 <span class="font-mono text-xs font-semibold text-stone-500" x-text="terpilih?.nilai"></span>
                 <span class="text-stone-900" x-text="terpilih ? '— ' + terpilih.label : ''"></span>

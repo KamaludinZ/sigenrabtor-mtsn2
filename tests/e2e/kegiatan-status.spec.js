@@ -18,6 +18,18 @@ test.describe.serial('Status kegiatan (Draf → Final)', () => {
         await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit$/);
         const urlKegiatan = page.url();
 
+        // Pengajuan tanpa kode SK ditolak; SK dipilih di tab Kode & Klasifikasi.
+        await jalankanAksi(page, 'Ajukan pemeriksaan');
+        await expect(page.getByTestId('error-kode-sk')).toBeVisible();
+        await page.getByRole('link', { name: 'Kode & Klasifikasi', exact: true }).click();
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.12');
+        await page.locator('#kode_sk-cari').press('Enter');
+        await expect(page.getByTestId('uraian-sk')).toContainText('perencanaan dan anggaran');
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(page.getByText('Kode & klasifikasi tersimpan.')).toBeVisible();
+        await page.goto(urlKegiatan);
+
         await jalankanAksi(page, 'Ajukan pemeriksaan');
         await expect(page.getByText('Status kegiatan: Diperiksa.')).toBeVisible();
         await expect(page.getByTestId('banner-terkunci')).toContainText('Isian terkunci — status Diperiksa');

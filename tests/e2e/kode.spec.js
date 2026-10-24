@@ -59,4 +59,10 @@ test.describe('Kode & Klasifikasi', () => {
         // Pulihkan data contoh untuk tes lain.
         await page.reload();
     });
+
+    test('halaman kode tidak menimbulkan gulir horizontal (teks kode panjang terpotong rapi)', async ({ page }) => {
+        await page.goto('/kegiatan/1/kode');
+        const luber = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(luber).toBeLessThanOrEqual(0);
+    });
 });

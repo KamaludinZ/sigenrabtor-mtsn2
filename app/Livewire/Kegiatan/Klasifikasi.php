@@ -132,6 +132,10 @@ class Klasifikasi extends Component
             foreach (self::ISIAN as $field) {
                 $this->form->validateOnly($field);
             }
+
+            if ($wajib = $this->form->kodeWajibKosong()) {
+                throw ValidationException::withMessages($wajib);
+            }
         } catch (ValidationException $e) {
             $this->dispatch('notify', message: 'Periksa kembali kode yang ditandai merah.', type: 'error');
 

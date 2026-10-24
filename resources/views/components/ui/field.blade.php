@@ -8,7 +8,7 @@
 ])
 
 {{-- Pembungkus satu isian: label, kontrol (slot), lalu pesan error/peringatan/petunjuk. --}}
-<div {{ $attributes }}>
+<div {{ $attributes->class(['min-w-0']) }}>
     <div class="flex items-baseline justify-between gap-3">
         <label for="{{ $for }}" class="form-label">
             {{ $label }}

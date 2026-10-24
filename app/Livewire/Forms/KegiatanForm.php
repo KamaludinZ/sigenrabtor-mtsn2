@@ -25,6 +25,14 @@ class KegiatanForm extends Form
     /** Isian uraian (teks panjang) yang spasinya dirapikan otomatis. */
     public const URAIAN = ['latar_belakang', 'tujuan', 'sasaran', 'uraian_pelaksanaan', 'konteks'];
 
+    /**
+     * Kode klasifikasi yang wajib terisi sebelum kode disimpan dan sebelum kegiatan diajukan pemeriksaan
+     * (draf boleh belum lengkap). Kunci = isian, nilai = pesan.
+     */
+    public const KODE_WAJIB = [
+        'kode_sk' => 'Kode SK wajib dipilih — setiap kegiatan harus mendukung satu Sasaran Kegiatan Perjanjian Kinerja.',
+    ];
+
     /** Batas pagu per sumber dana (Rp) untuk menolak salah ketik digit berlebih. */
     public const MAKS_PAGU = 100_000_000_000;
 
@@ -685,6 +693,23 @@ class KegiatanForm extends Form
                 $fail("{$value} bukan indikator dari {$this->kode_sk}.");
             }
         };
+    }
+
+    /**
+     * Pesan error untuk kode wajib yang masih kosong, berkunci nama properti Livewire (form.*).
+     *
+     * @return array<string, string>
+     */
+    public function kodeWajibKosong(): array
+    {
+        $kosong = [];
+        foreach (self::KODE_WAJIB as $field => $pesan) {
+            if (blank($this->{$field})) {
+                $kosong['form.'.$field] = $pesan;
+            }
+        }
+
+        return $kosong;
     }
 
     public function rapikanUraian(string $field): void

@@ -30,12 +30,14 @@ test.describe('Kelengkapan data & transisi ke RAB', () => {
         await expect(page.getByRole('tab', { name: /RAB Komite/ })).toHaveAttribute('aria-selected', 'true');
 
         // Kode & klasifikasi diatur di tab tersendiri.
-        await page.getByRole('link', { name: 'Kode & Klasifikasi' }).click();
+        await page.getByRole('link', { name: 'Kode & Klasifikasi', exact: true }).click();
         await expect(page.getByRole('heading', { name: 'Kode & Klasifikasi' })).toBeVisible();
         await page.locator('#kode_rktm').click();
         await page.locator('#kode_rktm-cari').fill('Workshop KTSP');
         await page.locator('#kode_rktm-daftar [data-nilai="1.1.7"]').click();
-        await page.locator('#kode_sk').selectOption('SK.10');
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.10');
+        await page.locator('#kode_sk-cari').press('Enter');
         await expect(page.locator('#kode_iksk')).toBeEnabled();
         await page.locator('#kode_iksk').selectOption('IKSK 10.6');
         await page.locator('#kode_edm').click();

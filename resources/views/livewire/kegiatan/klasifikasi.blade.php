@@ -15,6 +15,7 @@
     $bisaUbah = $this->dapatDiedit();
     $opsiRktmCari = array_map(fn ($r) => ['nilai' => $r['kode'], 'label' => $r['sub_kegiatan'], 'keterangan' => null, 'grup' => $r['snp'].' — '.$r['kegiatan']], MasterKode::kodeRktm());
     $komponenEdm = MasterKode::komponenEdm();
+    $opsiSkCari = array_map(fn ($sk) => ['nilai' => $sk['kode'], 'label' => $sk['uraian'], 'keterangan' => count(MasterKode::kodeIksk($sk['kode'])).' indikator IKSK', 'grup' => null], MasterKode::kodeSk());
     $opsiEdmCari = array_map(fn ($e) => ['nilai' => $e['kode'], 'label' => $e['uraian'], 'keterangan' => null, 'grup' => $e['komponen'].' · '.($komponenEdm[$e['komponen']] ?? '')], MasterKode::kodeEdm());
 @endphp
 
@@ -112,13 +113,13 @@
                                description="Sasaran Kegiatan (SK) dan Indikator Kinerja Sasaran Kegiatan (IKSK) dari cascade Perkin."
                                :kelengkapan="$this->kelengkapan['perkin']">
                 <div class="grid gap-5 sm:grid-cols-2">
-                    <x-ui.field label="Kode SK" for="kode_sk" error="form.kode_sk" :hint="$skTerpilih['uraian'] ?? null">
-                        <select id="kode_sk" wire:model.live="form.kode_sk" class="form-input" @disabled(! $masterTersedia)>
-                            <option value="">— Pilih kode SK —</option>
-                            @foreach (MasterKode::kodeSk() as $opsi)
-                                <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} — {{ Str::limit($opsi['uraian'], 60) }}</option>
-                            @endforeach
-                        </select>
+                    <x-ui.field label="Kode SK" for="kode_sk" error="form.kode_sk" required
+                                :hint="$skTerpilih ? null : 'Wajib: Sasaran Kegiatan Perjanjian Kinerja yang didukung kegiatan ini.'">
+                        <x-ui.pilih-cari id="kode_sk" model="form.kode_sk" :opsi="$opsiSkCari" :disabled="! $masterTersedia || ! $bisaUbah"
+                                         placeholder="— Pilih kode SK —" cari-placeholder="Cari kode atau sasaran kegiatan…" />
+                        @if ($skTerpilih)
+                            <p class="mt-1.5 text-xs leading-relaxed text-stone-600" data-testid="uraian-sk">{{ $skTerpilih['uraian'] }}</p>
+                        @endif
                     </x-ui.field>
                     <x-ui.field label="Kode IKSK" for="kode_iksk" error="form.kode_iksk"
                                 :hint="$ikskTerpilih['uraian'] ?? ($form->kode_sk ? count($opsiIksk).' indikator di bawah '.$form->kode_sk.'.' : 'Pilih kode SK lebih dulu.')">

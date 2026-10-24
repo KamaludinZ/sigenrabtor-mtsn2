@@ -23,6 +23,10 @@
         @endforeach
     </dl>
 
+    @error('form.kode_sk')
+        <p class="form-error" role="alert" data-testid="error-kode-sk">{{ $message }} Atur di halaman Kode &amp; Klasifikasi.</p>
+    @enderror
+
     <div class="flex flex-wrap items-center gap-2">
         @if ($kegiatanId)
             <a href="{{ route('kegiatan.kode', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="btn-secondary">
