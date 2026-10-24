@@ -1,5 +1,9 @@
 <div class="mx-auto max-w-7xl"
+     {{-- dirty: ada perubahan belum disimpan → peringatan saat menutup/meninggalkan halaman --}}
+     x-on:input="dirty = true"
+     x-on:beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }"
      x-data="{
+        dirty: $wire.entangle('adaPerubahan'),
         active: @js($this->sections[0]['id']),
         init() {
             const observer = new IntersectionObserver((entries) => {
@@ -14,18 +18,60 @@
             <nav class="flex items-center gap-1 text-xs font-medium text-stone-500" aria-label="Breadcrumb">
                 <span>Data Kegiatan</span>
                 <x-ui.icon name="chevron-right" class="size-3.5" />
-                <span class="text-stone-700">Kegiatan Baru</span>
+                <span class="truncate text-stone-700">{{ $kegiatanId ? 'Edit kegiatan' : 'Kegiatan Baru' }}</span>
             </nav>
             <div class="mt-1.5 flex flex-wrap items-center gap-2">
-                <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Kegiatan Baru</h1>
+                <h1 class="min-w-0 text-xl font-bold tracking-tight text-balance text-stone-900 sm:text-2xl">
+                    {{ $kegiatanId && $form->nama_kegiatan ? $form->nama_kegiatan : 'Kegiatan Baru' }}
+                </h1>
                 <x-ui.status-badge :status="$status" />
             </div>
-            <p class="mt-1 text-sm text-stone-500">
-                Isi data sekali — cover, KAK/TOR, RAB, dan lembar pengesahan Tahun Anggaran {{ $this->tahunAktif['tahun'] }} disusun dari sini.
+            <p class="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-stone-500">
+                @if ($diperbaruiPada)
+                    <span data-testid="info-simpan">Terakhir disimpan {{ \Illuminate\Support\Carbon::parse($diperbaruiPada)->locale('id')->translatedFormat('j F Y, H.i') }}</span>
+                @else
+                    <span>Isi data sekali — cover, KAK/TOR, RAB, dan lembar pengesahan Tahun Anggaran {{ $this->tahunAktif['tahun'] }} disusun dari sini.</span>
+                @endif
+                @if ($adaPerubahan)
+                    <span class="inline-flex items-center gap-1 font-medium text-gold-700" data-testid="belum-disimpan">
+                        <span class="size-1.5 rounded-full bg-gold-500"></span> Ada perubahan belum disimpan
+                    </span>
+                @endif
             </p>
         </div>
-        <div class="flex shrink-0 items-center gap-2">
-            <button type="button" class="btn-secondary" disabled title="Pratinjau tersedia setelah kegiatan disimpan">
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+            {{-- Buka draf lain --}}
+            <div x-data="{ open: false }" class="relative" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
+                <button type="button" class="btn-secondary" x-on:click="open = ! open" :aria-expanded="open" aria-haspopup="true">
+                    <x-ui.icon name="history" class="size-4" />
+                    Buka draf
+                </button>
+                <div x-cloak x-show="open" x-transition.origin.top
+                     class="absolute left-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-stone-200 sm:right-0 sm:left-auto">
+                    @if ($kegiatanId)
+                        <a href="{{ route('kegiatan.create') }}"
+                           class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-50">
+                            <x-ui.icon name="plus" class="size-4" /> Kegiatan baru
+                        </a>
+                        <div class="my-1 border-t border-stone-100"></div>
+                    @endif
+                    <p class="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Draf terbaru</p>
+                    @forelse ($this->drafTerbaru as $draf)
+                        <a href="{{ route('kegiatan.edit', ['kegiatan' => $draf['id']]) }}"
+                           @class(['flex items-start justify-between gap-3 rounded-lg px-2.5 py-2 hover:bg-stone-50', 'bg-brand-50' => $draf['id'] === $kegiatanId])>
+                            <span class="min-w-0">
+                                <span class="line-clamp-2 text-sm font-medium text-stone-800">{{ $draf['nama_kegiatan'] ?: 'Tanpa nama' }}</span>
+                                <span class="block text-xs text-stone-500">{{ \Illuminate\Support\Carbon::parse($draf['diperbarui_pada'])->locale('id')->diffForHumans() }}</span>
+                            </span>
+                            <x-ui.status-badge :status="$draf['status']" class="shrink-0" />
+                        </a>
+                    @empty
+                        <p class="px-2.5 py-3 text-sm text-stone-500">Belum ada draf tersimpan.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <button type="button" class="btn-secondary" disabled title="Pratinjau tersedia pada fase dokumen">
                 <x-ui.icon name="eye" class="size-4" />
                 Pratinjau
             </button>
@@ -38,7 +84,7 @@
     </div>
 
     <div class="mt-5">
-        <x-kegiatan.workspace-tabs active="data" />
+        <x-kegiatan.workspace-tabs active="data" :kegiatan-id="$kegiatanId" />
     </div>
 
     {{-- Navigasi bagian versi mobile --}}

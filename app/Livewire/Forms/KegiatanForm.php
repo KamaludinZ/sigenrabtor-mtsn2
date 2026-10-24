@@ -394,6 +394,61 @@ class KegiatanForm extends Form
         }
     }
 
+    /**
+     * Isi form dari data tersimpan. Kunci yang tidak dikenal diabaikan; tipe dinormalkan.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function isiDari(array $data): void
+    {
+        foreach (['nama_kegiatan', 'nama_kegiatan_cover', 'latar_belakang', 'tujuan', 'sasaran'] as $field) {
+            $this->{$field} = (string) ($data[$field] ?? '');
+        }
+
+        foreach (['tanggal_dokumen', 'tanggal_laporan', 'tanggal_mulai'] as $field) {
+            $this->{$field} = filled($data[$field] ?? null) ? (string) $data[$field] : null;
+        }
+
+        $this->cover_manual = (bool) ($data['cover_manual'] ?? false);
+        $this->laporan_otomatis = (bool) ($data['laporan_otomatis'] ?? true);
+        $this->hari_kerja = (bool) ($data['hari_kerja'] ?? false);
+        $this->lama_hari = filled($data['lama_hari'] ?? null) ? (int) $data['lama_hari'] : null;
+        $this->bulan_pelaksanaan = array_values(array_map('intval', (array) ($data['bulan_pelaksanaan'] ?? [])));
+        $this->panitia = array_map(fn ($anggota) => [
+            'key' => (string) Str::uuid(),
+            'nama' => (string) ($anggota['nama'] ?? ''),
+            'jabatan' => (string) ($anggota['jabatan'] ?? ''),
+            'peran' => (string) ($anggota['peran'] ?? 'Anggota'),
+        ], array_values((array) ($data['panitia'] ?? [])));
+    }
+
+    /**
+     * Data form yang disimpan (tanpa key baris sementara milik UI).
+     *
+     * @return array<string, mixed>
+     */
+    public function dataUntukDisimpan(): array
+    {
+        $lama = filter_var($this->lama_hari, FILTER_VALIDATE_INT);
+
+        return [
+            'nama_kegiatan' => $this->nama_kegiatan,
+            'nama_kegiatan_cover' => $this->nama_kegiatan_cover,
+            'cover_manual' => $this->cover_manual,
+            'latar_belakang' => $this->latar_belakang,
+            'tujuan' => $this->tujuan,
+            'sasaran' => $this->sasaran,
+            'tanggal_dokumen' => $this->tanggal_dokumen ?: null,
+            'tanggal_laporan' => $this->tanggal_laporan ?: null,
+            'laporan_otomatis' => $this->laporan_otomatis,
+            'tanggal_mulai' => $this->tanggal_mulai ?: null,
+            'lama_hari' => $lama === false ? null : $lama,
+            'hari_kerja' => $this->hari_kerja,
+            'bulan_pelaksanaan' => $this->bulan_pelaksanaan,
+            'panitia' => array_map(fn ($a) => ['nama' => $a['nama'], 'jabatan' => $a['jabatan'], 'peran' => $a['peran']], $this->panitia),
+        ];
+    }
+
     public function rapikanUraian(string $field): void
     {
         if (in_array($field, self::URAIAN, true)) {

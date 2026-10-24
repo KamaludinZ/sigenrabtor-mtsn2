@@ -72,9 +72,9 @@ class IdentitasKegiatanTest extends TestCase
             ->set('form.sasaran', 'dokumen perencanaan yang handal dan akurat.')
             ->set('form.tanggal_dokumen', '2026-01-03')
             ->set('form.tanggal_laporan', '2026-07-30')
+            ->assertSee('Tercetak: 3 Januari 2026')
             ->call('saveDraft')
             ->assertHasNoErrors()
-            ->assertDispatched('notify', message: 'Draf kegiatan tersimpan (mode data tiruan).')
-            ->assertSee('Tercetak: 3 Januari 2026');
+            ->assertRedirect(route('kegiatan.edit', ['kegiatan' => 2]));
     }
 }

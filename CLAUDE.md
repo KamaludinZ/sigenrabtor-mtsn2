@@ -13,6 +13,7 @@ Generator KAK/TOR & RAB madrasah. PRD lengkap: `npx ngodingpakeai plan get fe0f4
 ## Konvensi
 - Bahasa UI & domain: Indonesia (nama tabel/kolom mengikuti PRD: `activities`, `anggaran_kegiatan`, `budget_items`, ...).
 - Frontend-first: layar dibangun di atas `App\Support\Stub\StubData` lalu backend menggantinya dengan Eloquent tanpa mengubah bentuk data di view.
+- Penyimpanan kegiatan lewat kontrak `App\Contracts\KegiatanRepository` (saat ini `StubKegiatanRepository`, berkas JSON di disk local; E2E memakai `stub/kegiatan-e2e.json`). Backend cukup mengganti binding di `AppServiceProvider`.
 - Komponen UI Blade di `resources/views/components/ui` (`<x-ui.icon>`, `<x-ui.form-section>`, `<x-ui.status-badge>`, `<x-ui.toast>`).
 - Livewire 4: `wire:model.blur` hanya menunda state klien (tanpa request). Untuk validasi saat blur pakai `wire:model.live.blur`.
 - Blade: jangan campur `@php(...)` bentuk pendek dengan blok `@php … @endphp` dalam satu file (kompilasi Blade jadi salah); pakai satu bentuk saja.

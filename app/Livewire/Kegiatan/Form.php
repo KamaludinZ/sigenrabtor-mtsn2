@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Kegiatan;
 
+use App\Contracts\KegiatanRepository;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Stub\StubData;
@@ -9,19 +10,27 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
 /**
  * Layar utama Data Kegiatan: satu form panjang berisi semua bagian sumber KAK/TOR & RAB.
  */
 #[Layout('layouts.app')]
-#[Title('Data Kegiatan')]
 class Form extends Component
 {
     public KegiatanForm $form;
 
     public string $status = 'draf';
+
+    /** Id kegiatan tersimpan; null = kegiatan baru yang belum pernah disimpan. */
+    #[Locked]
+    public ?int $kegiatanId = null;
+
+    #[Locked]
+    public ?string $diperbaruiPada = null;
+
+    /** Ada perubahan sejak terakhir disimpan/dimuat (untuk penanda & peringatan saat meninggalkan halaman). */
+    public bool $adaPerubahan = false;
 
     /** @var array{index: int, anggota: array{key: string, nama: string, jabatan: string, peran: string}}|null Untuk "Urungkan" hapus anggota. */
     #[Locked]
@@ -35,6 +44,20 @@ class Form extends Component
         'hari_kerja' => ['lama_hari', 'tanggal_laporan', 'bulan_pelaksanaan'],
     ];
 
+    public function mount(KegiatanRepository $repo, ?int $kegiatan = null): void
+    {
+        if ($kegiatan === null) {
+            return;
+        }
+
+        $data = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
+
+        $this->form->isiDari($data);
+        $this->kegiatanId = $kegiatan;
+        $this->status = $data['status'] ?? 'draf';
+        $this->diperbaruiPada = $data['diperbarui_pada'] ?? null;
+    }
+
     /**
      * Validasi per isian begitu nilainya berubah, plus aturan turunan (nama cover, jadwal).
      */
@@ -43,6 +66,8 @@ class Form extends Component
         if (! str_starts_with($property, 'form.') || $property === 'form.cover_manual') {
             return;
         }
+
+        $this->adaPerubahan = true;
 
         $field = substr($property, 5);
 
@@ -192,6 +217,17 @@ class Form extends Component
         return StubData::tahunAktif();
     }
 
+    /**
+     * Draf kegiatan lain untuk menu "Buka draf".
+     *
+     * @return list<array{id: int, nama_kegiatan: string, status: string, diperbarui_pada: string}>
+     */
+    #[Computed]
+    public function drafTerbaru(): array
+    {
+        return app(KegiatanRepository::class)->terbaru(8);
+    }
+
     public function saveDraft(): void
     {
         try {
@@ -202,12 +238,27 @@ class Form extends Component
             throw $e;
         }
 
-        // Tahap frontend: belum ada penyimpanan; backend menggantinya dengan persistensi kegiatan.
-        $this->dispatch('notify', message: 'Draf kegiatan tersimpan (mode data tiruan).');
+        $repo = app(KegiatanRepository::class);
+        $baru = $this->kegiatanId === null;
+        $id = $repo->simpan(['status' => $this->status] + $this->form->dataUntukDisimpan(), $this->kegiatanId);
+
+        $this->adaPerubahan = false;
+
+        if ($baru) {
+            session()->flash('notify', ['message' => 'Kegiatan baru tersimpan sebagai draf.', 'type' => 'success']);
+            $this->redirectRoute('kegiatan.edit', ['kegiatan' => $id], navigate: true);
+
+            return;
+        }
+
+        $this->diperbaruiPada = $repo->temukan($id)['diperbarui_pada'] ?? now()->toIso8601String();
+        unset($this->drafTerbaru);
+        $this->dispatch('notify', message: 'Draf tersimpan pukul '.now()->format('H.i').'.');
     }
 
     public function render()
     {
-        return view('livewire.kegiatan.form');
+        return view('livewire.kegiatan.form')
+            ->title($this->kegiatanId ? ($this->form->nama_kegiatan ?: 'Kegiatan') : 'Kegiatan Baru');
     }
 }

@@ -1,0 +1,19 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Data tiruan (tahap frontend)
+    |--------------------------------------------------------------------------
+    |
+    | Lokasi berkas JSON kegiatan tiruan pada disk "local". Tes E2E memakai berkas
+    | terpisah agar data demo pengembangan tidak tercampur.
+    |
+    */
+
+    'stub' => [
+        'kegiatan_file' => env('STUB_KEGIATAN_FILE', 'stub/kegiatan.json'),
+    ],
+
+];
