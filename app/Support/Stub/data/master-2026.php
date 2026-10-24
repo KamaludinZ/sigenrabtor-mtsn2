@@ -226,4 +226,19 @@ return [
         ['kode' => 'E2', 'uraian' => 'Madrasah menyediakan bantuan biaya bagi guru dan tenaga kependidikan untuk mengikuti kegiatan penguatan kapasitas yang dilaksanakan di luar madrasah'],
         ['kode' => 'E3', 'uraian' => 'Madrasah telah membuat laporan keuangan dan dilaporkan kepada orang tua siswa/masyarakat'],
     ],
+    'komponen_edm' => [
+        'A' => 'Kedisiplinan',
+        'B' => 'Pengembangan Diri',
+        'C' => 'Proses Pembelajaran',
+        'D' => 'Sarana dan Prasarana',
+        'E' => 'Pembiayaan',
+    ],
+    // 5 Budaya Mutu = Nilai Budaya Kerja Kementerian Agama (tidak ada di MASTER 2026.xlsx; diisi admin).
+    'budaya_mutu' => [
+        ['nomor' => 1, 'nama' => 'Integritas'],
+        ['nomor' => 2, 'nama' => 'Profesionalitas'],
+        ['nomor' => 3, 'nama' => 'Inovasi'],
+        ['nomor' => 4, 'nama' => 'Tanggung Jawab'],
+        ['nomor' => 5, 'nama' => 'Keteladanan'],
+    ],
 ];

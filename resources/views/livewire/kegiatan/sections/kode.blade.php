@@ -1,15 +1,15 @@
-@use('App\Support\Stub\StubMaster')
+@use('App\Support\MasterKode')
 @use('App\Livewire\Forms\KegiatanForm')
 
 @php
     // Ringkasan saja: kode & klasifikasi diatur di halaman tersendiri agar tidak ada dua editor untuk data yang sama.
     $ringkas = [
-        'Leading' => ($l = StubMaster::cari(StubMaster::leadings(), $form->leading)) ? $l['kode'].' · '.$l['nama_unit'] : null,
-        'Kode RKTM' => ($r = StubMaster::cari(StubMaster::kodeRktm(), $form->kode_rktm)) ? $r['kode'].' — '.$r['sub_kegiatan'] : null,
+        'Leading' => ($l = MasterKode::cari(MasterKode::leadings(), $form->leading)) ? $l['kode'].' · '.$l['nama_unit'] : null,
+        'Kode RKTM' => ($r = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm)) ? $r['kode'].' — '.$r['sub_kegiatan'] : null,
         'Kode SK' => $form->kode_sk ?: null,
         'Kode IKSK' => $form->kode_iksk ?: null,
         'Kode EDM' => $form->kode_edm ?: null,
-        '5 Budaya Mutu' => ($b = StubMaster::cari(StubMaster::budayaMutu(), $form->budaya_mutu, 'nomor')) ? $b['nomor'].'. '.$b['nama'] : null,
+        '5 Budaya Mutu' => ($b = MasterKode::cari(MasterKode::budayaMutu(), $form->budaya_mutu, 'nomor')) ? $b['nomor'].'. '.$b['nama'] : null,
     ];
 @endphp
 

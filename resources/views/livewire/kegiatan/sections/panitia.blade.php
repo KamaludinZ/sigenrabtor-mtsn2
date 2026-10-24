@@ -1,6 +1,6 @@
 @php
     $madrasahProfil = \App\Support\Stub\StubData::madrasah();
-    $leadingPelaksana = \App\Support\Stub\StubMaster::cari(\App\Support\Stub\StubMaster::leadings(), $form->leading);
+    $leadingPelaksana = \App\Support\MasterKode::cari(\App\Support\MasterKode::leadings(), $form->leading);
 @endphp
 
 <div class="space-y-6"

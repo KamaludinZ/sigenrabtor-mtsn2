@@ -1,18 +1,18 @@
 @use('App\Support\Stub\StubData')
-@use('App\Support\Stub\StubMaster')
+@use('App\Support\MasterKode')
 @use('Illuminate\Support\Str')
 
 @php
     $tahunMaster = $this->tahunAktif['tahun'];
-    $masterTersedia = StubMaster::tersedia();
-    $opsiLeading = StubMaster::leadingsUntuk(StubData::currentUser());
-    $opsiRktm = collect(StubMaster::kodeRktm())->groupBy(fn ($r) => $r['snp'].' — '.$r['kegiatan']);
-    $rktmTerpilih = StubMaster::cari(StubMaster::kodeRktm(), $form->kode_rktm);
-    $skTerpilih = StubMaster::cari(StubMaster::kodeSk(), $form->kode_sk);
-    $opsiIksk = $form->kode_sk ? StubMaster::kodeIksk($form->kode_sk) : [];
-    $ikskTerpilih = StubMaster::cari(StubMaster::kodeIksk(), $form->kode_iksk);
-    $edmTerpilih = StubMaster::cari(StubMaster::kodeEdm(), $form->kode_edm);
-    $leadingTerpilih = StubMaster::cari(StubMaster::leadings(), $form->leading);
+    $masterTersedia = MasterKode::tersedia();
+    $opsiLeading = MasterKode::leadingsUntuk(StubData::currentUser());
+    $opsiRktm = collect(MasterKode::kodeRktm())->groupBy(fn ($r) => $r['snp'].' — '.$r['kegiatan']);
+    $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
+    $skTerpilih = MasterKode::cari(MasterKode::kodeSk(), $form->kode_sk);
+    $opsiIksk = $form->kode_sk ? MasterKode::kodeIksk($form->kode_sk) : [];
+    $ikskTerpilih = MasterKode::cari(MasterKode::kodeIksk(), $form->kode_iksk);
+    $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm(), $form->kode_edm);
+    $leadingTerpilih = MasterKode::cari(MasterKode::leadings(), $form->leading);
     $bisaUbah = $this->dapatDiedit();
 @endphp
 
@@ -123,7 +123,7 @@
                     <x-ui.field label="Kode SK" for="kode_sk" error="form.kode_sk" :hint="$skTerpilih['uraian'] ?? null">
                         <select id="kode_sk" wire:model.live="form.kode_sk" class="form-input" @disabled(! $masterTersedia)>
                             <option value="">— Pilih kode SK —</option>
-                            @foreach (StubMaster::kodeSk() as $opsi)
+                            @foreach (MasterKode::kodeSk() as $opsi)
                                 <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} — {{ Str::limit($opsi['uraian'], 60) }}</option>
                             @endforeach
                         </select>
@@ -147,7 +147,7 @@
                 <x-ui.field label="Kode EDM" for="kode_edm" error="form.kode_edm" :hint="$edmTerpilih['uraian'] ?? null">
                     <select id="kode_edm" wire:model.live="form.kode_edm" class="form-input" @disabled(! $masterTersedia)>
                         <option value="">— Pilih kode EDM —</option>
-                        @foreach (StubMaster::kodeEdm() as $opsi)
+                        @foreach (MasterKode::kodeEdm() as $opsi)
                             <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} — {{ Str::limit($opsi['uraian'], 90) }}</option>
                         @endforeach
                     </select>
@@ -159,7 +159,7 @@
                                description="Nilai budaya kerja yang paling diperkuat oleh kegiatan."
                                :kelengkapan="$this->kelengkapan['budaya']">
                 <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="5 Budaya Mutu">
-                    @foreach (StubMaster::budayaMutu() as $butir)
+                    @foreach (MasterKode::budayaMutu() as $butir)
                         <label @class([
                                 'cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition has-focus-visible:outline-2 has-focus-visible:outline-brand-600',
                                 'bg-brand-700 text-white ring-brand-700' => (int) $form->budaya_mutu === $butir['nomor'],

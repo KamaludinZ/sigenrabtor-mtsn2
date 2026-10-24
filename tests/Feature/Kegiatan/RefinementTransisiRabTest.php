@@ -5,7 +5,7 @@ namespace Tests\Feature\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Livewire\Kegiatan\Form;
 use App\Support\Format;
-use App\Support\Stub\StubMaster;
+use App\Support\MasterKode;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -21,10 +21,10 @@ class RefinementTransisiRabTest extends TestCase
 
     public function test_master_kode_dibaca_per_tahun_anggaran(): void
     {
-        $this->assertTrue(StubMaster::tersedia(2026));
-        $this->assertFalse(StubMaster::tersedia(2027), 'Tahun tanpa unggahan master harus kosong.');
-        $this->assertNotEmpty(StubMaster::kodeIksk('SK.10'));
-        $this->assertSame(['SK.10'], array_values(array_unique(array_column(StubMaster::kodeIksk('SK.10'), 'kode_sk'))));
+        $this->assertTrue(MasterKode::tersedia(2026));
+        $this->assertFalse(MasterKode::tersedia(2027), 'Tahun tanpa unggahan master harus kosong.');
+        $this->assertNotEmpty(MasterKode::kodeIksk('SK.10'));
+        $this->assertSame(['SK.10'], array_values(array_unique(array_column(MasterKode::kodeIksk('SK.10'), 'kode_sk'))));
     }
 
     public function test_leading_baru_otomatis_terisi_untuk_akun_satu_leading(): void

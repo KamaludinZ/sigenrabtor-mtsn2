@@ -5,8 +5,8 @@ namespace App\Livewire\Forms;
 use App\Rules\KalimatUtuh;
 use App\Support\Format;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\MasterKode;
 use App\Support\Stub\StubData;
-use App\Support\Stub\StubMaster;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -134,12 +134,12 @@ class KegiatanForm extends Form
             'hari_kerja' => ['boolean'],
             'bulan_pelaksanaan' => ['array', 'max:12', $this->aturanBulanMencakupTanggal()],
             'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
-            'leading' => ['nullable', Rule::in(array_column(StubMaster::leadingsUntuk(StubData::currentUser()), 'kode'))],
-            'kode_rktm' => ['nullable', Rule::in(array_column(StubMaster::kodeRktm(), 'kode'))],
-            'kode_sk' => ['nullable', Rule::in(array_column(StubMaster::kodeSk(), 'kode'))],
-            'kode_iksk' => ['nullable', Rule::in(array_column(StubMaster::kodeIksk(), 'kode')), $this->aturanIkskSesuaiSk()],
-            'kode_edm' => ['nullable', Rule::in(array_column(StubMaster::kodeEdm(), 'kode'))],
-            'budaya_mutu' => ['nullable', Rule::in(array_column(StubMaster::budayaMutu(), 'nomor'))],
+            'leading' => ['nullable', Rule::in(array_column(MasterKode::leadingsUntuk(StubData::currentUser()), 'kode'))],
+            'kode_rktm' => ['nullable', Rule::in(array_column(MasterKode::kodeRktm(), 'kode'))],
+            'kode_sk' => ['nullable', Rule::in(array_column(MasterKode::kodeSk(), 'kode'))],
+            'kode_iksk' => ['nullable', Rule::in(array_column(MasterKode::kodeIksk(), 'kode')), $this->aturanIkskSesuaiSk()],
+            'kode_edm' => ['nullable', Rule::in(array_column(MasterKode::kodeEdm(), 'kode'))],
+            'budaya_mutu' => ['nullable', Rule::in(array_column(MasterKode::budayaMutu(), 'nomor'))],
             'tempat' => ['nullable', 'string', 'max:255'],
             'peserta_jumlah' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'peserta_jenis' => ['nullable', 'string', 'max:150'],
@@ -600,7 +600,7 @@ class KegiatanForm extends Form
             return;
         }
 
-        $iksk = StubMaster::cari(StubMaster::kodeIksk(), $this->kode_iksk);
+        $iksk = MasterKode::cari(MasterKode::kodeIksk(), $this->kode_iksk);
 
         if ($iksk === null || $iksk['kode_sk'] !== $this->kode_sk) {
             $this->kode_iksk = '';
@@ -679,7 +679,7 @@ class KegiatanForm extends Form
                 return;
             }
 
-            $iksk = StubMaster::cari(StubMaster::kodeIksk(), $value);
+            $iksk = MasterKode::cari(MasterKode::kodeIksk(), $value);
 
             if ($iksk !== null && $iksk['kode_sk'] !== $this->kode_sk) {
                 $fail("{$value} bukan indikator dari {$this->kode_sk}.");

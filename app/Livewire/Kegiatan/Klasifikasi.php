@@ -5,8 +5,8 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\MasterKode;
 use App\Support\Stub\StubData;
-use App\Support\Stub\StubMaster;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -83,12 +83,12 @@ class Klasifikasi extends Component
     #[Computed]
     public function pratinjauHeader(): array
     {
-        $leading = StubMaster::cari(StubMaster::leadings(), $this->form->leading);
-        $rktm = StubMaster::cari(StubMaster::kodeRktm(), $this->form->kode_rktm);
-        $sk = StubMaster::cari(StubMaster::kodeSk(), $this->form->kode_sk);
-        $iksk = StubMaster::cari(StubMaster::kodeIksk(), $this->form->kode_iksk);
-        $edm = StubMaster::cari(StubMaster::kodeEdm(), $this->form->kode_edm);
-        $budaya = StubMaster::cari(StubMaster::budayaMutu(), $this->form->budaya_mutu, 'nomor');
+        $leading = MasterKode::cari(MasterKode::leadings(), $this->form->leading);
+        $rktm = MasterKode::cari(MasterKode::kodeRktm(), $this->form->kode_rktm);
+        $sk = MasterKode::cari(MasterKode::kodeSk(), $this->form->kode_sk);
+        $iksk = MasterKode::cari(MasterKode::kodeIksk(), $this->form->kode_iksk);
+        $edm = MasterKode::cari(MasterKode::kodeEdm(), $this->form->kode_edm);
+        $budaya = MasterKode::cari(MasterKode::budayaMutu(), $this->form->budaya_mutu, 'nomor');
 
         return [
             'leading' => ['label' => 'Leading sektor', 'nilai' => $leading['nama_unit'] ?? null, 'detail' => $leading['jabatan_penanda_tangan'] ?? null],

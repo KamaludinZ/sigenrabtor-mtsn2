@@ -7,10 +7,10 @@ use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
+use App\Support\MasterKode;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Stub\StubData;
-use App\Support\Stub\StubMaster;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -62,7 +62,7 @@ class Form extends Component
     {
         if ($kegiatan === null) {
             // Akun leading dengan satu leading langsung terisi leading-nya.
-            $pilihan = StubMaster::leadingsUntuk(StubData::currentUser());
+            $pilihan = MasterKode::leadingsUntuk(StubData::currentUser());
             $this->form->leading = count($pilihan) === 1 ? $pilihan[0]['kode'] : '';
 
             return;
@@ -365,7 +365,7 @@ class Form extends Component
     public function pakaiNamaDariRktm(): void
     {
         $this->pastikanDapatDiedit();
-        $rktm = StubMaster::cari(StubMaster::kodeRktm(), $this->form->kode_rktm);
+        $rktm = MasterKode::cari(MasterKode::kodeRktm(), $this->form->kode_rktm);
 
         if ($rktm === null) {
             return;

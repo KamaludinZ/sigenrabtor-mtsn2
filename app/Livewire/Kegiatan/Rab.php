@@ -7,12 +7,12 @@ use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Format;
+use App\Support\MasterKode;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
 use App\Support\Rab\RekapKelompok;
 use App\Support\Stub\StubData;
-use App\Support\Stub\StubMaster;
 use Illuminate\Support\Arr;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -353,7 +353,7 @@ class Rab extends Component
     #[Computed]
     public function header(): array
     {
-        $leading = StubMaster::cari(StubMaster::leadings(), $this->dataKegiatan['leading'] ?? null);
+        $leading = MasterKode::cari(MasterKode::leadings(), $this->dataKegiatan['leading'] ?? null);
 
         return [
             'leading' => $leading['nama_unit'] ?? '—',
