@@ -99,6 +99,13 @@
                         @endif
                     </header>
 
+                    @if ($itemTerhapus && $itemTerhapus['sumber'] === $sumber)
+                        <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2.5 text-sm text-white sm:px-6" role="status">
+                            <span class="min-w-0 truncate">“{{ $itemTerhapus['item']['uraian'] }}” dihapus dari RAB {{ $sumber }}.</span>
+                            <button type="button" wire:click="urungkanHapusItem" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                        </div>
+                    @endif
+
                     @if ($this->rincian === [])
                         <div class="px-6 py-10 text-center">
                             <x-ui.icon name="coins" class="mx-auto size-8 text-stone-300" />

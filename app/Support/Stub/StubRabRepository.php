@@ -29,6 +29,59 @@ class StubRabRepository implements RabRepository
         return $id;
     }
 
+    public function ubahItem(int $kegiatanId, string $sumber, string $id, array $item): bool
+    {
+        $semua = $this->baca();
+        $index = $this->indeks($semua[$kegiatanId][$sumber] ?? [], $id);
+
+        if ($index === null) {
+            return false;
+        }
+
+        $semua[$kegiatanId][$sumber][$index] = ['id' => $id] + $item;
+        $this->tulis($semua);
+
+        return true;
+    }
+
+    public function hapusItem(int $kegiatanId, string $sumber, string $id): ?array
+    {
+        $semua = $this->baca();
+        $daftar = $semua[$kegiatanId][$sumber] ?? [];
+        $index = $this->indeks($daftar, $id);
+
+        if ($index === null) {
+            return null;
+        }
+
+        $item = $daftar[$index];
+        array_splice($daftar, $index, 1);
+        $semua[$kegiatanId][$sumber] = $daftar;
+        $this->tulis($semua);
+
+        return ['index' => $index, 'item' => $item];
+    }
+
+    public function sisipkanItem(int $kegiatanId, string $sumber, int $index, array $item): void
+    {
+        $semua = $this->baca();
+        $daftar = $semua[$kegiatanId][$sumber] ?? [];
+
+        array_splice($daftar, max(0, min($index, count($daftar))), 0, [$item]);
+        $semua[$kegiatanId][$sumber] = $daftar;
+        $this->tulis($semua);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $daftar
+     */
+    private function indeks(array $daftar, string $id): ?int
+    {
+        $index = array_search($id, array_column($daftar, 'id'), true);
+
+        return $index === false ? null : $index;
+    }
+
     /**
      * @return array<int|string, array<string, list<array<string, mixed>>>>
      */

@@ -41,6 +41,14 @@ class Rab extends Component
 
     public bool $formItemTerbuka = false;
 
+    /** Id item yang sedang diubah; null = form dalam mode tambah. */
+    #[Locked]
+    public ?string $itemDiedit = null;
+
+    /** @var array{index: int, item: array<string, mixed>, sumber: string}|null Item terakhir dihapus (untuk "Urungkan"). */
+    #[Locked]
+    public ?array $itemTerhapus = null;
+
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
         $this->dataKegiatan = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
@@ -57,6 +65,7 @@ class Rab extends Component
     {
         if (in_array($sumber, $this->daftarSumber(), true)) {
             $this->sumber = $sumber;
+            $this->itemTerhapus = null;
             $this->tutupFormItem();
         }
     }
@@ -69,6 +78,7 @@ class Rab extends Component
     public function bukaFormItem(): void
     {
         $this->pastikanDapatDiedit();
+        $this->tutupFormItem();
         $this->formItemTerbuka = true;
         $this->dispatch('form-item-dibuka');
     }
@@ -78,6 +88,63 @@ class Rab extends Component
         $this->item->kosongkan();
         $this->resetValidation();
         $this->formItemTerbuka = false;
+        $this->itemDiedit = null;
+    }
+
+    /**
+     * Buka form dalam mode ubah untuk item tertentu.
+     */
+    public function ubahItem(string $id): void
+    {
+        $this->pastikanDapatDiedit();
+        $item = collect($this->rincian)->firstWhere('id', $id);
+
+        if ($item === null) {
+            $this->dispatch('notify', message: 'Item tidak ditemukan; mungkin sudah dihapus.', type: 'error');
+
+            return;
+        }
+
+        $this->tutupFormItem();
+        $this->item->isiDari($item);
+        $this->itemDiedit = $id;
+        $this->formItemTerbuka = true;
+        $this->dispatch('form-item-dibuka');
+    }
+
+    public function hapusItem(string $id): void
+    {
+        $this->pastikanDapatDiedit();
+        $terhapus = app(RabRepository::class)->hapusItem($this->kegiatanId, $this->sumber, $id);
+
+        if ($terhapus === null) {
+            return;
+        }
+
+        if ($this->itemDiedit === $id) {
+            $this->tutupFormItem();
+        }
+
+        $this->itemTerhapus = $terhapus + ['sumber' => $this->sumber];
+        $this->segarkanRincian();
+    }
+
+    public function urungkanHapusItem(): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if ($this->itemTerhapus === null || $this->itemTerhapus['sumber'] !== $this->sumber) {
+            return;
+        }
+
+        app(RabRepository::class)->sisipkanItem($this->kegiatanId, $this->sumber, $this->itemTerhapus['index'], $this->itemTerhapus['item']);
+        $this->itemTerhapus = null;
+        $this->segarkanRincian();
+    }
+
+    private function segarkanRincian(): void
+    {
+        unset($this->rincian, $this->total, $this->kelompokRincian);
     }
 
     public function updated(string $property): void
@@ -111,13 +178,26 @@ class Rab extends Component
         $this->item->validate();
 
         $data = $this->item->dataItem();
-        app(RabRepository::class)->tambahItem($this->kegiatanId, $this->sumber, $data);
-        unset($this->rincian, $this->total, $this->kelompokRincian);
+        $jumlah = Format::rupiah((int) round($data['volume'] * $data['harga_satuan']));
+        $repo = app(RabRepository::class);
+        $this->itemTerhapus = null;
+
+        if ($this->itemDiedit !== null) {
+            $repo->ubahItem($this->kegiatanId, $this->sumber, $this->itemDiedit, $data);
+            $this->tutupFormItem();
+            $this->segarkanRincian();
+            $this->dispatch('notify', message: "Item diperbarui: {$data['uraian']} ({$jumlah}).");
+
+            return;
+        }
+
+        $repo->tambahItem($this->kegiatanId, $this->sumber, $data);
+        $this->segarkanRincian();
 
         $this->item->kosongkan();
         $this->formItemTerbuka = $lanjut;
 
-        $this->dispatch('notify', message: "Item ditambahkan: {$data['uraian']} (".Format::rupiah((int) round($data['volume'] * $data['harga_satuan'])).').');
+        $this->dispatch('notify', message: "Item ditambahkan: {$data['uraian']} ({$jumlah}).");
 
         if ($lanjut) {
             $this->dispatch('form-item-dibuka');

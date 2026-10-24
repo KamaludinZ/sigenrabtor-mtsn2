@@ -110,13 +110,27 @@ class ItemBelanjaForm extends Form
     }
 
     /**
-     * "1,5" / "1.5" / "6" → angka; null bila bukan angka.
+     * Baca volume format Indonesia: "1,5" → 1.5, "1.000" → 1000, "1.250,5" → 1250.5, "6" → 6; null bila bukan angka.
      */
     public static function angkaVolume(string $teks): ?float
     {
-        $teks = str_replace(',', '.', trim($teks));
+        $teks = str_replace(' ', '', trim($teks));
+
+        if (str_contains($teks, ',')) {
+            $teks = str_replace(['.', ','], ['', '.'], $teks);
+        } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $teks)) {
+            $teks = str_replace('.', '', $teks);
+        }
 
         return is_numeric($teks) ? (float) $teks : null;
+    }
+
+    /**
+     * Volume untuk diisi ulang ke input: tanpa pemisah ribuan, pecahan memakai koma (1.5 → "1,5").
+     */
+    public static function teksVolume(int|float $volume): string
+    {
+        return str_replace('.', ',', (string) ($volume + 0));
     }
 
     /**
@@ -171,6 +185,22 @@ class ItemBelanjaForm extends Form
             'satuan' => trim($this->satuan),
             'harga_satuan' => (int) Format::parseRupiah($this->harga_satuan),
         ];
+    }
+
+    /**
+     * Isi form dari item tersimpan (untuk diubah). Kategori dianggap pilihan manual agar tidak ditebak ulang.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    public function isiDari(array $item): void
+    {
+        $this->uraian = (string) ($item['uraian'] ?? '');
+        $this->kategori = (string) ($item['kategori'] ?? '');
+        $this->kategori_manual = $this->kategori !== '';
+        $this->kode = (string) ($item['kode'] ?? '');
+        $this->volume = isset($item['volume']) ? self::teksVolume($item['volume']) : '';
+        $this->satuan = (string) ($item['satuan'] ?? '');
+        $this->harga_satuan = isset($item['harga_satuan']) ? Format::angka((int) $item['harga_satuan']) : '';
     }
 
     public function kosongkan(): void

@@ -5,7 +5,9 @@
       class="border-t border-stone-100 bg-stone-50/70 px-5 py-5 sm:px-6"
       x-data="{
           get jumlah() {
-              const v = parseFloat(String($wire.item.volume ?? '').replace(',', '.'));
+              let t = String($wire.item.volume ?? '').replace(/\s/g, '');
+              t = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t);
+              const v = parseFloat(t);
               const h = parseInt(String($wire.item.harga_satuan ?? '').replace(/\D/g, ''), 10);
               return (v > 0 && h > 0) ? Math.round(v * h) : null;
           },
@@ -13,7 +15,13 @@
       x-on:form-item-dibuka.window="$nextTick(() => $refs.uraian?.focus())"
       x-on:keydown.escape="$wire.tutupFormItem()">
     <div class="flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold text-stone-800">Item belanja baru · RAB {{ $sumber }}</h3>
+        <h3 class="text-sm font-semibold text-stone-800">
+            @if ($itemDiedit)
+                Ubah item no. {{ collect($this->kelompokRincian)->pluck('item')->flatten(1)->firstWhere('id', $itemDiedit)['nomor'] ?? '' }} · RAB {{ $sumber }}
+            @else
+                Item belanja baru · RAB {{ $sumber }}
+            @endif
+        </h3>
         <button type="button" wire:click="tutupFormItem" class="rounded-md p-1 text-stone-400 hover:bg-stone-200 hover:text-stone-700" aria-label="Tutup form item">
             <x-ui.icon name="x" class="size-4" />
         </button>
@@ -88,12 +96,19 @@
 
     <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button type="button" wire:click="tutupFormItem" class="btn-ghost">Batal</button>
-        <button type="button" wire:click="simpanItem(true)" wire:loading.attr="disabled" wire:target="simpanItem" class="btn-secondary">
-            Simpan &amp; tambah lagi
-        </button>
-        <button type="submit" wire:loading.attr="disabled" wire:target="simpanItem" class="btn-primary">
-            <x-ui.icon name="plus" class="size-4" />
-            Simpan item
-        </button>
+        @if ($itemDiedit)
+            <button type="submit" wire:loading.attr="disabled" wire:target="simpanItem" class="btn-primary">
+                <x-ui.icon name="save" class="size-4" />
+                Simpan perubahan
+            </button>
+        @else
+            <button type="button" wire:click="simpanItem(true)" wire:loading.attr="disabled" wire:target="simpanItem" class="btn-secondary">
+                Simpan &amp; tambah lagi
+            </button>
+            <button type="submit" wire:loading.attr="disabled" wire:target="simpanItem" class="btn-primary">
+                <x-ui.icon name="plus" class="size-4" />
+                Simpan item
+            </button>
+        @endif
     </div>
 </form>

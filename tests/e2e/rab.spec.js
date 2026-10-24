@@ -83,3 +83,43 @@ test.describe('Daftar item dengan subtotal', () => {
         await expect(page.getByRole('button', { name: 'Per kode akun' })).toHaveAttribute('aria-pressed', 'true');
     });
 });
+
+test.describe('Ubah & hapus item belanja', () => {
+    test('ubah volume item, hapus item lalu urungkan', async ({ page }, testInfo) => {
+        // Buat kegiatan sendiri agar tidak mengubah data contoh yang dipakai tes lain.
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Ubah ${testInfo.project.name}`);
+        await page.getByTestId('sumber-komite').getByRole('checkbox').check();
+        await expect(page.locator('#pagu_komite')).toBeEnabled();
+        await page.locator('#pagu_komite').pressSequentially('5000000');
+        await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+        await expect(page).toHaveURL(/\/rab/);
+
+        for (const [uraian, volume, harga] of [['Snack Peserta', '20', '10000'], ['Spanduk kegiatan', '1', '150000']]) {
+            await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+            await page.locator('#item_uraian').fill(uraian);
+            await page.locator('#item_volume').fill(volume);
+            await page.locator('#item_satuan').fill('buah');
+            await page.locator('#item_harga_satuan').pressSequentially(harga);
+            await page.getByRole('button', { name: 'Simpan item' }).click();
+            await expect(page.getByText(`Item ditambahkan: ${uraian}`)).toBeVisible();
+        }
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp350.000');
+
+        await page.getByRole('button', { name: 'Ubah item 1' }).click();
+        await expect(page.locator('#item_volume')).toHaveValue('20');
+        await page.locator('#item_volume').fill('1.000');
+        await expect(page.getByTestId('jumlah-item')).toHaveText('Rp10.000.000');
+        await page.locator('#item_volume').fill('25');
+        await page.getByRole('button', { name: 'Simpan perubahan' }).click();
+        await expect(page.getByText('Item diperbarui: Snack Peserta (Rp250.000).')).toBeVisible();
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp400.000');
+
+        await page.getByRole('button', { name: 'Hapus item 2' }).click();
+        await expect(page.getByText('“Spanduk kegiatan” dihapus dari RAB Komite.')).toBeVisible();
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp250.000');
+        await page.screenshot({ path: `storage/playwright/shots/hapus-urungkan-${testInfo.project.name}.png` });
+        await page.getByRole('button', { name: 'Urungkan' }).click();
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Rp400.000');
+    });
+});
