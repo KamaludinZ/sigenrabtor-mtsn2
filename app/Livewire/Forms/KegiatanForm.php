@@ -616,6 +616,26 @@ class KegiatanForm extends Form
     }
 
     /**
+     * Bila SK terpilih hanya memiliki satu IKSK dan IKSK masih kosong, pilih IKSK itu. Mengembalikan true bila terisi.
+     */
+    public function pilihIkskTunggal(): bool
+    {
+        if ($this->kode_sk === '' || $this->kode_iksk !== '') {
+            return false;
+        }
+
+        $opsi = MasterKode::kodeIksk($this->kode_sk);
+
+        if (count($opsi) !== 1) {
+            return false;
+        }
+
+        $this->kode_iksk = $opsi[0]['kode'];
+
+        return true;
+    }
+
+    /**
      * Status kelengkapan tiap bagian form: lengkap, sebagian, kosong, atau opsional.
      *
      * @return array<string, string>

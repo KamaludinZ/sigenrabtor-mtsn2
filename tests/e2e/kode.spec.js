@@ -65,4 +65,24 @@ test.describe('Kode & Klasifikasi', () => {
         const luber = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(luber).toBeLessThanOrEqual(0);
     });
+
+    test('IKSK terfilter: mengikuti SK dan terpilih otomatis bila hanya satu', async ({ page }) => {
+        await page.goto('/kegiatan/1/kode');
+        await expect(page.locator('#kode_iksk')).toContainText('IKSK 10.6');
+
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.12');
+        await page.locator('#kode_sk-cari').press('Enter');
+        await expect(page.getByText('IKSK IKSK 12.1 dipilih otomatis')).toBeVisible();
+        await expect(page.locator('#kode_iksk')).toContainText('IKSK 12.1');
+
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.9');
+        await page.locator('#kode_sk-cari').press('Enter');
+        await expect(page.locator('#kode_iksk')).toContainText('Pilih kode IKSK');
+        await page.locator('#kode_iksk').click();
+        await expect(page.locator('#kode_iksk-daftar [role=option]')).toHaveCount(4);
+
+        await page.reload();
+    });
 });

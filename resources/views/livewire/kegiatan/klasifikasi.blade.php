@@ -9,6 +9,7 @@
     $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
     $skTerpilih = MasterKode::cari(MasterKode::kodeSk(), $form->kode_sk);
     $opsiIksk = $form->kode_sk ? MasterKode::kodeIksk($form->kode_sk) : [];
+    $opsiIkskCari = array_map(fn ($i) => ['nilai' => $i['kode'], 'label' => $i['uraian'], 'keterangan' => null, 'grup' => null], $opsiIksk);
     $ikskTerpilih = MasterKode::cari(MasterKode::kodeIksk(), $form->kode_iksk);
     $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm(), $form->kode_edm);
     $leadingTerpilih = MasterKode::cari(MasterKode::leadings(), $form->leading);
@@ -122,13 +123,12 @@
                         @endif
                     </x-ui.field>
                     <x-ui.field label="Kode IKSK" for="kode_iksk" error="form.kode_iksk"
-                                :hint="$ikskTerpilih['uraian'] ?? ($form->kode_sk ? count($opsiIksk).' indikator di bawah '.$form->kode_sk.'.' : 'Pilih kode SK lebih dulu.')">
-                        <select id="kode_iksk" wire:model.live="form.kode_iksk" class="form-input" @disabled(! $masterTersedia || ! $form->kode_sk)>
-                            <option value="">— Pilih kode IKSK —</option>
-                            @foreach ($opsiIksk as $opsi)
-                                <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} — {{ Str::limit($opsi['uraian'], 60) }}</option>
-                            @endforeach
-                        </select>
+                                :hint="$form->kode_sk ? count($opsiIksk).' indikator di bawah '.$form->kode_sk.'.' : 'Pilih kode SK lebih dulu; daftar IKSK menyesuaikan SK.'">
+                        <x-ui.pilih-cari id="kode_iksk" model="form.kode_iksk" :opsi="$opsiIkskCari" :disabled="! $masterTersedia || ! $form->kode_sk || ! $bisaUbah"
+                                         :placeholder="$form->kode_sk ? '— Pilih kode IKSK —' : '— Pilih SK dulu —'" cari-placeholder="Cari indikator…" />
+                        @if ($ikskTerpilih)
+                            <p class="mt-1.5 text-xs leading-relaxed text-stone-600" data-testid="uraian-iksk">{{ $ikskTerpilih['uraian'] }}</p>
+                        @endif
                     </x-ui.field>
                 </div>
             </x-ui.form-section>

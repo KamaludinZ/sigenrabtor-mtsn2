@@ -39,7 +39,10 @@ test.describe('Kelengkapan data & transisi ke RAB', () => {
         await page.locator('#kode_sk-cari').fill('SK.10');
         await page.locator('#kode_sk-cari').press('Enter');
         await expect(page.locator('#kode_iksk')).toBeEnabled();
-        await page.locator('#kode_iksk').selectOption('IKSK 10.6');
+        await page.locator('#kode_iksk').click();
+        await page.locator('#kode_iksk-cari').fill('10.6');
+        await page.locator('#kode_iksk-cari').press('Enter');
+        await expect(page.getByTestId('uraian-iksk')).toContainText('perangkat kurikulum');
         await page.locator('#kode_edm').click();
         await page.locator('#kode_edm-cari').fill('C1');
         await page.locator('#kode_edm-cari').press('Enter');
