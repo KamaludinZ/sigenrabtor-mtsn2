@@ -11,10 +11,14 @@ use Throwable;
 class Format
 {
     /**
-     * 10000000 → "10.000.000" (pemisah ribuan titik).
+     * 10000000 → "10.000.000" (pemisah ribuan titik); pecahan memakai koma, mis. 1.5 → "1,5".
      */
     public static function angka(int|float $nilai): string
     {
+        if (is_float($nilai) && floor($nilai) != $nilai) {
+            return rtrim(rtrim(number_format($nilai, 2, ',', '.'), '0'), ',');
+        }
+
         return number_format($nilai, 0, ',', '.');
     }
 

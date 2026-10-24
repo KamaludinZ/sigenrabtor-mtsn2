@@ -1,5 +1,5 @@
 @use('App\Support\Format')
-@use('App\Support\Stub\StubRab')
+@use('App\Livewire\Forms\ItemBelanjaForm')
 
 @php
     $pagu = $this->pagu();
@@ -91,6 +91,12 @@
                             <h2 class="text-base font-semibold text-stone-900">Rincian belanja</h2>
                             <p class="text-sm text-stone-500">{{ count($this->rincian) }} baris · jumlah = volume × harga satuan</p>
                         </div>
+                        @if ($this->dapatDiedit() && ! $formItemTerbuka)
+                            <button type="button" wire:click="bukaFormItem" class="btn-secondary shrink-0">
+                                <x-ui.icon name="plus" class="size-4" />
+                                <span class="hidden sm:inline">Tambah item</span>
+                            </button>
+                        @endif
                     </header>
 
                     @if ($this->rincian === [])
@@ -115,18 +121,18 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-stone-100">
-                                    @foreach ($this->rincian as $item)
+                                    @foreach ($this->rincian as $baris)
                                         <tr class="align-top hover:bg-stone-50/60">
                                             <td class="px-4 py-2.5 text-stone-500 tabular-nums">{{ $loop->iteration }}.</td>
-                                            <td class="px-2 py-2.5 font-mono text-xs text-stone-500">{{ $item['kode'] }}</td>
+                                            <td class="px-2 py-2.5 font-mono text-xs text-stone-500">{{ $baris['kode'] }}</td>
                                             <td class="px-2 py-2.5 text-stone-800">
-                                                {{ $item['uraian'] }}
-                                                <span class="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500 uppercase">{{ StubRab::KATEGORI[$item['kategori']] ?? $item['kategori'] }}</span>
+                                                {{ $baris['uraian'] }}
+                                                <span class="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500 uppercase">{{ ItemBelanjaForm::LABEL_KATEGORI[$baris['kategori']] ?? $baris['kategori'] }}</span>
                                             </td>
-                                            <td class="px-2 py-2.5 text-right tabular-nums">{{ Format::angka($item['volume']) }}</td>
-                                            <td class="px-2 py-2.5 text-stone-600">{{ $item['satuan'] }}</td>
-                                            <td class="px-2 py-2.5 text-right tabular-nums">{{ Format::angka($item['harga_satuan']) }}</td>
-                                            <td class="px-4 py-2.5 text-right font-medium tabular-nums">{{ Format::angka($item['jumlah']) }}</td>
+                                            <td class="px-2 py-2.5 text-right tabular-nums">{{ Format::angka($baris['volume']) }}</td>
+                                            <td class="px-2 py-2.5 text-stone-600">{{ $baris['satuan'] }}</td>
+                                            <td class="px-2 py-2.5 text-right tabular-nums">{{ Format::angka($baris['harga_satuan']) }}</td>
+                                            <td class="px-4 py-2.5 text-right font-medium tabular-nums">{{ Format::angka($baris['jumlah']) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -141,14 +147,14 @@
 
                         {{-- Kartu (layar kecil) --}}
                         <ol class="divide-y divide-stone-100 sm:hidden">
-                            @foreach ($this->rincian as $item)
+                            @foreach ($this->rincian as $baris)
                                 <li class="px-5 py-3">
                                     <div class="flex items-start justify-between gap-3">
-                                        <p class="min-w-0 text-sm text-stone-800"><span class="text-stone-400">{{ $loop->iteration }}.</span> {{ $item['uraian'] }}</p>
-                                        <p class="shrink-0 text-sm font-semibold tabular-nums">{{ Format::angka($item['jumlah']) }}</p>
+                                        <p class="min-w-0 text-sm text-stone-800"><span class="text-stone-400">{{ $loop->iteration }}.</span> {{ $baris['uraian'] }}</p>
+                                        <p class="shrink-0 text-sm font-semibold tabular-nums">{{ Format::angka($baris['jumlah']) }}</p>
                                     </div>
                                     <p class="mt-0.5 text-xs text-stone-500 tabular-nums">
-                                        {{ Format::angka($item['volume']) }} {{ $item['satuan'] }} × {{ Format::rupiah($item['harga_satuan']) }} · {{ $item['kode'] }}
+                                        {{ Format::angka($baris['volume']) }} {{ $baris['satuan'] }} × {{ Format::rupiah($baris['harga_satuan']) }} · {{ $baris['kode'] }}
                                     </p>
                                 </li>
                             @endforeach
@@ -157,6 +163,25 @@
                                 <span class="text-base font-bold tabular-nums">{{ Format::rupiah($this->total) }}</span>
                             </li>
                         </ol>
+                    @endif
+
+                    @if ($this->dapatDiedit())
+                        @if ($formItemTerbuka)
+                            @include('livewire.kegiatan.partials.form-item-belanja')
+                        @else
+                            <div class="border-t border-stone-100 px-5 py-4 sm:px-6">
+                                <button type="button" wire:click="bukaFormItem"
+                                        class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-stone-300 py-2.5 text-sm font-medium text-stone-600 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-800">
+                                    <x-ui.icon name="plus" class="size-4" />
+                                    Tambah item belanja
+                                </button>
+                            </div>
+                        @endif
+                    @else
+                        <p class="flex items-center gap-2 border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">
+                            <x-ui.icon name="lock" class="size-3.5" />
+                            RAB terkunci karena kegiatan berstatus {{ $this->status()->label() }}.
+                        </p>
                     @endif
                 </section>
             </div>
@@ -185,7 +210,7 @@
                         <div class="mt-4 border-t border-stone-100 pt-3">
                             <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Per kelompok belanja</p>
                             <dl class="mt-2 space-y-1 text-sm">
-                                @foreach (StubRab::KATEGORI as $kunci => $label)
+                                @foreach (ItemBelanjaForm::LABEL_KATEGORI as $kunci => $label)
                                     <div class="flex justify-between">
                                         <dt class="text-stone-500">{{ $label }}</dt>
                                         <dd class="tabular-nums">{{ Format::rupiah($perKategori[$kunci] ?? 0) }}</dd>

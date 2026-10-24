@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\RabRepository;
 use App\Support\Stub\StubKegiatanRepository;
+use App\Support\Stub\StubRabRepository;
 use App\View\Composers\AppLayoutComposer;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -17,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Tahap frontend: data kegiatan tiruan (berkas JSON). Backend mengganti binding ini ke Eloquent.
         $this->app->singleton(KegiatanRepository::class, StubKegiatanRepository::class);
+        $this->app->singleton(RabRepository::class, StubRabRepository::class);
     }
 
     /**

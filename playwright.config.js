@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export const E2E_STUB_FILE = 'stub/kegiatan-e2e.json';
+export const E2E_RAB_FILE = 'stub/rab-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -8,7 +9,10 @@ export default defineConfig({
     outputDir: './storage/playwright/results',
     fullyParallel: false,
     workers: 1,
-    retries: 0,
+    // Server PHP bawaan di Windows hanya satu proses; beri ruang waktu & satu kali ulang (tercatat sebagai "flaky").
+    retries: 1,
+    timeout: 60_000,
+    expect: { timeout: 15_000 },
     reporter: [['list']],
     use: {
         baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:8010',
@@ -30,6 +34,6 @@ export default defineConfig({
         url: 'http://127.0.0.1:8010/kegiatan/buat',
         reuseExistingServer: true,
         timeout: 60_000,
-        env: { STUB_KEGIATAN_FILE: E2E_STUB_FILE },
+        env: { STUB_KEGIATAN_FILE: E2E_STUB_FILE, STUB_RAB_FILE: E2E_RAB_FILE },
     },
 });

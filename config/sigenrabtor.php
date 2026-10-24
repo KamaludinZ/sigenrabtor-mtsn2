@@ -14,6 +14,7 @@ return [
 
     'stub' => [
         'kegiatan_file' => env('STUB_KEGIATAN_FILE', 'stub/kegiatan.json'),
+        'rab_file' => env('STUB_RAB_FILE', 'stub/rab.json'),
     ],
 
 ];

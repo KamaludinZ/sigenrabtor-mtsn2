@@ -9,12 +9,6 @@ namespace App\Support\Stub;
  */
 class StubRab
 {
-    public const KATEGORI = [
-        'bahan' => 'Bahan',
-        'jasa' => 'Jasa',
-        'lain' => 'Lain-lain',
-    ];
-
     /**
      * @return list<array{kode: string, uraian: string, kategori: string, volume: float|int, satuan: string, harga_satuan: int}>
      */
