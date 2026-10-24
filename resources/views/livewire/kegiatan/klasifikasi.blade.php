@@ -79,15 +79,13 @@
             <x-ui.form-section id="kode-leading" :number="1" title="Leading penanggung jawab" icon="users"
                                description="Unit penerima mandat; menentukan penanda tangan pembuat dan buku dokumen."
                                :kelengkapan="$this->kelengkapan['leading']">
-                <x-ui.field label="Leading" for="leading" error="form.leading"
-                            :hint="$leadingTerpilih ? 'Penanda tangan pembuat: '.$leadingTerpilih['jabatan_penanda_tangan'].'.' : null">
-                    <select id="leading" wire:model.live="form.leading" class="form-input">
-                        <option value="">— Pilih leading —</option>
-                        @foreach ($opsiLeading as $opsi)
-                            <option value="{{ $opsi['kode'] }}">{{ $opsi['kode'] }} · {{ $opsi['nama_unit'] }}</option>
-                        @endforeach
-                    </select>
-                </x-ui.field>
+                @if ($form->leading && ! collect($opsiLeading)->contains('kode', $form->leading))
+                    <p class="mb-3 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700 ring-1 ring-gold-200" role="status">
+                        Leading tersimpan ({{ $leadingTerpilih['kode'] ?? $form->leading }} · {{ $leadingTerpilih['nama_unit'] ?? 'tidak dikenal' }}) bukan milik akun Anda.
+                    </p>
+                @endif
+                <x-kode.pilih-leading :opsi="$opsiLeading" :terpilih="$form->leading" :peran="StubData::currentUser()['role']" />
+                @error('form.leading') <p class="form-error" role="alert">{{ $message }}</p> @enderror
             </x-ui.form-section>
 
             {{-- 2. Program RKTM --}}
