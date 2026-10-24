@@ -1,6 +1,7 @@
 @use('App\Support\Stub\StubData')
 @use('App\Support\MasterKode')
 @use('Illuminate\Support\Str')
+@use('App\Support\Kegiatan\RingkasanKode')
 
 @php
     $tahunMaster = $this->tahunAktif['tahun'];
@@ -165,21 +166,26 @@
 
         {{-- Pratinjau header RAB --}}
         <aside class="space-y-4">
-            <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:sticky lg:top-24" data-testid="pratinjau-header">
-                <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Tercetak di header RAB</p>
-                <dl class="mt-3 space-y-3 text-sm">
-                    @foreach ($this->pratinjauHeader as $kunci => $baris)
-                        <div>
-                            <dt class="text-xs text-stone-500">{{ $baris['label'] }}</dt>
-                            <dd @class(['font-medium', 'text-stone-900' => $baris['nilai'], 'text-stone-400 italic' => ! $baris['nilai']])>
-                                {{ $baris['nilai'] ?? 'belum dipilih' }}
-                            </dd>
-                            @if ($baris['detail'])
-                                <dd class="mt-0.5 line-clamp-2 text-xs text-stone-500">{{ $baris['detail'] }}</dd>
-                            @endif
-                        </div>
-                    @endforeach
-                </dl>
+            <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+                <x-kode.ringkasan :baris="RingkasanKode::susun($form->only(RingkasanKode::ISIAN))" judul="Kode terpilih" />
+
+                {{-- Uraian lengkap ada di ringkasan; di sini cukup baris yang tercetak di header RAB (dilipat agar tombol tetap terlihat; wire:ignore.self menjaga status buka/tutup saat render ulang). --}}
+                <details class="group mt-4 border-t border-stone-100 pt-3" data-testid="pratinjau-header" wire:ignore.self>
+                    <summary class="flex cursor-pointer list-none items-center justify-between text-[11px] font-semibold tracking-wider text-stone-400 uppercase hover:text-stone-600">
+                        Tercetak di header RAB
+                        <x-ui.icon name="chevron-down" class="size-3.5 transition group-open:rotate-180" />
+                    </summary>
+                    <dl class="mt-2 space-y-1.5 text-xs">
+                        @foreach ($this->pratinjauHeader as $kunci => $baris)
+                            <div class="flex gap-2">
+                                <dt class="w-24 shrink-0 text-stone-500">{{ $baris['label'] }}</dt>
+                                <dd @class(['min-w-0 font-medium', 'text-stone-900' => $baris['nilai'], 'text-stone-400 italic' => ! $baris['nilai']])>
+                                    {{ $baris['nilai'] ?? 'belum dipilih' }}
+                                </dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                </details>
 
                 @if ($bisaUbah)
                     <div class="mt-4 space-y-2 border-t border-stone-100 pt-4">

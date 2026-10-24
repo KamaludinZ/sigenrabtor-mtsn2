@@ -1,27 +1,14 @@
 @use('App\Support\MasterKode')
 @use('App\Livewire\Forms\KegiatanForm')
+@use('App\Support\Kegiatan\RingkasanKode')
 
 @php
     // Ringkasan saja: kode & klasifikasi diatur di halaman tersendiri agar tidak ada dua editor untuk data yang sama.
-    $ringkas = [
-        'Leading' => ($l = MasterKode::cari(MasterKode::leadings(), $form->leading)) ? $l['kode'].' · '.$l['nama_unit'] : null,
-        'Kode RKTM' => ($r = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm)) ? $r['kode'].' — '.$r['sub_kegiatan'] : null,
-        'Kode SK' => $form->kode_sk ?: null,
-        'Kode IKSK' => $form->kode_iksk ?: null,
-        'Kode EDM' => $form->kode_edm ?: null,
-        '5 Budaya Mutu' => ($b = MasterKode::cari(MasterKode::budayaMutu(), $form->budaya_mutu, 'nomor')) ? $b['nomor'].'. '.$b['nama'] : null,
-    ];
+    $r = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
 @endphp
 
 <div class="space-y-4" data-testid="ringkasan-kode">
-    <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-        @foreach ($ringkas as $label => $nilai)
-            <div class="min-w-0">
-                <dt class="text-xs text-stone-500">{{ $label }}</dt>
-                <dd @class(['truncate font-medium', 'text-stone-900' => $nilai, 'text-stone-400 italic' => ! $nilai])>{{ $nilai ?? 'belum dipilih' }}</dd>
-            </div>
-        @endforeach
-    </dl>
+    <x-kode.ringkasan :baris="RingkasanKode::susun($form->only(RingkasanKode::ISIAN))" kolom />
 
     @error('form.kode_sk')
         <p class="form-error" role="alert" data-testid="error-kode-sk">{{ $message }} Atur di halaman Kode &amp; Klasifikasi.</p>

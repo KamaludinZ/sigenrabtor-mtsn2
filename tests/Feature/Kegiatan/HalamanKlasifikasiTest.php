@@ -38,7 +38,7 @@ class HalamanKlasifikasiTest extends TestCase
         $this->get(route('kegiatan.edit', ['kegiatan' => 1]))
             ->assertSee(route('kegiatan.kode', ['kegiatan' => 1]), false)
             ->assertSee('Atur kode &amp; klasifikasi', false)
-            ->assertSee('6.17.12 — Kegiatan Workshop penyusunan Kurikulum Madrasah');
+            ->assertSeeInOrder(['6.17.12', 'Kegiatan Workshop penyusunan Kurikulum Madrasah']);
     }
 
     public function test_pilih_dan_simpan_kode_tanpa_menyentuh_isian_lain(): void

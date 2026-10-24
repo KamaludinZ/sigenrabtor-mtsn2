@@ -83,7 +83,7 @@ class Klasifikasi extends Component
     }
 
     /**
-     * @return array<string, array{label: string, nilai: string|null, detail: string|null}>
+     * @return array<string, array{label: string, nilai: string|null}>
      */
     #[Computed]
     public function pratinjauHeader(): array
@@ -96,12 +96,12 @@ class Klasifikasi extends Component
         $budaya = MasterKode::cari(MasterKode::budayaMutu(), $this->form->budaya_mutu, 'nomor');
 
         return [
-            'leading' => ['label' => 'Leading sektor', 'nilai' => $leading['nama_unit'] ?? null, 'detail' => $leading['jabatan_penanda_tangan'] ?? null],
-            'rktm' => ['label' => 'Nama kegiatan (kode RKTM)', 'nilai' => $rktm ? ($this->dataKegiatan['nama_kegiatan'] ?? '').' ('.$rktm['kode'].')' : null, 'detail' => $rktm['sub_kegiatan'] ?? null],
-            'sk' => ['label' => 'Kode SK', 'nilai' => $sk['kode'] ?? null, 'detail' => $sk['uraian'] ?? null],
-            'iksk' => ['label' => 'IKSK', 'nilai' => $iksk['kode'] ?? null, 'detail' => $iksk['uraian'] ?? null],
-            'edm' => ['label' => 'Kode EDM', 'nilai' => $edm['kode'] ?? null, 'detail' => $edm['uraian'] ?? null],
-            'budaya' => ['label' => '5 Budaya Mutu', 'nilai' => $budaya ? $budaya['nomor'].'. '.$budaya['nama'] : null, 'detail' => null],
+            'leading' => ['label' => 'Leading sektor', 'nilai' => $leading['nama_unit'] ?? null],
+            'rktm' => ['label' => 'Nama kegiatan', 'nilai' => $rktm ? ($this->dataKegiatan['nama_kegiatan'] ?? '').' ('.$rktm['kode'].')' : null],
+            'sk' => ['label' => 'Kode SK', 'nilai' => $sk['kode'] ?? null],
+            'iksk' => ['label' => 'IKSK', 'nilai' => $iksk['kode'] ?? null],
+            'edm' => ['label' => 'Kode EDM', 'nilai' => $edm['kode'] ?? null],
+            'budaya' => ['label' => '5 Budaya Mutu', 'nilai' => $budaya ? $budaya['nomor'].'. '.$budaya['nama'] : null],
         ];
     }
 

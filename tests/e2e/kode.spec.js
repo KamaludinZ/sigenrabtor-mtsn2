@@ -85,4 +85,41 @@ test.describe('Kode & Klasifikasi', () => {
 
         await page.reload();
     });
+
+    test('ringkasan kode: jumlah terpilih, uraian lengkap bisa dibuka, ikut berubah', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/1/kode');
+        const ringkasan = page.getByTestId('ringkasan-kode-terpilih');
+        await expect(ringkasan.getByTestId('ringkasan-kode-jumlah')).toHaveText('6/6 dipilih');
+
+        // Detail EDM tersembunyi sampai uraiannya diklik.
+        const edm = ringkasan.locator('[data-kode="edm"]');
+        await expect(edm.getByText('Komponen C · Proses Pembelajaran')).toBeHidden();
+        await edm.getByRole('button').click();
+        await expect(edm.getByText('Komponen C · Proses Pembelajaran')).toBeVisible();
+        await page.screenshot({ path: `storage/playwright/shots/ringkasan-kode-${testInfo.project.name}.png`, fullPage: true });
+
+        // Mengosongkan IKSK langsung tercermin di ringkasan.
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.9');
+        await page.locator('#kode_sk-cari').press('Enter');
+        await expect(ringkasan.getByTestId('ringkasan-kode-jumlah')).toHaveText('5/6 dipilih');
+        await expect(ringkasan.locator('[data-kode="iksk"]')).toContainText('belum dipilih');
+
+        // Teks salinan mengikuti pilihan terbaru, bukan pilihan saat halaman dimuat.
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+        await ringkasan.getByTestId('salin-ringkasan-kode').click();
+        await expect(ringkasan.getByTestId('salin-ringkasan-kode')).toContainText('Tersalin');
+        const salinan = await page.evaluate(() => navigator.clipboard.readText());
+        expect(salinan).toContain('Kode SK: SK.9 — ');
+        expect(salinan).toContain('IKSK: (belum dipilih)');
+
+        await page.reload();
+    });
+
+    test('ringkasan kode di Data Kegiatan memuat uraian kode', async ({ page }) => {
+        await page.goto('/kegiatan/1/edit');
+        const ringkasan = page.getByTestId('ringkasan-kode');
+        await expect(ringkasan.getByTestId('ringkasan-kode-jumlah')).toHaveText('6/6 dipilih');
+        await expect(ringkasan.locator('[data-kode="sk"]')).toContainText('Meningkatnya layanan pendidikan');
+    });
 });
