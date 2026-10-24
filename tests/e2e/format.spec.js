@@ -21,4 +21,20 @@ test.describe('Format mata uang di klien', () => {
             jumlah: [60000, 29, 600000, null],
         });
     });
+
+    test('terbilang klien sama dengan server & tampil di ringkasan RAB', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        await expect(page.getByTestId('total-anggaran-terbilang').first()).toHaveText('“Sepuluh Juta Rupiah”');
+        const hasil = await page.evaluate(() => [0, 11, 115000, 1000, 1001001, 32000000, 9540000, 1000000000000].map((n) => window.SIGENRABTOR.terbilang(n)));
+        expect(hasil).toEqual([
+            'Nol Rupiah',
+            'Sebelas Rupiah',
+            'Seratus Lima Belas Ribu Rupiah',
+            'Seribu Rupiah',
+            'Satu Juta Seribu Satu Rupiah',
+            'Tiga Puluh Dua Juta Rupiah',
+            'Sembilan Juta Lima Ratus Empat Puluh Ribu Rupiah',
+            'Satu Triliun Rupiah',
+        ]);
+    });
 });

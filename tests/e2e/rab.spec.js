@@ -167,9 +167,10 @@ test.describe('Kelompok kategori interaktif', () => {
             await page.mouse.down();
             await page.mouse.move(asal.x + 30, asal.y + 20, { steps: 5 });
             const sasaran = page.locator('tbody[data-kelompok="lain"] td').first();
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 4; i++) {
                 const kotak = await sasaran.boundingBox();
-                await page.mouse.move(kotak.x + 60, kotak.y + kotak.height / 2, { steps: 10 });
+                await page.mouse.move(kotak.x + 60, kotak.y + kotak.height / 2, { steps: 15 });
+                await page.waitForTimeout(150); // beri waktu Sortable memproses dragover saat mesin sibuk
             }
             await page.mouse.up();
         } else {

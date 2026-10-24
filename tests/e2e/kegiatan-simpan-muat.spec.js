@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Simpan & muat kegiatan (data tiruan)', () => {
-    test('simpan kegiatan baru, muat ulang, lalu buka draf contoh', async ({ page }) => {
+    test('simpan kegiatan baru, muat ulang, lalu buka draf lain dari menu', async ({ page }) => {
         const nama = `Pelatihan Moderasi Beragama ${test.info().project.name}`;
 
         await page.goto('/kegiatan/buat');
@@ -22,13 +22,20 @@ test.describe('Simpan & muat kegiatan (data tiruan)', () => {
         await expect(page.locator('#tujuan')).toHaveValue('meningkatkan pemahaman moderasi beragama warga madrasah.');
         await expect(page.locator('#nama_kegiatan_cover')).toHaveValue(nama.toUpperCase());
 
-        // Buka draf contoh dari menu.
+        // Menu "Buka draf": kegiatan yang sedang dibuka ditandai, draf lain bisa dibuka dari sana.
+        const urlSekarang = page.url();
         await page.getByRole('button', { name: 'Buka draf' }).click();
         await expect(page.getByText('Draf terbaru')).toBeVisible();
         await page.waitForTimeout(250); // tunggu transisi menu selesai sebelum tangkapan layar
         await page.screenshot({ path: `storage/playwright/shots/buka-draf-${test.info().project.name}.png` });
-        await page.getByRole('link', { name: /Workshop Penyusunan Kurikulum Madrasah/ }).click();
-        await expect(page).toHaveURL(/\/kegiatan\/1\/edit$/);
+        const tautanDraf = page.locator('a[href*="/kegiatan/"][href$="/edit"]').filter({ hasNotText: nama });
+        const tujuan = await tautanDraf.first().getAttribute('href');
+        await tautanDraf.first().click();
+        await expect(page).toHaveURL(tujuan);
+        expect(page.url()).not.toBe(urlSekarang);
+
+        // Draf contoh tetap bisa dimuat lengkap.
+        await page.goto('/kegiatan/1/edit');
         await expect(page.locator('#tanggal_mulai')).toHaveValue('2026-07-14');
         await expect(page.locator('#panitia [data-panitia-row]')).toHaveCount(3);
     });

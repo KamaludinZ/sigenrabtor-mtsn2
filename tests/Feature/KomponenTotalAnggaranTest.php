@@ -12,13 +12,13 @@ class KomponenTotalAnggaranTest extends TestCase
         return Blade::render("<x-rab.total-anggaran {$atribut} />");
     }
 
-    public function test_menampilkan_nominal_sumber_dan_penanda_terbilang(): void
+    public function test_menampilkan_nominal_sumber_dan_terbilang_otomatis(): void
     {
         $html = $this->render(':nilai="10000000" sumber="Komite"');
 
         $this->assertStringContainsString('Jumlah yang diajukan · RAB Komite', $html);
         $this->assertStringContainsString('Rp10.000.000', $html);
-        $this->assertStringContainsString('Terbilang disusun otomatis dari total.', $html);
+        $this->assertStringContainsString('“Sepuluh Juta Rupiah”', $html);
     }
 
     public function test_menampilkan_terbilang_bila_tersedia(): void

@@ -31,3 +31,36 @@ export function jumlahRab(volume, hargaSatuan) {
     const h = parseInt(String(hargaSatuan ?? '').replace(/\D/g, ''), 10);
     return v > 0 && h > 0 ? Math.floor((Math.round(v * 100) * h + 50) / 100) : null;
 }
+
+// Terbilang Rupiah — kembaran App\Support\Terbilang (kaidah "se-" untuk 10, 11, 100, 1.000; "satu" untuk juta ke atas).
+const SATUAN = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+const SKALA = [[1e12, 'triliun'], [1e9, 'miliar'], [1e6, 'juta']];
+
+function gabung(depan, sisa) {
+    return sisa === 0 ? depan : `${depan} ${eja(sisa)}`;
+}
+
+function eja(n) {
+    for (const [besar, nama] of SKALA) {
+        if (n >= besar) return gabung(`${eja(Math.floor(n / besar))} ${nama}`, n % besar);
+    }
+    if (n < 12) return SATUAN[n];
+    if (n < 20) return `${SATUAN[n - 10]} belas`;
+    if (n < 100) return gabung(`${SATUAN[Math.floor(n / 10)]} puluh`, n % 10);
+    if (n < 200) return gabung('seratus', n - 100);
+    if (n < 1000) return gabung(`${SATUAN[Math.floor(n / 100)]} ratus`, n % 100);
+    if (n < 2000) return gabung('seribu', n - 1000);
+    return gabung(`${eja(Math.floor(n / 1000))} ribu`, n % 1000);
+}
+
+export function terbilangKata(nilai) {
+    const n = Math.trunc(Number(nilai));
+    if (!Number.isFinite(n) || Math.abs(n) > 999999999999999) return '';
+    if (n === 0) return 'nol';
+    return n < 0 ? `minus ${eja(-n)}` : eja(n);
+}
+
+export function terbilang(nilai) {
+    const kata = terbilangKata(nilai);
+    return kata === '' ? '' : `${kata} rupiah`.replace(/(^|\s)\S/g, (h) => h.toUpperCase());
+}

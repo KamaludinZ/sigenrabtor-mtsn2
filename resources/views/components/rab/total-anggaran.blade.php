@@ -7,8 +7,11 @@
 ])
 
 @use('App\Support\Format')
+@use('App\Support\Terbilang')
 
 @php
+    // Terbilang selalu diturunkan dari angka (PRD F3); prop hanya untuk menimpa dalam kasus khusus.
+    $terbilang ??= Terbilang::rupiah((int) $nilai);
     $selisih = $pagu !== null ? $pagu - $nilai : null;
     $status = match (true) {
         $pagu === null => ['Pagu belum diisi', 'info', 'text-stone-500'],
@@ -38,11 +41,7 @@
         </button>
     </div>
 
-    @if ($terbilang)
-        <p @class(['mt-1 italic leading-snug text-stone-600', 'text-xs' => $ringkas, 'text-sm' => ! $ringkas]) data-testid="total-anggaran-terbilang">“{{ $terbilang }}”</p>
-    @else
-        <p class="mt-1 text-xs text-stone-400" data-testid="total-anggaran-terbilang">Terbilang disusun otomatis dari total.</p>
-    @endif
+    <p @class(['mt-1 italic leading-snug text-stone-600', 'text-xs' => $ringkas, 'text-sm' => ! $ringkas]) data-testid="total-anggaran-terbilang">“{{ $terbilang }}”</p>
 
     @if ($status)
         <p class="mt-2 flex items-center gap-1.5 text-xs font-medium {{ $status[2] }}" data-testid="total-anggaran-status">
