@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: sigenrabtor_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sigenrabtor
+      POSTGRES_USER: sigenrabtor
+      POSTGRES_PASSWORD: sigenrabtor
+    ports:
+      - "5434:5432"
+    volumes:
+      - sigenrabtor_pgdata:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sigenrabtor -d sigenrabtor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sigenrabtor_pgdata:

@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Support\Stub;
+
+/**
+ * Data tiruan untuk tahap frontend.
+ *
+ * Seluruh layar dibangun di atas data ini lebih dulu (frontend-first); task backend
+ * akan menggantinya dengan query Eloquent tanpa mengubah bentuk array yang dipakai view.
+ */
+class StubData
+{
+    /**
+     * Tahun anggaran yang sedang aktif.
+     *
+     * @return array{id: int, tahun: int, is_locked: bool}
+     */
+    public static function tahunAktif(): array
+    {
+        return ['id' => 1, 'tahun' => 2026, 'is_locked' => false];
+    }
+
+    /**
+     * Pengguna yang sedang masuk.
+     *
+     * @return array{id: int, name: string, role: string, jabatan: string, leadings: list<string>}
+     */
+    public static function currentUser(): array
+    {
+        if (session('stub_role') === 'admin') {
+            return [
+                'id' => 2,
+                'name' => 'Koordinator PUSKOM',
+                'role' => 'admin',
+                'jabatan' => 'Admin Aplikasi',
+                'leadings' => [],
+            ];
+        }
+
+        return [
+            'id' => 1,
+            'name' => 'Muslimin, M.Pd.',
+            'role' => 'leading',
+            'jabatan' => 'Tim Penjamin Mutu',
+            'leadings' => ['1.6'],
+        ];
+    }
+
+    /**
+     * Profil madrasah untuk kop dan identitas aplikasi.
+     *
+     * @return array{nama: string, nama_singkat: string, kota: string}
+     */
+    public static function madrasah(): array
+    {
+        return [
+            'nama' => 'Madrasah Tsanawiyah Negeri 2 Kota Malang',
+            'nama_singkat' => 'MTsN 2 Kota Malang',
+            'kota' => 'Malang',
+        ];
+    }
+}

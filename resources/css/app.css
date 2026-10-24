@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../../app/**/*.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Hijau Kemenag sebagai warna utama, emas sebagai aksen. */
+    --color-brand-50: oklch(0.975 0.018 160);
+    --color-brand-100: oklch(0.948 0.042 160);
+    --color-brand-200: oklch(0.896 0.08 160);
+    --color-brand-300: oklch(0.82 0.12 160);
+    --color-brand-400: oklch(0.72 0.14 160);
+    --color-brand-500: oklch(0.62 0.135 160);
+    --color-brand-600: oklch(0.53 0.115 160);
+    --color-brand-700: oklch(0.45 0.095 161);
+    --color-brand-800: oklch(0.38 0.075 162);
+    --color-brand-900: oklch(0.32 0.06 163);
+    --color-brand-950: oklch(0.22 0.042 164);
+
+    --color-gold-50: oklch(0.985 0.022 90);
+    --color-gold-100: oklch(0.955 0.06 90);
+    --color-gold-200: oklch(0.91 0.11 88);
+    --color-gold-300: oklch(0.86 0.15 85);
+    --color-gold-400: oklch(0.8 0.16 80);
+    --color-gold-500: oklch(0.74 0.16 72);
+    --color-gold-600: oklch(0.64 0.15 62);
+    --color-gold-700: oklch(0.53 0.13 55);
+}
+
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-stone-50 text-stone-800;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    /* Anchor bagian form tidak tertutup header lengket. */
+    [data-section] {
+        scroll-margin-top: 9rem;
+    }
+}
+
+@utility btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition
+        focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@layer components {
+    .btn-primary {
+        @apply btn bg-brand-700 text-white shadow-sm hover:bg-brand-800 focus-visible:outline-brand-700;
+    }
+
+    .btn-secondary {
+        @apply btn bg-white text-stone-700 ring-1 ring-stone-300 ring-inset hover:bg-stone-50
+            focus-visible:outline-brand-700;
+    }
+
+    .btn-ghost {
+        @apply btn text-stone-600 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-brand-700;
+    }
+
+    .btn-danger {
+        @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:outline-red-600;
+    }
+
+    .form-label {
+        @apply mb-1.5 block text-sm font-medium text-stone-700;
+    }
+
+    .form-input {
+        @apply block w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-stone-900 shadow-xs ring-1
+            ring-stone-300 ring-inset placeholder:text-stone-400 focus:ring-2 focus:ring-brand-600 focus:ring-inset
+            disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-500;
+    }
+
+    .form-hint {
+        @apply mt-1.5 text-xs text-stone-500;
+    }
+
+    .form-error {
+        @apply mt-1.5 text-xs font-medium text-red-600;
+    }
+}
