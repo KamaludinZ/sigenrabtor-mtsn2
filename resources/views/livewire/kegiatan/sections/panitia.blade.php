@@ -26,15 +26,35 @@
                     Susunan tim pelaksana
                     <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600">{{ count($form->panitia) }} orang</span>
                 </h3>
-                <p class="text-xs text-stone-500">Urutan di sini menjadi urutan cetak pada KAK.</p>
+                <p class="text-xs text-stone-500">Urutan di sini menjadi urutan cetak pada KAK — seret nomor baris untuk memindahkan.</p>
             </div>
             @if (count($form->panitia) > 0)
-                <button type="button" wire:click="tambahPanitia" class="btn-secondary">
-                    <x-ui.icon name="plus" class="size-4" />
-                    Tambah anggota
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if (count($form->panitia) > 1)
+                        <button type="button" wire:click="urutkanPanitiaSesuaiPeran" class="btn-ghost"
+                                title="Pengarah → Ketua → Wakil → Sekretaris → Bendahara → Koordinator → Narasumber → Anggota">
+                            <x-ui.icon name="layers" class="size-4" />
+                            Urutkan sesuai peran
+                        </button>
+                    @endif
+                    <button type="button" wire:click="tambahPanitia" class="btn-secondary">
+                        <x-ui.icon name="plus" class="size-4" />
+                        Tambah anggota
+                    </button>
+                </div>
             @endif
         </div>
+
+        @if ($panitiaTerhapus)
+            <div class="mt-3 flex items-center justify-between gap-3 rounded-lg bg-stone-800 px-3.5 py-2.5 text-sm text-white" role="status">
+                <span class="min-w-0 truncate">
+                    “{{ $panitiaTerhapus['anggota']['nama'] ?: 'Anggota tanpa nama' }}” dihapus dari susunan tim.
+                </span>
+                <button type="button" wire:click="urungkanHapusPanitia" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">
+                    Urungkan
+                </button>
+            </div>
+        @endif
 
         @if (count($form->panitia) === 0)
             <div class="mt-3 rounded-xl border border-dashed border-stone-300 px-4 py-8 text-center">
@@ -57,11 +77,17 @@
                 <span>No</span><span>Nama</span><span>Jabatan</span><span>Peran</span><span class="text-right">Aksi</span>
             </div>
 
-            <ol class="mt-2 space-y-2">
+            @php($panitiaGanda = $form->panitiaGanda())
+
+            <ol class="mt-2 space-y-2" wire:sort="pindahkanPanitia">
                 @foreach ($form->panitia as $i => $anggota)
-                    <li wire:key="panitia-{{ $anggota['key'] }}" data-panitia-row
+                    <li wire:key="panitia-{{ $anggota['key'] }}" wire:sort:item="{{ $anggota['key'] }}" data-panitia-row
                         class="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-xl bg-white p-3 ring-1 ring-stone-200 sm:grid-cols-[2rem_minmax(0,1fr)_minmax(0,1fr)_10rem_6.5rem] sm:items-start sm:rounded-lg sm:p-1 sm:ring-0">
-                        <span class="grid size-8 place-items-center rounded-lg bg-stone-100 text-xs font-bold text-stone-600 sm:mt-0.5">{{ $i + 1 }}</span>
+                        <span wire:sort:handle title="Seret untuk mengurutkan"
+                              class="group/handle grid size-8 cursor-grab touch-none place-items-center rounded-lg bg-stone-100 text-xs font-bold text-stone-600 hover:bg-brand-100 hover:text-brand-800 active:cursor-grabbing sm:mt-0.5">
+                            <span class="group-hover/handle:hidden">{{ $i + 1 }}</span>
+                            <x-ui.icon name="grip" class="hidden size-4 group-hover/handle:block" />
+                        </span>
 
                         <div class="min-w-0">
                             <label for="panitia-{{ $i }}-nama" class="sr-only">Nama anggota {{ $i + 1 }}</label>
@@ -69,6 +95,11 @@
                                    maxlength="150" placeholder="Nama lengkap & gelar" autocomplete="off"
                                    class="form-input @error('form.panitia.'.$i.'.nama') ring-red-400 @enderror">
                             @error('form.panitia.'.$i.'.nama') <p class="form-error">{{ $message }}</p> @enderror
+                            @if (in_array($i, $panitiaGanda, true))
+                                <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-gold-700">
+                                    <x-ui.icon name="alert" class="size-3.5" /> Nama ini tercantum lebih dari sekali.
+                                </p>
+                            @endif
                         </div>
 
                         <div class="col-start-2 min-w-0 sm:col-start-auto">

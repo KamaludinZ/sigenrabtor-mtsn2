@@ -8,6 +8,7 @@ use App\Support\Stub\StubData;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -21,6 +22,10 @@ class Form extends Component
     public KegiatanForm $form;
 
     public string $status = 'draf';
+
+    /** @var array{index: int, anggota: array{key: string, nama: string, jabatan: string, peran: string}}|null Untuk "Urungkan" hapus anggota. */
+    #[Locked]
+    public ?array $panitiaTerhapus = null;
 
     /** Isian yang ikut divalidasi ulang ketika isian kunci berubah. */
     private const ISIAN_TERKAIT = [
@@ -90,6 +95,8 @@ class Form extends Component
 
     public function tambahPanitia(): void
     {
+        $this->panitiaTerhapus = null;
+
         if (! $this->form->tambahPanitia()) {
             $this->dispatch('notify', message: 'Susunan tim sudah mencapai batas '.KegiatanForm::MAKS_PANITIA.' orang.', type: 'error');
 
@@ -101,14 +108,49 @@ class Form extends Component
 
     public function hapusPanitia(int $index): void
     {
+        if (! isset($this->form->panitia[$index])) {
+            return;
+        }
+
+        $this->panitiaTerhapus = ['index' => $index, 'anggota' => $this->form->panitia[$index]];
         $this->form->hapusPanitia($index);
+        $this->resetErrorPanitia();
+    }
+
+    public function urungkanHapusPanitia(): void
+    {
+        if ($this->panitiaTerhapus === null) {
+            return;
+        }
+
+        $this->form->sisipkanPanitia($this->panitiaTerhapus['index'], $this->panitiaTerhapus['anggota']);
+        $this->panitiaTerhapus = null;
         $this->resetErrorPanitia();
     }
 
     public function geserPanitia(int $index, int $arah): void
     {
+        $this->panitiaTerhapus = null;
         $this->form->geserPanitia($index, $arah > 0 ? 1 : -1);
         $this->resetErrorPanitia();
+    }
+
+    /**
+     * Handler seret-lepas (wire:sort): $key anggota yang dipindah, $posisi indeks tujuannya.
+     */
+    public function pindahkanPanitia(string $key, int $posisi): void
+    {
+        $this->panitiaTerhapus = null;
+        $this->form->pindahkanPanitia($key, $posisi);
+        $this->resetErrorPanitia();
+    }
+
+    public function urutkanPanitiaSesuaiPeran(): void
+    {
+        $this->panitiaTerhapus = null;
+        $this->form->urutkanSesuaiPeran();
+        $this->resetErrorPanitia();
+        $this->dispatch('notify', message: 'Susunan tim diurutkan sesuai peran.', type: 'info');
     }
 
     public function isiSusunanBaku(): void

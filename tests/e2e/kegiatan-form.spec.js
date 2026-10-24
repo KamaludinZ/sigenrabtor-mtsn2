@@ -49,6 +49,28 @@ test.describe('Form Data Kegiatan', () => {
         await page.screenshot({ path: `storage/playwright/shots/panitia-${test.info().project.name}.png`, fullPage: false });
     });
 
+    test('panitia: seret-lepas, urungkan hapus, dan urutkan sesuai peran', async ({ page }, testInfo) => {
+        test.skip(testInfo.project.name === 'mobile', 'Seret-lepas diuji di desktop; mobile memakai tombol naik/turun.');
+        const bagian = page.locator('#panitia');
+        await bagian.getByRole('button', { name: 'Pakai susunan baku' }).click();
+        await expect(bagian.locator('[data-panitia-row]')).toHaveCount(4);
+
+        // Seret baris "Anggota" (4) ke paling atas.
+        const handle = bagian.locator('[data-panitia-row]').nth(3).locator('[wire\\:sort\\:handle]');
+        await handle.dragTo(bagian.locator('[data-panitia-row]').nth(0).locator('[wire\\:sort\\:handle]'));
+        await expect(page.locator('#panitia-0-peran')).toHaveValue('Anggota');
+
+        await bagian.getByRole('button', { name: 'Urutkan sesuai peran' }).click();
+        await expect(page.locator('#panitia-0-peran')).toHaveValue('Ketua');
+        await expect(page.locator('#panitia-3-peran')).toHaveValue('Anggota');
+
+        await bagian.getByRole('button', { name: 'Hapus anggota 2' }).click();
+        await expect(bagian.locator('[data-panitia-row]')).toHaveCount(3);
+        await bagian.getByRole('button', { name: 'Urungkan' }).click();
+        await expect(bagian.locator('[data-panitia-row]')).toHaveCount(4);
+        await expect(page.locator('#panitia-1-peran')).toHaveValue('Sekretaris');
+    });
+
     test('jadwal: tanggal selesai, bulan, dan batas laporan dihitung otomatis', async ({ page }) => {
         await page.locator('#tanggal_mulai').fill('2026-07-30');
         await page.locator('#lama_hari').fill('4');

@@ -67,6 +67,11 @@ class KegiatanForm extends Form
         'Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator', 'Anggota', 'Narasumber', 'Pengarah',
     ];
 
+    /** Hierarki peran untuk "Urutkan sesuai peran". */
+    public const URUTAN_PERAN = [
+        'Pengarah', 'Penanggung Jawab', 'Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator', 'Narasumber', 'Anggota',
+    ];
+
     /**
      * @return array<string, mixed>
      */
@@ -266,6 +271,66 @@ class KegiatanForm extends Form
         }
 
         [$this->panitia[$index], $this->panitia[$tujuan]] = [$this->panitia[$tujuan], $this->panitia[$index]];
+    }
+
+    /**
+     * Pindahkan anggota (berdasarkan key) ke posisi baru — dipakai seret-lepas.
+     */
+    public function pindahkanPanitia(string $key, int $posisi): void
+    {
+        $index = array_search($key, array_column($this->panitia, 'key'), true);
+
+        if ($index === false) {
+            return;
+        }
+
+        $anggota = $this->panitia[$index];
+        array_splice($this->panitia, $index, 1);
+        array_splice($this->panitia, max(0, min($posisi, count($this->panitia))), 0, [$anggota]);
+    }
+
+    /**
+     * Kembalikan anggota yang baru dihapus ke posisi semula.
+     *
+     * @param  array{key: string, nama: string, jabatan: string, peran: string}  $anggota
+     */
+    public function sisipkanPanitia(int $index, array $anggota): void
+    {
+        array_splice($this->panitia, max(0, min($index, count($this->panitia))), 0, [$anggota]);
+    }
+
+    /**
+     * Urutkan sesuai hierarki peran (Pengarah → Ketua → … → Anggota). Peran di luar daftar
+     * diletakkan sebelum Anggota; urutan antar anggota berperan sama dipertahankan.
+     */
+    public function urutkanSesuaiPeran(): void
+    {
+        $urutan = array_map('mb_strtolower', self::URUTAN_PERAN);
+        $posisiAnggota = array_search('anggota', $urutan, true);
+
+        $peringkat = function (array $anggota) use ($urutan, $posisiAnggota): float {
+            $i = array_search(mb_strtolower(trim($anggota['peran'])), $urutan, true);
+
+            return $i === false ? $posisiAnggota - 0.5 : $i;
+        };
+
+        $berindeks = array_map(null, array_keys($this->panitia), $this->panitia);
+        usort($berindeks, fn ($a, $b) => [$peringkat($a[1]), $a[0]] <=> [$peringkat($b[1]), $b[0]]);
+
+        $this->panitia = array_column($berindeks, 1);
+    }
+
+    /**
+     * Indeks baris yang namanya sama dengan baris lain (tanpa membedakan huruf/spasi).
+     *
+     * @return list<int>
+     */
+    public function panitiaGanda(): array
+    {
+        $nama = array_map(fn ($a) => mb_strtolower(preg_replace('/\s+/u', ' ', trim($a['nama']))), $this->panitia);
+        $hitung = array_count_values(array_filter($nama));
+
+        return array_keys(array_filter($nama, fn ($n) => $n !== '' && $hitung[$n] > 1));
     }
 
     /**
