@@ -1,4 +1,7 @@
-@php($madrasahProfil = \App\Support\Stub\StubData::madrasah())
+@php
+    $madrasahProfil = \App\Support\Stub\StubData::madrasah();
+    $leadingPelaksana = \App\Support\Stub\StubMaster::cari(\App\Support\Stub\StubMaster::leadings(), $form->leading);
+@endphp
 
 <div class="space-y-6"
      x-data
@@ -8,8 +11,13 @@
     <div class="grid gap-3 sm:grid-cols-2">
         <div class="rounded-xl bg-stone-50 p-4 ring-1 ring-stone-200">
             <p class="text-[11px] font-semibold tracking-wider text-stone-500 uppercase">a. Pelaksana</p>
-            <p class="mt-1 text-sm font-semibold text-stone-800">Pejabat leading penanggung jawab</p>
-            <p class="mt-0.5 text-xs text-stone-500">Otomatis dari leading yang dipilih di bagian Kode &amp; Klasifikasi.</p>
+            @if ($leadingPelaksana)
+                <p class="mt-1 text-sm font-semibold text-stone-800">{{ $leadingPelaksana['jabatan_penanda_tangan'] }}</p>
+                <p class="mt-0.5 text-xs text-stone-500">Leading {{ $leadingPelaksana['kode'] }} · {{ $leadingPelaksana['nama_unit'] }}.</p>
+            @else
+                <p class="mt-1 text-sm font-semibold text-stone-800">Pejabat leading penanggung jawab</p>
+                <p class="mt-0.5 text-xs text-stone-500">Otomatis dari leading yang dipilih di bagian Kode &amp; Klasifikasi.</p>
+            @endif
         </div>
         <div class="rounded-xl bg-stone-50 p-4 ring-1 ring-stone-200">
             <p class="text-[11px] font-semibold tracking-wider text-stone-500 uppercase">b. Penanggung jawab (pengarah)</p>
@@ -77,7 +85,7 @@
                 <span>No</span><span>Nama</span><span>Jabatan</span><span>Peran</span><span class="text-right">Aksi</span>
             </div>
 
-            @php($panitiaGanda = $form->panitiaGanda())
+            @php $panitiaGanda = $form->panitiaGanda(); @endphp
 
             <ol class="mt-2 space-y-2" wire:sort="pindahkanPanitia">
                 @foreach ($form->panitia as $i => $anggota)

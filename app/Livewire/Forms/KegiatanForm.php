@@ -3,12 +3,15 @@
 namespace App\Livewire\Forms;
 
 use App\Rules\KalimatUtuh;
+use App\Support\Format;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Stub\StubData;
+use App\Support\Stub\StubMaster;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Form;
 
 /**
@@ -20,7 +23,10 @@ use Livewire\Form;
 class KegiatanForm extends Form
 {
     /** Isian uraian (teks panjang) yang spasinya dirapikan otomatis. */
-    public const URAIAN = ['latar_belakang', 'tujuan', 'sasaran'];
+    public const URAIAN = ['latar_belakang', 'tujuan', 'sasaran', 'uraian_pelaksanaan', 'konteks'];
+
+    /** Batas pagu per sumber dana (Rp) untuk menolak salah ketik digit berlebih. */
+    public const MAKS_PAGU = 100_000_000_000;
 
     // Identitas Kegiatan
     public string $nama_kegiatan = '';
@@ -54,6 +60,42 @@ class KegiatanForm extends Form
 
     /** True selama tanggal pelaporan mengikuti tanggal selesai + 10 hari (belum diubah manual). */
     public bool $laporan_otomatis = true;
+
+    // Kode & Klasifikasi (dipilih dari master tahun aktif)
+    public string $leading = '';
+
+    public string $kode_rktm = '';
+
+    public string $kode_sk = '';
+
+    public string $kode_iksk = '';
+
+    public string $kode_edm = '';
+
+    /** @var int|string|null Nomor 5 Budaya Mutu (1–5). */
+    public $budaya_mutu = null;
+
+    // Pelaksanaan — tempat & peserta
+    public string $tempat = '';
+
+    /** @var int|string|null */
+    public $peserta_jumlah = null;
+
+    public string $peserta_jenis = '';
+
+    public string $uraian_pelaksanaan = '';
+
+    // Konteks kegiatan (bahan AI; tidak tercetak)
+    public string $konteks = '';
+
+    // Sumber dana: pagu disimpan sebagai teks berformat ("10.000.000") agar tampil rapi di input.
+    public bool $dana_dipa = false;
+
+    public string $pagu_dipa = '';
+
+    public bool $dana_komite = false;
+
+    public string $pagu_komite = '';
 
     // Pelaksana & Panitia
     /** @var list<array{key: string, nama: string, jabatan: string, peran: string}> */
@@ -92,6 +134,21 @@ class KegiatanForm extends Form
             'hari_kerja' => ['boolean'],
             'bulan_pelaksanaan' => ['array', 'max:12', $this->aturanBulanMencakupTanggal()],
             'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
+            'leading' => ['nullable', Rule::in(array_column(StubMaster::leadingsUntuk(StubData::currentUser()), 'kode'))],
+            'kode_rktm' => ['nullable', Rule::in(array_column(StubMaster::kodeRktm(), 'kode'))],
+            'kode_sk' => ['nullable', Rule::in(array_column(StubMaster::kodeSk(), 'kode'))],
+            'kode_iksk' => ['nullable', Rule::in(array_column(StubMaster::kodeIksk(), 'kode')), $this->aturanIkskSesuaiSk()],
+            'kode_edm' => ['nullable', Rule::in(array_column(StubMaster::kodeEdm(), 'kode'))],
+            'budaya_mutu' => ['nullable', Rule::in(array_column(StubMaster::budayaMutu(), 'nomor'))],
+            'tempat' => ['nullable', 'string', 'max:255'],
+            'peserta_jumlah' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'peserta_jenis' => ['nullable', 'string', 'max:150'],
+            'uraian_pelaksanaan' => ['nullable', 'string', 'max:3000', new KalimatUtuh],
+            'konteks' => ['nullable', 'string', 'max:3000'],
+            'dana_dipa' => ['boolean'],
+            'dana_komite' => ['boolean'],
+            'pagu_dipa' => $this->aturanPagu($this->dana_dipa),
+            'pagu_komite' => $this->aturanPagu($this->dana_komite),
             'panitia' => ['array', 'max:'.self::MAKS_PANITIA],
             'panitia.*.nama' => ['required', 'string', 'max:150'],
             'panitia.*.jabatan' => ['nullable', 'string', 'max:150'],
@@ -115,6 +172,19 @@ class KegiatanForm extends Form
             'tanggal_mulai' => 'tanggal mulai',
             'lama_hari' => 'lama kegiatan',
             'bulan_pelaksanaan' => 'bulan pelaksanaan',
+            'leading' => 'leading',
+            'kode_rktm' => 'kode RKTM',
+            'kode_sk' => 'kode SK',
+            'kode_iksk' => 'kode IKSK',
+            'kode_edm' => 'kode EDM',
+            'budaya_mutu' => '5 Budaya Mutu',
+            'tempat' => 'tempat',
+            'peserta_jumlah' => 'jumlah peserta',
+            'peserta_jenis' => 'jenis peserta',
+            'uraian_pelaksanaan' => 'uraian pelaksanaan',
+            'konteks' => 'konteks kegiatan',
+            'pagu_dipa' => 'pagu DIPA',
+            'pagu_komite' => 'pagu Komite',
             'panitia.*.nama' => 'nama anggota',
             'panitia.*.jabatan' => 'jabatan anggota',
             'panitia.*.peran' => 'peran anggota',
@@ -144,6 +214,9 @@ class KegiatanForm extends Form
             'lama_hari.min' => 'Lama kegiatan minimal 1 hari.',
             'lama_hari.max' => 'Lama kegiatan maksimal 366 hari.',
             'panitia.max' => 'Susunan tim maksimal :max orang.',
+            'in' => 'Pilihan :attribute tidak ada di master tahun aktif.',
+            'peserta_jumlah.min' => 'Jumlah peserta minimal 1 orang.',
+            'peserta_jumlah.max' => 'Jumlah peserta maksimal 100.000 orang.',
         ];
     }
 
@@ -420,6 +493,19 @@ class KegiatanForm extends Form
             'jabatan' => (string) ($anggota['jabatan'] ?? ''),
             'peran' => (string) ($anggota['peran'] ?? 'Anggota'),
         ], array_values((array) ($data['panitia'] ?? [])));
+
+        foreach (['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'tempat', 'peserta_jenis', 'uraian_pelaksanaan', 'konteks'] as $field) {
+            $this->{$field} = (string) ($data[$field] ?? '');
+        }
+
+        $this->budaya_mutu = filled($data['budaya_mutu'] ?? null) ? (int) $data['budaya_mutu'] : null;
+        $this->peserta_jumlah = filled($data['peserta_jumlah'] ?? null) ? (int) $data['peserta_jumlah'] : null;
+
+        $sumber = array_column((array) ($data['sumber_dana'] ?? []), 'pagu', 'sumber');
+        $this->dana_dipa = array_key_exists('DIPA', $sumber);
+        $this->dana_komite = array_key_exists('Komite', $sumber);
+        $this->pagu_dipa = $this->dana_dipa && $sumber['DIPA'] !== null ? Format::angka((int) $sumber['DIPA']) : '';
+        $this->pagu_komite = $this->dana_komite && $sumber['Komite'] !== null ? Format::angka((int) $sumber['Komite']) : '';
     }
 
     /**
@@ -446,7 +532,159 @@ class KegiatanForm extends Form
             'hari_kerja' => $this->hari_kerja,
             'bulan_pelaksanaan' => $this->bulan_pelaksanaan,
             'panitia' => array_map(fn ($a) => ['nama' => $a['nama'], 'jabatan' => $a['jabatan'], 'peran' => $a['peran']], $this->panitia),
+            'leading' => $this->leading ?: null,
+            'kode_rktm' => $this->kode_rktm ?: null,
+            'kode_sk' => $this->kode_sk ?: null,
+            'kode_iksk' => $this->kode_iksk ?: null,
+            'kode_edm' => $this->kode_edm ?: null,
+            'budaya_mutu' => filled($this->budaya_mutu) ? (int) $this->budaya_mutu : null,
+            'tempat' => $this->tempat,
+            'peserta_jumlah' => filter_var($this->peserta_jumlah, FILTER_VALIDATE_INT) ?: null,
+            'peserta_jenis' => $this->peserta_jenis,
+            'uraian_pelaksanaan' => $this->uraian_pelaksanaan,
+            'konteks' => $this->konteks,
+            'sumber_dana' => $this->sumberDana(),
         ];
+    }
+
+    /**
+     * "Kegiatan Workshop …" → "Workshop …": template KAK sudah menulis kata "kegiatan" sendiri.
+     */
+    public static function tanpaAwalanKegiatan(string $nama): string
+    {
+        return trim(preg_replace('/^kegiatan\s+/iu', '', trim($nama)));
+    }
+
+    /**
+     * Sumber dana terpilih beserta pagunya — satu baris per sumber (calon tabel anggaran_kegiatan).
+     *
+     * @return list<array{sumber: string, pagu: int|null}>
+     */
+    public function sumberDana(): array
+    {
+        $sumber = [];
+
+        if ($this->dana_dipa) {
+            $sumber[] = ['sumber' => 'DIPA', 'pagu' => Format::parseRupiah($this->pagu_dipa)];
+        }
+
+        if ($this->dana_komite) {
+            $sumber[] = ['sumber' => 'Komite', 'pagu' => Format::parseRupiah($this->pagu_komite)];
+        }
+
+        return $sumber;
+    }
+
+    public function totalPagu(): int
+    {
+        return array_sum(array_map(fn ($s) => (int) $s['pagu'], $this->sumberDana()));
+    }
+
+    /**
+     * Rapikan tampilan pagu menjadi "10.000.000" setelah diketik.
+     */
+    public function rapikanPagu(string $field): void
+    {
+        if (in_array($field, ['pagu_dipa', 'pagu_komite'], true)) {
+            $nilai = Format::parseRupiah($this->{$field});
+            $this->{$field} = $nilai === null ? '' : Format::angka($nilai);
+        }
+    }
+
+    /**
+     * IKSK yang sudah dipilih dikosongkan bila tidak lagi berada di bawah SK terpilih.
+     */
+    public function sinkronIksk(): void
+    {
+        if ($this->kode_iksk === '') {
+            return;
+        }
+
+        $iksk = StubMaster::cari(StubMaster::kodeIksk(), $this->kode_iksk);
+
+        if ($iksk === null || $iksk['kode_sk'] !== $this->kode_sk) {
+            $this->kode_iksk = '';
+        }
+    }
+
+    /**
+     * Status kelengkapan tiap bagian form: lengkap, sebagian, kosong, atau opsional.
+     *
+     * @return array<string, string>
+     */
+    public function kelengkapan(): array
+    {
+        $terisi = fn (array $nilai) => count(array_filter($nilai, fn ($v) => filled($v) && $v !== []));
+        $status = fn (int $isi, int $total) => match (true) {
+            $isi === $total => 'lengkap',
+            $isi === 0 => 'kosong',
+            default => 'sebagian',
+        };
+
+        $identitas = [$this->nama_kegiatan, $this->tujuan, $this->sasaran, $this->tanggal_dokumen];
+        $kode = [$this->leading, $this->kode_rktm, $this->kode_sk, $this->kode_iksk, $this->kode_edm, $this->budaya_mutu];
+        $pelaksanaan = [$this->tempat, $this->tanggal_mulai, $this->lama_hari, $this->peserta_jumlah, $this->peserta_jenis, $this->bulan_pelaksanaan];
+        $panitiaBernama = array_filter($this->panitia, fn ($a) => filled($a['nama']));
+        $sumber = $this->sumberDana();
+        $sumberBerpagu = array_filter($sumber, fn ($s) => ($s['pagu'] ?? 0) > 0);
+
+        return [
+            'identitas' => $status($terisi($identitas), count($identitas)),
+            'kode' => $status($terisi($kode), count($kode)),
+            'pelaksanaan' => $status($terisi($pelaksanaan), count($pelaksanaan)),
+            'konteks' => filled($this->konteks) ? 'lengkap' : 'opsional',
+            'panitia' => match (true) {
+                $this->panitia === [] => 'kosong',
+                count($panitiaBernama) === count($this->panitia) => 'lengkap',
+                default => 'sebagian',
+            },
+            'sumber-dana' => match (true) {
+                $sumber === [] => 'kosong',
+                count($sumberBerpagu) === count($sumber) => 'lengkap',
+                default => 'sebagian',
+            },
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function aturanPagu(bool $dipilih): array
+    {
+        if (! $dipilih) {
+            return ['nullable'];
+        }
+
+        return ['required', function (string $attribute, mixed $value, Closure $fail) {
+            $nilai = Format::parseRupiah($value);
+
+            if ($nilai === null || $nilai < 1) {
+                $fail('Isi :attribute dengan angka rupiah lebih dari 0.');
+            } elseif ($nilai > self::MAKS_PAGU) {
+                $fail('Pagu terlalu besar (maksimal '.Format::rupiah(self::MAKS_PAGU).'). Periksa jumlah digit.');
+            }
+        }];
+    }
+
+    private function aturanIkskSesuaiSk(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) {
+            if (blank($value)) {
+                return;
+            }
+
+            if (blank($this->kode_sk)) {
+                $fail('Pilih kode SK terlebih dahulu.');
+
+                return;
+            }
+
+            $iksk = StubMaster::cari(StubMaster::kodeIksk(), $value);
+
+            if ($iksk !== null && $iksk['kode_sk'] !== $this->kode_sk) {
+                $fail("{$value} bukan indikator dari {$this->kode_sk}.");
+            }
+        };
     }
 
     public function rapikanUraian(string $field): void

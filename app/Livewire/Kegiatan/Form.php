@@ -7,6 +7,8 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Stub\StubData;
+use App\Support\Stub\StubMaster;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -48,11 +50,18 @@ class Form extends Component
         'tanggal_mulai' => ['tanggal_dokumen', 'lama_hari', 'tanggal_laporan', 'bulan_pelaksanaan'],
         'lama_hari' => ['tanggal_laporan', 'bulan_pelaksanaan'],
         'hari_kerja' => ['lama_hari', 'tanggal_laporan', 'bulan_pelaksanaan'],
+        'kode_sk' => ['kode_iksk'],
+        'dana_dipa' => ['pagu_dipa'],
+        'dana_komite' => ['pagu_komite'],
     ];
 
     public function mount(KegiatanRepository $repo, ?int $kegiatan = null): void
     {
         if ($kegiatan === null) {
+            // Akun leading dengan satu leading langsung terisi leading-nya.
+            $pilihan = StubMaster::leadingsUntuk(StubData::currentUser());
+            $this->form->leading = count($pilihan) === 1 ? $pilihan[0]['kode'] : '';
+
             return;
         }
 
@@ -110,6 +119,10 @@ class Form extends Component
             'nama_kegiatan_cover' => $this->form->setNamaCoverManual(),
             'tanggal_mulai', 'lama_hari', 'hari_kerja' => $this->form->sinkronJadwal(),
             'tanggal_laporan' => $this->form->setLaporanManual(),
+            'kode_sk' => $this->form->sinkronIksk(),
+            'pagu_dipa', 'pagu_komite' => $this->form->rapikanPagu($field),
+            'dana_dipa' => $this->form->dana_dipa ?: $this->form->pagu_dipa = '',
+            'dana_komite' => $this->form->dana_komite ?: $this->form->pagu_komite = '',
             default => null,
         };
 
@@ -244,7 +257,7 @@ class Form extends Component
     }
 
     /**
-     * @return list<array{id: string, title: string, description: string, icon: string, fields: list<string>}>
+     * @return list<array{id: string, title: string, description: string, icon: string}>
      */
     #[Computed]
     public function sections(): array
@@ -275,6 +288,51 @@ class Form extends Component
     public function saveDraft(): void
     {
         $this->pastikanDapatDiedit();
+        $baru = $this->kegiatanId === null;
+        $id = $this->simpan();
+
+        if ($baru) {
+            session()->flash('notify', ['message' => 'Kegiatan baru tersimpan sebagai draf.', 'type' => 'success']);
+            $this->redirectRoute('kegiatan.edit', ['kegiatan' => $id], navigate: true);
+
+            return;
+        }
+
+        $this->dispatch('notify', message: 'Draf tersimpan pukul '.now()->format('H.i').'.');
+    }
+
+    /**
+     * Simpan (bila masih bisa diedit) lalu buka RAB. RAB disusun per sumber dana, jadi minimal satu sumber dana wajib dipilih.
+     */
+    public function lanjutKeRab(): void
+    {
+        if ($this->form->sumberDana() === []) {
+            $this->addError('form.sumber_dana', 'Pilih minimal satu sumber dana sebelum menyusun RAB.');
+            $this->dispatch('notify', message: 'Pilih sumber dana terlebih dahulu.', type: 'error');
+
+            return;
+        }
+
+        $id = $this->dapatDiedit() ? $this->simpan() : $this->kegiatanId;
+
+        if (! Route::has('kegiatan.rab')) {
+            $this->dispatch('notify', message: 'Data tersimpan. Halaman RAB sedang disiapkan pada tahap berikutnya.', type: 'info');
+
+            if ($this->kegiatanId === null || $this->kegiatanId !== $id) {
+                $this->redirectRoute('kegiatan.edit', ['kegiatan' => $id], navigate: true);
+            }
+
+            return;
+        }
+
+        $this->redirectRoute('kegiatan.rab', ['kegiatan' => $id], navigate: true);
+    }
+
+    /**
+     * Validasi & simpan data kegiatan; mengembalikan id kegiatan.
+     */
+    private function simpan(): int
+    {
         try {
             $this->form->validate();
         } catch (ValidationException $e) {
@@ -284,26 +342,45 @@ class Form extends Component
         }
 
         $repo = app(KegiatanRepository::class);
-        $baru = $this->kegiatanId === null;
 
-        if ($baru) {
+        if ($this->kegiatanId === null) {
             $this->catatRiwayat('dibuat', StatusKegiatan::Draf);
         }
 
         $id = $repo->simpan($this->dataUntukDisimpan(), $this->kegiatanId);
 
         $this->adaPerubahan = false;
+        $this->diperbaruiPada = $repo->temukan($id)['diperbarui_pada'] ?? now()->toIso8601String();
+        unset($this->drafTerbaru);
 
-        if ($baru) {
-            session()->flash('notify', ['message' => 'Kegiatan baru tersimpan sebagai draf.', 'type' => 'success']);
-            $this->redirectRoute('kegiatan.edit', ['kegiatan' => $id], navigate: true);
+        return $id;
+    }
 
+    /**
+     * Isi nama kegiatan dari sub kegiatan RKTM terpilih (nama cover ikut otomatis).
+     */
+    public function pakaiNamaDariRktm(): void
+    {
+        $this->pastikanDapatDiedit();
+        $rktm = StubMaster::cari(StubMaster::kodeRktm(), $this->form->kode_rktm);
+
+        if ($rktm === null) {
             return;
         }
 
-        $this->diperbaruiPada = $repo->temukan($id)['diperbarui_pada'] ?? now()->toIso8601String();
-        unset($this->drafTerbaru);
-        $this->dispatch('notify', message: 'Draf tersimpan pukul '.now()->format('H.i').'.');
+        $this->form->nama_kegiatan = KegiatanForm::tanpaAwalanKegiatan($rktm['sub_kegiatan']);
+        $this->form->syncNamaCover();
+        $this->adaPerubahan = true;
+        $this->form->validateOnly('nama_kegiatan');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function kelengkapan(): array
+    {
+        return $this->form->kelengkapan();
     }
 
     /**

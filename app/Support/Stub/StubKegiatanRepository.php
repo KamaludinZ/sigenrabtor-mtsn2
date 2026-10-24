@@ -107,6 +107,18 @@ class StubKegiatanRepository implements KegiatanRepository
             'lama_hari' => 1,
             'hari_kerja' => false,
             'bulan_pelaksanaan' => [7],
+            'leading' => '1.6',
+            'kode_rktm' => '6.17.12',
+            'kode_sk' => 'SK.10',
+            'kode_iksk' => 'IKSK 10.6',
+            'kode_edm' => 'C1',
+            'budaya_mutu' => 2,
+            'tempat' => 'Aula Madrasah',
+            'peserta_jumlah' => 56,
+            'peserta_jenis' => 'Guru dan tenaga kependidikan',
+            'uraian_pelaksanaan' => 'workshop tatap muka dengan narasumber pengawas madrasah, dilanjutkan kerja kelompok penyusunan perangkat pembelajaran.',
+            'konteks' => 'Peserta 54 guru serta kepala madrasah dan kepala TU; narasumber pengawas madrasah; output berupa dokumen kurikulum madrasah dan perangkat pembelajaran yang disahkan.',
+            'sumber_dana' => [['sumber' => 'Komite', 'pagu' => 10_000_000]],
             // Nama fiktif untuk contoh.
             'panitia' => [
                 ['nama' => 'Ahmad Fauzi, S.Pd.', 'jabatan' => 'Tim Penjamin Mutu', 'peran' => 'Ketua'],

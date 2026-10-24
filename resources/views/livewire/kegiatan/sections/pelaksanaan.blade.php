@@ -98,13 +98,43 @@
         </p>
     </div>
 
-    {{-- Isian pelaksanaan lainnya disiapkan pada langkah berikutnya --}}
-    <div class="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-4">
-        <p class="text-sm font-medium text-stone-600">Isian lain bagian ini:</p>
-        <ul class="mt-2 flex flex-wrap gap-1.5">
-            @foreach (['Tempat', 'Jumlah peserta', 'Jenis peserta', 'Uraian pelaksanaan'] as $field)
-                <li class="rounded-md bg-white px-2 py-1 text-xs text-stone-600 ring-1 ring-stone-200">{{ $field }}</li>
-            @endforeach
-        </ul>
+    {{-- Tempat & peserta --}}
+    <div class="grid gap-5 border-t border-stone-100 pt-5 sm:grid-cols-2">
+        <x-ui.field class="sm:col-span-2" label="Tempat pelaksanaan" for="tempat" error="form.tempat"
+                    hint="Wajib untuk dokumen lengkap. Tercetak: “Kegiatan … bertempat di {tempat}”.">
+            <input type="text" id="tempat" wire:model.live.blur="form.tempat" list="saran-tempat" maxlength="255" autocomplete="off"
+                   placeholder="mis. Aula Madrasah" class="form-input"
+                   @error('form.tempat') aria-invalid="true" aria-describedby="tempat-error" @enderror>
+            <datalist id="saran-tempat">
+                @foreach (['Aula Madrasah', 'Lingkungan Madrasah', 'Ruang Kelas', 'Laboratorium', 'Masjid Madrasah', 'Ruang Rapat', 'Perpustakaan'] as $saran)
+                    <option value="{{ $saran }}"></option>
+                @endforeach
+            </datalist>
+        </x-ui.field>
+
+        <x-ui.field label="Jumlah peserta" for="peserta_jumlah" error="form.peserta_jumlah">
+            <div class="relative">
+                <input type="number" id="peserta_jumlah" wire:model.live.blur="form.peserta_jumlah" min="1" max="100000" step="1"
+                       inputmode="numeric" placeholder="0" class="form-input pr-16"
+                       @error('form.peserta_jumlah') aria-invalid="true" aria-describedby="peserta_jumlah-error" @enderror>
+                <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-500">orang</span>
+            </div>
+        </x-ui.field>
+
+        <x-ui.field label="Jenis peserta" for="peserta_jenis" error="form.peserta_jenis">
+            <input type="text" id="peserta_jenis" wire:model.live.blur="form.peserta_jenis" list="saran-peserta" maxlength="150" autocomplete="off"
+                   placeholder="mis. Guru dan tenaga kependidikan" class="form-input"
+                   @error('form.peserta_jenis') aria-invalid="true" aria-describedby="peserta_jenis-error" @enderror>
+            <datalist id="saran-peserta">
+                @foreach (['Guru', 'Siswa', 'Guru dan tenaga kependidikan', 'Tenaga kependidikan', 'Orang tua/wali siswa', 'Pengurus komite'] as $saran)
+                    <option value="{{ $saran }}"></option>
+                @endforeach
+            </datalist>
+        </x-ui.field>
+
+        <x-ui.uraian class="sm:col-span-2" id="uraian_pelaksanaan" label="Uraian bentuk pelaksanaan" model="form.uraian_pelaksanaan"
+                     :max="3000" :rows="3"
+                     placeholder="mis. workshop tatap muka dengan narasumber pengawas madrasah, dilanjutkan kerja kelompok penyusunan perangkat."
+                     hint="Melengkapi kalimat “Kegiatan … akan dilaksanakan selama … hari” pada bagian Tahapan: Pelaksanaan." />
     </div>
 </div>

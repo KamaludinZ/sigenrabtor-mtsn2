@@ -97,7 +97,7 @@
                    x-effect="if (active === @js($section['id'])) $el.closest('.overflow-x-auto').scrollTo({ left: $el.offsetLeft - 16, behavior: 'smooth' })"
                    class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset transition"
                    :class="active === @js($section['id']) ? 'bg-brand-700 text-white ring-brand-700' : 'bg-white text-stone-600 ring-stone-300'">
-                    {{ $loop->iteration }}. {{ $section['title'] }}
+                    {{ $loop->iteration }}. {{ $section['title'] }}@if (($this->kelengkapan[$section['id']] ?? null) === 'lengkap') ✓@endif
                 </a>
             @endforeach
         </div>
@@ -128,32 +128,14 @@
             <fieldset @disabled(! $this->dapatDiedit()) class="min-w-0 space-y-6">
             @foreach ($this->sections as $section)
                 <x-ui.form-section :id="$section['id']" :number="$loop->iteration" :title="$section['title']"
-                                   :description="$section['description']" :icon="$section['icon']">
-                    @if (view()->exists('livewire.kegiatan.sections.'.$section['id']))
-                        @include('livewire.kegiatan.sections.'.$section['id'])
-                    @else
-                    <div class="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5">
-                        <p class="text-sm font-medium text-stone-600">Isian bagian ini:</p>
-                        <ul class="mt-2 flex flex-wrap gap-1.5">
-                            @foreach ($section['fields'] as $field)
-                                <li class="rounded-md bg-white px-2 py-1 text-xs text-stone-600 ring-1 ring-stone-200">{{ $field }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    @endif
+                                   :description="$section['description']" :icon="$section['icon']"
+                                   :kelengkapan="$this->kelengkapan[$section['id']] ?? null">
+                    @include('livewire.kegiatan.sections.'.$section['id'])
                 </x-ui.form-section>
             @endforeach
             </fieldset>
 
-            @if ($this->dapatDiedit())
-                <div class="flex flex-col-reverse gap-3 rounded-2xl bg-white px-5 py-4 shadow-xs ring-1 ring-stone-200 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                    <p class="text-xs text-stone-500">Draf dapat dilanjutkan kapan saja. Dokumen yang belum lengkap tetap bisa dicetak dengan tanda “DRAF”.</p>
-                    <button type="submit" class="btn-primary shrink-0">
-                        <x-ui.icon name="save" class="size-4" />
-                        Simpan Draf
-                    </button>
-                </div>
-            @endif
+            @include('livewire.kegiatan.partials.lanjut-rab')
         </form>
 
         {{-- Navigasi bagian versi desktop --}}
@@ -162,16 +144,32 @@
 
             <div class="sticky top-24 space-y-4">
 
+                @php
+                    $wajib = array_intersect_key($this->kelengkapan, array_flip(\App\Support\Kegiatan\FormSections::wajib()));
+                    $wajibLengkap = count(array_filter($wajib, fn ($k) => $k === 'lengkap'));
+                @endphp
                 <nav class="rounded-2xl bg-white p-3 shadow-xs ring-1 ring-stone-200" aria-label="Bagian form">
-                    <p class="px-2 pt-1 pb-2 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Bagian form</p>
+                    <div class="flex items-baseline justify-between px-2 pt-1 pb-2">
+                        <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Bagian form</p>
+                        <p class="text-[11px] font-semibold text-stone-500" data-testid="ringkasan-kelengkapan">{{ $wajibLengkap }}/{{ count($wajib) }} lengkap</p>
+                    </div>
+                    <div class="mx-2 mb-2 h-1 overflow-hidden rounded-full bg-stone-100">
+                        <div class="h-full rounded-full bg-brand-600 transition-all" style="width: {{ count($wajib) ? round($wajibLengkap / count($wajib) * 100) : 0 }}%"></div>
+                    </div>
                     <ol class="space-y-0.5">
                         @foreach ($this->sections as $section)
                             <li>
                                 <a href="#{{ $section['id'] }}"
                                    class="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition"
                                    :class="active === @js($section['id']) ? 'bg-brand-50 font-semibold text-brand-800' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'">
-                                    <span class="grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold"
-                                          :class="active === @js($section['id']) ? 'bg-brand-700 text-white' : 'bg-stone-100 text-stone-500'">{{ $loop->iteration }}</span>
+                                    @if (($this->kelengkapan[$section['id']] ?? null) === 'lengkap')
+                                        <span class="grid size-5 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700" title="Lengkap">
+                                            <x-ui.icon name="check" class="size-3" />
+                                        </span>
+                                    @else
+                                        <span class="grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+                                              :class="active === @js($section['id']) ? 'bg-brand-700 text-white' : 'bg-stone-100 text-stone-500'">{{ $loop->iteration }}</span>
+                                    @endif
                                     {{ $section['title'] }}
                                 </a>
                             </li>
