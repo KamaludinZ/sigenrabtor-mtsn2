@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Kegiatan;
 
+use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Stub\StubData;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -16,7 +18,41 @@ use Livewire\Component;
 #[Title('Data Kegiatan')]
 class Form extends Component
 {
+    public KegiatanForm $form;
+
     public string $status = 'draf';
+
+    public function mount(): void
+    {
+        $this->form->tanggal_dokumen = now()->toDateString();
+    }
+
+    /**
+     * Validasi per isian begitu nilainya berubah, plus aturan turunan (nama cover).
+     */
+    public function updated(string $property): void
+    {
+        match ($property) {
+            'form.nama_kegiatan' => $this->form->syncNamaCover(),
+            'form.nama_kegiatan_cover' => $this->form->setNamaCoverManual(),
+            default => null,
+        };
+
+        if (str_starts_with($property, 'form.') && $property !== 'form.cover_manual') {
+            $this->form->validateOnly(substr($property, 5));
+        }
+
+        // Tanggal pelaporan bergantung pada tanggal dokumen; validasi ulang bila sudah terisi.
+        if ($property === 'form.tanggal_dokumen' && $this->form->tanggal_laporan) {
+            $this->form->validateOnly('tanggal_laporan');
+        }
+    }
+
+    public function resetNamaCover(): void
+    {
+        $this->form->resetNamaCover();
+        $this->form->validateOnly('nama_kegiatan_cover');
+    }
 
     /**
      * @return list<array{id: string, title: string, description: string, icon: string, fields: list<string>}>
@@ -38,6 +74,14 @@ class Form extends Component
 
     public function saveDraft(): void
     {
+        try {
+            $this->form->validate();
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: 'Periksa kembali isian yang ditandai merah.', type: 'error');
+
+            throw $e;
+        }
+
         // Tahap frontend: belum ada penyimpanan; backend menggantinya dengan persistensi kegiatan.
         $this->dispatch('notify', message: 'Draf kegiatan tersimpan (mode data tiruan).');
     }

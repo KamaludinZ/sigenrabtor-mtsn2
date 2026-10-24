@@ -59,6 +59,9 @@
             @foreach ($this->sections as $section)
                 <x-ui.form-section :id="$section['id']" :number="$loop->iteration" :title="$section['title']"
                                    :description="$section['description']" :icon="$section['icon']">
+                    @if (view()->exists('livewire.kegiatan.sections.'.$section['id']))
+                        @include('livewire.kegiatan.sections.'.$section['id'])
+                    @else
                     <div class="rounded-xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5">
                         <p class="text-sm font-medium text-stone-600">Isian bagian ini:</p>
                         <ul class="mt-2 flex flex-wrap gap-1.5">
@@ -67,6 +70,7 @@
                             @endforeach
                         </ul>
                     </div>
+                    @endif
                 </x-ui.form-section>
             @endforeach
 

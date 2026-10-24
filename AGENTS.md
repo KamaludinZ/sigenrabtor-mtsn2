@@ -14,6 +14,7 @@ Generator KAK/TOR & RAB madrasah. PRD lengkap: `npx ngodingpakeai plan get fe0f4
 - Bahasa UI & domain: Indonesia (nama tabel/kolom mengikuti PRD: `activities`, `anggaran_kegiatan`, `budget_items`, ...).
 - Frontend-first: layar dibangun di atas `App\Support\Stub\StubData` lalu backend menggantinya dengan Eloquent tanpa mengubah bentuk data di view.
 - Komponen UI Blade di `resources/views/components/ui` (`<x-ui.icon>`, `<x-ui.form-section>`, `<x-ui.status-badge>`, `<x-ui.toast>`).
+- Livewire 4: `wire:model.blur` hanya menunda state klien (tanpa request). Untuk validasi saat blur pakai `wire:model.live.blur`.
 - Notifikasi dari Livewire: `$this->dispatch('notify', message: '...', type: 'success|error|info')`.
 - Menu samping: `App\Support\Navigation` — item otomatis aktif begitu rutenya terdaftar.
 - Folder `REFERENSI/` berisi dokumen contoh asli (tidak di-commit): acuan struktur KAK/TOR, RAB, dan master kode.
