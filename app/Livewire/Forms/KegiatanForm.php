@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Rules\KalimatUtuh;
+use App\Support\Teks;
 use Livewire\Form;
 
 /**
@@ -13,6 +14,9 @@ use Livewire\Form;
  */
 class KegiatanForm extends Form
 {
+    /** Isian uraian (teks panjang) yang spasinya dirapikan otomatis. */
+    public const URAIAN = ['latar_belakang', 'tujuan', 'sasaran'];
+
     // Identitas Kegiatan
     public string $nama_kegiatan = '';
 
@@ -75,6 +79,13 @@ class KegiatanForm extends Form
             'date' => 'Kolom :attribute harus berupa tanggal yang valid.',
             'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
         ];
+    }
+
+    public function rapikanUraian(string $field): void
+    {
+        if (in_array($field, self::URAIAN, true)) {
+            $this->{$field} = Teks::rapikan($this->{$field});
+        }
     }
 
     /**

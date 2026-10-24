@@ -27,29 +27,19 @@
                @error('form.nama_kegiatan_cover') aria-invalid="true" aria-describedby="nama_kegiatan_cover-error" @enderror>
     </x-ui.field>
 
-    <x-ui.field class="sm:col-span-2" label="Latar belakang (paragraf khusus)" for="latar_belakang" error="form.latar_belakang"
-                hint="Paragraf baku visi madrasah dan kalimat “…adalah kegiatan {nama}” ditambahkan otomatis di atas paragraf ini.">
-        <x-slot:aside><span x-data="{ n: {{ mb_strlen($form->latar_belakang) }} }" x-text="n + ' / 5000'" x-on:input.window="if ($event.target.id === 'latar_belakang') n = $event.target.value.length"></span></x-slot:aside>
-        <textarea id="latar_belakang" wire:model.live.blur="form.latar_belakang" rows="4" maxlength="5000"
-                  class="form-input field-sizing-content min-h-24" placeholder="Alasan khusus kegiatan ini diselenggarakan (opsional)."
-                  @error('form.latar_belakang') aria-invalid="true" aria-describedby="latar_belakang-error" @enderror></textarea>
-    </x-ui.field>
+    <x-ui.uraian class="sm:col-span-2" id="latar_belakang" label="Latar belakang (paragraf khusus)" model="form.latar_belakang"
+                 :max="5000" :rows="4" placeholder="Alasan khusus kegiatan ini diselenggarakan (opsional)."
+                 hint="Paragraf baku visi madrasah dan kalimat “…adalah kegiatan {nama}” ditambahkan otomatis di atas paragraf ini." />
 
-    <x-ui.field class="sm:col-span-2" label="Tujuan" for="tujuan" error="form.tujuan" :warning="$peringatan['tujuan'] ?? null"
-                hint="Wajib untuk dokumen lengkap. Tercetak sebagai: “Kegiatan {nama} bertujuan {tujuan}”.">
-        <x-slot:aside><span x-data="{ n: {{ mb_strlen($form->tujuan) }} }" x-text="n + ' / 2000'" x-on:input.window="if ($event.target.id === 'tujuan') n = $event.target.value.length"></span></x-slot:aside>
-        <textarea id="tujuan" wire:model.live.blur="form.tujuan" rows="3" maxlength="2000"
-                  class="form-input field-sizing-content min-h-20" placeholder="mis. menghasilkan dokumen kurikulum yang terlegitimasi sesuai prinsip partisipatif, transparan, dan akuntabel."
-                  @error('form.tujuan') aria-invalid="true" aria-describedby="tujuan-error" @enderror></textarea>
-    </x-ui.field>
+    <x-ui.uraian class="sm:col-span-2" id="tujuan" label="Tujuan" model="form.tujuan" :max="2000"
+                 :warning="$peringatan['tujuan'] ?? null"
+                 placeholder="mis. menghasilkan dokumen kurikulum yang terlegitimasi sesuai prinsip partisipatif, transparan, dan akuntabel."
+                 hint="Wajib untuk dokumen lengkap. Tercetak sebagai: “Kegiatan {nama} bertujuan {tujuan}”." />
 
-    <x-ui.field class="sm:col-span-2" label="Sasaran" for="sasaran" error="form.sasaran" :warning="$peringatan['sasaran'] ?? null"
-                hint="Wajib untuk dokumen lengkap. Tercetak sebagai: “Terwujudnya {sasaran}”.">
-        <x-slot:aside><span x-data="{ n: {{ mb_strlen($form->sasaran) }} }" x-text="n + ' / 2000'" x-on:input.window="if ($event.target.id === 'sasaran') n = $event.target.value.length"></span></x-slot:aside>
-        <textarea id="sasaran" wire:model.live.blur="form.sasaran" rows="3" maxlength="2000"
-                  class="form-input field-sizing-content min-h-20" placeholder="mis. dokumen perencanaan yang handal dan akurat sesuai kebutuhan riil madrasah."
-                  @error('form.sasaran') aria-invalid="true" aria-describedby="sasaran-error" @enderror></textarea>
-    </x-ui.field>
+    <x-ui.uraian class="sm:col-span-2" id="sasaran" label="Sasaran" model="form.sasaran" :max="2000"
+                 :warning="$peringatan['sasaran'] ?? null"
+                 placeholder="mis. dokumen perencanaan yang handal dan akurat sesuai kebutuhan riil madrasah."
+                 hint="Wajib untuk dokumen lengkap. Tercetak sebagai: “Terwujudnya {sasaran}”." />
 
     <x-ui.field label="Tanggal dokumen" for="tanggal_dokumen" error="form.tanggal_dokumen"
                 :hint="\App\Support\Format::tanggal($form->tanggal_dokumen) ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_dokumen) : 'Tanggal pada lembar pengesahan.'">

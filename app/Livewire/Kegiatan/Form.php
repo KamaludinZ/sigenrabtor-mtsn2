@@ -39,7 +39,9 @@ class Form extends Component
         };
 
         if (str_starts_with($property, 'form.') && $property !== 'form.cover_manual') {
-            $this->form->validateOnly(substr($property, 5));
+            $field = substr($property, 5);
+            $this->form->rapikanUraian($field);
+            $this->form->validateOnly($field);
         }
 
         // Tanggal pelaporan bergantung pada tanggal dokumen; validasi ulang bila sudah terisi.
