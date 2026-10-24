@@ -4,14 +4,8 @@
 <form wire:submit="simpanItem" data-testid="form-item"
       class="border-t border-stone-100 bg-stone-50/70 px-5 py-5 sm:px-6"
       x-data="{
-          get jumlah() {
-              let t = String($wire.item.volume ?? '').replace(/\s/g, '');
-              t = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t);
-              const v = parseFloat(t);
-              const h = parseInt(String($wire.item.harga_satuan ?? '').replace(/\D/g, ''), 10);
-              // Sama dengan KalkulatorRab::jumlah: volume × 100 dibulatkan, lalu dibulatkan setengah-ke-atas ke rupiah.
-              return (v > 0 && h > 0) ? Math.floor((Math.round(v * 100) * h + 50) / 100) : null;
-          },
+          // Rumus sama dengan KalkulatorRab::jumlah (resources/js/format.js).
+          get jumlah() { return $jumlahRab($wire.item.volume, $wire.item.harga_satuan) },
       }"
       x-on:form-item-dibuka.window="$nextTick(() => $refs.uraian?.focus())"
       x-on:keydown.escape="$wire.tutupFormItem()">
@@ -90,7 +84,7 @@
             <p class="form-label">Jumlah</p>
             <output for="item_volume item_harga_satuan" aria-live="polite" data-testid="jumlah-item"
                     class="flex min-h-9.5 items-center justify-end rounded-lg bg-white px-3 py-2 text-sm font-bold text-stone-900 tabular-nums ring-1 ring-stone-200 ring-inset"
-                    x-text="jumlah === null ? '—' : 'Rp' + jumlah.toLocaleString('id-ID')">—</output>
+                    x-text="jumlah === null ? '—' : $rupiah(jumlah)">—</output>
             <p class="form-hint text-right">Volume × harga satuan</p>
         </div>
     </div>

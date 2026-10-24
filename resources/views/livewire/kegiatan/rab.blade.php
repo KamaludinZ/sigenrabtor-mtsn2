@@ -74,7 +74,7 @@
                             'Kode anggaran' => $this->header['kode_anggaran'],
                             'Tahun anggaran' => $this->header['tahun'],
                             'Sumber dana' => $sumber,
-                            'Jumlah yang diajukan' => Format::rupiah($this->total).',-',
+                            'Jumlah yang diajukan' => Format::rupiahDokumen($this->total),
                         ] as $label => $nilai)
                             <div class="min-w-0">
                                 <dt class="text-xs text-stone-500">{{ $label }}</dt>
@@ -141,11 +141,11 @@
             <aside class="space-y-4">
                 <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" data-testid="ringkasan-rab">
                     <p class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Ringkasan RAB {{ $sumber }}</p>
-                    <p class="mt-2 text-2xl font-bold text-stone-900 tabular-nums">{{ Format::rupiah($this->total) }}</p>
+                    <x-ui.uang :nilai="$this->total" class="mt-2 block text-2xl font-bold text-stone-900" />
                     <p class="text-xs text-stone-500">Total RAB = total KAK = jumlah yang diajukan</p>
 
                     <div class="mt-4 space-y-1.5 text-sm">
-                        <div class="flex justify-between"><span class="text-stone-500">Pagu</span><span class="font-medium tabular-nums">{{ $pagu !== null ? Format::rupiah($pagu) : '—' }}</span></div>
+                        <div class="flex justify-between"><span class="text-stone-500">Pagu</span>@if ($pagu !== null)<x-ui.uang :nilai="$pagu" class="font-medium" />@else<span>—</span>@endif</div>
                         @if ($selisih !== null)
                             <div class="flex justify-between">
                                 <span class="text-stone-500" data-testid="status-pagu">{{ ['sesuai' => 'Sesuai pagu', 'sisa' => 'Sisa pagu', 'melebihi' => 'Melebihi pagu'][$statusPagu] }}</span>
@@ -167,7 +167,7 @@
                                                 title="Tampilkan kelompok {{ $label }}"
                                                 x-on:click="$wire.$set('kelompok', 'kategori').then(() => $nextTick(() => [...document.querySelectorAll('[data-kelompok-anchor={{ $kunci }}]')].find(el => el.offsetParent !== null)?.scrollIntoView({ behavior: 'smooth', block: 'center' })))">
                                             <dt class="text-stone-500 underline decoration-stone-300 underline-offset-2">{{ $label }}</dt>
-                                            <dd class="tabular-nums">{{ Format::rupiah($hasil->perKategori[$kunci] ?? 0) }}</dd>
+                                            <dd><x-ui.uang :nilai="$hasil->perKategori[$kunci] ?? 0" /></dd>
                                         </button>
                                     </div>
                                 @endforeach

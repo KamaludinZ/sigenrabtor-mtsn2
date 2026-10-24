@@ -58,6 +58,6 @@
                 Total RAB nanti dibandingkan dengan pagu; muncul peringatan bila melebihi.
             @endif
         </p>
-        <p class="text-sm text-stone-600">Total pagu <span class="font-bold text-stone-900 tabular-nums" data-testid="total-pagu">{{ Format::rupiah($form->totalPagu()) }}</span></p>
+        <p class="text-sm text-stone-600">Total pagu <x-ui.uang :nilai="$form->totalPagu()" class="font-bold text-stone-900" data-testid="total-pagu" /></p>
     </div>
 </div>

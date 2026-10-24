@@ -22,7 +22,7 @@
         init() { this.n = this.$refs.ta.value.length },
         rapikan() {
             const ta = this.$refs.ta;
-            ta.value = ta.value.replace(/\r\n?/g, '\n').replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+            ta.value = ta.value.replace(/\r\n?/g, '\n').replace(/[ \t\u00A0]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
             this.n = ta.value.length;
             ta.dispatchEvent(new Event('input', { bubbles: true }));
             ta.dispatchEvent(new Event('blur'));
@@ -30,7 +30,7 @@
      }">
     <x-ui.field :label="$label" :for="$id" :error="$model" :hint="$hint" :warning="$warning" :required="$required">
         <x-slot:aside>
-            <span x-text="n.toLocaleString('id-ID') + ' / ' + max.toLocaleString('id-ID')"
+            <span x-text="$angka(n) + ' / ' + $angka(max)"
                   :class="n > max * 0.9 ? 'font-semibold text-gold-700' : ''"></span>
         </x-slot:aside>
 

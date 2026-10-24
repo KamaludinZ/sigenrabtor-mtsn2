@@ -48,8 +48,8 @@
                 <th scope="col" class="px-2 py-2.5 text-left">Uraian</th>
                 <th scope="col" class="px-2 py-2.5 text-right">Vol</th>
                 <th scope="col" class="px-2 py-2.5 text-left">Satuan</th>
-                <th scope="col" class="px-2 py-2.5 text-right">Harga satuan</th>
-                <th scope="col" class="px-4 py-2.5 text-right">Jumlah</th>
+                <th scope="col" class="px-2 py-2.5 text-right">Harga satuan (Rp)</th>
+                <th scope="col" class="px-4 py-2.5 text-right">Jumlah (Rp)</th>
                 @if ($bisaUbah)
                     <th scope="col" class="w-20 py-2.5 pr-3 text-right"><span class="sr-only">Aksi</span></th>
                 @endif
@@ -158,7 +158,7 @@
                 <li wire:key="kartu-{{ $baris['id'] ?? $baris['nomor'] }}" @class(['px-5 py-3', 'bg-gold-50' => $itemDiedit === ($baris['id'] ?? null)])>
                     <div class="flex items-start justify-between gap-3">
                         <p class="min-w-0 text-sm text-stone-800"><span class="text-stone-400">{{ $baris['nomor'] }}.</span> {{ $baris['uraian'] }}</p>
-                        <p class="shrink-0 text-sm font-semibold tabular-nums">{{ Format::angka($baris['jumlah']) }}</p>
+                        <x-ui.uang :nilai="$baris['jumlah']" class="shrink-0 text-sm font-semibold" />
                     </div>
                     <p class="mt-0.5 text-xs text-stone-500 tabular-nums">
                         {{ Format::angka($baris['volume']) }} {{ $baris['satuan'] }} × {{ Format::rupiah($baris['harga_satuan']) }}@if ($baris['kode']) · {{ $baris['kode'] }}@endif

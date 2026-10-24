@@ -23,11 +23,19 @@ class Format
     }
 
     /**
-     * 10000000 → "Rp10.000.000".
+     * 10000000 → "Rp10.000.000"; nilai negatif → "-Rp600.000" (tanda di depan, bukan "Rp-600.000").
      */
     public static function rupiah(int|float $nilai): string
     {
-        return 'Rp'.self::angka($nilai);
+        return ($nilai < 0 ? '-' : '').'Rp'.self::angka(abs($nilai));
+    }
+
+    /**
+     * Gaya baku dokumen KAK/RAB madrasah: 10000000 → "Rp10.000.000,-".
+     */
+    public static function rupiahDokumen(int|float $nilai): string
+    {
+        return self::rupiah($nilai).',-';
     }
 
     /**
