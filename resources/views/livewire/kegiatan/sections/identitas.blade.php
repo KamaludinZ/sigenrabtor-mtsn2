@@ -48,7 +48,8 @@
     </x-ui.field>
 
     <x-ui.field label="Tanggal pelaporan" for="tanggal_laporan" error="form.tanggal_laporan"
-                :hint="\App\Support\Format::tanggal($form->tanggal_laporan) ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_laporan) : 'Batas penyerahan laporan ke kepala madrasah.'">
+                :hint="(\App\Support\Format::tanggal($form->tanggal_laporan) ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_laporan).'. ' : 'Batas penyerahan laporan ke kepala madrasah. ')
+                    .($form->laporan_otomatis ? 'Otomatis 10 hari setelah kegiatan selesai.' : 'Diatur manual — kosongkan untuk kembali otomatis.')">
         <input type="date" id="tanggal_laporan" wire:model.live="form.tanggal_laporan" class="form-input"
                @error('form.tanggal_laporan') aria-invalid="true" aria-describedby="tanggal_laporan-error" @enderror>
     </x-ui.field>

@@ -22,32 +22,64 @@ class Form extends Component
 
     public string $status = 'draf';
 
-    public function mount(): void
-    {
-        $this->form->tanggal_dokumen = now()->toDateString();
-    }
+    /** Isian yang ikut divalidasi ulang ketika isian kunci berubah. */
+    private const ISIAN_TERKAIT = [
+        'tanggal_dokumen' => ['tanggal_laporan'],
+        'tanggal_mulai' => ['lama_hari', 'tanggal_laporan'],
+        'lama_hari' => ['tanggal_laporan'],
+        'hari_kerja' => ['lama_hari', 'tanggal_laporan'],
+    ];
 
     /**
-     * Validasi per isian begitu nilainya berubah, plus aturan turunan (nama cover).
+     * Validasi per isian begitu nilainya berubah, plus aturan turunan (nama cover, jadwal).
      */
     public function updated(string $property): void
     {
-        match ($property) {
-            'form.nama_kegiatan' => $this->form->syncNamaCover(),
-            'form.nama_kegiatan_cover' => $this->form->setNamaCoverManual(),
+        if (! str_starts_with($property, 'form.') || $property === 'form.cover_manual') {
+            return;
+        }
+
+        $field = substr($property, 5);
+
+        match ($field) {
+            'nama_kegiatan' => $this->form->syncNamaCover(),
+            'nama_kegiatan_cover' => $this->form->setNamaCoverManual(),
+            'tanggal_mulai', 'lama_hari', 'hari_kerja' => $this->form->sinkronJadwal(),
+            'tanggal_laporan' => $this->form->setLaporanManual(),
             default => null,
         };
 
-        if (str_starts_with($property, 'form.') && $property !== 'form.cover_manual') {
-            $field = substr($property, 5);
-            $this->form->rapikanUraian($field);
-            $this->form->validateOnly($field);
-        }
+        $this->form->rapikanUraian($field);
 
-        // Tanggal pelaporan bergantung pada tanggal dokumen; validasi ulang bila sudah terisi.
-        if ($property === 'form.tanggal_dokumen' && $this->form->tanggal_laporan) {
-            $this->form->validateOnly('tanggal_laporan');
+        // Isian terkait divalidasi lebih dulu (errornya disimpan), lalu isian utama dengan alur Livewire biasa.
+        $this->validasiIsianTerkait(self::ISIAN_TERKAIT[$field] ?? []);
+        $this->form->validateOnly($field);
+    }
+
+    /**
+     * @param  list<string>  $fields
+     */
+    private function validasiIsianTerkait(array $fields): void
+    {
+        foreach ($fields as $field) {
+            try {
+                $this->form->validateOnly($field);
+            } catch (ValidationException $e) {
+                $this->setErrorBag($e->validator->errors());
+            }
         }
+    }
+
+    public function toggleBulan(int $bulan): void
+    {
+        $this->form->toggleBulan($bulan);
+        $this->form->validateOnly('bulan_pelaksanaan');
+    }
+
+    public function sesuaikanBulan(): void
+    {
+        $this->form->sesuaikanBulanDenganTanggal();
+        $this->form->validateOnly('bulan_pelaksanaan');
     }
 
     public function resetNamaCover(): void

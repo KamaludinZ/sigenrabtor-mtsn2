@@ -49,6 +49,22 @@ test.describe('Form Data Kegiatan', () => {
         await page.screenshot({ path: `storage/playwright/shots/panitia-${test.info().project.name}.png`, fullPage: false });
     });
 
+    test('jadwal: tanggal selesai, bulan, dan batas laporan dihitung otomatis', async ({ page }) => {
+        await page.locator('#tanggal_mulai').fill('2026-07-30');
+        await page.locator('#lama_hari').fill('4');
+        await expect(page.getByTestId('tanggal-selesai')).toHaveText('Minggu, 2 Agustus 2026');
+        await expect(page.locator('#pelaksanaan').getByRole('button', { name: 'Jul' })).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#pelaksanaan').getByRole('button', { name: 'Agu' })).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#tanggal_laporan')).toHaveValue('2026-08-12');
+
+        await page.getByLabel('Hitung hari kerja saja').check();
+        await expect(page.getByTestId('tanggal-selesai')).toHaveText('Selasa, 4 Agustus 2026');
+        await expect(page.locator('#tanggal_laporan')).toHaveValue('2026-08-14');
+
+        await page.locator('#pelaksanaan').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `storage/playwright/shots/jadwal-${test.info().project.name}.png` });
+    });
+
     test('simpan draf kosong menampilkan error nama kegiatan', async ({ page }) => {
         await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
         await expect(page.getByText('Kolom nama kegiatan wajib diisi.')).toBeVisible();

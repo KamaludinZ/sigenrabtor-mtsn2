@@ -3,7 +3,11 @@
 namespace App\Livewire\Forms;
 
 use App\Rules\KalimatUtuh;
+use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Stub\StubData;
 use App\Support\Teks;
+use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Str;
 use Livewire\Form;
 
@@ -36,6 +40,21 @@ class KegiatanForm extends Form
 
     public ?string $tanggal_laporan = null;
 
+    // Pelaksanaan — jadwal
+    public ?string $tanggal_mulai = null;
+
+    /** @var int|string|null Lama kegiatan dalam hari (input angka; string kosong = belum diisi). */
+    public $lama_hari = null;
+
+    /** Hitung lama kegiatan dengan hari kerja saja (lewati Sabtu & Minggu). */
+    public bool $hari_kerja = false;
+
+    /** @var list<int> Nomor bulan pelaksanaan (1–12); bisa lebih dari satu seperti timeline cascade Perkin. */
+    public array $bulan_pelaksanaan = [];
+
+    /** True selama tanggal pelaporan mengikuti tanggal selesai + 10 hari (belum diubah manual). */
+    public bool $laporan_otomatis = true;
+
     // Pelaksana & Panitia
     /** @var list<array{key: string, nama: string, jabatan: string, peran: string}> */
     public array $panitia = [];
@@ -53,6 +72,8 @@ class KegiatanForm extends Form
      */
     protected function rules(): array
     {
+        $tahun = StubData::tahunAktif()['tahun'];
+
         return [
             'nama_kegiatan' => ['required', 'string', 'min:5', 'max:255'],
             'nama_kegiatan_cover' => ['required', 'string', 'max:255'],
@@ -60,7 +81,12 @@ class KegiatanForm extends Form
             'tujuan' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
             'sasaran' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
             'tanggal_dokumen' => ['nullable', 'date'],
-            'tanggal_laporan' => ['nullable', 'date', 'after_or_equal:tanggal_dokumen'],
+            'tanggal_laporan' => ['nullable', 'date', 'after_or_equal:tanggal_dokumen', $this->aturanLaporanSetelahSelesai()],
+            'tanggal_mulai' => ['nullable', 'date', "after_or_equal:{$tahun}-01-01", "before_or_equal:{$tahun}-12-31"],
+            'lama_hari' => ['nullable', 'integer', 'min:1', 'max:366', $this->aturanSelesaiDalamTahun($tahun)],
+            'hari_kerja' => ['boolean'],
+            'bulan_pelaksanaan' => ['array', 'max:12'],
+            'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
             'panitia' => ['array', 'max:'.self::MAKS_PANITIA],
             'panitia.*.nama' => ['required', 'string', 'max:150'],
             'panitia.*.jabatan' => ['nullable', 'string', 'max:150'],
@@ -81,6 +107,9 @@ class KegiatanForm extends Form
             'sasaran' => 'sasaran',
             'tanggal_dokumen' => 'tanggal dokumen',
             'tanggal_laporan' => 'tanggal pelaporan',
+            'tanggal_mulai' => 'tanggal mulai',
+            'lama_hari' => 'lama kegiatan',
+            'bulan_pelaksanaan' => 'bulan pelaksanaan',
             'panitia.*.nama' => 'nama anggota',
             'panitia.*.jabatan' => 'jabatan anggota',
             'panitia.*.peran' => 'peran anggota',
@@ -99,7 +128,113 @@ class KegiatanForm extends Form
             'date' => 'Kolom :attribute harus berupa tanggal yang valid.',
             'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
             'panitia.max' => 'Susunan tim maksimal :max orang.',
+            'integer' => 'Kolom :attribute harus berupa angka bulat.',
+            'lama_hari.min' => 'Lama kegiatan minimal 1 hari.',
+            'lama_hari.max' => 'Lama kegiatan maksimal 366 hari.',
+            'tanggal_mulai.after_or_equal' => 'Tanggal mulai harus di Tahun Anggaran '.StubData::tahunAktif()['tahun'].'.',
+            'tanggal_mulai.before_or_equal' => 'Tanggal mulai harus di Tahun Anggaran '.StubData::tahunAktif()['tahun'].'.',
         ];
+    }
+
+    /**
+     * Tanggal selesai hasil hitung, atau null bila tanggal mulai/lama belum valid.
+     */
+    public function tanggalSelesai(): ?CarbonImmutable
+    {
+        $mulai = $this->tanggalMulai();
+        $lama = filter_var($this->lama_hari, FILTER_VALIDATE_INT);
+
+        if ($mulai === null || $lama === false || $lama < 1 || $lama > 366) {
+            return null;
+        }
+
+        return JadwalPelaksanaan::tanggalSelesai($mulai, $lama, $this->hari_kerja);
+    }
+
+    public function tanggalMulai(): ?CarbonImmutable
+    {
+        if (! $this->tanggal_mulai || ! strtotime($this->tanggal_mulai)) {
+            return null;
+        }
+
+        return CarbonImmutable::parse($this->tanggal_mulai)->startOfDay();
+    }
+
+    /**
+     * Turunkan bulan pelaksanaan (bila belum dipilih) dan tanggal pelaporan otomatis dari jadwal.
+     */
+    public function sinkronJadwal(): void
+    {
+        $mulai = $this->tanggalMulai();
+        $selesai = $this->tanggalSelesai();
+
+        if ($mulai && $selesai && $this->bulan_pelaksanaan === []) {
+            $this->bulan_pelaksanaan = JadwalPelaksanaan::bulanTercakup($mulai, $selesai);
+        }
+
+        if ($this->laporan_otomatis && $selesai) {
+            $this->tanggal_laporan = JadwalPelaksanaan::batasLaporan($selesai)->toDateString();
+        }
+    }
+
+    /**
+     * Isi ulang bulan pelaksanaan persis sesuai rentang tanggal mulai–selesai.
+     */
+    public function sesuaikanBulanDenganTanggal(): void
+    {
+        $mulai = $this->tanggalMulai();
+        $selesai = $this->tanggalSelesai();
+
+        if ($mulai && $selesai) {
+            $this->bulan_pelaksanaan = JadwalPelaksanaan::bulanTercakup($mulai, $selesai);
+        }
+    }
+
+    public function toggleBulan(int $bulan): void
+    {
+        if ($bulan < 1 || $bulan > 12) {
+            return;
+        }
+
+        $this->bulan_pelaksanaan = in_array($bulan, $this->bulan_pelaksanaan, true)
+            ? array_values(array_diff($this->bulan_pelaksanaan, [$bulan]))
+            : [...$this->bulan_pelaksanaan, $bulan];
+
+        sort($this->bulan_pelaksanaan);
+    }
+
+    /**
+     * Tanggal pelaporan diubah manual: berhenti mengikuti jadwal. Dikosongkan: kembali otomatis.
+     */
+    public function setLaporanManual(): void
+    {
+        $this->laporan_otomatis = blank($this->tanggal_laporan);
+
+        if ($this->laporan_otomatis) {
+            $this->sinkronJadwal();
+        }
+    }
+
+    private function aturanSelesaiDalamTahun(int $tahun): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($tahun) {
+            $selesai = $this->tanggalSelesai();
+
+            if ($selesai && $selesai->year > $tahun) {
+                $fail("Kegiatan selesai {$selesai->locale('id')->translatedFormat('j F Y')}, melewati akhir Tahun Anggaran {$tahun}.");
+            }
+        };
+    }
+
+    private function aturanLaporanSetelahSelesai(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) {
+            $selesai = $this->tanggalSelesai();
+
+            if ($selesai && strtotime((string) $value) && CarbonImmutable::parse($value)->lt($selesai)) {
+                $fail('Tanggal pelaporan tidak boleh sebelum kegiatan selesai ('.$selesai->locale('id')->translatedFormat('j F Y').').');
+            }
+        };
     }
 
     public function tambahPanitia(string $peran = 'Anggota', string $nama = '', string $jabatan = ''): bool
