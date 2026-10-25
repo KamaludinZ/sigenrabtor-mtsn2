@@ -66,6 +66,46 @@ class StubData
     }
 
     /**
+     * Paragraf baku Latar Belakang KAK (master per tahun, diatur admin).
+     */
+    public static function latarBelakangBaku(int $tahun): string
+    {
+        return 'Madrasah Tsanawiyah Negeri 2 Kota Malang, sebagai lembaga pendidikan Islam, berkomitmen memberikan kontribusi yang besar bagi masyarakat '
+            .'sebagai penerus perjuangan dalam rangka syiar agama Islam. Dengan memperhatikan kebutuhan tersebut, MTsN 2 Kota Malang terus berusaha '
+            .'memberikan layanan terbaik kepada peserta didik, masyarakat, dan pengguna layanan lainnya sesuai dengan visi madrasah. Peningkatan '
+            .'pelayanan dan kualitas pendidikan perlu terus diupayakan melalui pembinaan dan evaluasi yang berkesinambungan, sehingga penyelenggaraan '
+            ."pendidikan pada Tahun Anggaran {$tahun} memerlukan kegiatan-kegiatan yang selaras dengan situasi dan kondisi madrasah.";
+    }
+
+    /**
+     * Dasar hukum KAK (master per tahun, diatur admin).
+     *
+     * @return list<string>
+     */
+    public static function dasarHukum(int $tahun): array
+    {
+        return [
+            'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;',
+            'Peraturan Menteri Agama Nomor 10 Tahun 2010 tentang Organisasi dan Tata Kerja Kementerian Agama;',
+            'Peraturan Menteri Agama Nomor 90 Tahun 2013 tentang Penyelenggaraan Pendidikan Madrasah;',
+            "Surat Keputusan Kepala MTsN 2 Kota Malang tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun {$tahun}.",
+        ];
+    }
+
+    /**
+     * Pejabat penanda tangan tahun aktif. Nama & NIP diisi admin di master pejabat; selama data tiruan dibiarkan kosong.
+     *
+     * @return array{kepala: array{jabatan: string, nama: string|null, nip: string|null}, komite: array{jabatan: string, nama: string|null, nip: string|null}}
+     */
+    public static function pejabat(): array
+    {
+        return [
+            'kepala' => ['jabatan' => 'Kepala MTsN 2 Kota Malang', 'nama' => null, 'nip' => null],
+            'komite' => ['jabatan' => 'Ketua Komite MTsN 2 Kota Malang', 'nama' => null, 'nip' => null],
+        ];
+    }
+
+    /**
      * Profil madrasah untuk kop dan identitas aplikasi.
      *
      * @return array{nama: string, nama_singkat: string, kota: string}

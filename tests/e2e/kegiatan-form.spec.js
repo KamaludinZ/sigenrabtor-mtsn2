@@ -146,4 +146,26 @@ test.describe('Form Data Kegiatan', () => {
         await expect(page.getByText('Jumlah peserta 2.500 orang — pastikan bukan salah ketik.')).toBeVisible();
         await expect(page.locator('#lama_hari-error')).toHaveCount(0);
     });
+    test('pratinjau KAK/TOR: panel dari isian saat ini, dokumen per sumber dana, tutup dengan Esc', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/2/edit');
+        await page.locator('#tempat').fill('Laboratorium IPA');
+        await page.locator('#tempat').blur();
+        await page.getByRole('button', { name: 'Pratinjau', exact: true }).click();
+
+        const panel = page.getByTestId('panel-pratinjau');
+        await expect(panel).toBeVisible();
+        const kak = panel.getByTestId('pratinjau-kak');
+        await expect(kak.locator('[data-bagian]')).toHaveCount(9);
+        await expect(kak).toContainText('bertempat di Laboratorium IPA.');
+        await expect(kak).toContainText('dibebankan pada dana DIPA');
+        await page.screenshot({ path: `storage/playwright/shots/pratinjau-kak-${testInfo.project.name}.png` });
+
+        await panel.getByRole('tab', { name: 'KAK Komite' }).click();
+        await expect(kak).toContainText('dibebankan pada dana KOMITE');
+        await expect(kak).toContainText('Ketua Komite MTsN 2 Kota Malang');
+
+        await page.keyboard.press('Escape');
+        await expect(panel).toHaveCount(0);
+        await expect(page.locator('#tempat')).toHaveValue('Laboratorium IPA');
+    });
 });

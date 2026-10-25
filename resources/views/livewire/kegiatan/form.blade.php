@@ -71,7 +71,7 @@
                 </div>
             </div>
 
-            <button type="button" class="btn-secondary" disabled title="Pratinjau tersedia pada fase dokumen">
+            <button type="button" class="btn-secondary" wire:click="$set('pratinjauTerbuka', true)" title="Pratinjau KAK/TOR dari isian saat ini">
                 <x-ui.icon name="eye" class="size-4" />
                 Pratinjau
             </button>
@@ -187,4 +187,53 @@
             </div>
         </aside>
     </div>
+
+    {{-- Panel pratinjau KAK/TOR --}}
+    @if ($pratinjauTerbuka)
+        @php
+            $kak = $this->susunanKak;
+        @endphp
+        <div class="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="Pratinjau KAK/TOR" data-testid="panel-pratinjau"
+             x-data="{ init() { document.documentElement.classList.add('overflow-hidden') }, destroy() { document.documentElement.classList.remove('overflow-hidden') } }"
+             x-on:keydown.escape.window="$wire.set('pratinjauTerbuka', false)">
+            <div class="absolute inset-0 bg-stone-900/40" wire:click="$set('pratinjauTerbuka', false)" aria-hidden="true"></div>
+            <div class="relative ml-auto flex h-full w-full max-w-4xl flex-col bg-stone-100 shadow-xl">
+                <header class="flex flex-wrap items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-stone-900">Pratinjau KAK/TOR</p>
+                        <p class="hidden text-xs text-stone-500 sm:block">Dari isian saat ini, termasuk yang belum disimpan.</p>
+                    </div>
+                    @if (count($kak->daftarSumber) > 1)
+                        <div class="order-last inline-flex rounded-lg bg-stone-100 p-0.5 sm:order-none" role="tablist" aria-label="Dokumen per sumber dana">
+                            @foreach ($kak->daftarSumber as $sumberDok)
+                                <button type="button" role="tab" aria-selected="{{ $sumberDok === $kak->sumber ? 'true' : 'false' }}"
+                                        wire:click="$set('pratinjauSumber', '{{ $sumberDok }}')"
+                                        @class(['rounded-md px-3 py-1 text-xs font-semibold', 'bg-white text-stone-900 shadow-xs' => $sumberDok === $kak->sumber, 'text-stone-500 hover:text-stone-800' => $sumberDok !== $kak->sumber])>
+                                    KAK {{ $sumberDok }}
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                    <button type="button" class="btn-ghost" wire:click="$set('pratinjauTerbuka', false)">
+                        <x-ui.icon name="x" class="size-4" />
+                        Tutup
+                    </button>
+                </header>
+
+                @if ($kak->kurang)
+                    <div class="flex flex-wrap items-center gap-1.5 border-b border-gold-200 bg-gold-50 px-4 py-2 text-xs text-stone-700 sm:px-6" data-testid="pratinjau-kurang">
+                        <x-ui.icon name="alert" class="size-4 shrink-0 text-gold-600" />
+                        <span class="font-semibold">{{ count($kak->kurang) }} isian belum lengkap:</span>
+                        @foreach ($kak->kurang as $apa)
+                            <span class="rounded-full bg-white px-2 py-0.5 ring-1 ring-gold-200">{{ $apa }}</span>
+                        @endforeach
+                    </div>
+                @endif
+
+                <div class="flex-1 overflow-y-auto p-3 sm:p-6">
+                    <x-dokumen.kak-tor :susunan="$kak" />
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

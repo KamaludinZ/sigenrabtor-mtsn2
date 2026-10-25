@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\FormSections;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -42,6 +43,12 @@ class Form extends Component
 
     /** Ada perubahan sejak terakhir disimpan/dimuat (untuk penanda & peringatan saat meninggalkan halaman). */
     public bool $adaPerubahan = false;
+
+    /** Panel pratinjau KAK/TOR; isi pratinjau hanya dirender selama panel terbuka. */
+    public bool $pratinjauTerbuka = false;
+
+    /** Sumber dana dokumen yang dipratinjau (KAK dibuat per sumber dana); kosong = sumber pertama. */
+    public string $pratinjauSumber = '';
 
     /** @var array{index: int, anggota: array{key: string, nama: string, jabatan: string, peran: string}}|null Untuk "Urungkan" hapus anggota. */
     #[Locked]
@@ -102,6 +109,18 @@ class Form extends Component
         if (str_starts_with($property, 'form.')) {
             $this->pastikanDapatDiedit();
         }
+    }
+
+    /**
+     * Susunan KAK/TOR dari isian saat ini (termasuk yang belum disimpan) untuk panel pratinjau.
+     */
+    #[Computed]
+    public function susunanKak(): SusunanKak
+    {
+        return SusunanKak::dari(
+            $this->form->dataUntukDisimpan() + ['id' => $this->kegiatanId, 'status' => $this->status],
+            $this->pratinjauSumber ?: null,
+        );
     }
 
     /**

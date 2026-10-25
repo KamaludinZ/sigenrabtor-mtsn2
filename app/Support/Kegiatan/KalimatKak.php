@@ -19,6 +19,64 @@ class KalimatKak
         return trim(preg_replace('/^kegiatan\s+/iu', '', trim($nama)));
     }
 
+    /** Bagian 1: kalimat penghubung kegiatan dengan Perjanjian Kinerja kepala madrasah. */
+    public static function latarBelakangKegiatan(string $nama): string
+    {
+        return 'Salah satu kegiatan yang relevan dan mendukung program Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan '
+            .self::tanpaAwalanKegiatan($nama).'.';
+    }
+
+    /** Bagian 3A "Tujuan": "Kegiatan {nama} bertujuan {tujuan}". */
+    public static function tujuan(string $nama, string $tujuan): string
+    {
+        return 'Kegiatan '.self::tanpaAwalanKegiatan($nama).' bertujuan '.self::kalimat($tujuan);
+    }
+
+    /** Bagian 3B "Sasaran": "Terwujudnya {sasaran}". */
+    public static function sasaran(string $sasaran): string
+    {
+        return 'Terwujudnya '.self::kalimat($sasaran);
+    }
+
+    /**
+     * Bagian 4a "Persiapan": tiga butir baku.
+     *
+     * @return list<string>
+     */
+    public static function persiapan(string $nama): array
+    {
+        return [
+            'Melakukan rapat persiapan (distribusi surat tugas dan pembagian tugas) untuk menentukan berbagai hal terkait teknis penyelenggaraan kegiatan '
+                .self::tanpaAwalanKegiatan($nama).'.',
+            'Menentukan jadwal dan membuat daftar periksa kegiatan.',
+            'Menyiapkan berbagai perlengkapan yang dibutuhkan.',
+        ];
+    }
+
+    /** Bagian 4c "Pelaporan": butir baku pertama (analisis hasil); butir kedua batas laporan lewat pelaporan(). */
+    public static function analisisHasil(string $nama): string
+    {
+        return 'Menganalisis hasil kegiatan '.self::tanpaAwalanKegiatan($nama).' baik dalam proses persiapan, pelaksanaan maupun hasil evaluasinya.';
+    }
+
+    /** Bagian 6a "Pelaksana": jabatan penanda tangan leading. */
+    public static function pelaksana(string $nama, string $jabatan): string
+    {
+        return 'Pelaksana kegiatan '.self::tanpaAwalanKegiatan($nama).' adalah '.$jabatan.'.';
+    }
+
+    /** Bagian 6b "Pengarah": kepala madrasah. */
+    public static function pengarah(string $nama, string $madrasah): string
+    {
+        return 'Pengarah kegiatan '.self::tanpaAwalanKegiatan($nama).' adalah Kepala '.$madrasah.'.';
+    }
+
+    /** Isian bebas sebagai lanjutan kalimat: spasi dirapikan dan diakhiri titik. */
+    private static function kalimat(string $teks): string
+    {
+        return rtrim(trim(preg_replace('/\s+/u', ' ', $teks)), '. ').'.';
+    }
+
     /**
      * Bagian 4b "Pelaksanaan": "Kegiatan Workshop … akan dilaksanakan selama 3 hari, 14 – 16 Juli 2026,
      * diikuti oleh 56 orang peserta (Guru dan tenaga kependidikan)." disusul uraian bentuk pelaksanaan bila ada.
