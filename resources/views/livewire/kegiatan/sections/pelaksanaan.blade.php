@@ -70,30 +70,54 @@
             Hitung hari kerja saja (lewati Sabtu &amp; Minggu)
         </label>
 
-        <div class="mt-5">
+        {{-- Pemilih bulan: pilihan tampil seketika (Alpine) lalu tersimpan ke form; Shift + klik memilih rentang. --}}
+        <div class="mt-5" x-data="pemilihBulan" data-testid="pemilih-bulan">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <p class="form-label mb-0">Bulan pelaksanaan <span class="text-red-600" aria-hidden="true">*</span></p>
-                @if ($bulanDariTanggal && $bulanDariTanggal !== $form->bulan_pelaksanaan)
-                    <button type="button" wire:click="sesuaikanBulan" class="text-xs font-semibold text-brand-700 hover:text-brand-800">
-                        Sesuaikan dengan tanggal
-                    </button>
-                @endif
+                <p class="form-label mb-0" id="label-bulan">Bulan pelaksanaan <span class="text-red-600" aria-hidden="true">*</span></p>
+                <div class="flex items-center gap-3">
+                    @if ($bulanDariTanggal && $bulanDariTanggal !== $form->bulan_pelaksanaan)
+                        <button type="button" wire:click="sesuaikanBulan" class="text-xs font-semibold text-brand-700 hover:text-brand-800">
+                            Sesuaikan dengan tanggal
+                        </button>
+                    @endif
+                    @if ($form->bulan_pelaksanaan !== [])
+                        <button type="button" x-on:click="kosongkan()" class="text-xs font-semibold text-stone-500 hover:text-stone-800">
+                            Kosongkan
+                        </button>
+                    @endif
+                </div>
             </div>
 
-            <div class="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-12" role="group" aria-label="Bulan pelaksanaan">
+            <div class="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-12" role="group" aria-labelledby="label-bulan"
+                 x-on:keydown="geser($event)">
                 @foreach (JadwalPelaksanaan::NAMA_BULAN as $nomor => $namaBulan)
-                    @php $dipilih = in_array($nomor, $form->bulan_pelaksanaan, true); @endphp
-                    <button type="button" wire:click="toggleBulan({{ $nomor }})" aria-pressed="{{ $dipilih ? 'true' : 'false' }}"
-                            title="{{ $namaBulan }} {{ $tahun }}"
+                    @php $berlangsung = in_array($nomor, $bulanDariTanggal ?? [], true); @endphp
+                    <button type="button" data-bulan="{{ $nomor }}" @if ($berlangsung) data-berlangsung @endif
+                            x-on:click="klik({{ $nomor }}, $event)"
+                            aria-pressed="{{ in_array($nomor, $form->bulan_pelaksanaan, true) ? 'true' : 'false' }}"
+                            x-bind:aria-pressed="dipilih({{ $nomor }}) ? 'true' : 'false'"
+                            aria-label="{{ $namaBulan }} {{ $tahun }}{{ $berlangsung ? ', kegiatan berlangsung' : '' }}"
+                            title="{{ $namaBulan }} {{ $tahun }}{{ $berlangsung ? ' · kegiatan berlangsung' : '' }}"
                             @class([
-                                'rounded-lg px-2 py-1.5 text-xs font-semibold ring-1 ring-inset transition',
-                                'bg-brand-700 text-white ring-brand-700' => $dipilih,
-                                'bg-white text-stone-600 ring-stone-300 hover:bg-stone-50' => ! $dipilih,
+                                'relative rounded-lg px-2 py-1.5 text-xs font-semibold ring-1 ring-inset transition select-none',
+                                'aria-pressed:bg-brand-700 aria-pressed:text-white aria-pressed:ring-brand-700 aria-pressed:hover:bg-brand-800',
+                                'bg-gold-50 text-stone-800 ring-gold-400 hover:bg-gold-100' => $berlangsung,
+                                'bg-white text-stone-600 ring-stone-300 hover:bg-stone-50' => ! $berlangsung,
                             ])>
                         {{ mb_substr($namaBulan, 0, 3) }}
+                        @if ($berlangsung)
+                            <span class="absolute bottom-0.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-gold-500" aria-hidden="true"></span>
+                        @endif
                     </button>
                 @endforeach
             </div>
+
+            @if ($bulanDariTanggal)
+                <p class="mt-1.5 flex items-start gap-1.5 text-xs text-stone-500" data-testid="keterangan-berlangsung">
+                    <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-gold-500" aria-hidden="true"></span>
+                    Bulan kegiatan berlangsung (dari tanggal mulai &amp; lama) — wajib dipilih; bulan persiapan atau pelaporan boleh ditambah.
+                </p>
+            @endif
 
             @if ($pesanBulan = $errors->first('form.bulan_pelaksanaan') ?: $errors->first('form.bulan_pelaksanaan.*'))
                 <p class="form-error" role="alert">{{ $pesanBulan }}</p>
@@ -102,7 +126,7 @@
                 @if ($teksBulan = $pelaksanaan->teksBulan($tahun))
                     Tercetak: {{ $teksBulan }}. Dipakai juga untuk matrik tahapan &amp; jadwal.
                 @else
-                    Pilih satu atau lebih bulan sesuai timeline cascade Perkin; terisi otomatis dari tanggal mulai.
+                    Pilih satu atau lebih bulan sesuai timeline cascade Perkin (Shift + klik untuk rentang); terisi otomatis dari tanggal mulai.
                 @endif
             </p>
         </div>

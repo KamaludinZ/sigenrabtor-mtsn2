@@ -1,4 +1,5 @@
 import { angka, jumlahRab, rapikanKetikan, rupiah, terbilang } from './format';
+import pemilihBulan from './pemilih-bulan';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n).
 window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang };
@@ -9,6 +10,8 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.magic('jumlahRab', () => jumlahRab);
     window.Alpine.magic('rapikanKetikan', () => rapikanKetikan);
     window.Alpine.magic('terbilang', () => terbilang);
+
+    window.Alpine.data('pemilihBulan', pemilihBulan);
 
     // x-angka-bulat: isian angka bulat — tolak ketikan e/+/-/titik/koma dan sisakan digit saat menempel ("1.000" → "1000").
     window.Alpine.directive('angka-bulat', (el) => {

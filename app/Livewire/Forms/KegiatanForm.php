@@ -309,6 +309,18 @@ class KegiatanForm extends Form
         }
     }
 
+    /**
+     * Pilihan bulan dari klien: angka bulat tanpa duplikat, urut naik. Nilai bukan angka dibiarkan agar ditolak validasi.
+     */
+    public function rapikanBulan(): void
+    {
+        $bulan = array_map(fn ($b) => is_numeric($b) ? (int) $b : $b, array_values((array) $this->bulan_pelaksanaan));
+        $bulan = array_values(array_unique($bulan, SORT_REGULAR));
+        sort($bulan);
+
+        $this->bulan_pelaksanaan = $bulan;
+    }
+
     public function toggleBulan(int $bulan): void
     {
         if ($bulan < 1 || $bulan > 12) {

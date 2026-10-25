@@ -29,6 +29,7 @@ Nama & versi tampilan diatur di `config/sigenrabtor.php` (`aplikasi.nama`, `apli
 - Kalimat baku KAK (pelaksanaan, pelaporan, tempat, pembiayaan) hanya disusun lewat `App\Support\Kegiatan\KalimatKak`; pratinjau "Tercetak di KAK" di layar memakai fungsi yang sama. Kelompok isian dalam satu kartu: `<x-ui.sub-bagian huruf judul kelengkapan>`.
 - State Pelaksanaan (jadwal, bulan, tempat, peserta, bentuk) dibaca lewat `App\Support\Kegiatan\DataPelaksanaan::dari($data)` (form: `$form->pelaksanaan()`) — tanggal selesai, kelengkapan, dan kalimat KAK diturunkan dari situ. Saran tempat/peserta: `SaranPelaksanaan` (riwayat `KegiatanRepository::riwayatIsian()` + `StubData::saranPelaksanaan()`).
 - Livewire 4: ketikan yang belum selesai ikut terkirim bersama request kolom lain; bila server mengubah nilainya di hook `updated` (format/kapital), respons menimpa `$wire` dan ketikan terbaru hilang. Lakukan format yang sama di klien lewat `x-on:input.capture` agar normalisasi server tidak mengubah apa pun.
+- Pilihan ganda yang diklik beruntun (mis. bulan pelaksanaan) dikelola Alpine (`Alpine.data('pemilihBulan')`, `resources/js/pemilih-bulan.js`): tampil seketika lalu `$wire.$set` mengirim array utuh yang sudah rapi, sehingga normalisasi server tidak mengubah apa pun.
 - Notifikasi dari Livewire: `$this->dispatch('notify', message: '...', type: 'success|error|info')`.
 - Menu samping: `App\Support\Navigation` — item otomatis aktif begitu rutenya terdaftar.
 - Folder `REFERENSI/` berisi dokumen contoh asli (tidak di-commit): acuan struktur KAK/TOR, RAB, dan master kode.

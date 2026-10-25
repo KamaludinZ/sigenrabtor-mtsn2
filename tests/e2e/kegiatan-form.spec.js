@@ -87,6 +87,46 @@ test.describe('Form Data Kegiatan', () => {
         await page.screenshot({ path: `storage/playwright/shots/jadwal-${test.info().project.name}.png` });
     });
 
+    test('bulan: klik & Shift+klik rentang tampil seketika, bertahan setelah render ulang, bisa dikosongkan', async ({ page }) => {
+        const pemilih = page.getByTestId('pemilih-bulan');
+        const bulan = (n) => pemilih.locator(`[data-bulan="${n}"]`);
+
+        await bulan(3).click();
+        await bulan(6).click({ modifiers: ['Shift'] });
+        for (const n of [3, 4, 5, 6]) {
+            await expect(bulan(n)).toHaveAttribute('aria-pressed', 'true');
+        }
+        await expect(bulan(7)).toHaveAttribute('aria-pressed', 'false');
+        await expect(pemilih).toContainText('Tercetak: Maret – Juni 2026');
+
+        // Klik ulang membatalkan satu bulan; render ulang karena isian lain tidak menimpa pilihan.
+        await bulan(4).click();
+        await page.locator('#tempat').fill('Aula Madrasah');
+        await page.locator('#tempat').blur();
+        await expect(pemilih).toContainText('Tercetak: Maret, Mei, Juni 2026');
+        await expect(bulan(4)).toHaveAttribute('aria-pressed', 'false');
+        await expect(bulan(5)).toHaveAttribute('aria-pressed', 'true');
+
+        // Keyboard: panah memindah fokus, spasi memilih.
+        await bulan(6).focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(bulan(7)).toBeFocused();
+        await page.keyboard.press('Space');
+        await expect(bulan(7)).toHaveAttribute('aria-pressed', 'true');
+        await expect(pemilih).toContainText('Tercetak: Maret, Mei, Juni, Juli 2026');
+
+        // Bulan kegiatan berlangsung ditandai setelah tanggal diisi.
+        await page.locator('#tanggal_mulai').fill('2026-09-29');
+        await page.locator('#lama_hari').fill('3');
+        await expect(bulan(10)).toHaveAttribute('data-berlangsung', '');
+        await expect(page.getByTestId('keterangan-berlangsung')).toBeVisible();
+        await pemilih.screenshot({ path: `storage/playwright/shots/pemilih-bulan-${test.info().project.name}.png` });
+
+        await pemilih.getByRole('button', { name: 'Kosongkan' }).click();
+        await expect(pemilih.locator('[data-bulan][aria-pressed="true"]')).toHaveCount(0);
+        await expect(pemilih.getByRole('button', { name: 'Kosongkan' })).toHaveCount(0);
+    });
+
     test('validasi tanggal: dokumen setelah mulai & bulan tidak mencakup kegiatan', async ({ page }) => {
         await page.locator('#pelaksanaan').getByRole('button', { name: 'Mei' }).click();
         await page.locator('#tanggal_mulai').fill('2026-07-14');

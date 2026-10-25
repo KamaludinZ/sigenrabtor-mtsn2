@@ -142,6 +142,7 @@ class Form extends Component
             'nama_kegiatan_cover' => $this->form->setNamaCoverManual(),
             'tanggal_mulai', 'lama_hari', 'hari_kerja' => $this->form->sinkronJadwal(),
             'tanggal_laporan' => $this->form->setLaporanManual(),
+            'bulan_pelaksanaan' => $this->form->rapikanBulan(),
             'kode_sk' => [$this->form->sinkronIksk(), $this->form->pilihIkskTunggal()],
             'pagu_dipa', 'pagu_komite' => $this->form->rapikanPagu($field),
             'dana_dipa' => $this->form->dana_dipa ?: $this->form->pagu_dipa = '',
