@@ -1,6 +1,41 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Daftar & impor kegiatan dari Excel', () => {
+    test('tabel kegiatan: filter lengkap, chip filter aktif, urut kolom, tanpa gulir halaman mendatar', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan');
+        const tabel = page.getByTestId('tabel-kegiatan');
+        await expect(tabel).toContainText('Supervisi Akademik dan Refleksi Pembelajaran');
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+
+        // Layar sempit: panel filter dibuka lewat tombol Filter.
+        if (testInfo.project.name === 'mobile') {
+            await expect(page.locator('#filter-sumber')).toBeHidden();
+            await page.getByRole('button', { name: /^Filter/ }).click();
+        }
+        await page.locator('#filter-sumber').selectOption('keduanya');
+        await expect(tabel.locator('tbody tr')).toHaveCount(1);
+        await expect(tabel).toContainText('Supervisi Akademik dan Refleksi Pembelajaran');
+        await expect(page.getByTestId('filter-aktif')).toContainText('DIPA dan Komite');
+        await expect(page).toHaveURL(/sumber=keduanya/);
+        await expect(page.getByTestId('ringkasan-daftar')).toContainText('1 kegiatan sesuai filter');
+        await page.screenshot({ path: `storage/playwright/shots/daftar-filter-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.locator('#filter-bulan').selectOption('7');
+        await expect(page.getByTestId('daftar-kosong')).toContainText('Tidak ada kegiatan yang cocok dengan filter.');
+        await page.getByTestId('daftar-kosong').getByRole('button', { name: 'Hapus semua filter' }).click();
+        await expect(page.getByTestId('filter-aktif')).toHaveCount(0);
+        await expect(tabel.locator('tbody tr').first()).toBeVisible();
+
+        // Klik judul kolom mengurutkan; klik lagi membalik arah.
+        await tabel.getByRole('button', { name: 'Kegiatan' }).click();
+        await expect(tabel.locator('th[aria-sort="ascending"]')).toContainText('Kegiatan');
+        await tabel.getByRole('button', { name: 'Kegiatan' }).click();
+        await expect(tabel.locator('th[aria-sort="descending"]')).toContainText('Kegiatan');
+        await expect(page).toHaveURL(/urut=nama/);
+    });
+
     test('unduh template, impor berkas, lihat proses & laporan berhasil/gagal', async ({ page }, testInfo) => {
         await page.goto('/kegiatan');
         await expect(page.getByRole('heading', { name: 'Data Kegiatan' })).toBeVisible();
@@ -50,15 +85,17 @@ test.describe('Daftar & impor kegiatan dari Excel', () => {
         const [laporan] = await Promise.all([page.waitForEvent('download'), page.getByTestId('unduh-laporan-impor').click()]);
         expect(laporan.suggestedFilename()).toMatch(/^laporan-impor-kegiatan-\d{8}-\d{6}\.xlsx$/);
 
-        // Daftar ikut diperbarui; kegiatan hasil impor bisa langsung dibuka.
-        const daftar = page.getByTestId('daftar-kegiatan');
-        await expect(daftar).toContainText(`Kegiatan Impor 7 ${akhiran}`);
+        // Tabel ikut diperbarui; kegiatan hasil impor bisa langsung dibuka.
+        const tabel = page.getByTestId('tabel-kegiatan');
+        await expect(tabel).toContainText(`Kegiatan Impor 7 ${akhiran}`);
         await page.locator('#cari-kegiatan').fill(`Kegiatan Impor 2 ${akhiran}`);
-        await expect(daftar.locator('li')).toHaveCount(1);
-        await expect(daftar).toContainText('IMPOR');
-        await expect(daftar).toContainText('Rp2.000.000');
-        await daftar.getByRole('link', { name: `Kegiatan Impor 2 ${akhiran}` }).click();
-        await expect(page.locator('#nama_kegiatan')).toHaveValue(`Kegiatan Impor 2 ${akhiran}`);
+        await expect(tabel.locator('tbody tr')).toHaveCount(1);
+        await expect(tabel).toContainText('IMPOR');
+        await expect(tabel).toContainText('Rp2.000.000');
+        await expect(tabel).toContainText('Mar');
+        await tabel.getByRole('link', { name: `Kegiatan Impor 2 ${akhiran}`, exact: true }).click();
+        // Perpindahan halaman pertama kali kadang tertahan di server uji lokal; beri waktu lebih.
+        await expect(page.locator('#nama_kegiatan')).toHaveValue(`Kegiatan Impor 2 ${akhiran}`, { timeout: 30_000 });
         await expect(page.locator('#nama_kegiatan_cover')).toHaveValue(`KEGIATAN IMPOR 2 ${akhiran.toUpperCase()}`);
     });
 });
