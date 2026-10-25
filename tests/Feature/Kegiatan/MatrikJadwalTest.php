@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Kegiatan;
 
+use App\Contracts\KegiatanRepository;
 use App\Livewire\Kegiatan\MatrikJadwal;
 use App\Livewire\Kegiatan\Rab;
 use App\Support\Kegiatan\JadwalKegiatan;
@@ -65,10 +66,107 @@ class MatrikJadwalTest extends TestCase
             ->assertSeeHtml('href="'.route('kegiatan.edit', ['kegiatan' => 1]).'#pelaksanaan"');
 
         // Kolom bulan pelaksanaan (Juli) ditandai sebagai acuan.
-        $this->assertMatchesRegularExpression('/data-bulan="7"\s+class="[^"]*bg-brand-50/', $komponen->html());
-        $this->assertDoesNotMatchRegularExpression('/data-bulan="6"\s+class="[^"]*bg-brand-50/', $komponen->html());
+        $this->assertMatchesRegularExpression('/data-bulan="7"\s+data-pelaksanaan\s+class="[^"]*bg-brand-50/', $komponen->html());
+        $this->assertDoesNotMatchRegularExpression('/data-bulan="6"[^>]*data-pelaksanaan/', $komponen->html());
 
         $this->get(route('kegiatan.matrik', ['kegiatan' => 999]))->assertNotFound();
+    }
+
+    public function test_sel_grid_diatur_per_baris_dan_dirapikan(): void
+    {
+        $komponen = Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->assertSeeHtml('x-data="gridMatrik({ dapatDiedit: true })"')
+            ->assertSeeHtml('aria-label="Persiapan: Rapat dan pembagian job deskripsi — Juli"')
+            ->call('aturBulan', 'persiapan', 0, [7, '6', 6, 13])
+            ->assertSet('matrik.persiapan.0.bulan', [6, 7])
+            ->assertSet('adaPerubahan', true)
+            ->assertSee('2 tanda bulan')
+            ->assertSeeHtml('data-testid="belum-disimpan"')
+            // Butir/tahapan tak dikenal diabaikan; nilai dari klien juga dirapikan lewat updatedMatrik.
+            ->call('aturBulan', 'tahapan-lain', 0, [1])
+            ->call('aturBulan', 'persiapan', 9, [1])
+            ->set('matrik.pelaksanaan.1.bulan', [9, 3, 3])
+            ->assertSet('matrik.pelaksanaan.1.bulan', [3, 9]);
+
+        $this->assertMatchesRegularExpression('/data-bulan="7" data-ditandai="ya"/', $komponen->html());
+        $this->assertSame(4, $komponen->instance()->susunanMatrik->jumlahTanda());
+    }
+
+    public function test_isi_dari_jadwal_pelaksanaan_kosongkan_dan_urungkan(): void
+    {
+        // Workshop: Juli 2026, laporan 30 Juli → Persiapan Juni, Pelaksanaan Juli, Evaluasi & Pelaporan Juli.
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->call('isiDariPelaksanaan')
+            ->assertSet('matrik.persiapan.0.bulan', [6])
+            ->assertSet('matrik.persiapan.1.bulan', [6])
+            ->assertSet('matrik.pelaksanaan.0.bulan', [7])
+            ->assertSet('matrik.evaluasi_pelaporan.1.bulan', [7])
+            ->assertSee('Matrik diisi dari jadwal pelaksanaan.')
+            ->assertSeeHtml('data-testid="kelengkapan-matrik" data-lengkap="ya"')
+            ->call('kosongkanMatrik')
+            ->assertSet('matrik.pelaksanaan.0.bulan', [])
+            ->assertSee('Semua tanda bulan dikosongkan.')
+            ->call('urungkanMatrik')
+            ->assertSet('matrik.pelaksanaan.0.bulan', [7])
+            ->assertSet('matrikSebelum', null);
+
+        // Supervisi: Agustus–September, laporan 14 September.
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 2])
+            ->call('isiDariPelaksanaan')
+            ->assertSet('matrik.persiapan.0.bulan', [7])
+            ->assertSet('matrik.pelaksanaan.1.bulan', [8, 9])
+            ->assertSet('matrik.evaluasi_pelaporan.0.bulan', [9])
+            ->call('aturBulan', 'persiapan', 0, [6, 7])
+            ->assertSet('matrikSebelum', null);
+
+        $tanpaBulan = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Tanpa jadwal']);
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => $tanpaBulan])
+            ->assertSeeHtml('wire:click="isiDariPelaksanaan" disabled')
+            ->call('isiDariPelaksanaan')
+            ->assertDispatched('notify', message: 'Isi bulan pelaksanaan di Data Kegiatan terlebih dahulu.')
+            ->assertSet('adaPerubahan', false);
+    }
+
+    public function test_simpan_dan_batalkan_matrik(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $namaSemula = $repo->temukan(1)['nama_kegiatan'];
+
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->call('aturBulan', 'pelaksanaan', 0, [7])
+            ->call('batalkanPerubahan')
+            ->assertSet('matrik.pelaksanaan.0.bulan', [])
+            ->assertSet('adaPerubahan', false)
+            ->call('isiDariPelaksanaan')
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify', message: 'Matrik tahapan tersimpan.')
+            ->assertSet('adaPerubahan', false)
+            ->assertDontSeeHtml('data-testid="matrik-berubah"');
+
+        $tersimpan = $repo->temukan(1);
+        $this->assertSame([6], $tersimpan['matrik']['persiapan'][0]['bulan']);
+        $this->assertSame($namaSemula, $tersimpan['nama_kegiatan'], 'Isian kegiatan lain tidak tersentuh.');
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])->assertSet('matrik.evaluasi_pelaporan.1.bulan', [7])->assertSee('6 tanda bulan');
+
+        // Uraian butir wajib diisi.
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->set('matrik.persiapan.0.uraian', '')
+            ->call('simpan')
+            ->assertHasErrors(['matrik.persiapan.0.uraian' => 'required']);
+    }
+
+    public function test_matrik_terkunci_di_luar_draf(): void
+    {
+        $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Sudah final', 'status' => 'final', 'bulan_pelaksanaan' => [5]]);
+
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => $id])
+            ->assertSeeHtml('data-testid="banner-terkunci"')
+            ->assertSeeHtml('x-data="gridMatrik({ dapatDiedit: false })"')
+            ->assertDontSee('Isi dari jadwal pelaksanaan')
+            ->assertDontSeeHtml('wire:click="simpan"')
+            ->call('aturBulan', 'persiapan', 0, [5])
+            ->assertForbidden();
     }
 
     public function test_tab_matrik_jadwal_aktif_di_ruang_kerja_kegiatan(): void

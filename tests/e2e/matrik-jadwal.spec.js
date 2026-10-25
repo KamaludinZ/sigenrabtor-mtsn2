@@ -22,9 +22,101 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         // Tabel matrik digulir di dalam kartunya; halaman tidak bergeser ke samping di layar sempit.
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow).toBeLessThanOrEqual(0);
+        if (testInfo.project.name === 'mobile') {
+            // Layar sempit: tabel langsung digeser ke bulan pelaksanaan (Juli).
+            await expect.poll(() => page.getByTestId('matrik-wadah').evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+            await expect(matrik.locator('thead th[data-bulan="7"]')).toBeInViewport();
+        }
         await page.screenshot({ path: `storage/playwright/shots/matrik-jadwal-${testInfo.project.name}.png`, fullPage: true });
 
         await page.getByRole('link', { name: 'Ubah di Data Kegiatan' }).click();
         await expect(page).toHaveURL(/\/kegiatan\/1\/edit#pelaksanaan$/, { timeout: 30_000 });
+    });
+
+    test('grid: klik/ketuk sel, seret beberapa bulan, keyboard, isi dari jadwal pelaksanaan, lalu simpan', async ({ page }, testInfo) => {
+        const mobile = testInfo.project.name === 'mobile';
+        page.on('dialog', (dialog) => dialog.accept());
+
+        // Kegiatan sendiri (10–12 Agustus 2026) agar contoh bersama tidak berubah.
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Matrik ${testInfo.project.name} ${Date.now()}`);
+        await page.locator('#tanggal_mulai').fill('2026-08-10');
+        await page.locator('#lama_hari').fill('3');
+        await page.locator('#lama_hari').press('Tab');
+        await expect(page.locator('#tanggal_laporan')).toHaveValue('2026-08-22', { timeout: 30_000 });
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit/, { timeout: 30_000 });
+        const id = page.url().match(/\/kegiatan\/(\d+)\/edit/)[1];
+        await page.goto(`/kegiatan/${id}/matrik`);
+
+        const sel = (tahapan, butir, bulan) => page.getByTestId(`butir-${tahapan}-${butir}`).locator(`td[data-bulan="${bulan}"] button`);
+        const tekan = (target) => (mobile ? target.tap() : target.click());
+        const tengah = async (target) => {
+            await target.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' }));
+            const kotak = await target.boundingBox();
+            return [kotak.x + kotak.width / 2, kotak.y + kotak.height / 2];
+        };
+
+        // Klik (mouse) / ketuk (layar sentuh) menandai satu bulan seketika.
+        await tekan(sel('persiapan', 1, 7));
+        await expect(sel('persiapan', 1, 7)).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByTestId('ringkasan-matrik')).toHaveText('1 tanda bulan');
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+
+        if (!mobile) {
+            // Tekan lalu seret: Agu–Okt ditandai sekaligus; seret lagi dari sel bertanda untuk menghapus.
+            const [x8, y8] = await tengah(sel('pelaksanaan', 2, 8));
+            const [x10] = await tengah(sel('pelaksanaan', 2, 10));
+            await page.mouse.move(x8, y8);
+            await page.mouse.down();
+            await page.mouse.move((x8 + x10) / 2, y8, { steps: 4 });
+            await page.mouse.move(x10, y8, { steps: 4 });
+            await page.mouse.up();
+            for (const bulan of [8, 9, 10]) {
+                await expect(sel('pelaksanaan', 2, bulan)).toHaveAttribute('aria-pressed', 'true');
+            }
+            await expect(sel('pelaksanaan', 2, 7)).toHaveAttribute('aria-pressed', 'false');
+
+            const [x9, y9] = await tengah(sel('pelaksanaan', 2, 9));
+            const [x10b] = await tengah(sel('pelaksanaan', 2, 10));
+            await page.mouse.move(x9, y9);
+            await page.mouse.down();
+            await page.mouse.move(x10b, y9, { steps: 4 });
+            await page.mouse.up();
+            await expect(sel('pelaksanaan', 2, 9)).toHaveAttribute('aria-pressed', 'false');
+            await expect(sel('pelaksanaan', 2, 10)).toHaveAttribute('aria-pressed', 'false');
+            await expect(sel('pelaksanaan', 2, 8)).toHaveAttribute('aria-pressed', 'true');
+
+            // Keyboard: Spasi menandai/melepas sel yang sedang fokus.
+            await sel('evaluasi_pelaporan', 2, 12).focus();
+            await page.keyboard.press('Space');
+            await expect(sel('evaluasi_pelaporan', 2, 12)).toHaveAttribute('aria-pressed', 'true');
+            await page.keyboard.press('Space');
+            await expect(sel('evaluasi_pelaporan', 2, 12)).toHaveAttribute('aria-pressed', 'false');
+        }
+
+        // Isi dari jadwal pelaksanaan (Persiapan Juli, Pelaksanaan & laporan Agustus) — bisa diurungkan.
+        await page.getByRole('button', { name: 'Isi dari jadwal pelaksanaan' }).click();
+        await expect(page.getByTestId('matrik-berubah')).toContainText('Matrik diisi dari jadwal pelaksanaan.');
+        await expect(sel('persiapan', 2, 7)).toHaveAttribute('aria-pressed', 'true');
+        await expect(sel('pelaksanaan', 1, 8)).toHaveAttribute('aria-pressed', 'true');
+        await expect(sel('evaluasi_pelaporan', 2, 8)).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByTestId('kelengkapan-matrik')).toHaveAttribute('data-lengkap', 'ya');
+        await page.getByTestId('matrik-tahapan').screenshot({ path: `storage/playwright/shots/matrik-grid-${testInfo.project.name}.png` });
+
+        await page.getByTestId('matrik-berubah').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(sel('persiapan', 2, 7)).toHaveAttribute('aria-pressed', 'false');
+        await expect(sel('persiapan', 1, 7)).toHaveAttribute('aria-pressed', 'true');
+
+        await page.getByRole('button', { name: 'Isi dari jadwal pelaksanaan' }).click();
+        await expect(sel('persiapan', 2, 7)).toHaveAttribute('aria-pressed', 'true');
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(page.getByText('Matrik tahapan tersimpan.')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
+
+        await page.reload();
+        await expect(sel('pelaksanaan', 2, 8)).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByTestId('ringkasan-matrik')).toHaveText('6 tanda bulan');
+        await expect(page.getByTestId('kelengkapan-matrik')).toHaveAttribute('data-lengkap', 'ya');
     });
 });
