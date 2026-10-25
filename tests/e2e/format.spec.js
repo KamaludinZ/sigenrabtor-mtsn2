@@ -42,6 +42,20 @@ test.describe('Format mata uang di klien', () => {
         ]);
     });
 
+    test('deteksi NIP & aspek konteks di klien sama dengan server', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate(() => {
+            const f = window.SIRABTOR;
+            const aspek = { peserta: ['Peserta', 'Peserta: ', ['peserta', 'guru']], output: ['Output', 'Output: ', ['output', 'dokumen']] };
+            return {
+                nip: ['Narasumber 197210082007101002', 'NIP. 19721008 200710 1 002', 'nip pengawas', 'anggaran 10000000', '1972100820071010021'].map(f.memuatNip),
+                aspek: f.aspekTerisi('Peserta 54 GURU', aspek),
+            };
+        });
+        // Kasus sama dengan tests/Feature/Kegiatan/KonteksKegiatanTest (19 digit bukan NIP).
+        expect(hasil).toEqual({ nip: [true, true, true, false, false], aspek: { peserta: true, output: false } });
+    });
+
     test('status pagu klien sama dengan server', async ({ page }) => {
         await page.goto('/kegiatan/1/rab');
         const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.statusPagu(k.total, k.pagu)), KASUS_STATUS_PAGU);

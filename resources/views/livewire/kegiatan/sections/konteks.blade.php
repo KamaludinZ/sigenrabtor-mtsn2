@@ -2,6 +2,7 @@
 
 @php
     $aspek = KonteksAi::aspekTerisi($form->konteks);
+    $nip = KonteksAi::peringatanPrivasi($form->konteks) !== null;
     $dariIsian = KonteksAi::dariIsian($form->dataUntukDisimpan());
     $terisi = count(array_filter($dariIsian, fn ($b) => $b['nilai'] !== null));
 @endphp
@@ -10,10 +11,24 @@
     Konteks kegiatan: catatan bebas leading sebagai bahan "Buat dengan AI" (tidak tercetak). Panduan empat aspek membantu
     menulis catatan yang berguna; panel kanan menunjukkan apa yang sudah diketahui AI dari isian lain agar tidak diulang.
 --}}
-<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]" data-testid="bagian-konteks">
+<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]" data-testid="bagian-konteks"
+     x-data="catatanKonteks({ aspek: @js(KonteksAi::ASPEK), kunci: @js('sirabtor:konteks:'.($kegiatanId ?? 'baru')) })"
+     x-on:input="ketik($event)" x-on:kegiatan-tersimpan.window="tersimpan()">
     <div class="min-w-0 space-y-3">
+        {{-- Draf lokal: ketikan yang belum sempat tersimpan (halaman tertutup/koneksi putus) bisa dipulihkan. --}}
+        <div x-show="draf" x-cloak class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gold-50 px-3 py-2.5 text-sm text-stone-800 ring-1 ring-gold-200"
+             role="status" data-testid="draf-konteks">
+            <span class="flex items-start gap-2">
+                <x-ui.icon name="history" class="mt-0.5 size-4 shrink-0 text-gold-600" />
+                <span>Ada catatan konteks yang belum tersimpan di perangkat ini (<span x-text="waktuDraf()"></span>).</span>
+            </span>
+            <span class="flex gap-2">
+                <button type="button" x-on:click="abaikan()" class="btn-ghost px-2 py-1 text-xs">Abaikan</button>
+                <button type="button" x-on:click="pulihkan()" class="btn-secondary px-2.5 py-1 text-xs">Pulihkan</button>
+            </span>
+        </div>
+
         <x-ui.uraian id="catatan_konteks" label="Catatan konteks untuk AI" model="form.konteks" :max="3000" :rows="5"
-                     :warning="KonteksAi::peringatanPrivasi($form->konteks)"
                      placeholder="Contoh: kegiatan lanjutan dari workshop tahun lalu; peserta 49 guru dan 6 tenaga kependidikan; narasumber pengawas madrasah; output berupa dokumen KTSP yang disahkan kepala madrasah."
                      hint="Opsional dan tidak tercetak di dokumen. Dipakai tombol “Buat dengan AI” pada latar belakang, tujuan, sasaran, pelaksanaan, jadwal, dan nama cover.">
             <x-slot:actions>
@@ -29,19 +44,28 @@
             </x-slot:actions>
         </x-ui.uraian>
 
-        {{-- Panduan aspek: tanda centang bila catatan sudah menyinggungnya. --}}
+        {{-- Peringatan NIP ikut tiap ketukan (dihitung di klien; awal dari server). --}}
+        <p x-show="nip" @unless ($nip) style="display: none" @endunless data-testid="peringatan-nip" data-nip="{{ $nip ? 'ya' : 'tidak' }}" x-bind:data-nip="nip ? 'ya' : 'tidak'"
+           class="-mt-1 flex items-start gap-1.5 text-xs font-medium text-gold-700" role="alert">
+            <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" />
+            Catatan memuat NIP. Hapus dari sini — NIP disembunyikan otomatis dan tidak pernah dikirim ke penyedia AI.
+        </p>
+
+        {{-- Panduan aspek: tanda centang bila catatan sudah menyinggungnya (ikut tiap ketukan). --}}
         <div class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="panduan-konteks">
             <p class="text-xs font-semibold text-stone-600">Catatan yang membantu AI biasanya menyebut:</p>
             <ul class="mt-2 grid gap-1.5 text-xs sm:grid-cols-2">
                 @foreach (KonteksAi::ASPEK as $kunci => [$label])
-                    <li class="flex items-center gap-1.5" data-aspek="{{ $kunci }}" data-terisi="{{ $aspek[$kunci] ? 'ya' : 'tidak' }}">
-                        @if ($aspek[$kunci])
+                    <li class="flex items-center gap-1.5" data-aspek="{{ $kunci }}" data-terisi="{{ $aspek[$kunci] ? 'ya' : 'tidak' }}"
+                        x-bind:data-terisi="terisi[@js($kunci)] ? 'ya' : 'tidak'">
+                        <span x-show="terisi[@js($kunci)]" @unless ($aspek[$kunci]) style="display: none" @endunless>
                             <x-ui.icon name="check-circle" class="size-4 shrink-0 text-brand-600" />
-                            <span class="text-stone-800">{{ $label }}</span>
-                        @else
+                        </span>
+                        <span x-show="! terisi[@js($kunci)]" @if ($aspek[$kunci]) style="display: none" @endif>
                             <x-ui.icon name="circle" class="size-4 shrink-0 text-stone-300" />
-                            <span class="text-stone-500">{{ $label }}</span>
-                        @endif
+                        </span>
+                        <span @class(['text-stone-800' => $aspek[$kunci], 'text-stone-500' => ! $aspek[$kunci]])
+                              x-bind:class="terisi[@js($kunci)] ? 'text-stone-800' : 'text-stone-500'">{{ $label }}</span>
                     </li>
                 @endforeach
             </ul>

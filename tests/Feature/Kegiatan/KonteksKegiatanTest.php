@@ -23,6 +23,7 @@ class KonteksKegiatanTest extends TestCase
     public function test_nip_diperingatkan_dan_disembunyikan(): void
     {
         $this->assertNull(KonteksAi::peringatanPrivasi('Peserta 54 guru, anggaran 10000000.'));
+        $this->assertNull(KonteksAi::peringatanPrivasi('Nomor 1972100820071010021'), '19 digit bukan NIP (sama dengan memuatNip di klien).');
         $this->assertNotNull(KonteksAi::peringatanPrivasi('Narasumber 197210082007101002'));
         $this->assertNotNull(KonteksAi::peringatanPrivasi('Narasumber: Bapak X, NIP. 19721008 200710 1 002'));
 
@@ -64,11 +65,20 @@ class KonteksKegiatanTest extends TestCase
             ->assertSeeHtml('data-aspek="peserta" data-terisi="ya"')
             ->assertSeeHtml('data-aspek="narasumber" data-terisi="ya"')
             ->assertSeeHtml('data-aspek="output" data-terisi="tidak"')
-            ->assertDontSee('Catatan memuat NIP')
+            ->assertSeeHtml('data-nip="tidak"')
             ->set('form.konteks', 'Narasumber NIP 197210082007101002')
-            ->assertSee('Catatan memuat NIP');
+            ->assertSeeHtml('data-nip="ya"');
+
+        // Kontrol klien: aspek, kata penanda, dan kunci draf lokal per kegiatan dikirim dari server.
+        Livewire::test(Form::class, ['kegiatan' => 2])
+            ->assertSeeHtml('x-data="catatanKonteks(')
+            ->assertSeeHtml('sirabtor:konteks:2')
+            ->assertSeeHtml('x-on:kegiatan-tersimpan.window="tersimpan()"')
+            ->set('form.konteks', 'Output dokumen supervisi.')
+            ->call('saveDraft')
+            ->assertDispatched('kegiatan-tersimpan', id: 2);
 
         // Kegiatan baru akun leading: leading sudah terisi otomatis, isian lain belum.
-        Livewire::test(Form::class)->assertSee('Diambil dari isian lain (1/8)')->assertSee('belum diisi');
+        Livewire::test(Form::class)->assertSee('Diambil dari isian lain (1/8)')->assertSee('belum diisi')->assertSeeHtml('sirabtor:konteks:baru');
     }
 }

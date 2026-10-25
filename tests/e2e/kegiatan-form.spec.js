@@ -200,11 +200,48 @@ test.describe('Form Data Kegiatan', () => {
         await page.locator('#tempat').blur();
         await expect(page.getByTestId('bahan-ai')).toContainText('Aula Madrasah');
 
+        // Peringatan NIP dan tanda aspek ikut tiap ketukan, tanpa menunggu kotak ditinggalkan.
+        await expect(page.getByTestId('peringatan-nip')).toBeHidden();
         await page.locator('#catatan_konteks').fill('Narasumber NIP 197210082007101002');
-        await page.locator('#catatan_konteks').blur();
-        await expect(bagian).toContainText('Catatan memuat NIP');
+        await expect(page.getByTestId('peringatan-nip')).toBeVisible();
+        await expect(bagian.locator('[data-aspek="peserta"]')).toHaveAttribute('data-terisi', 'tidak');
         await bagian.screenshot({ path: `storage/playwright/shots/konteks-${testInfo.project.name}.png` });
     });
+    test('konteks: draf lokal dipulihkan setelah halaman tertutup, hilang setelah disimpan', async ({ page }, testInfo) => {
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Konteks ${testInfo.project.name} ${Date.now()}`);
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit/, { timeout: 30_000 });
+        await expect(page.getByTestId('info-simpan')).toBeVisible();
+
+        const catatan = page.locator('#catatan_konteks');
+        await catatan.scrollIntoViewIfNeeded();
+        await catatan.fill('Output: dokumen evaluasi diri madrasah');
+        await page.reload();
+
+        // Ketikan yang belum disimpan ditawarkan untuk dipulihkan; Abaikan membuangnya.
+        await expect(page.getByTestId('draf-konteks')).toBeVisible();
+        await page.getByTestId('draf-konteks').getByRole('button', { name: 'Abaikan' }).click();
+        await expect(page.getByTestId('draf-konteks')).toBeHidden();
+        await expect(catatan).toHaveValue('');
+        await page.reload();
+        await expect(page.getByTestId('bagian-konteks')).toBeVisible();
+        await expect(page.getByTestId('draf-konteks')).toBeHidden();
+
+        await catatan.fill('Output: dokumen evaluasi diri madrasah');
+        await page.reload();
+        await page.getByTestId('draf-konteks').getByRole('button', { name: 'Pulihkan' }).click();
+        await expect(catatan).toHaveValue('Output: dokumen evaluasi diri madrasah');
+        await expect(page.getByTestId('bagian-konteks').locator('[data-aspek="output"]')).toHaveAttribute('data-terisi', 'ya');
+
+        // Setelah disimpan, draf lokal dibuang dan isi tersimpan di server.
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(page.getByText(/Draf tersimpan pukul/)).toBeVisible();
+        await page.reload();
+        await expect(catatan).toHaveValue('Output: dokumen evaluasi diri madrasah');
+        await expect(page.getByTestId('draf-konteks')).toBeHidden();
+    });
+
     test('pelaksanaan: angka bulat saja (ketik & tempel), peringatan angka tak wajar', async ({ page, context }) => {
         const lama = page.locator('#lama_hari');
         await lama.click();
