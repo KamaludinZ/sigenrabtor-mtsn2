@@ -88,6 +88,13 @@
                                         <input type="date" id="termin-tanggal-{{ $i }}" wire:model.live="baris.{{ $i }}.tanggal" @disabled(! $bisaUbah)
                                                min="{{ $tahun }}-01-01" max="{{ $tahun }}-12-31" class="form-input py-1.5"
                                                @error("baris.{$i}.tanggal") aria-invalid="true" @enderror>
+                                        @php $akhirPekan = Format::akhirPekan($b['tanggal']); @endphp
+                                        {{-- Tanggal terbaca dalam bahasa Indonesia, tidak bergantung format tanggal browser. --}}
+                                        <p class="mt-1 text-xs text-stone-500" data-tanggal-terbaca
+                                           x-text="$tanggalPanjang($wire.$get(@js('baris.'.$i.'.tanggal')))">{{ Format::tanggalPanjang($b['tanggal']) }}</p>
+                                        <p class="mt-0.5 text-xs font-medium text-gold-700" data-akhir-pekan
+                                           x-show="$akhirPekan($wire.$get(@js('baris.'.$i.'.tanggal')))" @unless ($akhirPekan) style="display: none" @endunless
+                                           x-text="'Jatuh pada hari ' + $akhirPekan($wire.$get(@js('baris.'.$i.'.tanggal'))) + ' — pastikan pencairan bisa dilakukan.'">{{ $akhirPekan ? "Jatuh pada hari {$akhirPekan} — pastikan pencairan bisa dilakukan." : '' }}</p>
                                         @error("baris.{$i}.tanggal") <p class="form-error">{{ $message }}</p> @enderror
                                     </td>
                                     <td class="px-3 py-2">

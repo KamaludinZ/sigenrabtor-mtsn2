@@ -1,11 +1,11 @@
-import { angka, jumlahRab, rapikanKetikan, rupiah, statusPagu, terbilang } from './format';
+import { akhirPekan, angka, jumlahRab, rapikanKetikan, rupiah, statusPagu, tanggalPanjang, terbilang } from './format';
 import catatanKonteks, { aspekTerisi, memuatNip } from './konteks';
 import pemilihBulan from './pemilih-bulan';
 import jumlahTermin, { persenTermin, statusTermin } from './termin';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, aspekTerisi, memuatNip, statusTermin, persenTermin };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin };
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.magic('rupiah', () => rupiah);
@@ -14,6 +14,8 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.magic('rapikanKetikan', () => rapikanKetikan);
     window.Alpine.magic('terbilang', () => terbilang);
     window.Alpine.magic('statusPagu', () => statusPagu);
+    window.Alpine.magic('tanggalPanjang', () => tanggalPanjang);
+    window.Alpine.magic('akhirPekan', () => akhirPekan);
 
     window.Alpine.data('pemilihBulan', pemilihBulan);
     window.Alpine.data('catatanKonteks', catatanKonteks);

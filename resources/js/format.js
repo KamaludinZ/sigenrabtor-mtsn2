@@ -46,6 +46,31 @@ export function statusPagu(total, pagu) {
     return { status: 'melebihi', teks: `Melebihi pagu ${rupiah(t - p)}`, nada: 'bahaya' };
 }
 
+// Tanggal Indonesia — kembaran Carbon translatedFormat('l, j F Y') locale id (uji bersama tests/fixtures/tanggal.json).
+// Dibentuk manual (tanpa toLocaleDateString) agar tidak bergantung bahasa/locale browser.
+const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+function bacaTanggal(iso) {
+    const cocok = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));
+    if (!cocok) return null;
+    const [, y, m, d] = cocok.map(Number);
+    const tanggal = new Date(y, m - 1, d);
+    return tanggal.getMonth() === m - 1 && tanggal.getDate() === d ? tanggal : null;
+}
+
+/** "2026-08-03" → "Senin, 3 Agustus 2026"; '' bila kosong/tidak sah. */
+export function tanggalPanjang(iso) {
+    const t = bacaTanggal(iso);
+    return t ? `${NAMA_HARI[t.getDay()]}, ${t.getDate()} ${NAMA_BULAN[t.getMonth()]} ${t.getFullYear()}` : '';
+}
+
+/** Nama hari bila tanggal jatuh di Sabtu/Minggu, selain itu null. */
+export function akhirPekan(iso) {
+    const t = bacaTanggal(iso);
+    return t && (t.getDay() === 0 || t.getDay() === 6) ? NAMA_HARI[t.getDay()] : null;
+}
+
 // Terbilang Rupiah — kembaran App\Support\Terbilang (kaidah "se-" untuk 10, 11, 100, 1.000; "satu" untuk juta ke atas).
 const SATUAN = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
 const SKALA = [[1e12, 'triliun'], [1e9, 'miliar'], [1e6, 'juta']];

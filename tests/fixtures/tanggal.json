@@ -1,0 +1,9 @@
+[
+    { "iso": "2026-08-03", "panjang": "Senin, 3 Agustus 2026", "akhirPekan": null },
+    { "iso": "2026-12-31", "panjang": "Kamis, 31 Desember 2026", "akhirPekan": null },
+    { "iso": "2026-06-17", "panjang": "Rabu, 17 Juni 2026", "akhirPekan": null },
+    { "iso": "2026-02-01", "panjang": "Minggu, 1 Februari 2026", "akhirPekan": "Minggu" },
+    { "iso": "2026-05-30", "panjang": "Sabtu, 30 Mei 2026", "akhirPekan": "Sabtu" },
+    { "iso": "2026-02-30", "panjang": "", "akhirPekan": null },
+    { "iso": "", "panjang": "", "akhirPekan": null }
+]

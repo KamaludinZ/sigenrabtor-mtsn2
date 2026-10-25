@@ -67,4 +67,30 @@ class Format
             return null;
         }
     }
+
+    /**
+     * "2026-08-03" → "Senin, 3 Agustus 2026"; null bila kosong atau bukan tanggal sah (mis. 2026-02-30).
+     * Kembaran klien: tanggalPanjang() di resources/js/format.js (uji bersama tests/fixtures/tanggal.json).
+     */
+    public static function tanggalPanjang(?string $iso): ?string
+    {
+        return self::tanggalIso($iso)?->locale('id')->translatedFormat('l, j F Y');
+    }
+
+    /** Nama hari bila tanggal jatuh di Sabtu/Minggu, selain itu null (kembaran akhirPekan() di klien). */
+    public static function akhirPekan(?string $iso): ?string
+    {
+        $tanggal = self::tanggalIso($iso);
+
+        return $tanggal?->isWeekend() ? $tanggal->locale('id')->translatedFormat('l') : null;
+    }
+
+    private static function tanggalIso(?string $iso): ?Carbon
+    {
+        if (! preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (string) $iso, $bagian) || ! checkdate((int) $bagian[2], (int) $bagian[3], (int) $bagian[1])) {
+            return null;
+        }
+
+        return Carbon::createFromDate((int) $bagian[1], (int) $bagian[2], (int) $bagian[3])->startOfDay();
+    }
 }

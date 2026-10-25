@@ -387,6 +387,15 @@ test.describe('Termin pembayaran', () => {
 
         await page.locator('#termin-tanggal-0').fill('2026-08-03');
         await page.locator('#termin-tanggal-1').fill('2026-09-01');
+        // Tanggal terbaca dalam bahasa Indonesia; akhir pekan diberi peringatan.
+        const barisTermin = (n) => termin.locator(`tr[data-termin="${n}"]`);
+        await expect(barisTermin(1).locator('[data-tanggal-terbaca]')).toHaveText('Senin, 3 Agustus 2026');
+        await expect(barisTermin(2).locator('[data-tanggal-terbaca]')).toHaveText('Selasa, 1 September 2026');
+        await expect(barisTermin(1).locator('[data-akhir-pekan]')).toBeHidden();
+        await page.locator('#termin-tanggal-0').fill('2026-08-02');
+        await expect(barisTermin(1).locator('[data-akhir-pekan]')).toHaveText('Jatuh pada hari Minggu — pastikan pencairan bisa dilakukan.');
+        await page.locator('#termin-tanggal-0').fill('2026-08-03');
+        await expect(barisTermin(1).locator('[data-akhir-pekan]')).toBeHidden();
         await page.getByTestId('simpan-termin').click();
         await expect(page.getByText('2 termin RAB Komite disimpan; jumlahnya sama dengan total RAB.')).toBeVisible();
         await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('Termin 1 (03/08/2026)');

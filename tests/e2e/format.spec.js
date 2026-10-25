@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 const KASUS_STATUS_PAGU = JSON.parse(readFileSync(new URL('../fixtures/status-pagu.json', import.meta.url), 'utf-8'));
 // Kasus status termin bersama: juga diuji di tests/Feature/Rab/TabelTerminTest.php terhadap MekanismePembayaran.
 const KASUS_STATUS_TERMIN = JSON.parse(readFileSync(new URL('../fixtures/status-termin.json', import.meta.url), 'utf-8'));
+// Tanggal Indonesia bersama: juga diuji di tests/Feature/TanggalIndonesiaTest.php terhadap Format::tanggalPanjang().
+const KASUS_TANGGAL = JSON.parse(readFileSync(new URL('../fixtures/tanggal.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -56,6 +58,15 @@ test.describe('Format mata uang di klien', () => {
         });
         // Kasus sama dengan tests/Feature/Kegiatan/KonteksKegiatanTest (19 digit bukan NIP).
         expect(hasil).toEqual({ nip: [true, true, true, false, false], aspek: { peserta: true, output: false } });
+    });
+
+    test('tanggal Indonesia klien sama dengan server, tidak bergantung locale browser', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => ({
+            panjang: window.SIRABTOR.tanggalPanjang(k.iso),
+            akhirPekan: window.SIRABTOR.akhirPekan(k.iso),
+        })), KASUS_TANGGAL);
+        expect(hasil).toEqual(KASUS_TANGGAL.map(({ panjang, akhirPekan }) => ({ panjang, akhirPekan })));
     });
 
     test('status & persen termin klien sama dengan server', async ({ page }) => {
