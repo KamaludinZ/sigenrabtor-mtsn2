@@ -748,6 +748,32 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await expect(page.getByTestId('total-pagu')).toContainText('8.500.000');
     });
 
+    test('Data Kegiatan: status pagu belum lengkap langsung terlihat dan hilang begitu pagu diketik', async ({ page }, testInfo) => {
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.goto('/kegiatan/buat');
+        const bagian = page.getByTestId('pemilihan-sumber-dana');
+        await bagian.scrollIntoViewIfNeeded();
+        await expect(page.getByTestId('pagu-belum-lengkap')).toBeHidden();
+
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        await expect(page.getByTestId('ringkasan-pilihan-sumber')).toContainText('Dibiayai DIPA');
+        await expect(page.getByTestId('ringkasan-pilihan-sumber')).toHaveAttribute('data-jumlah', '1');
+        await expect(page.getByTestId('sumber-dipa')).toContainText('Dipilih');
+        await expect(page.getByTestId('pagu-kosong-dipa')).toBeVisible();
+        await expect(page.getByTestId('pagu-kosong-komite')).toBeHidden();
+        await expect(page.getByTestId('pagu-belum-lengkap')).toHaveText('Pagu DIPA belum diisi — RAB belum bisa dibandingkan dengan pagu.');
+        await expect(page.getByTestId('jumlah-pagu-kosong')).toHaveText('1 pagu belum diisi');
+        await bagian.screenshot({ path: `storage/playwright/shots/pagu-belum-lengkap-${testInfo.project.name}.png` });
+
+        // Mengetik pagu (kotak belum ditinggalkan): status lengkap & total pagu ikut berubah seketika.
+        await page.locator('#pagu_dipa').pressSequentially('2000000');
+        await expect(page.locator('#pagu_dipa')).toBeFocused();
+        await expect(page.getByTestId('pagu-kosong-dipa')).toBeHidden();
+        await expect(page.getByTestId('pagu-belum-lengkap')).toBeHidden();
+        await expect(page.getByTestId('jumlah-pagu-kosong')).toBeHidden();
+        await expect(page.getByTestId('total-pagu')).toHaveText('Rp2.000.000');
+    });
+
     test('Data Kegiatan: rincian tiap RAB bisa dibuka tanpa meninggalkan halaman', async ({ page }, testInfo) => {
         await page.goto('/kegiatan/2/edit');
         const rincianDipa = page.getByTestId('rincian-rab-dipa');

@@ -51,9 +51,9 @@
 
     @unless ($aktif)
         @if ($paguDilepas !== null)
-            <p class="mt-1 text-[11px] text-stone-500" data-testid="pagu-dilepas-{{ $kunci }}">Pagu sebelumnya Rp{{ $paguDilepas }} dipakai lagi bila {{ $label }} dicentang.</p>
+            <p class="mt-1 text-[11px] text-stone-500" data-testid="pagu-dilepas-{{ $kunci }}" x-show="! $wire.{{ $syarat }}">Pagu sebelumnya Rp{{ $paguDilepas }} dipakai lagi bila {{ $label }} dicentang.</p>
         @else
-            <p class="mt-1 text-[11px] text-stone-400">Centang {{ $label }} bila kegiatan ini juga dibiayai {{ $label }}.</p>
+            <p class="mt-1 text-[11px] text-stone-400" x-show="! $wire.{{ $syarat }}">Centang {{ $label }} bila kegiatan ini juga dibiayai {{ $label }}.</p>
         @endif
     @endunless
 </div>

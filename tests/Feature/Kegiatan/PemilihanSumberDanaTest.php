@@ -77,6 +77,43 @@ class PemilihanSumberDanaTest extends TestCase
             ->assertSee('Sisa pagu Rp50.000');
     }
 
+    /** Elemen ber-test-id tampil saat dirender (tanpa display: none awal untuk x-show). */
+    private function tampil(string $html, string $testId): bool
+    {
+        $this->assertSame(1, preg_match('/<[^>]*data-testid="'.$testId.'"[^>]*>/', $html, $tag), "Elemen {$testId} ada.");
+
+        return ! str_contains($tag[0], 'display: none');
+    }
+
+    public function test_status_pagu_belum_lengkap_tampil_di_kartu_ringkasan_dan_total(): void
+    {
+        $komponen = Livewire::test(Form::class)->set('form.dana_dipa', true);
+        $this->assertTrue($this->tampil($komponen->html(), 'pagu-kosong-dipa'));
+        $this->assertFalse($this->tampil($komponen->html(), 'pagu-kosong-komite'));
+        $komponen->assertSee('Pagu DIPA belum diisi — RAB belum bisa dibandingkan dengan pagu.')
+            ->assertSeeHtml('x-show="dipilih(\'dipa\') && pagu(\'dipa\') < 1"');
+
+        $komponen->set('form.dana_komite', true)
+            ->assertSee('Pagu DIPA dan Komite belum diisi — RAB belum bisa dibandingkan dengan pagu.')
+            ->assertSee('2 pagu belum diisi')
+            ->set('form.pagu_dipa', '1.000.000')
+            ->assertSee('Pagu Komite belum diisi — RAB belum bisa dibandingkan dengan pagu.')
+            ->assertSee('1 pagu belum diisi');
+        $this->assertFalse($this->tampil($komponen->html(), 'pagu-kosong-dipa'));
+        $this->assertTrue($this->tampil($komponen->html(), 'pagu-kosong-komite'));
+
+        $komponen->set('form.pagu_komite', '500.000')
+            ->assertSeeInOrder(['Total pagu', 'Rp1.500.000']);
+        $this->assertFalse($this->tampil($komponen->html(), 'pagu-belum-lengkap'));
+        $this->assertFalse($this->tampil($komponen->html(), 'jumlah-pagu-kosong'));
+
+        // Contoh Review RKJM: pagu DIPA kosong dari data tersimpan.
+        $rktm = Livewire::test(Form::class, ['kegiatan' => 3])
+            ->assertSee('Pagu DIPA belum diisi — RAB belum bisa dibandingkan dengan pagu.')
+            ->assertSeeInOrder(['Total pagu', 'Rp7.500.000', '1 pagu belum diisi']);
+        $this->assertTrue($this->tampil($rktm->html(), 'pagu-kosong-dipa'));
+    }
+
     public function test_pagu_yang_dilepas_dipakai_lagi_saat_dicentang_ulang(): void
     {
         $komponen = Livewire::test(Form::class, ['kegiatan' => 2])
