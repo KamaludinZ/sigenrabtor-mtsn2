@@ -80,7 +80,9 @@ class PemilihanSumberDanaTest extends TestCase
     /** Elemen ber-test-id tampil saat dirender (tanpa display: none awal untuk x-show). */
     private function tampil(string $html, string $testId): bool
     {
-        $this->assertSame(1, preg_match('/<[^>]*data-testid="'.$testId.'"[^>]*>/', $html, $tag), "Elemen {$testId} ada.");
+        // Atribut bernilai dalam kutip ganda boleh memuat ">" (mis. x-show="n > 1").
+        $atribut = '(?:\s+[^\s"\'=<>]+(?:="[^"]*")?)*';
+        $this->assertSame(1, preg_match('/<[a-z0-9]+'.$atribut.'\s+data-testid="'.preg_quote($testId, '/').'"'.$atribut.'\s*>/', $html, $tag), "Elemen {$testId} ada.");
 
         return ! str_contains($tag[0], 'display: none');
     }
@@ -112,6 +114,33 @@ class PemilihanSumberDanaTest extends TestCase
             ->assertSee('Pagu DIPA belum diisi — RAB belum bisa dibandingkan dengan pagu.')
             ->assertSeeInOrder(['Total pagu', 'Rp7.500.000', '1 pagu belum diisi']);
         $this->assertTrue($this->tampil($rktm->html(), 'pagu-kosong-dipa'));
+    }
+
+    public function test_ringkasan_pagu_di_halaman_kegiatan(): void
+    {
+        $komponen = Livewire::test(Form::class, ['kegiatan' => 3]);
+        $html = $komponen->html();
+
+        // Dua varian (samping desktop & bawah layar sempit) dengan test-id sendiri.
+        foreach (['samping', 'bawah'] as $varian) {
+            $this->assertStringContainsString('data-testid="ringkasan-pagu-'.$varian.'"', $html);
+            $this->assertTrue($this->tampil($html, "ringkasan-pagu-{$varian}-dipa"));
+            $this->assertTrue($this->tampil($html, "ringkasan-pagu-{$varian}-total"));
+        }
+        $komponen->assertSeeHtml('x-data="paguKegiatan({ sumber: ')
+            ->assertSeeHtml('href="'.route('kegiatan.rab', ['kegiatan' => 3, 'halaman' => 'pagu']).'"')
+            ->assertSeeInOrder(['Ringkasan pagu', 'Pagu &amp; RAB →', 'RAB DIPA', 'Rp900.000', 'belum diisi', 'Belum bisa dibandingkan', 'RAB Komite', 'Rp7.950.000', 'Rp7.500.000', 'Melebihi pagu Rp450.000', 'Total RAB', 'Rp8.850.000', 'Total pagu', 'Rp7.500.000'], false);
+
+        // Total RAB sumber yang dilepas tetap dikirim ke klien agar langsung tampil saat dicentang lagi.
+        $komponen->set('form.dana_dipa', false);
+        // Keluaran @js meng-escape tanda kutip; cukup cocokkan kunci & angkanya.
+        $this->assertMatchesRegularExpression('/DIPA[^:]*:\{[^:]*total[^:]*:900000,[^:]*item[^:]*:2\}/', $komponen->html());
+        $this->assertFalse($this->tampil($komponen->html(), 'ringkasan-pagu-samping-dipa'));
+        $this->assertFalse($this->tampil($komponen->html(), 'ringkasan-pagu-samping-total'));
+
+        // Kegiatan baru: belum ada sumber, tanpa tautan Pagu & RAB.
+        $baru = Livewire::test(Form::class)->assertSee('Belum ada sumber dana dipilih.')->assertDontSee('Pagu &amp; RAB →', false);
+        $this->assertFalse($this->tampil($baru->html(), 'ringkasan-pagu-samping-komite'));
     }
 
     public function test_pagu_yang_dilepas_dipakai_lagi_saat_dicentang_ulang(): void

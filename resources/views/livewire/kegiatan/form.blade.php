@@ -135,6 +135,10 @@
             @endforeach
             </fieldset>
 
+            <div class="lg:hidden">
+                @include('livewire.kegiatan.partials.ringkasan-pagu', ['varian' => 'bawah'])
+            </div>
+
             @include('livewire.kegiatan.partials.lanjut-rab')
         </form>
 
@@ -176,6 +180,8 @@
                         @endforeach
                     </ol>
                 </nav>
+
+                @include('livewire.kegiatan.partials.ringkasan-pagu', ['varian' => 'samping'])
 
                 <div class="rounded-2xl bg-gold-50 p-4 text-xs text-gold-700 ring-1 ring-gold-200">
                     <p class="flex items-center gap-1.5 font-semibold">

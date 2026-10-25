@@ -650,6 +650,36 @@ test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA b
         await expect(page).toHaveURL(/\/kegiatan\/3\/rab\?sumber=Komite/, { timeout: 30_000 });
     });
 
+    test('Data Kegiatan: ringkasan pagu mengikuti ketikan dan centang tanpa menggulir ke Sumber dana', async ({ page }, testInfo) => {
+        page.on('dialog', (dialog) => dialog.accept());
+        const varian = testInfo.project.name === 'mobile' ? 'bawah' : 'samping';
+        await page.goto('/kegiatan/3/edit');
+        const ringkasan = page.getByTestId(`ringkasan-pagu-${varian}`);
+        await ringkasan.scrollIntoViewIfNeeded();
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-status-komite`)).toHaveText('Melebihi pagu Rp450.000');
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-status-dipa`)).toHaveText('Belum bisa dibandingkan');
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-total`)).toContainText(/Total RAB\s*Rp8\.850\.000/);
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-total`)).toContainText(/Total pagu\s*Rp7\.500\.000/);
+        await ringkasan.screenshot({ path: `storage/playwright/shots/ringkasan-pagu-${testInfo.project.name}.png` });
+
+        // Pagu diketik (belum ditinggalkan): status & total di ringkasan berubah seketika.
+        await page.locator('#pagu_komite').fill('');
+        await page.locator('#pagu_komite').pressSequentially('8000000');
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-status-komite`)).toHaveText('Sisa pagu Rp50.000');
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-total`)).toContainText(/Total pagu\s*Rp8\.000\.000/);
+
+        // Melepas DIPA menyembunyikan barisnya; dicentang lagi, total RAB-nya langsung kembali.
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').uncheck();
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-dipa`)).toBeHidden();
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-total`)).toBeHidden();
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        await expect(ringkasan.getByTestId(`ringkasan-pagu-${varian}-dipa`)).toContainText('Rp900.000');
+
+        await ringkasan.getByRole('link', { name: 'Pagu & RAB →' }).click();
+        await expect(page).toHaveURL(/\/kegiatan\/3\/rab\?halaman=pagu/, { timeout: 30_000 });
+        await expect(page.getByTestId('tabel-pagu-rab')).toBeVisible();
+    });
+
     test('Data Kegiatan: status batas pagu ikut berubah selagi pagu diketik', async ({ page }, testInfo) => {
         page.on('dialog', (dialog) => dialog.accept());
         await page.goto('/kegiatan/3/edit');

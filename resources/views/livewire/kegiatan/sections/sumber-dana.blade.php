@@ -25,33 +25,7 @@
     server atau kotak pagu ditinggalkan. Render server memberi keadaan awal yang sama.
 --}}
 <div class="space-y-4" data-testid="pemilihan-sumber-dana"
-     x-data="{
-         sumber: @js(array_map(fn ($j) => ['label' => $j->value, 'kunci' => $j->kunci()], SumberDana::cases())),
-         teksPilihan: @js($teksPilihan),
-         dipilih(kunci) {
-             return Boolean(this.$wire.$get('form.dana_' + kunci));
-         },
-         get terpilih() {
-             return this.sumber.filter((s) => this.dipilih(s.kunci)).map((s) => s.label);
-         },
-         get ringkasPilihan() {
-             return this.teksPilihan[Math.min(this.terpilih.length, 2)].map((teks) => teks.replace(':sumber', this.terpilih[0] ?? ''));
-         },
-         pagu(kunci) {
-             const angka = parseInt(String(this.$wire.$get('form.pagu_' + kunci) ?? '').replace(/\D/g, ''), 10);
-
-             return Number.isNaN(angka) ? 0 : angka;
-         },
-         get paguKosong() {
-             return this.sumber.filter((s) => this.dipilih(s.kunci) && this.pagu(s.kunci) < 1).map((s) => s.label);
-         },
-         get teksPaguKosong() {
-             return this.paguKosong.length ? `Pagu ${this.paguKosong.join(' dan ')} belum diisi — RAB belum bisa dibandingkan dengan pagu.` : '';
-         },
-         get totalPagu() {
-             return this.sumber.reduce((jumlah, s) => jumlah + (this.dipilih(s.kunci) ? this.pagu(s.kunci) : 0), 0);
-         },
-     }">
+     x-data="paguKegiatan({ sumber: @js(array_map(fn ($j) => ['label' => $j->value, 'kunci' => $j->kunci()], SumberDana::cases())), teksPilihan: @js($teksPilihan) })">
     <div class="flex items-start gap-3 rounded-xl bg-stone-50 px-4 py-3 ring-1 ring-stone-200" data-testid="ringkasan-pilihan-sumber" data-jumlah="{{ count($dipilih) }}"
          x-bind:data-jumlah="terpilih.length">
         <x-ui.icon name="wallet" class="mt-0.5 size-5 shrink-0 text-stone-400" />
