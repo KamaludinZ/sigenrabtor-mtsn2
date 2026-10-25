@@ -24,7 +24,9 @@
     Ringkasan pagu di halaman Data Kegiatan: pagu tiap sumber terpilih (ikut ketikan), total RAB-nya, bilah pemakaian, dan
     status batas pagu — terlihat tanpa menggulir ke bagian Sumber dana. Dihitung di klien lewat Alpine "paguKegiatan".
 --}}
+{{-- wire:key ikut total RAB: bila RAB berubah (mis. dari tab lain), komponen Alpine dibuat ulang dengan angka baru. --}}
 <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="{{ $awalan }}-judul" data-testid="{{ $awalan }}"
+         wire:key="{{ $awalan }}-{{ md5(json_encode($rabSumber)) }}"
          x-data="paguKegiatan({ sumber: @js(array_map(fn ($j) => ['label' => $j->value, 'kunci' => $j->kunci()], SumberDana::cases())), rab: @js($rabSumber) })">
     <div class="flex items-baseline justify-between gap-2">
         <h2 id="{{ $awalan }}-judul" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Ringkasan pagu</h2>

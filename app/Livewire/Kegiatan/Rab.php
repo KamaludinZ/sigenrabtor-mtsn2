@@ -85,6 +85,10 @@ class Rab extends Component
     #[Locked]
     public ?array $itemDipindah = null;
 
+    /** Tanda pagu & total RAB pada render terakhir (AnggaranKegiatan::tanda); berubah = disiarkan ke tab lain. */
+    #[Locked]
+    public string $tandaAnggaran = '';
+
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
         $this->dataKegiatan = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
@@ -94,6 +98,38 @@ class Rab extends Component
         $this->sumber = $this->tampilan->aktif ?? '';
         $this->updatedKelompok();
         $this->updatedHalaman();
+        $this->tandaAnggaran = AnggaranKegiatan::tanda($this->anggaran);
+    }
+
+    /**
+     * Setiap perubahan isi RAB (tambah, ubah, hapus, salin, pindah, impor, urungkan) mengubah tanda anggaran; perubahan itu
+     * dikabarkan ke peramban (event "anggaran-berubah") lalu disiarkan ke tab lain yang membuka kegiatan yang sama.
+     */
+    public function rendering(): void
+    {
+        $tanda = AnggaranKegiatan::tanda($this->anggaran);
+
+        if ($tanda !== $this->tandaAnggaran) {
+            $this->tandaAnggaran = $tanda;
+            $this->dispatch('anggaran-berubah', kegiatan: $this->kegiatanId);
+        }
+    }
+
+    /**
+     * Anggaran kegiatan ini berubah di tab lain (RAB atau pagu di Data Kegiatan): muat ulang data kegiatan & RAB.
+     * Tanda diperbarui di sini sehingga pembaruan ini tidak disiarkan balik.
+     */
+    #[On('anggaran-diperbarui')]
+    public function anggaranDiperbarui(int $kegiatan): void
+    {
+        if ($kegiatan !== $this->kegiatanId) {
+            return;
+        }
+
+        $this->dataKegiatan = app(KegiatanRepository::class)->temukan($kegiatan) ?? $this->dataKegiatan;
+        $this->segarkanRincian();
+        $this->tandaAnggaran = AnggaranKegiatan::tanda($this->anggaran);
+        $this->dispatch('notify', message: 'Anggaran diperbarui dari tab lain.', type: 'info');
     }
 
     /**

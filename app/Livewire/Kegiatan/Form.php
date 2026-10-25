@@ -21,6 +21,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -203,6 +204,18 @@ class Form extends Component
 
         if ($field === 'konteks') {
             $this->simpanKonteksOtomatis();
+        }
+    }
+
+    /**
+     * RAB kegiatan ini berubah di tab lain: render ulang menghitung ulang ringkasan RAB, status pagu, dan termin. Isian form
+     * yang sedang disunting (termasuk pagu) tidak ditimpa.
+     */
+    #[On('anggaran-diperbarui')]
+    public function anggaranDiperbarui(int $kegiatan): void
+    {
+        if ($kegiatan === $this->kegiatanId) {
+            $this->dispatch('notify', message: 'Total RAB diperbarui dari tab lain.', type: 'info');
         }
     }
 
@@ -506,6 +519,8 @@ class Form extends Component
         $this->diperbaruiPada = $repo->temukan($id)['diperbarui_pada'] ?? now()->toIso8601String();
         // Draf lokal di browser (mis. catatan konteks) boleh dibuang: datanya sudah aman di server.
         $this->dispatch('kegiatan-tersimpan', id: $id);
+        // Pagu mungkin berubah: tab lain (RAB, daftar) memuat ulang status pagunya.
+        $this->dispatch('anggaran-berubah', kegiatan: $id);
         unset($this->drafTerbaru);
 
         return $id;

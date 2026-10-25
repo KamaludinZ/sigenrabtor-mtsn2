@@ -28,7 +28,7 @@
 
     @if ($statusAwal)
         {{-- Elemen ini muncul/hilang bersama RAB sumber yang dipilih, jadi state Alpine-nya selalu dibuat dengan total terbaru. --}}
-        <p class="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs" x-show="$wire.{{ $syarat }}"
+        <p class="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs" x-show="$wire.{{ $syarat }}" wire:key="batas-pagu-{{ $kunci }}-{{ $totalRab }}"
            x-data="{
                total: @js($totalRab),
                get status() {

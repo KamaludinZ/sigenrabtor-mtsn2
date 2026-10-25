@@ -155,6 +155,47 @@ async function buatKegiatanDenganItem(page, nama, items) {
     }
 }
 
+test.describe('Status pagu real-time antar-tab (tiruan)', () => {
+    test('RAB disunting di satu tab, Data Kegiatan di tab lain ikut berubah — dan sebaliknya untuk pagu', async ({ page }, testInfo) => {
+        await buatKegiatanDenganItem(page, `Kegiatan Dua Tab ${testInfo.project.name} ${Date.now()}`, [['Snack rapat', '10', '400000']]);
+        const id = page.url().match(/\/kegiatan\/(\d+)\/rab/)[1];
+        const varian = testInfo.project.name === 'mobile' ? 'bawah' : 'samping';
+
+        const tabData = await page.context().newPage();
+        tabData.on('dialog', (dialog) => dialog.accept());
+        await tabData.goto(`/kegiatan/${id}/edit`);
+        const statusForm = tabData.getByTestId('status-pagu-form-komite');
+        const statusRingkasan = tabData.getByTestId(`ringkasan-pagu-${varian}-status-komite`);
+        await expect(statusForm).toHaveText('Sisa pagu Rp1.000.000');
+        await expect(statusRingkasan).toHaveText('Sisa pagu Rp1.000.000');
+
+        // Tab RAB: item baru membuat RAB melebihi pagu → tab Data Kegiatan diperbarui tanpa dimuat ulang.
+        await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+        await page.locator('#item_uraian').fill('Honorarium narasumber');
+        await page.locator('#item_volume').fill('1');
+        await page.locator('#item_satuan').fill('OJ');
+        await page.locator('#item_harga_satuan').pressSequentially('1500000');
+        await page.getByRole('button', { name: 'Simpan item' }).click();
+        await expect(page.getByText('Item ditambahkan: Honorarium narasumber')).toBeVisible({ timeout: 30_000 });
+
+        await expect(tabData.getByText('Total RAB diperbarui dari tab lain.')).toBeVisible({ timeout: 30_000 });
+        await expect(statusForm).toHaveText('Melebihi pagu Rp500.000');
+        await expect(statusRingkasan).toHaveText('Melebihi pagu Rp500.000');
+        await expect(tabData.getByTestId('rekap-rab-komite')).toContainText('Rp5.500.000');
+
+        // Tab Data Kegiatan: pagu dinaikkan lalu disimpan → tab RAB ikut menghitung ulang.
+        await tabData.locator('#pagu_komite').fill('');
+        await tabData.locator('#pagu_komite').pressSequentially('6000000');
+        await tabData.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(tabData.getByText(/Draf tersimpan pukul/)).toBeVisible({ timeout: 30_000 });
+
+        await expect(page.getByText('Anggaran diperbarui dari tab lain.')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByTestId('status-pagu-komite')).toHaveText('Sisa pagu Rp500.000');
+        await expect(page.getByTestId('peringatan-pagu-komite')).toHaveAttribute('data-status', 'sisa');
+        await tabData.close();
+    });
+});
+
 test.describe('Perkiraan total RAB lokal', () => {
     test('total, terbilang, dan status pagu ikut ketikan sebelum item disimpan', async ({ page }, testInfo) => {
         await buatKegiatanDenganItem(page, `Kegiatan Total Lokal ${testInfo.project.name}`, [['Snack rapat', '10', '300000']]);

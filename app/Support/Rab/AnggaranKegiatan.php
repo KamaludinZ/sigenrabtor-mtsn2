@@ -76,6 +76,17 @@ class AnggaranKegiatan
         ];
     }
 
+    /**
+     * Tanda ringkas pagu, total, dan jumlah item tiap RAB (termasuk yang dilepas); berubah begitu salah satunya berubah.
+     * Dipakai untuk menyiarkan perubahan anggaran ke tab lain dan membuat ulang komponen klien yang menyimpan total RAB.
+     *
+     * @param  list<AnggaranSumber>  $anggaran
+     */
+    public static function tanda(array $anggaran): string
+    {
+        return md5((string) json_encode(array_map(fn (AnggaranSumber $a) => [$a->sumber, $a->dipilih, $a->pagu(), $a->total(), $a->jumlahItem()], $anggaran)));
+    }
+
     private static function posisi(string $sumber): int
     {
         $posisi = array_search($sumber, self::URUTAN_SUMBER, true);

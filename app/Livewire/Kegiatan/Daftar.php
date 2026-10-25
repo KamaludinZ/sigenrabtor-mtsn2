@@ -338,6 +338,13 @@ class Daftar extends Component
         $this->imporTerbuka = ! $this->imporTerbuka;
     }
 
+    /** Anggaran sebuah kegiatan berubah di tab lain: render ulang menghitung ulang total RAB & kondisi pagu tabel. */
+    #[On('anggaran-diperbarui')]
+    public function anggaranDiperbarui(): void
+    {
+        unset($this->semuaBaris, $this->terfilter, $this->halamanIni, $this->ringkasan, $this->jumlahPerKondisi, $this->perluPerhatian);
+    }
+
     #[On('kegiatan-diimpor')]
     public function segarkan(int $jumlah = 0): void
     {
