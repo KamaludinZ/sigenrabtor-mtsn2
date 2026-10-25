@@ -6,12 +6,15 @@ namespace App\Support\Rab;
  * Logika render halaman RAB berdasarkan sumber dana kegiatan:
  * - mode "tanpa_sumber" (belum memilih DIPA/Komite), "tunggal" (satu RAB), atau "ganda" (DIPA + Komite);
  * - urutan sumber baku (DIPA lalu Komite) dan sumber yang dibuka di penyunting (fallback ke sumber pertama);
- * - halaman yang tersedia: "Semua RAB" hanya untuk kegiatan dua sumber;
+ * - halaman yang tersedia: "Semua RAB" hanya untuk kegiatan dua sumber; "Termin pembayaran" per sumber dana;
  * - RAB tersimpan milik sumber yang sudah dilepas (tidak dicetak, tampil baca-saja).
  */
 final readonly class TampilanRab
 {
-    public const HALAMAN = ['rincian' => 'Rincian belanja', 'semua' => 'Semua RAB', 'rekap' => 'Rekap per kelompok'];
+    public const HALAMAN = ['rincian' => 'Rincian belanja', 'semua' => 'Semua RAB', 'rekap' => 'Rekap per kelompok', 'termin' => 'Termin pembayaran'];
+
+    /** Halaman yang menampilkan satu RAB (sumber dana aktif); pindah kartu sumber tetap di halaman yang sama. */
+    public const HALAMAN_PER_SUMBER = ['rincian', 'termin'];
 
     /**
      * @param  list<string>  $sumber  Sumber dana terpilih, urut baku.
@@ -68,7 +71,7 @@ final readonly class TampilanRab
     {
         return match ($mode) {
             'tanpa_sumber' => [],
-            'tunggal' => array_intersect_key(self::HALAMAN, array_flip(['rincian', 'rekap'])),
+            'tunggal' => array_diff_key(self::HALAMAN, ['semua' => true]),
             default => self::HALAMAN,
         };
     }

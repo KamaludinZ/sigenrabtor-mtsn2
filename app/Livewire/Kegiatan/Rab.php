@@ -137,7 +137,8 @@ class Rab extends Component
     {
         if (in_array($sumber, $this->daftarSumber(), true)) {
             $this->sumber = $sumber;
-            $this->halaman = 'rincian';
+            // Dari Termin pembayaran tetap di halaman termin sumber yang dipilih; selain itu ke rincian belanjanya.
+            $this->halaman = in_array($this->halaman, TampilanRab::HALAMAN_PER_SUMBER, true) ? $this->halaman : 'rincian';
             $this->lepasStatePerSumber();
         }
     }
@@ -175,6 +176,13 @@ class Rab extends Component
     /**
      * Rincian hasil impor Excel sudah tersimpan: muat ulang tabel, total, terbilang, dan rekap.
      */
+    /** Termin tersimpan: perbarui kartu sumber (jumlah termin & status pasnya). */
+    #[On('termin-disimpan')]
+    public function terminDisimpan(): void
+    {
+        $this->segarkanRincian();
+    }
+
     #[On('rab-diimpor')]
     public function rabDiimpor(int $jumlah = 0, string $sumber = ''): void
     {

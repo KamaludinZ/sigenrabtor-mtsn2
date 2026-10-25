@@ -1,5 +1,6 @@
 @use('App\Support\Format')
 @use('App\Support\Rab\AnggaranKegiatan')
+@use('App\Support\Rab\TampilanRab')
 
 @php
     $dipilih = array_values(array_filter($this->anggaran, fn ($a) => $a->dipilih));
@@ -17,7 +18,7 @@
              @class(['grid gap-2 sm:gap-3 lg:col-span-2', 'grid-cols-2' => count($dipilih) > 1, 'grid-cols-1 sm:grid-cols-2' => count($dipilih) === 1])>
             @foreach ($dipilih as $anggaran)
                 @php
-                    $aktif = $anggaran->sumber === $sumber && $halaman === 'rincian';
+                    $aktif = $anggaran->sumber === $sumber && in_array($halaman, TampilanRab::HALAMAN_PER_SUMBER, true);
                     $selisih = $anggaran->hasil->selisih();
                 @endphp
                 <button type="button" role="tab" aria-selected="{{ $aktif ? 'true' : 'false' }}"

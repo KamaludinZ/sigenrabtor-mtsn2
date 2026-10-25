@@ -59,6 +59,8 @@
             @include('livewire.kegiatan.partials.rekap-kelompok')
         @elseif ($halaman === 'semua')
             @include('livewire.kegiatan.partials.semua-rab')
+        @elseif ($halaman === 'termin')
+            <livewire:kegiatan.termin-pembayaran :kegiatan-id="$kegiatanId" :sumber="$sumber" wire:key="termin-{{ $sumber }}" />
         @else
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
             <div class="min-w-0 space-y-6">

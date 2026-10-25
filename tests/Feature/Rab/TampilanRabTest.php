@@ -28,11 +28,11 @@ class TampilanRabTest extends TestCase
 
         $tunggal = $this->tampilan(app(KegiatanRepository::class)->temukan(1));
         $this->assertSame(['tunggal', ['Komite'], 'Komite'], [$tunggal->mode, $tunggal->sumber, $tunggal->aktif]);
-        $this->assertSame(['rincian', 'rekap'], array_keys($tunggal->halamanTersedia()));
+        $this->assertSame(['rincian', 'rekap', 'termin'], array_keys($tunggal->halamanTersedia()));
 
         $ganda = $this->tampilan(app(KegiatanRepository::class)->temukan(2));
         $this->assertSame(['ganda', ['DIPA', 'Komite']], [$ganda->mode, $ganda->sumber]);
-        $this->assertSame(['rincian', 'semua', 'rekap'], array_keys($ganda->halamanTersedia()));
+        $this->assertSame(['rincian', 'semua', 'rekap', 'termin'], array_keys($ganda->halamanTersedia()));
     }
 
     public function test_urutan_baku_dan_permintaan_tidak_sah_dinormalkan(): void

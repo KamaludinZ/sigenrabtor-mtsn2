@@ -350,6 +350,49 @@ test.describe('Isolasi RAB per sumber dana', () => {
     });
 });
 
+test.describe('Termin pembayaran', () => {
+    test('bertahap: bagi rata, sesuaikan nominal & tanggal, simpan, pratinjau blok dokumen', async ({ page }, testInfo) => {
+        await buatKegiatanDenganItem(page, `Kegiatan Termin ${testInfo.project.name}`, [['Honor narasumber', '4', '600000'], ['Konsumsi', '40', '30000']]);
+        await expect(page.getByTestId('total-anggaran-nilai')).toHaveText('Rp3.600.000');
+
+        await page.getByRole('tab', { name: 'Termin pembayaran' }).click();
+        await expect(page).toHaveURL(/halaman=termin/);
+        const termin = page.getByTestId('termin-pembayaran');
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'sekaligus');
+        await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('pembayaran sekaligus sebesar Rp3.600.000');
+
+        await termin.locator('[data-mekanisme="termin"]').click();
+        await expect(termin.locator('tr[data-termin]')).toHaveCount(2);
+        await expect(page.locator('#termin-nominal-0')).toHaveValue('1.800.000');
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'pas');
+
+        // Ubah nominal termin 1: terbilang ikut, selisih tampil, lalu disesuaikan otomatis di termin terakhir.
+        await page.locator('#termin-nominal-0').fill('');
+        await page.locator('#termin-nominal-0').pressSequentially('2500000');
+        await expect(page.getByTestId('termin-nominal-0-terbilang')).toHaveText('Dua Juta Lima Ratus Ribu Rupiah');
+        await page.locator('#termin-nominal-0').blur();
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'lebih');
+        await page.getByTestId('isi-sisa').click();
+        await expect(page.locator('#termin-nominal-1')).toHaveValue('1.100.000');
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'pas');
+
+        await page.locator('#termin-tanggal-0').fill('2026-08-03');
+        await page.locator('#termin-tanggal-1').fill('2026-09-01');
+        await page.getByTestId('simpan-termin').click();
+        await expect(page.getByText('2 termin RAB Komite disimpan; jumlahnya sama dengan total RAB.')).toBeVisible();
+        await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('Termin 1 (03/08/2026)');
+        await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('Rp2.500.000,00');
+        await expect(page.getByRole('tab', { name: /RAB Komite/ })).toContainText('2 termin');
+        await termin.screenshot({ path: `storage/playwright/shots/termin-${testInfo.project.name}.png` });
+
+        // Tersimpan: dimuat ulang tetap sama.
+        await page.reload();
+        await expect(page.locator('#termin-nominal-1')).toHaveValue('1.100.000');
+        await expect(page.locator('#termin-tanggal-1')).toHaveValue('2026-09-01');
+        await expect(page.getByTestId('termin-belum-disimpan')).toHaveCount(0);
+    });
+});
+
 test.describe('Kelompok kategori interaktif', () => {
     test('pindah kategori (seret di desktop, pilihan di mobile), ciutkan, dan lompat dari ringkasan', async ({ page }, testInfo) => {
         await buatKegiatanDenganItem(page, `Kegiatan Kelompok ${testInfo.project.name}`, [
