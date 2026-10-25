@@ -56,6 +56,24 @@ class TerminPembayaran extends Component
         return new MekanismePembayaran($this->anggaran->total(), $this->terminDariBaris());
     }
 
+    /**
+     * Mekanisme pembayaran semua sumber dana kegiatan untuk grid jadwal; sumber yang dibuka memakai isian yang sedang disunting.
+     *
+     * @return array<string, MekanismePembayaran>
+     */
+    #[Computed]
+    public function jadwal(): array
+    {
+        $kegiatan = app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? [];
+        $jadwal = [];
+
+        foreach (AnggaranKegiatan::untuk($kegiatan) as $anggaran) {
+            $jadwal[$anggaran->sumber] = $anggaran->sumber === $this->sumber ? $this->mekanisme : MekanismePembayaran::dari($anggaran);
+        }
+
+        return $jadwal;
+    }
+
     #[Computed]
     public function status(): StatusKegiatan
     {
@@ -84,7 +102,7 @@ class TerminPembayaran extends Component
             $this->baris[$index]['nominal'] = $nilai === null ? '' : Format::angka($nilai);
         }
 
-        unset($this->mekanisme);
+        unset($this->mekanisme, $this->jadwal);
     }
 
     /** Termin baru diisi sisa yang belum tertutup termin lain (bila ada). */
@@ -246,13 +264,13 @@ class TerminPembayaran extends Component
             'nominal' => Format::angka((int) $t['nominal']),
         ], app(RabRepository::class)->termin($this->kegiatanId, $this->sumber));
         $this->adaPerubahan = false;
-        unset($this->mekanisme);
+        unset($this->mekanisme, $this->jadwal);
     }
 
     private function berubah(): void
     {
         $this->adaPerubahan = true;
-        unset($this->mekanisme);
+        unset($this->mekanisme, $this->jadwal);
     }
 
     private function pastikanDapatDiedit(): void

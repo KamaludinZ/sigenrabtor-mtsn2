@@ -357,6 +357,9 @@ test.describe('Termin pembayaran', () => {
 
         await page.getByRole('tab', { name: 'Termin pembayaran' }).click();
         await expect(page).toHaveURL(/halaman=termin/);
+        // Grid jadwal yang lebar bergulir di wadahnya sendiri; halaman tidak ikut melebar.
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
         const termin = page.getByTestId('termin-pembayaran');
         await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'sekaligus');
         await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('pembayaran sekaligus sebesar Rp3.600.000');
@@ -384,6 +387,12 @@ test.describe('Termin pembayaran', () => {
         await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('Rp2.500.000,00');
         await expect(page.getByRole('tab', { name: /RAB Komite/ })).toContainText('2 termin');
         await termin.screenshot({ path: `storage/playwright/shots/termin-${testInfo.project.name}.png` });
+
+        // Grid jadwal pembayaran: nominal jatuh di bulan Agustus & September.
+        const jadwal = page.getByTestId('jadwal-termin');
+        await expect(jadwal.locator('[data-jadwal-sumber="Komite"] [data-bulan="8"]')).toHaveText('2.500.000');
+        await expect(jadwal.locator('[data-jadwal-sumber="Komite"] [data-bulan="9"]')).toHaveText('1.100.000');
+        await jadwal.screenshot({ path: `storage/playwright/shots/jadwal-termin-${testInfo.project.name}.png` });
 
         // Tersimpan: dimuat ulang tetap sama.
         await page.reload();

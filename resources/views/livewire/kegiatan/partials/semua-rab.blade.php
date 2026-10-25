@@ -1,4 +1,5 @@
 @use('App\Support\Format')
+@use('App\Support\Rab\MekanismePembayaran')
 
 {{--
     Halaman "Semua RAB" (kegiatan dua sumber dana): setiap RAB tampil utuh berdampingan, baca-saja, memakai komponen
@@ -25,6 +26,10 @@
             </header>
             <div class="p-3 sm:p-5">
                 <x-rab.tabel-rincian :anggaran="$anggaran" :kelompok="$kelompok" />
+                @if ($anggaran->adaTermin())
+                    <h3 class="mt-5 mb-2 text-sm font-semibold text-stone-800">Termin pembayaran</h3>
+                    <x-rab.tabel-termin :mekanisme="MekanismePembayaran::dari($anggaran)" :sumber="$anggaran->sumber" />
+                @endif
             </div>
         </section>
     @endforeach

@@ -3,6 +3,7 @@
 namespace App\Support\Rab;
 
 use App\Support\Format;
+use App\Support\Terbilang;
 use Carbon\CarbonImmutable;
 
 /**
@@ -96,6 +97,47 @@ final readonly class MekanismePembayaran
         }
 
         return $baris;
+    }
+
+    /**
+     * Baris tabel termin: nomor, tanggal, nominal, persen, kumulatif (jumlah s.d. termin ini), dan terbilang.
+     *
+     * @return list<array{nomor: int, tanggal: CarbonImmutable|null, nominal: int, persen: float, kumulatif: int, terbilang: string|null}>
+     */
+    public function barisTabel(): array
+    {
+        $kumulatif = 0;
+
+        return array_map(function (array $termin, int $i) use (&$kumulatif) {
+            $nominal = (int) $termin['nominal'];
+            $kumulatif += $nominal;
+
+            return [
+                'nomor' => $i + 1,
+                'tanggal' => filled($termin['tanggal'] ?? null) ? rescue(fn () => CarbonImmutable::parse($termin['tanggal']), null, false) : null,
+                'nominal' => $nominal,
+                'persen' => $this->persen($nominal),
+                'kumulatif' => $kumulatif,
+                'terbilang' => Terbilang::tampil($nominal),
+            ];
+        }, array_values($this->termin), array_keys(array_values($this->termin)));
+    }
+
+    /**
+     * Nominal termin per bulan (1–12) untuk grid jadwal pembayaran; termin tanpa tanggal di kunci 0.
+     *
+     * @return array<int, int>
+     */
+    public function perBulan(): array
+    {
+        $bulan = [];
+        foreach ($this->barisTabel() as $baris) {
+            $kunci = $baris['tanggal']?->month ?? 0;
+            $bulan[$kunci] = ($bulan[$kunci] ?? 0) + $baris['nominal'];
+        }
+        ksort($bulan);
+
+        return $bulan;
     }
 
     /** "Rp7.680.000,00" — gaya blok mekanisme pembayaran Form RAB. */

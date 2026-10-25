@@ -20,7 +20,7 @@
     Termin pembayaran satu RAB (per sumber dana). Disunting di layar; "Simpan termin" menyimpan seluruh daftar.
     Jumlah termin dibandingkan dengan total RAB secara langsung, dan pratinjau blok "Mekanisme Pembayaran" mengikuti Form RAB.
 --}}
-<div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="termin-pembayaran">
+<div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="termin-pembayaran">
     <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200">
         <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
             <div class="min-w-0">
@@ -37,6 +37,10 @@
         </header>
 
         <div class="space-y-5 px-5 py-5 sm:px-6">
+            @if (! $bisaUbah)
+                {{-- Terkunci: tampilkan termin tersimpan sebagai tabel baca-saja. --}}
+                <x-rab.tabel-termin :mekanisme="$mekanisme" :sumber="$sumber" />
+            @else
             {{-- Mekanisme --}}
             <div class="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Mekanisme pembayaran">
                 @foreach (['sekaligus' => ['Sekaligus', 'Dibayar satu kali sesuai total RAB; blok termin tidak dicetak.'], 'termin' => ['Bertahap (termin)', 'Dibayar beberapa kali pada tanggal tertentu.']] as $kunci => [$label, $keterangan])
@@ -119,6 +123,8 @@
                 @endif
             @endif
 
+            @endif
+
             {{-- Status jumlah termin terhadap total RAB --}}
             <div class="grid gap-3 rounded-xl px-4 py-3 ring-1 sm:grid-cols-3 {{ $nadaStatus[1] }}" data-testid="status-termin" data-status="{{ $mekanisme->status() }}" role="status">
                 <div>
@@ -154,6 +160,9 @@
             @endif
         </footer>
     </section>
+
+    {{-- Grid jadwal pembayaran semua sumber dana (sumber yang dibuka disorot) --}}
+    <x-rab.jadwal-termin :jadwal="$this->jadwal" :tahun="$tahun" :aktif="$sumber" class="order-last min-w-0 lg:col-span-2" />
 
     {{-- Pratinjau blok dokumen --}}
     <aside class="space-y-4">
