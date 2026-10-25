@@ -62,6 +62,10 @@ class Rab extends Component
     #[Locked]
     public ?string $itemDiedit = null;
 
+    /** Sumber dana tempat form item dibuka: isian form tidak boleh tersimpan ke RAB sumber dana lain. */
+    #[Locked]
+    public ?string $sumberForm = null;
+
     /** @var array{index: int, item: array<string, mixed>, sumber: string}|null Item terakhir dihapus (untuk "Urungkan"). */
     #[Locked]
     public ?array $itemTerhapus = null;
@@ -134,11 +138,31 @@ class Rab extends Component
         if (in_array($sumber, $this->daftarSumber(), true)) {
             $this->sumber = $sumber;
             $this->halaman = 'rincian';
-            $this->itemTerhapus = null;
-            $this->itemDipindah = null;
-            $this->imporTerbuka = false;
-            $this->tutupFormItem();
+            $this->lepasStatePerSumber();
         }
+    }
+
+    /**
+     * Sumber diganti langsung (URL ?sumber= atau $set): normalkan ke sumber dana kegiatan dan lepaskan state RAB sebelumnya.
+     */
+    public function updatedSumber(): void
+    {
+        unset($this->tampilan);
+        $this->sumber = $this->tampilan->aktif ?? '';
+        $this->lepasStatePerSumber();
+    }
+
+    /**
+     * Form item, urungkan hapus/pindah, dan panel impor milik satu RAB; ditutup saat RAB yang dibuka berganti
+     * agar perubahan tidak pernah jatuh ke RAB sumber dana lain.
+     */
+    private function lepasStatePerSumber(): void
+    {
+        $this->itemTerhapus = null;
+        $this->itemDipindah = null;
+        $this->imporTerbuka = false;
+        $this->tutupFormItem();
+        $this->segarkanRincian();
     }
 
     public function bukaImpor(): void
@@ -171,6 +195,7 @@ class Rab extends Component
         $this->pastikanDapatDiedit();
         $this->tutupFormItem();
         $this->formItemTerbuka = true;
+        $this->sumberForm = $this->sumber;
         $this->dispatch('form-item-dibuka');
     }
 
@@ -180,6 +205,7 @@ class Rab extends Component
         $this->resetValidation();
         $this->formItemTerbuka = false;
         $this->itemDiedit = null;
+        $this->sumberForm = null;
     }
 
     /**
@@ -200,6 +226,7 @@ class Rab extends Component
         $this->item->isiDari($item);
         $this->itemDiedit = $id;
         $this->formItemTerbuka = true;
+        $this->sumberForm = $this->sumber;
         $this->dispatch('form-item-dibuka');
     }
 
@@ -382,6 +409,14 @@ class Rab extends Component
     public function simpanItem(bool $lanjut = false): void
     {
         $this->pastikanDapatDiedit();
+
+        if (! $this->formItemTerbuka || $this->sumberForm !== $this->sumber) {
+            $this->tutupFormItem();
+            $this->dispatch('notify', message: "Form item ditutup karena RAB yang dibuka berganti; tidak ada yang disimpan ke RAB {$this->sumber}.", type: 'error');
+
+            return;
+        }
+
         $this->item->sinkronKategori();
         $this->item->validate();
 
@@ -391,10 +426,12 @@ class Rab extends Component
         $this->itemTerhapus = null;
 
         if ($this->itemDiedit !== null) {
-            $repo->ubahItem($this->kegiatanId, $this->sumber, $this->itemDiedit, $data);
+            $berhasil = $repo->ubahItem($this->kegiatanId, $this->sumber, $this->itemDiedit, $data);
             $this->tutupFormItem();
             $this->segarkanRincian();
-            $this->dispatch('notify', message: "Item diperbarui: {$data['uraian']} ({$jumlah}).");
+            $this->dispatch('notify', ...$berhasil
+                ? ['message' => "Item diperbarui: {$data['uraian']} ({$jumlah})."]
+                : ['message' => "Item yang diubah sudah tidak ada di RAB {$this->sumber} (dihapus atau dipindah); perubahan tidak disimpan.", 'type' => 'error']);
 
             return;
         }
@@ -404,6 +441,7 @@ class Rab extends Component
 
         $this->item->kosongkan();
         $this->formItemTerbuka = $lanjut;
+        $this->sumberForm = $lanjut ? $this->sumber : null;
 
         $this->dispatch('notify', message: "Item ditambahkan: {$data['uraian']} ({$jumlah}).");
 

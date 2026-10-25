@@ -294,6 +294,62 @@ test.describe('Interaksi baris RAB', () => {
     });
 });
 
+test.describe('Isolasi RAB per sumber dana', () => {
+    test('perubahan RAB DIPA dan Komite tidak saling memengaruhi, juga dari tab lain', async ({ page, context }, testInfo) => {
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Isolasi ${testInfo.project.name}`);
+        for (const [kunci, pagu] of [['dipa', '1000000'], ['komite', '500000']]) {
+            await page.getByTestId(`sumber-${kunci}`).getByRole('checkbox').check();
+            await expect(page.locator(`#pagu_${kunci}`)).toBeEnabled();
+            await page.locator(`#pagu_${kunci}`).pressSequentially(pagu);
+        }
+        await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+        await expect(page).toHaveURL(/\/rab/, { timeout: 30_000 });
+
+        const tambah = async (uraian, volume, harga) => {
+            await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+            await page.locator('#item_uraian').fill(uraian);
+            await page.locator('#item_volume').fill(volume);
+            await page.locator('#item_satuan').fill('buah');
+            await page.locator('#item_harga_satuan').pressSequentially(harga);
+            await page.getByRole('button', { name: 'Simpan item' }).click();
+            await expect(page.getByText(`Item ditambahkan: ${uraian}`)).toBeVisible();
+        };
+        const kartu = (sumber) => page.getByRole('tab', { name: new RegExp(`RAB ${sumber}`) });
+
+        await tambah('Konsumsi rapat', '2', '100000');
+        await expect(kartu('DIPA')).toContainText('Rp200.000');
+        await expect(kartu('Komite')).toContainText('Rp0');
+
+        // Form DIPA yang belum disimpan ditutup saat pindah ke RAB Komite; isiannya tidak terbawa.
+        await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+        await page.locator('#item_uraian').fill('Belum disimpan');
+        await kartu('Komite').click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByTestId('form-item')).toHaveCount(0);
+        await expect(page.getByTestId('rincian-rab')).toContainText('Belum ada rincian belanja untuk RAB Komite');
+
+        await tambah('Plakat penghargaan', '1', '300000');
+        await expect(kartu('Komite')).toContainText('Rp300.000');
+        await expect(kartu('DIPA')).toContainText('Rp200.000');
+        await expect(page.getByTestId('total-kegiatan')).toContainText('Rp500.000');
+
+        // Tab kedua mengubah RAB Komite; RAB DIPA di tab pertama tetap utuh setelah dimuat ulang.
+        const tabLain = await context.newPage();
+        await tabLain.goto(page.url());
+        await tabLain.getByRole('button', { name: 'Hapus item 1' }).click();
+        await expect(tabLain.getByTestId('rincian-rab')).toContainText('Belum ada rincian belanja untuk RAB Komite');
+        await tabLain.close();
+
+        await page.reload();
+        await expect(kartu('Komite')).toContainText('Rp0');
+        await expect(kartu('DIPA')).toContainText('Rp200.000');
+        await kartu('DIPA').click();
+        await expect(page.getByTestId('rincian-rab')).toContainText('Konsumsi rapat');
+        await expect(page.getByTestId('kalimat-pembiayaan')).toContainText('Rp200.000,- (Dua Ratus Ribu Rupiah) yang dibebankan pada dana DIPA');
+    });
+});
+
 test.describe('Kelompok kategori interaktif', () => {
     test('pindah kategori (seret di desktop, pilihan di mobile), ciutkan, dan lompat dari ringkasan', async ({ page }, testInfo) => {
         await buatKegiatanDenganItem(page, `Kegiatan Kelompok ${testInfo.project.name}`, [
