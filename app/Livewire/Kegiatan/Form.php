@@ -12,6 +12,7 @@ use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
+use App\Support\Rab\MekanismePembayaran;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Illuminate\Support\Facades\Route;
@@ -544,7 +545,7 @@ class Form extends Component
             try {
                 $this->form->validate();
 
-                if ($wajib = $this->form->wajibPengajuanKosong()) {
+                if ($wajib = $this->form->wajibPengajuanKosong() + $this->terminTidakPas()) {
                     throw ValidationException::withMessages($wajib);
                 }
             } catch (ValidationException $e) {
@@ -566,6 +567,25 @@ class Form extends Component
         unset($this->aksiStatus, $this->drafTerbaru);
 
         $this->dispatch('notify', message: 'Status kegiatan: '.$definisi['ke']->label().'.');
+    }
+
+    /**
+     * Termin tersimpan yang jumlahnya tidak lagi sama dengan total RAB (mis. rincian berubah setelah termin dibuat),
+     * berkunci error per sumber dana: form.termin_dipa, form.termin_komite.
+     *
+     * @return array<string, string>
+     */
+    public function terminTidakPas(): array
+    {
+        $galat = [];
+
+        foreach ($this->anggaranRab as $sumber => $anggaran) {
+            if ($pesan = TerminPembayaran::pesanTidakPas(MekanismePembayaran::dari($anggaran), $sumber)) {
+                $galat['form.termin_'.mb_strtolower($sumber)] = $pesan.' Sesuaikan di halaman RAB › Termin pembayaran.';
+            }
+        }
+
+        return $galat;
     }
 
     private function catatRiwayat(string $aksi, StatusKegiatan $ke): void

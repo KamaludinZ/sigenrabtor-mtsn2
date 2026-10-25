@@ -165,6 +165,12 @@
                 </p>
             </div>
 
+            @error('termin')
+                <p class="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-termin">
+                    <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> {{ $message }}
+                </p>
+            @enderror
+
             @if ($total === 0 && $mekanisme->bertermin())
                 <p class="text-xs text-gold-700">RAB {{ $sumber }} belum berisi rincian; termin baru bisa pas setelah rincian belanja diisi.</p>
             @endif

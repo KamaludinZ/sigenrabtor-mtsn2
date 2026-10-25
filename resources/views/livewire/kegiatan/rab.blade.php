@@ -1,3 +1,4 @@
+@use('App\Support\Rab\MekanismePembayaran')
 @use('App\Support\Format')
 @use('App\Livewire\Forms\ItemBelanjaForm')
 
@@ -122,6 +123,18 @@
                         @endif
                     </div>
                 </section>
+
+                @php $anggaranAktif = collect($this->anggaran)->firstWhere('sumber', $sumber); @endphp
+                @if ($anggaranAktif && $anggaranAktif->adaTermin() && ! $anggaranAktif->terminSesuai())
+                    {{-- Rincian berubah setelah termin disimpan: jumlah termin tidak lagi sama dengan total RAB. --}}
+                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gold-50 px-4 py-3 text-sm text-stone-800 ring-1 ring-gold-300" role="status" data-testid="termin-tidak-pas">
+                        <span class="flex items-start gap-2">
+                            <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0 text-gold-600" />
+                            Termin RAB {{ $sumber }} tidak lagi sama dengan total RAB — {{ MekanismePembayaran::dari($anggaranAktif)->teksStatusKalimat() }}.
+                        </span>
+                        <button type="button" wire:click="$set('halaman', 'termin')" class="btn-secondary px-3 py-1.5 text-sm">Sesuaikan termin</button>
+                    </div>
+                @endif
 
                 {{-- Rincian belanja --}}
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="rincian-rab">

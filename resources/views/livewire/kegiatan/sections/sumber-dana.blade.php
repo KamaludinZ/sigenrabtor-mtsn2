@@ -1,3 +1,4 @@
+@use('App\Support\Rab\MekanismePembayaran')
 @use('App\Enums\SumberDana')
 @use('App\Support\Format')
 
@@ -47,7 +48,20 @@
                         @if ($rekap->jumlahItem() > 0)
                             <x-rab.status-pagu :status="$rekap->keteranganPagu()" class="w-full justify-end" data-testid="status-pagu-form-{{ $opsi['kunci'] }}" />
                         @endif
+                        @if (($anggaranSumber = $this->anggaranRab[$opsi['label']] ?? null) && $anggaranSumber->adaTermin())
+                            @php $mekanisme = MekanismePembayaran::dari($anggaranSumber); @endphp
+                            <span @class(['w-full text-right', 'text-stone-500' => $mekanisme->status() === 'pas', 'font-medium text-gold-700' => $mekanisme->status() !== 'pas'])
+                                  data-testid="termin-form-{{ $opsi['kunci'] }}">
+                                {{ count($mekanisme->termin) }} termin · {{ $mekanisme->teksStatus() }}
+                            </span>
+                        @endif
                     </p>
+                    @error('form.termin_'.$opsi['kunci'])
+                        <p class="form-error" role="alert" data-testid="galat-termin-{{ $opsi['kunci'] }}">
+                            {{ $message }}
+                            <a href="{{ route('kegiatan.rab', ['kegiatan' => $kegiatanId, 'sumber' => $opsi['label'], 'halaman' => 'termin']) }}" wire:navigate class="font-semibold underline">Atur termin</a>
+                        </p>
+                    @enderror
 
                     @if ($rekap->jumlahItem() > 0)
                         {{-- Rincian baca-saja; status buka/tutup dijaga saat Livewire merender ulang. --}}

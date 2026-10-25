@@ -69,6 +69,14 @@ final readonly class MekanismePembayaran
         };
     }
 
+    /** teksStatus() untuk disambung di tengah kalimat: hanya huruf pertama dikecilkan ("RAB" tetap kapital). */
+    public function teksStatusKalimat(): string
+    {
+        $teks = $this->teksStatus();
+
+        return mb_strtolower(mb_substr($teks, 0, 1)).mb_substr($teks, 1);
+    }
+
     /** Bagian nominal terhadap total RAB, satu desimal (0 bila RAB masih kosong). */
     public function persen(int $nominal): float
     {

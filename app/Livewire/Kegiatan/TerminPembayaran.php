@@ -231,17 +231,36 @@ class TerminPembayaran extends Component
         $this->validate();
 
         $mekanisme = $this->mekanisme;
+
+        // PRD aturan 6: jumlah semua termin wajib sama dengan total RAB sumber dana ini.
+        if ($pesan = self::pesanTidakPas($mekanisme, $this->sumber)) {
+            $this->addError('termin', $pesan);
+            $this->dispatch('notify', message: 'Termin belum disimpan: '.$pesan, type: 'error');
+
+            return;
+        }
+
         app(RabRepository::class)->simpanTermin($this->kegiatanId, $this->sumber, $mekanisme->termin);
         $this->adaPerubahan = false;
         $this->terminTerhapus = null;
         $this->dispatch('termin-berubah', sumber: null);
         $this->dispatch('termin-disimpan', sumber: $this->sumber);
 
-        $this->dispatch('notify', ...match ($mekanisme->status()) {
-            'sekaligus' => ['message' => "RAB {$this->sumber} dibayar sekaligus (tanpa termin)."],
-            'pas' => ['message' => count($mekanisme->termin)." termin RAB {$this->sumber} disimpan; jumlahnya sama dengan total RAB."],
-            default => ['message' => 'Termin disimpan, tetapi '.mb_strtolower($mekanisme->teksStatus()).'.', 'type' => 'warning'],
-        });
+        $this->dispatch('notify', message: $mekanisme->bertermin()
+            ? count($mekanisme->termin)." termin RAB {$this->sumber} disimpan; jumlahnya sama dengan total RAB."
+            : "RAB {$this->sumber} dibayar sekaligus (tanpa termin).");
+    }
+
+    /**
+     * Alasan termin belum boleh disimpan/diajukan (null bila sekaligus atau pas).
+     */
+    public static function pesanTidakPas(MekanismePembayaran $mekanisme, string $sumber): ?string
+    {
+        return match (true) {
+            ! $mekanisme->bertermin() || $mekanisme->status() === 'pas' => null,
+            $mekanisme->total === 0 => "RAB {$sumber} belum berisi rincian, jadi termin belum bisa disusun. Isi rincian belanja dulu atau pilih Sekaligus.",
+            default => "Jumlah termin harus sama dengan total RAB {$sumber} (".Format::rupiah($mekanisme->total).'); '.$mekanisme->teksStatusKalimat().'.',
+        };
     }
 
     public function batalkan(): void
@@ -317,6 +336,8 @@ class TerminPembayaran extends Component
 
     private function berubah(bool $simpanUrungkan = false): void
     {
+        $this->resetErrorBag('termin');
+
         if (! $simpanUrungkan) {
             $this->terminTerhapus = null;
         }

@@ -405,6 +405,29 @@ test.describe('Termin pembayaran', () => {
         await expect(page.locator('#termin-nominal-1')).toHaveValue('1.100.000');
         await expect(page.locator('#termin-tanggal-1')).toHaveValue('2026-09-01');
         await expect(page.getByTestId('termin-belum-disimpan')).toHaveCount(0);
+
+        // Rincian bertambah setelah termin disimpan: pengingat di rincian; simpan termin ditolak sampai pas lagi.
+        await page.getByRole('tab', { name: 'Rincian belanja' }).click();
+        await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+        await page.locator('#item_uraian').fill('ATK peserta');
+        await page.locator('#item_volume').fill('1');
+        await page.locator('#item_satuan').fill('paket');
+        await page.locator('#item_harga_satuan').pressSequentially('400000');
+        await page.getByRole('button', { name: 'Simpan item' }).click();
+        await expect(page.getByTestId('termin-tidak-pas')).toContainText('termin kurang Rp400.000 dari total RAB');
+        await page.getByTestId('termin-tidak-pas').getByRole('button', { name: 'Sesuaikan termin' }).click();
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'kurang');
+
+        await page.locator('#termin-nominal-1').fill('');
+        await page.locator('#termin-nominal-1').pressSequentially('1000000');
+        await page.locator('#termin-nominal-1').blur();
+        await page.getByTestId('simpan-termin').click();
+        await expect(page.getByTestId('galat-termin')).toContainText('Jumlah termin harus sama dengan total RAB Komite (Rp4.000.000)');
+        await page.getByTestId('isi-sisa').click();
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'pas');
+        await page.getByTestId('simpan-termin').click();
+        await expect(page.getByText('2 termin RAB Komite disimpan; jumlahnya sama dengan total RAB.')).toBeVisible();
+        await expect(page.locator('#termin-nominal-1')).toHaveValue('1.500.000');
     });
 });
 

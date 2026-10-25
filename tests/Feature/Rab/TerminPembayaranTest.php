@@ -80,16 +80,26 @@ class TerminPembayaranTest extends TestCase
             ->call('simpan')
             ->assertHasErrors(['baris.2.tanggal' => 'required', 'baris.2.nominal' => 'required']);
 
+        // Jumlah termin tidak sama dengan total RAB: ditolak (PRD aturan 6), data tersimpan tidak berubah.
         $key = $komponen->get('baris')[2]['key'];
         $komponen->call('hapusTermin', $key)
             ->set('baris.1.nominal', '1.000.000')
             ->call('simpan')
+            ->assertHasErrors('termin')
+            ->assertSee('Jumlah termin harus sama dengan total RAB Komite (Rp10.000.000); termin kurang Rp1.320.000 dari total RAB.')
+            ->assertNotDispatched('termin-disimpan')
+            ->assertSet('adaPerubahan', true);
+        $this->assertSame([['tanggal' => '2026-06-17', 'nominal' => 7_680_000], ['tanggal' => '2026-06-19', 'nominal' => 2_320_000]], $this->termin());
+
+        // Disesuaikan: galat hilang begitu ada perubahan, lalu tersimpan.
+        $komponen->set('baris.1.nominal', '2.000.000')
+            ->assertHasNoErrors('termin')
+            ->call('isiSisa')
+            ->call('simpan')
             ->assertHasNoErrors()
             ->assertDispatched('termin-disimpan', sumber: 'Komite')
-            ->assertDispatched('notify', type: 'warning')
             ->assertSet('adaPerubahan', false);
-
-        $this->assertSame([['tanggal' => '2026-06-17', 'nominal' => 7_680_000], ['tanggal' => '2026-06-19', 'nominal' => 1_000_000]], $this->termin());
+        $this->assertSame([['tanggal' => '2026-06-17', 'nominal' => 7_680_000], ['tanggal' => '2026-06-19', 'nominal' => 2_320_000]], $this->termin());
     }
 
     public function test_bagi_rata_validasi_tanggal_dan_sekaligus(): void
