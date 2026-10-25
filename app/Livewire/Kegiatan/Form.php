@@ -500,6 +500,26 @@ class Form extends Component
     }
 
     /**
+     * RAB tersimpan milik sumber dana yang sedang tidak dipilih (tidak dicetak), berkunci nama sumber.
+     *
+     * @return array<string, AnggaranSumber>
+     */
+    #[Computed]
+    public function rabTerlepas(): array
+    {
+        if ($this->kegiatanId === null) {
+            return [];
+        }
+
+        $anggaran = AnggaranKegiatan::untuk(['id' => $this->kegiatanId, 'sumber_dana' => $this->form->sumberDana()], sertakanTerlepas: true);
+
+        return array_column(array_map(
+            fn (AnggaranSumber $a) => ['sumber' => $a->sumber, 'anggaran' => $a],
+            array_filter($anggaran, fn (AnggaranSumber $a) => ! $a->dipilih && $a->jumlahItem() > 0),
+        ), 'anggaran', 'sumber');
+    }
+
+    /**
      * Hasil hitung RAB yang sudah tersusun untuk tiap sumber dana terpilih (total KAK = total RAB).
      *
      * @return array<string, HasilRab>

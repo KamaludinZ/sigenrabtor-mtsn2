@@ -600,6 +600,24 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await page.screenshot({ path: `storage/playwright/shots/rab-dua-sumber-${testInfo.project.name}.png`, fullPage: true });
     });
 
+    test('Data Kegiatan: pemilihan sumber dana dengan ringkasan, tautan RAB, dan peringatan RAB dilepas', async ({ page }, testInfo) => {
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.goto('/kegiatan/2/edit');
+        const bagian = page.getByTestId('pemilihan-sumber-dana');
+        await bagian.scrollIntoViewIfNeeded();
+        await expect(page.getByTestId('ringkasan-pilihan-sumber')).toContainText('Dibiayai DIPA dan Komite');
+        await expect(page.getByTestId('rekap-rab-dipa')).toContainText('Rp5.400.000');
+        await bagian.screenshot({ path: `storage/playwright/shots/sumber-dana-${testInfo.project.name}.png` });
+
+        // Melepas DIPA: RAB-nya tetap tersimpan tetapi diberi peringatan tidak ikut dicetak.
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').uncheck();
+        await expect(page.getByTestId('ringkasan-pilihan-sumber')).toContainText('Akan dibuat 1 dokumen KAK/TOR & RAB Komite.');
+        await expect(page.getByTestId('rab-terlepas-dipa')).toContainText('RAB DIPA tersimpan (6 item, Rp5.400.000) tetapi tidak ikut dicetak');
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        await expect(page.getByTestId('rab-terlepas-dipa')).toHaveCount(0);
+        await expect(page.getByTestId('sumber-dipa')).toHaveAttribute('data-dipilih', 'ya');
+    });
+
     test('Data Kegiatan: rincian tiap RAB bisa dibuka tanpa meninggalkan halaman', async ({ page }, testInfo) => {
         await page.goto('/kegiatan/2/edit');
         const rincianDipa = page.getByTestId('rincian-rab-dipa');
