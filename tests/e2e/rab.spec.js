@@ -235,6 +235,65 @@ test.describe('Impor rincian RAB dari Excel', () => {
     });
 });
 
+test.describe('Interaksi baris RAB', () => {
+    test('salin & ubah, naikkan urutan, pindahkan ke RAB sumber lain lalu urungkan', async ({ page, isMobile }, testInfo) => {
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Interaksi ${testInfo.project.name}`);
+        for (const [kunci, pagu] of [['dipa', '1000000'], ['komite', '1000000']]) {
+            await page.getByTestId(`sumber-${kunci}`).getByRole('checkbox').check();
+            await expect(page.locator(`#pagu_${kunci}`)).toBeEnabled();
+            await page.locator(`#pagu_${kunci}`).pressSequentially(pagu);
+        }
+        await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+        await expect(page).toHaveURL(/\/rab/, { timeout: 30_000 });
+        await expect(page.getByRole('tab', { name: /RAB DIPA/ })).toHaveAttribute('aria-selected', 'true');
+
+        for (const [uraian, volume, harga] of [['Snack rapat', '10', '10000'], ['Spanduk kegiatan', '1', '150000']]) {
+            await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+            await page.locator('#item_uraian').fill(uraian);
+            await page.locator('#item_volume').fill(volume);
+            await page.locator('#item_satuan').fill('buah');
+            await page.locator('#item_harga_satuan').pressSequentially(harga);
+            await page.getByRole('button', { name: 'Simpan item' }).click();
+            await expect(page.getByText(`Item ditambahkan: ${uraian}`)).toBeVisible();
+        }
+
+        const rincian = page.getByTestId('rincian-rab');
+        const urutan = () => rincian.locator(isMobile ? '[data-testid="rincian-kartu"] li > div > p' : 'tbody tr[data-item] td:nth-child(3)').allInnerTexts()
+            .then((teks) => teks.map((t) => t.replace(/^\d+\.\s*/, '').replace(/\s*(BAHAN|JASA|LAIN-LAIN)$/i, '').trim()));
+        const menu = async (nomor, aksi) => {
+            await page.getByRole('button', { name: `Aksi lain item ${nomor}`, exact: true }).click();
+            await page.getByRole('menuitem', { name: aksi }).click();
+        };
+
+        // Salin & ubah: salinan tepat di bawahnya dan form ubah langsung terbuka.
+        await menu(1, 'Salin & ubah');
+        await expect(page.getByTestId('form-item')).toContainText('Ubah item no. 2');
+        await page.locator('#item_uraian').fill('Kue kotak rapat');
+        await page.getByRole('button', { name: 'Simpan perubahan' }).click();
+        await expect(page.getByTestId('form-item')).toHaveCount(0);
+        await expect.poll(urutan).toEqual(['Snack rapat', 'Kue kotak rapat', 'Spanduk kegiatan']);
+
+        // Naikkan urutan cetak.
+        await menu(3, 'Naikkan urutan');
+        await expect.poll(urutan).toEqual(['Snack rapat', 'Spanduk kegiatan', 'Kue kotak rapat']);
+        await page.screenshot({ path: `storage/playwright/shots/interaksi-baris-${testInfo.project.name}.png`, fullPage: true });
+
+        // Pindahkan ke RAB Komite, urungkan, lalu pindahkan lagi dan buka RAB tujuannya.
+        await menu(1, /Pindahkan ke/);
+        await expect(page.getByTestId('banner-pindah')).toContainText('“Snack rapat” dipindah ke RAB Komite.');
+        await expect.poll(urutan).toEqual(['Spanduk kegiatan', 'Kue kotak rapat']);
+        await page.getByTestId('banner-pindah').getByRole('button', { name: 'Urungkan' }).click();
+        await expect.poll(urutan).toEqual(['Snack rapat', 'Spanduk kegiatan', 'Kue kotak rapat']);
+
+        await menu(1, /Pindahkan ke/);
+        await page.getByTestId('banner-pindah').getByRole('button', { name: 'Buka RAB Komite' }).click();
+        await expect(page.getByRole('tab', { name: /RAB Komite/ })).toHaveAttribute('aria-selected', 'true');
+        await expect.poll(urutan).toEqual(['Snack rapat']);
+        await expect(page.getByTestId('total-anggaran-nilai')).toHaveText('Rp100.000');
+    });
+});
+
 test.describe('Kelompok kategori interaktif', () => {
     test('pindah kategori (seret di desktop, pilihan di mobile), ciutkan, dan lompat dari ringkasan', async ({ page }, testInfo) => {
         await buatKegiatanDenganItem(page, `Kegiatan Kelompok ${testInfo.project.name}`, [

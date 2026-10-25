@@ -8,6 +8,8 @@
     $kolom = $bisaUbah ? 8 : 7;
     $seret = $bisaUbah && $kelompok === 'kategori';
     $kunciSimpan = "rab-{$kegiatanId}-{$sumber}-{$kelompok}-";
+    $sumberLain = array_values(array_diff($this->daftarSumber(), [$sumber]));
+    $jumlahItem = count($this->rincian);
 @endphp
 
 {{-- Pilihan tampilan rincian --}}
@@ -51,7 +53,7 @@
                 <th scope="col" class="px-2 py-2.5 text-right">Harga satuan (Rp)</th>
                 <th scope="col" class="px-4 py-2.5 text-right">Jumlah (Rp)</th>
                 @if ($bisaUbah)
-                    <th scope="col" class="w-20 py-2.5 pr-3 text-right"><span class="sr-only">Aksi</span></th>
+                    <th scope="col" class="w-28 py-2.5 pr-3 text-right"><span class="sr-only">Aksi</span></th>
                 @endif
             </tr>
         </thead>
@@ -121,6 +123,7 @@
                                         title="Hapus" aria-label="Hapus item {{ $baris['nomor'] }}">
                                     <x-ui.icon name="trash" class="size-4" />
                                 </button>
+                                @include('livewire.kegiatan.partials.menu-item-rab', ['ringkas' => false])
                             </td>
                         @endif
                     </tr>
@@ -178,6 +181,7 @@
                             <button type="button" wire:click="hapusItem('{{ $baris['id'] }}')" class="btn-ghost px-2 py-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700" aria-label="Hapus item {{ $baris['nomor'] }}">
                                 <x-ui.icon name="trash" class="size-3.5" /> Hapus
                             </button>
+                            @include('livewire.kegiatan.partials.menu-item-rab', ['ringkas' => true])
                         </div>
                     @endif
                 </li>

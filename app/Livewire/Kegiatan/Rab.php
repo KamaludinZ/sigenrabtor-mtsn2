@@ -18,6 +18,7 @@ use App\Support\Rab\RekapKelompok;
 use App\Support\Rab\TampilanRab;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -64,6 +65,10 @@ class Rab extends Component
     /** @var array{index: int, item: array<string, mixed>, sumber: string}|null Item terakhir dihapus (untuk "Urungkan"). */
     #[Locked]
     public ?array $itemTerhapus = null;
+
+    /** @var array{id: string, dari: string, ke: string, index: int, item: array<string, mixed>}|null Item terakhir dipindah ke RAB sumber lain (untuk "Urungkan"). */
+    #[Locked]
+    public ?array $itemDipindah = null;
 
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
@@ -130,6 +135,7 @@ class Rab extends Component
             $this->sumber = $sumber;
             $this->halaman = 'rincian';
             $this->itemTerhapus = null;
+            $this->itemDipindah = null;
             $this->imporTerbuka = false;
             $this->tutupFormItem();
         }
@@ -211,6 +217,94 @@ class Rab extends Component
         }
 
         $this->itemTerhapus = $terhapus + ['sumber' => $this->sumber];
+        $this->itemDipindah = null;
+        $this->segarkanRincian();
+    }
+
+    /**
+     * Salin baris tepat di bawahnya lalu buka form ubah untuk salinannya (baris RAB yang mirip, mis. nasi kotak → kue kotak).
+     */
+    public function salinItem(string $id): void
+    {
+        $this->pastikanDapatDiedit();
+        $repo = app(RabRepository::class);
+        $rincian = $repo->rincian($this->kegiatanId, $this->sumber);
+        $index = array_search($id, array_column($rincian, 'id'), true);
+
+        if ($index === false) {
+            $this->dispatch('notify', message: 'Item tidak ditemukan; mungkin sudah dihapus.', type: 'error');
+
+            return;
+        }
+
+        $salinan = ['id' => (string) Str::uuid()] + Arr::except($rincian[$index], ['id']);
+        $repo->sisipkanItem($this->kegiatanId, $this->sumber, $index + 1, $salinan);
+        $this->segarkanRincian();
+        $this->ubahItem($salinan['id']);
+        $this->dispatch('notify', message: "“{$salinan['uraian']}” disalin tepat di bawahnya — ubah seperlunya lalu simpan.", type: 'info');
+    }
+
+    /**
+     * Naikkan (-1) atau turunkan (+1) urutan cetak satu baris.
+     */
+    public function geserItem(string $id, int $arah): void
+    {
+        $this->pastikanDapatDiedit();
+        $repo = app(RabRepository::class);
+        $rincian = $repo->rincian($this->kegiatanId, $this->sumber);
+        $index = array_search($id, array_column($rincian, 'id'), true);
+        $tujuan = $index === false ? -1 : $index + ($arah < 0 ? -1 : 1);
+
+        if ($tujuan < 0 || $tujuan >= count($rincian)) {
+            return;
+        }
+
+        $terhapus = $repo->hapusItem($this->kegiatanId, $this->sumber, $id);
+        $repo->sisipkanItem($this->kegiatanId, $this->sumber, $tujuan, $terhapus['item']);
+        $this->segarkanRincian();
+    }
+
+    /**
+     * Pindahkan baris ke RAB sumber dana lain kegiatan ini (ditambahkan di akhir rinciannya); bisa diurungkan.
+     */
+    public function pindahSumberItem(string $id, string $tujuan): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if ($tujuan === $this->sumber || ! in_array($tujuan, $this->daftarSumber(), true)) {
+            return;
+        }
+
+        $repo = app(RabRepository::class);
+        $terhapus = $repo->hapusItem($this->kegiatanId, $this->sumber, $id);
+
+        if ($terhapus === null) {
+            return;
+        }
+
+        if ($this->itemDiedit === $id) {
+            $this->tutupFormItem();
+        }
+
+        $idBaru = $repo->tambahItem($this->kegiatanId, $tujuan, Arr::except($terhapus['item'], ['id']));
+        $this->itemDipindah = ['id' => $idBaru, 'dari' => $this->sumber, 'ke' => $tujuan, 'index' => $terhapus['index'], 'item' => $terhapus['item']];
+        $this->itemTerhapus = null;
+        $this->segarkanRincian();
+    }
+
+    public function urungkanPindahItem(): void
+    {
+        $this->pastikanDapatDiedit();
+        $pindah = $this->itemDipindah;
+
+        if ($pindah === null || $pindah['dari'] !== $this->sumber) {
+            return;
+        }
+
+        $repo = app(RabRepository::class);
+        $repo->hapusItem($this->kegiatanId, $pindah['ke'], $pindah['id']);
+        $repo->sisipkanItem($this->kegiatanId, $pindah['dari'], $pindah['index'], $pindah['item']);
+        $this->itemDipindah = null;
         $this->segarkanRincian();
     }
 

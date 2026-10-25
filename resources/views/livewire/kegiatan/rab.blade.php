@@ -144,6 +144,16 @@
                         </div>
                     @endif
 
+                    @if ($itemDipindah && $itemDipindah['dari'] === $sumber)
+                        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-stone-100 bg-stone-800 px-5 py-2.5 text-sm text-white sm:px-6" role="status" data-testid="banner-pindah">
+                            <span class="min-w-0">“{{ $itemDipindah['item']['uraian'] }}” dipindah ke RAB {{ $itemDipindah['ke'] }}.</span>
+                            <span class="flex shrink-0 gap-3">
+                                <button type="button" wire:click="pilihSumber('{{ $itemDipindah['ke'] }}')" class="font-semibold text-stone-200 hover:text-white">Buka RAB {{ $itemDipindah['ke'] }}</button>
+                                <button type="button" wire:click="urungkanPindahItem" class="font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                            </span>
+                        </div>
+                    @endif
+
                     @if ($itemTerhapus && $itemTerhapus['sumber'] === $sumber)
                         <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2.5 text-sm text-white sm:px-6" role="status">
                             <span class="min-w-0 truncate">“{{ $itemTerhapus['item']['uraian'] }}” dihapus dari RAB {{ $sumber }}.</span>
