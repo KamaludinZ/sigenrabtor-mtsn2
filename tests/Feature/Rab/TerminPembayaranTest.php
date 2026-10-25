@@ -77,8 +77,10 @@ class TerminPembayaranTest extends TestCase
             ->assertSeeHtml('data-status="pas"')
             ->call('tambahTermin')
             ->assertSet('baris.2.nominal', '')
+            // Terisi sebagian (nominal tanpa tanggal) tetap divalidasi; yang kosong sama sekali diabaikan (lihat ValidasiTerminTest).
+            ->set('baris.2.nominal', '500.000')
             ->call('simpan')
-            ->assertHasErrors(['baris.2.tanggal' => 'required', 'baris.2.nominal' => 'required']);
+            ->assertHasErrors(['baris.2.tanggal' => 'required']);
 
         // Jumlah termin tidak sama dengan total RAB: ditolak (PRD aturan 6), data tersimpan tidak berubah.
         $key = $komponen->get('baris')[2]['key'];

@@ -38,6 +38,10 @@ class TerminPembayaran extends Component
     #[Locked]
     public ?array $terminTerhapus = null;
 
+    /** @var list<array{key: string, tanggal: string, nominal: string}>|null Termin sebelum beralih ke Sekaligus (untuk "Urungkan"). */
+    #[Locked]
+    public ?array $terminSebelumSekaligus = null;
+
     public function mount(int $kegiatanId, string $sumber): void
     {
         $this->kegiatanId = $kegiatanId;
@@ -173,12 +177,26 @@ class TerminPembayaran extends Component
         return $tanggal !== $urut;
     }
 
-    /** Pembayaran sekaligus: semua termin dilepas (tersimpan setelah "Simpan"). */
+    /** Pembayaran sekaligus: semua termin dilepas (tersimpan setelah "Simpan"); bisa diurungkan sebelum disimpan. */
     public function jadikanSekaligus(): void
     {
         $this->pastikanDapatDiedit();
+        $sebelum = $this->baris;
         $this->baris = [];
         $this->resetValidation();
+        $this->berubah();
+        $this->terminSebelumSekaligus = $sebelum === [] ? null : $sebelum;
+    }
+
+    public function urungkanSekaligus(): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if ($this->terminSebelumSekaligus === null) {
+            return;
+        }
+
+        $this->baris = $this->terminSebelumSekaligus;
         $this->berubah();
     }
 
@@ -228,6 +246,16 @@ class TerminPembayaran extends Component
     public function simpan(): void
     {
         $this->pastikanDapatDiedit();
+
+        // Termin opsional: baris yang dibiarkan kosong sama sekali (tanpa tanggal & nominal) diabaikan, bukan galat.
+        $terisi = array_values(array_filter($this->baris, fn ($b) => $b['tanggal'] !== '' || Format::parseRupiah($b['nominal']) !== null));
+        if (count($terisi) < count($this->baris)) {
+            $diabaikan = count($this->baris) - count($terisi);
+            $this->baris = $terisi;
+            unset($this->mekanisme, $this->jadwal);
+            $this->dispatch('notify', message: "{$diabaikan} baris termin kosong diabaikan.", type: 'info');
+        }
+
         $this->validate();
 
         $mekanisme = $this->mekanisme;
@@ -243,6 +271,7 @@ class TerminPembayaran extends Component
         app(RabRepository::class)->simpanTermin($this->kegiatanId, $this->sumber, $mekanisme->termin);
         $this->adaPerubahan = false;
         $this->terminTerhapus = null;
+        $this->terminSebelumSekaligus = null;
         $this->dispatch('termin-berubah', sumber: null);
         $this->dispatch('termin-disimpan', sumber: $this->sumber);
 
@@ -331,6 +360,7 @@ class TerminPembayaran extends Component
         ], app(RabRepository::class)->termin($this->kegiatanId, $this->sumber));
         $this->adaPerubahan = false;
         $this->terminTerhapus = null;
+        $this->terminSebelumSekaligus = null;
         unset($this->mekanisme, $this->jadwal);
     }
 
@@ -340,6 +370,7 @@ class TerminPembayaran extends Component
 
         if (! $simpanUrungkan) {
             $this->terminTerhapus = null;
+            $this->terminSebelumSekaligus = null;
         }
 
         $this->tandaiBerubah();

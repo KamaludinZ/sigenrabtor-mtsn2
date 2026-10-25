@@ -437,6 +437,18 @@ test.describe('Termin pembayaran', () => {
         await page.getByTestId('simpan-termin').click();
         await expect(page.getByText('2 termin RAB Komite disimpan; jumlahnya sama dengan total RAB.')).toBeVisible();
         await expect(page.locator('#termin-nominal-1')).toHaveValue('1.500.000');
+
+        // Termin opsional: beralih ke Sekaligus bisa diurungkan, lalu disimpan tanpa termin.
+        await termin.locator('[data-mekanisme="sekaligus"]').click();
+        await expect(page.getByTestId('termin-dilepas')).toContainText('2 termin dilepas');
+        await page.getByTestId('termin-dilepas').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(termin.locator('tr[data-termin]')).toHaveCount(2);
+        await termin.locator('[data-mekanisme="sekaligus"]').click();
+        await page.getByTestId('simpan-termin').click();
+        await expect(page.getByText('RAB Komite dibayar sekaligus (tanpa termin).')).toBeVisible();
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'sekaligus');
+        await expect(page.getByRole('tab', { name: /RAB Komite/ })).not.toContainText('termin');
+        await expect(page.getByTestId('pratinjau-mekanisme')).toContainText('Tidak ada blok termin');
     });
 });
 

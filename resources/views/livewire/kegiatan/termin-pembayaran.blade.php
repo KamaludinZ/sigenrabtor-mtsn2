@@ -63,6 +63,13 @@
                 @endforeach
             </div>
 
+            @if ($terminSebelumSekaligus)
+                <div class="flex items-center justify-between gap-3 rounded-lg bg-stone-800 px-3 py-2 text-sm text-white" role="status" data-testid="termin-dilepas">
+                    <span>{{ count($terminSebelumSekaligus) }} termin dilepas — RAB {{ $sumber }} dibayar sekaligus setelah disimpan.</span>
+                    <button type="button" wire:click="urungkanSekaligus" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                </div>
+            @endif
+
             @if ($mekanisme->bertermin())
                 {{-- Daftar termin --}}
                 <div class="overflow-x-auto rounded-xl ring-1 ring-stone-200">
