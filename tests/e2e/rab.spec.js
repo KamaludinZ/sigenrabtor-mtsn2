@@ -142,7 +142,8 @@ async function buatKegiatanDenganItem(page, nama, items) {
     await expect(page.locator('#pagu_komite')).toBeEnabled();
     await page.locator('#pagu_komite').pressSequentially('5000000');
     await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
-    await expect(page).toHaveURL(/\/rab/);
+    // Server uji lokal kadang tertahan saat mesin sibuk: beri waktu lebih untuk navigasi & simpan.
+    await expect(page).toHaveURL(/\/rab/, { timeout: 30_000 });
     for (const [uraian, volume, harga] of items) {
         await page.getByRole('button', { name: 'Tambah item belanja' }).click();
         await page.locator('#item_uraian').fill(uraian);
@@ -150,7 +151,7 @@ async function buatKegiatanDenganItem(page, nama, items) {
         await page.locator('#item_satuan').fill('buah');
         await page.locator('#item_harga_satuan').pressSequentially(harga);
         await page.getByRole('button', { name: 'Simpan item' }).click();
-        await expect(page.getByText(`Item ditambahkan: ${uraian}`)).toBeVisible();
+        await expect(page.getByText(`Item ditambahkan: ${uraian}`)).toBeVisible({ timeout: 30_000 });
     }
 }
 
@@ -399,6 +400,50 @@ test.describe('Termin pembayaran', () => {
         await expect(page.locator('#termin-nominal-1')).toHaveValue('1.100.000');
         await expect(page.locator('#termin-tanggal-1')).toHaveValue('2026-09-01');
         await expect(page.getByTestId('termin-belum-disimpan')).toHaveCount(0);
+    });
+});
+
+test.describe('Termin pembayaran: sunting aman', () => {
+    test('hapus lalu urungkan, dan pindah sumber meminta konfirmasi bila belum disimpan', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Termin Aman ${testInfo.project.name}`);
+        for (const kunci of ['dipa', 'komite']) {
+            await page.getByTestId(`sumber-${kunci}`).getByRole('checkbox').check();
+            await expect(page.locator(`#pagu_${kunci}`)).toBeEnabled();
+            await page.locator(`#pagu_${kunci}`).pressSequentially('1000000');
+        }
+        await page.getByRole('button', { name: 'Simpan & lanjut ke RAB' }).click();
+        await expect(page).toHaveURL(/\/rab/, { timeout: 30_000 });
+
+        await page.getByRole('tab', { name: 'Termin pembayaran' }).click();
+        const termin = page.getByTestId('termin-pembayaran');
+        await termin.locator('[data-mekanisme="termin"]').click();
+        await expect(termin.locator('tr[data-termin]')).toHaveCount(2);
+
+        // Hapus termin 1 lalu urungkan.
+        await termin.getByRole('button', { name: 'Hapus termin 1' }).click();
+        await expect(page.getByTestId('termin-terhapus')).toContainText('Termin 1');
+        await expect(termin.locator('tr[data-termin]')).toHaveCount(1);
+        await page.getByTestId('termin-terhapus').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(termin.locator('tr[data-termin]')).toHaveCount(2);
+
+        // Belum disimpan: pindah ke RAB Komite ditahan dengan konfirmasi.
+        await page.getByRole('tab', { name: /RAB Komite/ }).click();
+        const konfirmasi = page.getByTestId('konfirmasi-tinggalkan-termin');
+        await expect(konfirmasi).toContainText('Perubahan termin RAB DIPA belum disimpan');
+        await expect(page).not.toHaveURL(/sumber=Komite/);
+        await konfirmasi.getByRole('button', { name: 'Kembali menyunting' }).click();
+        await expect(konfirmasi).toHaveCount(0);
+        await expect(termin.locator('tr[data-termin]')).toHaveCount(2);
+
+        await page.getByRole('tab', { name: /RAB Komite/ }).click();
+        await page.getByTestId('konfirmasi-tinggalkan-termin').getByRole('button', { name: 'Tinggalkan tanpa menyimpan' }).click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'sekaligus');
+
+        // Kembali ke DIPA: termin yang ditinggalkan memang tidak tersimpan.
+        await page.getByRole('tab', { name: /RAB DIPA/ }).click();
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'sekaligus');
     });
 });
 

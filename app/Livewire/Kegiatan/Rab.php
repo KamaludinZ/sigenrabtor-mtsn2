@@ -58,6 +58,17 @@ class Rab extends Component
     /** Panel impor rincian dari Excel untuk sumber dana yang sedang dibuka. */
     public bool $imporTerbuka = false;
 
+    /** Sumber dana yang termin-nya sedang disunting dan belum disimpan (dikabarkan komponen Termin pembayaran). */
+    #[Locked]
+    public ?string $terminBelumDisimpan = null;
+
+    /** @var array{sumber: string, halaman: string}|null Tujuan pindah yang menunggu konfirmasi karena termin belum disimpan. */
+    #[Locked]
+    public ?array $tujuanTertunda = null;
+
+    /** Halaman yang diminta lewat $set saat termin belum disimpan (hanya dalam satu permintaan). */
+    private ?string $halamanDitahan = null;
+
     /** Id item yang sedang diubah; null = form dalam mode tambah. */
     #[Locked]
     public ?string $itemDiedit = null;
@@ -103,10 +114,54 @@ class Rab extends Component
         $this->kelompok = 'kategori';
     }
 
+    public function updatingHalaman(mixed $baru): void
+    {
+        if ($this->halaman === 'termin' && $baru !== 'termin' && $this->terminBelumDisimpan !== null) {
+            $this->halamanDitahan = (string) $baru;
+        }
+    }
+
     public function updatedHalaman(): void
     {
+        if ($this->halamanDitahan !== null) {
+            $this->tujuanTertunda = ['sumber' => $this->sumber, 'halaman' => $this->halamanDitahan];
+            $this->halaman = 'termin';
+
+            return;
+        }
+
         unset($this->tampilan);
         $this->halaman = $this->tampilan->halaman;
+    }
+
+    #[On('termin-berubah')]
+    public function terminBerubah(?string $sumber = null): void
+    {
+        $this->terminBelumDisimpan = $sumber;
+
+        if ($sumber === null) {
+            $this->tujuanTertunda = null;
+        }
+    }
+
+    /** Tinggalkan termin yang belum disimpan dan lanjutkan ke tujuan yang tadi ditahan. */
+    public function tinggalkanTermin(): void
+    {
+        $tujuan = $this->tujuanTertunda;
+        $this->tujuanTertunda = null;
+        $this->terminBelumDisimpan = null;
+
+        if ($tujuan === null) {
+            return;
+        }
+
+        $this->halaman = $tujuan['halaman'];
+        $tujuan['sumber'] !== $this->sumber ? $this->pilihSumber($tujuan['sumber']) : $this->updatedHalaman();
+    }
+
+    public function tetapDiTermin(): void
+    {
+        $this->tujuanTertunda = null;
     }
 
     /**
@@ -135,6 +190,12 @@ class Rab extends Component
 
     public function pilihSumber(string $sumber): void
     {
+        if ($this->halaman === 'termin' && $this->terminBelumDisimpan !== null && $sumber !== $this->sumber) {
+            $this->tujuanTertunda = ['sumber' => $sumber, 'halaman' => 'termin'];
+
+            return;
+        }
+
         if (in_array($sumber, $this->daftarSumber(), true)) {
             $this->sumber = $sumber;
             // Dari Termin pembayaran tetap di halaman termin sumber yang dipilih; selain itu ke rincian belanjanya.

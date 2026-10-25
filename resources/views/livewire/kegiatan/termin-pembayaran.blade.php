@@ -20,7 +20,8 @@
     Termin pembayaran satu RAB (per sumber dana). Disunting di layar; "Simpan termin" menyimpan seluruh daftar.
     Jumlah termin dibandingkan dengan total RAB secara langsung, dan pratinjau blok "Mekanisme Pembayaran" mengikuti Form RAB.
 --}}
-<div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="termin-pembayaran">
+<div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="termin-pembayaran"
+     x-on:beforeunload.window="if ($wire.adaPerubahan) { $event.preventDefault(); $event.returnValue = ''; }">
     <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200">
         <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
             <div class="min-w-0">
@@ -30,7 +31,7 @@
                 <p class="mt-0.5 text-sm text-stone-500">Opsional. Bila dibayar bertahap, jumlah semua termin harus sama dengan total RAB {{ $sumber }}.</p>
             </div>
             @if ($adaPerubahan)
-                <span class="inline-flex items-center gap-1 text-xs font-medium text-gold-700" data-testid="termin-belum-disimpan">
+                <span class="inline-flex items-center gap-1 text-xs font-medium text-gold-700" data-testid="termin-belum-disimpan" data-termin-belum-disimpan>
                     <span class="size-1.5 rounded-full bg-gold-500"></span> Belum disimpan
                 </span>
             @endif
@@ -106,6 +107,13 @@
                     </table>
                 </div>
 
+                @if ($terminTerhapus)
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-stone-800 px-3 py-2 text-sm text-white" role="status" data-testid="termin-terhapus">
+                        <span>Termin {{ $terminTerhapus['index'] + 1 }} ({{ $terminTerhapus['baris']['nominal'] !== '' ? 'Rp'.$terminTerhapus['baris']['nominal'] : 'tanpa nominal' }}) dihapus.</span>
+                        <button type="button" wire:click="urungkanHapus" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                    </div>
+                @endif
+
                 @if ($bisaUbah)
                     <div class="flex flex-wrap gap-2">
                         <button type="button" wire:click="tambahTermin" class="btn-secondary" @disabled(count($baris) >= MekanismePembayaran::MAKS_TERMIN)>
@@ -114,6 +122,11 @@
                         <button type="button" wire:click="bagiRata" class="btn-ghost" title="Bagi total RAB sama rata ke {{ count($baris) }} termin">
                             Bagi rata {{ count($baris) }} termin
                         </button>
+                        @if (count($baris) > 1 && $this->urutanTanggalAcak())
+                            <button type="button" wire:click="urutkanTanggal" class="btn-ghost" data-testid="urutkan-tanggal">
+                                <x-ui.icon name="calendar" class="size-4" /> Urutkan menurut tanggal
+                            </button>
+                        @endif
                         @if (in_array($mekanisme->status(), ['kurang', 'lebih'], true))
                             <button type="button" wire:click="isiSisa" class="btn-ghost" data-testid="isi-sisa">
                                 Sesuaikan termin terakhir ({{ $mekanisme->selisih() > 0 ? '+' : '−' }}{{ Format::rupiah(abs($mekanisme->selisih())) }})

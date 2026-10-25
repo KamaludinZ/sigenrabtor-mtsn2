@@ -34,6 +34,10 @@ class TerminPembayaran extends Component
 
     public bool $adaPerubahan = false;
 
+    /** @var array{index: int, baris: array{key: string, tanggal: string, nominal: string}}|null Termin terakhir dihapus (untuk "Urungkan"). */
+    #[Locked]
+    public ?array $terminTerhapus = null;
+
     public function mount(int $kegiatanId, string $sumber): void
     {
         $this->kegiatanId = $kegiatanId;
@@ -94,7 +98,7 @@ class TerminPembayaran extends Component
         }
 
         $this->pastikanDapatDiedit();
-        $this->adaPerubahan = true;
+        $this->tandaiBerubah();
 
         if (str_ends_with($properti, '.nominal')) {
             $index = (int) explode('.', $properti)[1];
@@ -124,9 +128,49 @@ class TerminPembayaran extends Component
     public function hapusTermin(string $key): void
     {
         $this->pastikanDapatDiedit();
-        $this->baris = array_values(array_filter($this->baris, fn ($b) => $b['key'] !== $key));
+        $index = array_search($key, array_column($this->baris, 'key'), true);
+
+        if ($index === false) {
+            return;
+        }
+
+        $this->terminTerhapus = ['index' => $index, 'baris' => $this->baris[$index]];
+        array_splice($this->baris, $index, 1);
+        $this->resetValidation();
+        $this->berubah(simpanUrungkan: true);
+    }
+
+    public function urungkanHapus(): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if ($this->terminTerhapus === null) {
+            return;
+        }
+
+        array_splice($this->baris, min($this->terminTerhapus['index'], count($this->baris)), 0, [$this->terminTerhapus['baris']]);
+        $this->berubah();
+    }
+
+    /** Urutkan termin menurut tanggal (yang belum bertanggal di akhir); nomor termin ikut urutan baru. */
+    public function urutkanTanggal(): void
+    {
+        $this->pastikanDapatDiedit();
+        $baris = $this->baris;
+        usort($baris, fn ($a, $b) => [$a['tanggal'] === '', $a['tanggal']] <=> [$b['tanggal'] === '', $b['tanggal']]);
+        $this->baris = $baris;
         $this->resetValidation();
         $this->berubah();
+    }
+
+    /** True bila ada tanggal yang lebih awal dari termin sebelumnya (tombol "Urutkan menurut tanggal" ditampilkan). */
+    public function urutanTanggalAcak(): bool
+    {
+        $tanggal = array_values(array_filter(array_column($this->baris, 'tanggal')));
+        $urut = $tanggal;
+        sort($urut);
+
+        return $tanggal !== $urut;
     }
 
     /** Pembayaran sekaligus: semua termin dilepas (tersimpan setelah "Simpan"). */
@@ -189,6 +233,8 @@ class TerminPembayaran extends Component
         $mekanisme = $this->mekanisme;
         app(RabRepository::class)->simpanTermin($this->kegiatanId, $this->sumber, $mekanisme->termin);
         $this->adaPerubahan = false;
+        $this->terminTerhapus = null;
+        $this->dispatch('termin-berubah', sumber: null);
         $this->dispatch('termin-disimpan', sumber: $this->sumber);
 
         $this->dispatch('notify', ...match ($mekanisme->status()) {
@@ -202,6 +248,7 @@ class TerminPembayaran extends Component
     {
         $this->muatTersimpan();
         $this->resetValidation();
+        $this->dispatch('termin-berubah', sumber: null);
     }
 
     /**
@@ -264,13 +311,30 @@ class TerminPembayaran extends Component
             'nominal' => Format::angka((int) $t['nominal']),
         ], app(RabRepository::class)->termin($this->kegiatanId, $this->sumber));
         $this->adaPerubahan = false;
+        $this->terminTerhapus = null;
         unset($this->mekanisme, $this->jadwal);
     }
 
-    private function berubah(): void
+    private function berubah(bool $simpanUrungkan = false): void
     {
-        $this->adaPerubahan = true;
+        if (! $simpanUrungkan) {
+            $this->terminTerhapus = null;
+        }
+
+        $this->tandaiBerubah();
         unset($this->mekanisme, $this->jadwal);
+    }
+
+    /**
+     * Tandai ada perubahan belum disimpan dan kabari halaman RAB, agar pindah sumber/halaman meminta konfirmasi dulu.
+     */
+    private function tandaiBerubah(): void
+    {
+        if (! $this->adaPerubahan) {
+            $this->dispatch('termin-berubah', sumber: $this->sumber);
+        }
+
+        $this->adaPerubahan = true;
     }
 
     private function pastikanDapatDiedit(): void

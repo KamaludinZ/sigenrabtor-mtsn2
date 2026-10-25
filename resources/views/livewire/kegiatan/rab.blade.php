@@ -60,6 +60,19 @@
         @elseif ($halaman === 'semua')
             @include('livewire.kegiatan.partials.semua-rab')
         @elseif ($halaman === 'termin')
+            @if ($tujuanTertunda)
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-50 px-4 py-3 text-sm text-stone-800 ring-1 ring-gold-300"
+                     role="alertdialog" aria-label="Termin belum disimpan" data-testid="konfirmasi-tinggalkan-termin">
+                    <span class="flex items-start gap-2">
+                        <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0 text-gold-600" />
+                        Perubahan termin RAB {{ $terminBelumDisimpan }} belum disimpan. Tinggalkan tanpa menyimpan?
+                    </span>
+                    <span class="flex gap-2">
+                        <button type="button" wire:click="tetapDiTermin" class="btn-ghost px-3 py-1.5 text-sm">Kembali menyunting</button>
+                        <button type="button" wire:click="tinggalkanTermin" class="btn-secondary px-3 py-1.5 text-sm text-red-700">Tinggalkan tanpa menyimpan</button>
+                    </span>
+                </div>
+            @endif
             <livewire:kegiatan.termin-pembayaran :kegiatan-id="$kegiatanId" :sumber="$sumber" wire:key="termin-{{ $sumber }}" />
         @else
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
