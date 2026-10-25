@@ -178,6 +178,33 @@ test.describe('Form Data Kegiatan', () => {
         await page.locator('#tempat').blur();
         await expect(page.getByTestId('pratinjau-pelaksanaan').locator('[data-pratinjau="tempat"]')).toContainText('bertempat di Ruang Kelas dan Ruang Rapat Madrasah.');
     });
+    test('konteks: sisipkan aspek, tanda aspek terisi, bahan AI dari isian lain, peringatan NIP', async ({ page }, testInfo) => {
+        const bagian = page.getByTestId('bagian-konteks');
+        await bagian.scrollIntoViewIfNeeded();
+        await expect(page.getByTestId('bahan-ai')).toContainText('Tim Penjamin Mutu');
+
+        await bagian.locator('[data-sisip="peserta"]').click();
+        await expect(page.locator('#catatan_konteks')).toHaveValue('Peserta: ');
+        await expect(page.locator('#catatan_konteks')).toBeFocused();
+        await page.keyboard.type('54 guru');
+        await bagian.locator('[data-sisip="narasumber"]').click();
+        await expect(page.locator('#catatan_konteks')).toHaveValue('Peserta: 54 guru\nNarasumber: ');
+        await page.keyboard.type('pengawas madrasah');
+        await page.locator('#catatan_konteks').blur();
+        await expect(bagian.locator('[data-aspek="peserta"]')).toHaveAttribute('data-terisi', 'ya');
+        await expect(bagian.locator('[data-aspek="narasumber"]')).toHaveAttribute('data-terisi', 'ya');
+        await expect(bagian.locator('[data-aspek="output"]')).toHaveAttribute('data-terisi', 'tidak');
+
+        // Isian lain langsung tercermin di panel bahan AI.
+        await page.locator('#tempat').fill('Aula Madrasah');
+        await page.locator('#tempat').blur();
+        await expect(page.getByTestId('bahan-ai')).toContainText('Aula Madrasah');
+
+        await page.locator('#catatan_konteks').fill('Narasumber NIP 197210082007101002');
+        await page.locator('#catatan_konteks').blur();
+        await expect(bagian).toContainText('Catatan memuat NIP');
+        await bagian.screenshot({ path: `storage/playwright/shots/konteks-${testInfo.project.name}.png` });
+    });
     test('pelaksanaan: angka bulat saja (ketik & tempel), peringatan angka tak wajar', async ({ page, context }) => {
         const lama = page.locator('#lama_hari');
         await lama.click();

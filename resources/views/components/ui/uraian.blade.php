@@ -48,11 +48,11 @@
                       @error($model) aria-invalid="true" aria-describedby="{{ $id }}-error" @enderror></textarea>
 
             <div class="flex items-center justify-between gap-2 border-t border-stone-100 px-2 py-1.5">
-                <div class="flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-1">
                     {{ $actions ?? '' }}
                 </div>
                 <button type="button" x-on:click="rapikan()"
-                        class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+                        class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap text-stone-500 hover:bg-stone-100 hover:text-stone-800"
                         title="Gabungkan spasi berulang dan buang baris kosong berlebih">
                     <x-ui.icon name="text-align" class="size-3.5" />
                     Rapikan spasi
