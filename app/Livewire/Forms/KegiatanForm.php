@@ -4,6 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Rules\KalimatUtuh;
 use App\Support\Format;
+use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\MasterKode;
@@ -249,27 +250,33 @@ class KegiatanForm extends Form
     }
 
     /**
+     * State Pelaksanaan ternormalkan dari isian saat ini — dipakai bersama pratinjau KAK dan susunan dokumen.
+     */
+    public function pelaksanaan(): DataPelaksanaan
+    {
+        return DataPelaksanaan::dari([
+            'tanggal_mulai' => $this->tanggal_mulai,
+            'lama_hari' => $this->lama_hari,
+            'hari_kerja' => $this->hari_kerja,
+            'bulan_pelaksanaan' => $this->bulan_pelaksanaan,
+            'tempat' => $this->tempat,
+            'peserta_jumlah' => $this->peserta_jumlah,
+            'peserta_jenis' => $this->peserta_jenis,
+            'uraian_pelaksanaan' => $this->uraian_pelaksanaan,
+        ]);
+    }
+
+    /**
      * Tanggal selesai hasil hitung, atau null bila tanggal mulai/lama belum valid.
      */
     public function tanggalSelesai(): ?CarbonImmutable
     {
-        $mulai = $this->tanggalMulai();
-        $lama = filter_var($this->lama_hari, FILTER_VALIDATE_INT);
-
-        if ($mulai === null || $lama === false || $lama < 1 || $lama > 366) {
-            return null;
-        }
-
-        return JadwalPelaksanaan::tanggalSelesai($mulai, $lama, $this->hari_kerja);
+        return $this->pelaksanaan()->selesai();
     }
 
     public function tanggalMulai(): ?CarbonImmutable
     {
-        if (! $this->tanggal_mulai || ! strtotime($this->tanggal_mulai)) {
-            return null;
-        }
-
-        return CarbonImmutable::parse($this->tanggal_mulai)->startOfDay();
+        return $this->pelaksanaan()->mulai;
     }
 
     /**
@@ -667,7 +674,7 @@ class KegiatanForm extends Form
 
         $identitas = [$this->nama_kegiatan, $this->tujuan, $this->sasaran, $this->tanggal_dokumen];
         $kode = [$this->leading, $this->kode_rktm, $this->kode_sk, $this->kode_iksk, $this->kode_edm, $this->budaya_mutu];
-        $pelaksanaan = [$this->tempat, $this->tanggal_mulai, $this->lama_hari, $this->peserta_jumlah, $this->peserta_jenis, $this->bulan_pelaksanaan];
+        $pelaksanaan = $this->pelaksanaan()->terisi();
         $panitiaBernama = array_filter($this->panitia, fn ($a) => filled($a['nama']));
         $sumber = $this->sumberDana();
         $sumberBerpagu = array_filter($sumber, fn ($s) => ($s['pagu'] ?? 0) > 0);
@@ -675,7 +682,7 @@ class KegiatanForm extends Form
         return [
             'identitas' => $status($terisi($identitas), count($identitas)),
             'kode' => $status($terisi($kode), count($kode)),
-            'pelaksanaan' => $status($terisi($pelaksanaan), count($pelaksanaan)),
+            'pelaksanaan' => $status(count(array_filter($pelaksanaan)), count($pelaksanaan)),
             'konteks' => filled($this->konteks) ? 'lengkap' : 'opsional',
             'panitia' => match (true) {
                 $this->panitia === [] => 'kosong',
@@ -697,14 +704,7 @@ class KegiatanForm extends Form
      */
     public function kelengkapanPelaksanaan(): array
     {
-        $waktu = [$this->tanggal_mulai, $this->lama_hari, $this->bulan_pelaksanaan];
-        $tempat = [$this->tempat, $this->peserta_jumlah, $this->peserta_jenis];
-
-        return [
-            'waktu' => self::statusTerisi(self::jumlahTerisi($waktu), count($waktu)),
-            'tempat' => self::statusTerisi(self::jumlahTerisi($tempat), count($tempat)),
-            'bentuk' => filled($this->uraian_pelaksanaan) ? 'lengkap' : 'opsional',
-        ];
+        return $this->pelaksanaan()->kelengkapan();
     }
 
     /**
@@ -857,11 +857,6 @@ class KegiatanForm extends Form
     }
 
     /**
-     * Peringatan non-blok pada jadwal yang sah tetapi patut dicek ulang.
-     *
-     * @return array<string, string>
-     */
-    /**
      * Peringatan bagian Pelaksanaan (tidak menghalangi simpan): jadwal ditambah angka di atas batas wajar.
      *
      * @return array<string, string>
@@ -883,6 +878,11 @@ class KegiatanForm extends Form
         return $peringatan;
     }
 
+    /**
+     * Peringatan non-blok pada jadwal yang sah tetapi patut dicek ulang.
+     *
+     * @return array<string, string>
+     */
     public function peringatanJadwal(): array
     {
         $peringatan = [];

@@ -7,6 +7,7 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\FormSections;
+use App\Support\Kegiatan\SaranPelaksanaan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -305,6 +306,17 @@ class Form extends Component
     public function drafTerbaru(): array
     {
         return app(KegiatanRepository::class)->terbaru(8);
+    }
+
+    /**
+     * Saran tempat & jenis peserta: riwayat isian kegiatan lain lalu saran baku madrasah.
+     *
+     * @return array{tempat: list<array{nilai: string, riwayat: bool}>, peserta: list<array{nilai: string, riwayat: bool}>}
+     */
+    #[Computed]
+    public function saranPelaksanaan(): array
+    {
+        return SaranPelaksanaan::untuk(app(KegiatanRepository::class));
     }
 
     public function saveDraft(): void

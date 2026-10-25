@@ -5,6 +5,7 @@ namespace App\Support\Stub;
 use App\Contracts\KegiatanRepository;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 /**
  * Penyimpanan kegiatan tiruan di berkas JSON (disk "local") untuk tahap frontend.
@@ -46,6 +47,25 @@ class StubKegiatanRepository implements KegiatanRepository
             'status' => $k['status'] ?? 'draf',
             'diperbarui_pada' => $k['diperbarui_pada'],
         ], array_slice($semua, 0, $batas));
+    }
+
+    public function riwayatIsian(string $kolom, int $batas = 20): array
+    {
+        if (! in_array($kolom, self::KOLOM_RIWAYAT, true)) {
+            throw new InvalidArgumentException("Riwayat isian kolom [{$kolom}] tidak tersedia.");
+        }
+
+        $semua = array_values($this->baca());
+        usort($semua, fn ($a, $b) => [$b['diperbarui_pada'] ?? '', $b['id']] <=> [$a['diperbarui_pada'] ?? '', $a['id']]);
+
+        $nilai = [];
+        foreach ($semua as $kegiatan) {
+            $isi = is_string($kegiatan[$kolom] ?? null) ? trim($kegiatan[$kolom]) : '';
+            $nilai[mb_strtolower($isi)] ??= $isi;
+        }
+        unset($nilai['']);
+
+        return array_slice(array_values($nilai), 0, max(0, $batas));
     }
 
     /**

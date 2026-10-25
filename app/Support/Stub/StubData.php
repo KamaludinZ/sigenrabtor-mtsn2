@@ -106,6 +106,26 @@ class StubData
     }
 
     /**
+     * Saran baku tempat & jenis peserta bagian Pelaksanaan (fasilitas dan warga madrasah). Isian tetap bebas;
+     * backend nanti membacanya dari pengaturan madrasah.
+     *
+     * @return array{tempat: list<string>, peserta: list<string>}
+     */
+    public static function saranPelaksanaan(): array
+    {
+        return [
+            'tempat' => [
+                'Aula Madrasah', 'Lingkungan Madrasah', 'Ruang Kelas', 'Ruang Rapat Madrasah', 'Laboratorium IPA',
+                'Laboratorium Komputer', 'Masjid Madrasah', 'Perpustakaan Madrasah', 'Lapangan Madrasah',
+            ],
+            'peserta' => [
+                'Guru', 'Siswa', 'Guru dan tenaga kependidikan', 'Tenaga kependidikan', 'Siswa kelas VII', 'Siswa kelas VIII',
+                'Siswa kelas IX', 'Orang tua/wali siswa', 'Pengurus komite',
+            ],
+        ];
+    }
+
+    /**
      * Profil madrasah untuk kop dan identitas aplikasi.
      *
      * @return array{nama: string, nama_singkat: string, kota: string}

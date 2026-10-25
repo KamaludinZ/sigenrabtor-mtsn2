@@ -4,7 +4,7 @@ namespace App\Support\Dokumen;
 
 use App\Enums\StatusKegiatan;
 use App\Support\Format;
-use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -77,18 +77,14 @@ final readonly class SusunanKak
         ]];
 
         // 4. Tahapan: pelaksanaan & pelaporan bergantung pada jadwal.
-        $mulai = self::tanggal($kegiatan['tanggal_mulai'] ?? null);
-        $lama = (int) ($kegiatan['lama_hari'] ?? 0);
-        $selesai = $mulai && $lama > 0 ? JadwalPelaksanaan::tanggalSelesai($mulai, $lama, (bool) ($kegiatan['hari_kerja'] ?? false)) : null;
+        $pelaksanaan = DataPelaksanaan::dari($kegiatan);
         $batasLaporan = self::tanggal($kegiatan['tanggal_laporan'] ?? null);
 
         $tahapan = [
             ['jenis' => 'subjudul', 'teks' => 'a. Persiapan'],
             ['jenis' => 'daftar', 'bernomor' => true, 'butir' => KalimatKak::persiapan($nama)],
             ['jenis' => 'subjudul', 'teks' => 'b. Pelaksanaan'],
-            $selesai
-                ? ['jenis' => 'paragraf', 'teks' => KalimatKak::pelaksanaan($nama, $lama, $mulai, $selesai, (int) ($kegiatan['peserta_jumlah'] ?? 0) ?: null, $kegiatan['peserta_jenis'] ?? null, $kegiatan['uraian_pelaksanaan'] ?? null)]
-                : $kosong('tanggal mulai & lama kegiatan'),
+            $isi($pelaksanaan->kalimatPelaksanaan($nama), 'tanggal mulai & lama kegiatan'),
             ['jenis' => 'subjudul', 'teks' => 'c. Pelaporan'],
             ['jenis' => 'daftar', 'bernomor' => true, 'butir' => array_values(array_filter([
                 KalimatKak::analisisHasil($nama),
@@ -102,7 +98,7 @@ final readonly class SusunanKak
         $bagian[] = ['nomor' => 4, 'judul' => 'Tahapan Kegiatan', 'isi' => $tahapan];
 
         $bagian[] = ['nomor' => 5, 'judul' => 'Tempat Pelaksanaan', 'isi' => [
-            $isi(filled($kegiatan['tempat'] ?? null) ? KalimatKak::tempat($nama, $kegiatan['tempat']) : null, 'tempat pelaksanaan'),
+            $isi($pelaksanaan->kalimatTempat($nama), 'tempat pelaksanaan'),
         ]];
 
         $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);

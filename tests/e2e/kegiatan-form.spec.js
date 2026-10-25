@@ -128,6 +128,16 @@ test.describe('Form Data Kegiatan', () => {
         expect(panjang).toBeGreaterThan(0);
         await expect(page.locator('#pelaksanaan').getByText(`${panjang} / 3.000`)).toBeVisible();
     });
+    test('pelaksanaan: saran tempat & peserta mendahulukan isian kegiatan lain', async ({ page }) => {
+        await expect(page.locator('#saran-tempat option').first()).toHaveAttribute('label', 'Pernah dipakai');
+        await expect(page.locator('#saran-tempat option[value="Ruang Kelas dan Ruang Rapat Madrasah"]')).toHaveAttribute('label', 'Pernah dipakai');
+        await expect(page.locator('#saran-tempat option[value="Laboratorium IPA"]')).not.toHaveAttribute('label');
+        await expect(page.locator('#saran-peserta option[value="Siswa kelas IX"]')).toHaveCount(1);
+
+        await page.locator('#tempat').fill('Ruang Kelas dan Ruang Rapat Madrasah');
+        await page.locator('#tempat').blur();
+        await expect(page.getByTestId('pratinjau-pelaksanaan').locator('[data-pratinjau="tempat"]')).toContainText('bertempat di Ruang Kelas dan Ruang Rapat Madrasah.');
+    });
     test('pelaksanaan: angka bulat saja (ketik & tempel), peringatan angka tak wajar', async ({ page, context }) => {
         const lama = page.locator('#lama_hari');
         await lama.click();

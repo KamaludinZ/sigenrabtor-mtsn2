@@ -4,25 +4,23 @@
 
 @php
     $tahun = $this->tahunAktif['tahun'];
-    $mulai = $form->tanggalMulai();
-    $selesai = $form->tanggalSelesai();
-    $bulanDariTanggal = $mulai && $selesai ? JadwalPelaksanaan::bulanTercakup($mulai, $selesai) : null;
-    $lama = (int) $form->lama_hari;
-    $kelompok = $form->kelengkapanPelaksanaan();
+    $pelaksanaan = $form->pelaksanaan();
+    $selesai = $pelaksanaan->selesai();
+    $bulanDariTanggal = $pelaksanaan->bulanDariTanggal();
+    $kelompok = $pelaksanaan->kelengkapan();
     $peringatan = $form->peringatanPelaksanaan();
+    $saran = $this->saranPelaksanaan;
     $nama = $form->nama_kegiatan ?: '…';
     $batasLaporan = $form->tanggal_laporan ? rescue(fn () => CarbonImmutable::parse($form->tanggal_laporan), null, false) : null;
 
     // Pratinjau bagian KAK yang disusun dari isian ini; null = isian pendukungnya belum lengkap.
     $pratinjau = [
         ['bagian' => '4b. Pelaksanaan', 'kunci' => 'pelaksanaan', 'kurang' => 'tanggal mulai & lama kegiatan',
-         'teks' => $mulai && $selesai && $lama > 0
-            ? KalimatKak::pelaksanaan($nama, $lama, $mulai, $selesai, (int) $form->peserta_jumlah ?: null, $form->peserta_jenis ?: null, $form->uraian_pelaksanaan)
-            : null],
+         'teks' => $pelaksanaan->kalimatPelaksanaan($nama)],
         ['bagian' => '4c. Pelaporan', 'kunci' => 'pelaporan', 'kurang' => 'tanggal pelaporan (bagian Identitas)',
          'teks' => $batasLaporan ? KalimatKak::pelaporan($nama, $batasLaporan) : null],
         ['bagian' => '5. Tempat Pelaksanaan', 'kunci' => 'tempat', 'kurang' => 'tempat pelaksanaan',
-         'teks' => filled($form->tempat) ? KalimatKak::tempat($nama, $form->tempat) : null],
+         'teks' => $pelaksanaan->kalimatTempat($nama)],
     ];
 @endphp
 
@@ -101,7 +99,7 @@
                 <p class="form-error" role="alert">{{ $pesanBulan }}</p>
             @endif
             <p class="form-hint">
-                @if ($teksBulan = JadwalPelaksanaan::teksBulan($form->bulan_pelaksanaan, $tahun))
+                @if ($teksBulan = $pelaksanaan->teksBulan($tahun))
                     Tercetak: {{ $teksBulan }}. Dipakai juga untuk matrik tahapan &amp; jadwal.
                 @else
                     Pilih satu atau lebih bulan sesuai timeline cascade Perkin; terisi otomatis dari tanggal mulai.
@@ -121,8 +119,8 @@
                        placeholder="mis. Aula Madrasah" class="form-input"
                        @error('form.tempat') aria-invalid="true" aria-describedby="tempat-error" @enderror>
                 <datalist id="saran-tempat">
-                    @foreach (['Aula Madrasah', 'Lingkungan Madrasah', 'Ruang Kelas', 'Laboratorium', 'Masjid Madrasah', 'Ruang Rapat', 'Perpustakaan'] as $saran)
-                        <option value="{{ $saran }}"></option>
+                    @foreach ($saran['tempat'] as $opsi)
+                        <option value="{{ $opsi['nilai'] }}" @if ($opsi['riwayat']) label="Pernah dipakai" @endif></option>
                     @endforeach
                 </datalist>
             </x-ui.field>
@@ -142,8 +140,8 @@
                        placeholder="mis. Guru dan tenaga kependidikan" class="form-input"
                        @error('form.peserta_jenis') aria-invalid="true" aria-describedby="peserta_jenis-error" @enderror>
                 <datalist id="saran-peserta">
-                    @foreach (['Guru', 'Siswa', 'Guru dan tenaga kependidikan', 'Tenaga kependidikan', 'Orang tua/wali siswa', 'Pengurus komite'] as $saran)
-                        <option value="{{ $saran }}"></option>
+                    @foreach ($saran['peserta'] as $opsi)
+                        <option value="{{ $opsi['nilai'] }}" @if ($opsi['riwayat']) label="Pernah dipakai" @endif></option>
                     @endforeach
                 </datalist>
             </x-ui.field>
