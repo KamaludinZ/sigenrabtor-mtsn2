@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\RabRepository;
 use App\Support\Stub\StubAnggaran;
 use Tests\TestCase;
 
@@ -21,18 +22,20 @@ class StubAnggaranTest extends TestCase
 
     public function test_termin_contoh_berjumlah_sama_dengan_total_rab(): void
     {
-        $this->assertSame(10_000_000, array_sum(StubAnggaran::terminContoh(1, 'Komite')));
-        $this->assertSame([], StubAnggaran::terminContoh(1, 'DIPA'));
+        $repo = app(RabRepository::class);
+
+        $this->assertSame(10_000_000, array_sum(array_column($repo->termin(1, 'Komite'), 'nominal')));
+        $this->assertSame([], $repo->termin(1, 'DIPA'));
     }
 
     public function test_anggaran_mengikuti_data_kegiatan_baru(): void
     {
-        app(KegiatanRepository::class)->simpan([
+        $id = app(KegiatanRepository::class)->simpan([
             'nama_kegiatan' => 'Kegiatan Baru',
             'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 5_000_000]],
         ]);
 
-        $baru = collect(StubAnggaran::anggaranKegiatan())->where('kegiatan_id', 2)->values();
+        $baru = collect(StubAnggaran::anggaranKegiatan())->where('kegiatan_id', $id)->values();
 
         $this->assertSame(['total', 'pagu'], $baru->pluck('jenis')->all());
         $this->assertSame([0, 5_000_000], $baru->pluck('nilai')->all());

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Penyimpanan kegiatan tiruan di berkas JSON (disk "local") untuk tahap frontend.
  *
- * Saat berkas belum ada, satu contoh kegiatan disiapkan agar alur "muat draf" langsung bisa dicoba.
+ * Saat berkas belum ada, contoh kegiatan disiapkan agar alur "muat draf" dan RAB per sumber dana langsung bisa dicoba.
  */
 class StubKegiatanRepository implements KegiatanRepository
 {
@@ -54,7 +54,7 @@ class StubKegiatanRepository implements KegiatanRepository
     private function baca(): array
     {
         if (! $this->disk()->exists($this->berkas())) {
-            $this->tulis([1 => self::contoh()]);
+            $this->tulis(self::contohSemua());
         }
 
         $isi = json_decode((string) $this->disk()->get($this->berkas()), true);
@@ -78,6 +78,63 @@ class StubKegiatanRepository implements KegiatanRepository
     private function disk(): Filesystem
     {
         return Storage::disk('local');
+    }
+
+    /**
+     * Semua contoh kegiatan, berkunci id.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function contohSemua(): array
+    {
+        return [1 => self::contoh(), 2 => self::contohDuaSumber()];
+    }
+
+    /**
+     * Contoh kegiatan yang dibiayai DIPA dan Komite sekaligus (dua RAB terpisah, nama fiktif).
+     *
+     * @return array<string, mixed>
+     */
+    public static function contohDuaSumber(): array
+    {
+        $tahun = StubData::tahunAktif()['tahun'];
+
+        return [
+            'id' => 2,
+            'status' => 'draf',
+            'dibuat_pada' => "{$tahun}-01-05T09:00:00+07:00",
+            'diperbarui_pada' => "{$tahun}-01-05T09:00:00+07:00",
+            'nama_kegiatan' => 'Supervisi Akademik dan Refleksi Pembelajaran',
+            'nama_kegiatan_cover' => 'SUPERVISI AKADEMIK DAN REFLEKSI PEMBELAJARAN',
+            'cover_manual' => false,
+            'latar_belakang' => '',
+            'tujuan' => 'memetakan mutu proses pembelajaran setiap guru dan menyusun tindak lanjut peningkatannya.',
+            'sasaran' => 'seluruh guru memperoleh umpan balik supervisi dan rencana tindak lanjut.',
+            'tanggal_dokumen' => "{$tahun}-01-05",
+            'tanggal_laporan' => "{$tahun}-09-14",
+            'laporan_otomatis' => true,
+            'tanggal_mulai' => "{$tahun}-08-31",
+            'lama_hari' => 5,
+            'hari_kerja' => true,
+            'bulan_pelaksanaan' => [8, 9],
+            'leading' => '1.6',
+            'kode_rktm' => '6.19.1',
+            'kode_sk' => 'SK.11',
+            'kode_iksk' => 'IKSK 11.5',
+            'kode_edm' => 'A3',
+            'budaya_mutu' => 2,
+            'tempat' => 'Ruang Kelas dan Ruang Rapat Madrasah',
+            'peserta_jumlah' => 54,
+            'peserta_jenis' => 'Guru',
+            'uraian_pelaksanaan' => 'observasi kelas oleh tim supervisor, dilanjutkan sesi refleksi bersama narasumber.',
+            'konteks' => 'Supervisi dibiayai DIPA; refleksi dan penghargaan guru terbaik dibiayai Komite.',
+            'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 6_000_000], ['sumber' => 'Komite', 'pagu' => 2_500_000]],
+            // Nama fiktif untuk contoh.
+            'panitia' => [
+                ['nama' => 'Ahmad Fauzi, S.Pd.', 'jabatan' => 'Tim Penjamin Mutu', 'peran' => 'Ketua'],
+                ['nama' => 'Dewi Lestari, S.Pd.', 'jabatan' => 'Guru Matematika', 'peran' => 'Sekretaris'],
+            ],
+        ];
     }
 
     /**

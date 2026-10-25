@@ -223,3 +223,21 @@ test.describe('Rekap anggaran per kelompok', () => {
         await expect(page.getByRole('button', { name: 'Per kelompok belanja' })).toHaveAttribute('aria-pressed', 'true');
     });
 });
+
+test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
+    test('dua RAB terpisah dengan pagu, total, dan terbilang masing-masing', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/2/rab');
+        await expect(page.getByRole('tab', { name: /RAB DIPA/ })).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByRole('tab', { name: /RAB DIPA/ })).toContainText('Pagu Rp6.000.000');
+        await expect(page.getByTestId('total-rab')).toHaveText('5.400.000');
+        await expect(page.getByTestId('header-terbilang')).toHaveText('Lima Juta Empat Ratus Ribu Rupiah');
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Sisa pagu Rp600.000');
+
+        await page.getByRole('tab', { name: /RAB Komite/ }).click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByTestId('total-rab')).toHaveText('2.500.000');
+        await expect(page.getByTestId('kalimat-pembiayaan')).toContainText('dibebankan pada dana KOMITE');
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Sesuai pagu');
+        await page.screenshot({ path: `storage/playwright/shots/rab-dua-sumber-${testInfo.project.name}.png`, fullPage: true });
+    });
+});

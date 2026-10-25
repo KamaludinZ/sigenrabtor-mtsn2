@@ -47,7 +47,7 @@ class StatusKegiatanTest extends TestCase
             ->set('form.nama_kegiatan', 'Kegiatan MGMP Matematika')
             ->call('saveDraft');
 
-        $riwayat = app(KegiatanRepository::class)->temukan(2)['riwayat_status'];
+        $riwayat = app(KegiatanRepository::class)->temukan($this->idKegiatanBaru())['riwayat_status'];
         $this->assertSame('dibuat', $riwayat[0]['aksi']);
         $this->assertSame('Muslimin, M.Pd.', $riwayat[0]['oleh']);
     }
@@ -90,9 +90,9 @@ class StatusKegiatanTest extends TestCase
 
     public function test_pengajuan_mewajibkan_isian_valid(): void
     {
-        app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Abc', 'status' => 'draf']);
+        $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Abc', 'status' => 'draf']);
 
-        Livewire::test(Form::class, ['kegiatan' => 2])
+        Livewire::test(Form::class, ['kegiatan' => $id])
             ->call('ubahStatus', 'ajukan')
             ->assertHasErrors('form.nama_kegiatan')
             ->assertSet('status', 'draf');
@@ -137,8 +137,8 @@ class StatusKegiatanTest extends TestCase
 
     public function test_status_tak_dikenal_di_data_dianggap_draf(): void
     {
-        app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Data Rusak', 'status' => 'entah']);
+        $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Data Rusak', 'status' => 'entah']);
 
-        Livewire::test(Form::class, ['kegiatan' => 2])->assertSet('status', 'draf');
+        Livewire::test(Form::class, ['kegiatan' => $id])->assertSet('status', 'draf');
     }
 }

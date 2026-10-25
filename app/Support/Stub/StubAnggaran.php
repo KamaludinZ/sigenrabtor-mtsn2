@@ -3,8 +3,7 @@
 namespace App\Support\Stub;
 
 use App\Contracts\KegiatanRepository;
-use App\Contracts\RabRepository;
-use App\Support\Rab\KalkulatorRab;
+use App\Support\Rab\AnggaranKegiatan;
 
 /**
  * Data anggaran tiruan untuk fitur Terbilang Otomatis (PRD F3): nominal nyata dari kegiatan & RAB tiruan,
@@ -20,39 +19,27 @@ class StubAnggaran
     public static function anggaranKegiatan(): array
     {
         $kegiatanRepo = app(KegiatanRepository::class);
-        $rabRepo = app(RabRepository::class);
         $daftar = [];
 
         foreach ($kegiatanRepo->terbaru(50) as $ringkas) {
             $kegiatan = $kegiatanRepo->temukan($ringkas['id']);
 
-            foreach ($kegiatan['sumber_dana'] ?? [] as $sumber) {
-                $hasil = KalkulatorRab::hitung($rabRepo->rincian($kegiatan['id'], $sumber['sumber']), $sumber['pagu']);
-                $dasar = ['kegiatan_id' => $kegiatan['id'], 'kegiatan' => $kegiatan['nama_kegiatan'] ?? '', 'sumber' => $sumber['sumber']];
+            foreach (AnggaranKegiatan::untuk($kegiatan) as $anggaran) {
+                $dasar = ['kegiatan_id' => $kegiatan['id'], 'kegiatan' => $kegiatan['nama_kegiatan'] ?? '', 'sumber' => $anggaran->sumber];
 
-                $daftar[] = $dasar + ['jenis' => 'total', 'label' => 'Total RAB '.$sumber['sumber'], 'nilai' => $hasil->total];
+                $daftar[] = $dasar + ['jenis' => 'total', 'label' => 'Total RAB '.$anggaran->sumber, 'nilai' => $anggaran->total()];
 
-                if ($sumber['pagu'] !== null) {
-                    $daftar[] = $dasar + ['jenis' => 'pagu', 'label' => 'Pagu '.$sumber['sumber'], 'nilai' => (int) $sumber['pagu']];
+                if ($anggaran->pagu() !== null) {
+                    $daftar[] = $dasar + ['jenis' => 'pagu', 'label' => 'Pagu '.$anggaran->sumber, 'nilai' => $anggaran->pagu()];
                 }
 
-                foreach (self::terminContoh($kegiatan['id'], $sumber['sumber']) as $nomor => $nominal) {
-                    $daftar[] = $dasar + ['jenis' => 'termin', 'label' => 'Termin '.$nomor, 'nilai' => $nominal];
+                foreach ($anggaran->termin as $i => $termin) {
+                    $daftar[] = $dasar + ['jenis' => 'termin', 'label' => 'Termin '.($i + 1), 'nilai' => $termin['nominal']];
                 }
             }
         }
 
         return $daftar;
-    }
-
-    /**
-     * Termin pembayaran contoh dari Form RAB Workshop (kegiatan 1, Komite): jumlahnya = total RAB Rp10.000.000.
-     *
-     * @return array<int, int> nomor termin → nominal
-     */
-    public static function terminContoh(int $kegiatanId, string $sumber): array
-    {
-        return $kegiatanId === 1 && $sumber === 'Komite' ? [1 => 7_680_000, 2 => 2_320_000] : [];
     }
 
     /**

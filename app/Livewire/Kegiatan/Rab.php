@@ -9,6 +9,8 @@ use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Format;
 use App\Support\MasterKode;
+use App\Support\Rab\AnggaranKegiatan;
+use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
@@ -95,11 +97,7 @@ class Rab extends Component
     #[Computed]
     public function rekap(): array
     {
-        $perSumber = [];
-        foreach ($this->dataKegiatan['sumber_dana'] ?? [] as $baris) {
-            $rincian = app(RabRepository::class)->rincian($this->kegiatanId, $baris['sumber']);
-            $perSumber[$baris['sumber']] = KalkulatorRab::hitung($rincian, $baris['pagu'] !== null ? (int) $baris['pagu'] : null);
-        }
+        $perSumber = array_map(fn (AnggaranSumber $anggaran) => $anggaran->hasil, AnggaranKegiatan::perSumber($this->dataKegiatan));
 
         return RekapKelompok::susun($perSumber) + ['hasil' => $perSumber];
     }

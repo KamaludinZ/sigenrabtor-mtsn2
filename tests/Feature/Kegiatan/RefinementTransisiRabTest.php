@@ -128,11 +128,11 @@ class RefinementTransisiRabTest extends TestCase
             ->set('form.pagu_dipa', '29.250.000')
             ->call('saveDraft');
 
-        $tersimpan = app(KegiatanRepository::class)->temukan(2);
+        $tersimpan = app(KegiatanRepository::class)->temukan($this->idKegiatanBaru());
         $this->assertSame([['sumber' => 'DIPA', 'pagu' => 29_250_000]], $tersimpan['sumber_dana']);
         $this->assertSame(300, $tersimpan['peserta_jumlah']);
 
-        Livewire::test(Form::class, ['kegiatan' => 2])
+        Livewire::test(Form::class, ['kegiatan' => $this->idKegiatanBaru()])
             ->assertSet('form.dana_dipa', true)
             ->assertSet('form.pagu_dipa', '29.250.000')
             ->assertSet('form.kode_rktm', '1.1.10')
@@ -147,7 +147,7 @@ class RefinementTransisiRabTest extends TestCase
             ->assertHasErrors('form.sumber_dana')
             ->assertNoRedirect();
 
-        $this->assertCount(1, app(KegiatanRepository::class)->terbaru());
+        $this->assertCount($this->jumlahContohKegiatan(), app(KegiatanRepository::class)->terbaru());
     }
 
     public function test_lanjut_ke_rab_menyimpan_kegiatan_baru_lalu_membuka_halamannya(): void
@@ -158,9 +158,9 @@ class RefinementTransisiRabTest extends TestCase
             ->set('form.pagu_komite', '5.000.000')
             ->call('lanjutKeRab')
             ->assertHasNoErrors()
-            ->assertRedirect(route('kegiatan.rab', ['kegiatan' => 2]));
+            ->assertRedirect(route('kegiatan.rab', ['kegiatan' => $this->idKegiatanBaru()]));
 
-        $this->assertSame('Kegiatan Dengan Dana', app(KegiatanRepository::class)->temukan(2)['nama_kegiatan']);
+        $this->assertSame('Kegiatan Dengan Dana', app(KegiatanRepository::class)->temukan($this->idKegiatanBaru())['nama_kegiatan']);
     }
 
     public function test_kartu_lanjut_rab_menampilkan_sumber_dana_dan_pagu(): void

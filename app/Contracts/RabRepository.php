@@ -3,7 +3,8 @@
 namespace App\Contracts;
 
 /**
- * Penyimpanan rincian RAB (budget_items) per kegiatan per sumber dana.
+ * Penyimpanan RAB per kegiatan per sumber dana (PRD tabel anggaran_kegiatan): rincian belanja (budget_items)
+ * dan termin pembayaran opsional. Pagu tetap milik data kegiatan (sumber_dana).
  * Tahap frontend memakai implementasi tiruan; backend menggantinya dengan Eloquent.
  */
 interface RabRepository
@@ -40,4 +41,25 @@ interface RabRepository
      * @param  array<string, mixed>  $item
      */
     public function sisipkanItem(int $kegiatanId, string $sumber, int $index, array $item): void;
+
+    /**
+     * Termin pembayaran (opsional) berurutan; jumlah nominalnya harus sama dengan total RAB sumber dana itu.
+     *
+     * @return list<array{tanggal: string|null, nominal: int}>
+     */
+    public function termin(int $kegiatanId, string $sumber): array;
+
+    /**
+     * Ganti seluruh termin pembayaran satu sumber dana (daftar kosong = tanpa termin).
+     *
+     * @param  list<array{tanggal: string|null, nominal: int}>  $termin
+     */
+    public function simpanTermin(int $kegiatanId, string $sumber, array $termin): void;
+
+    /**
+     * Sumber dana yang punya data RAB tersimpan (rincian atau termin), termasuk sumber yang sudah tidak dipilih kegiatan.
+     *
+     * @return list<string>
+     */
+    public function sumberTersimpan(int $kegiatanId): array;
 }

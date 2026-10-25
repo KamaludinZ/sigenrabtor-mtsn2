@@ -3,13 +3,13 @@
 namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
-use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\FormSections;
 use App\Support\MasterKode;
+use App\Support\Rab\AnggaranKegiatan;
+use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
-use App\Support\Rab\KalkulatorRab;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
@@ -389,13 +389,10 @@ class Form extends Component
             return [];
         }
 
-        $rekap = [];
-        foreach ($this->form->sumberDana() as $sumber) {
-            $rincian = app(RabRepository::class)->rincian($this->kegiatanId, $sumber['sumber']);
-            $rekap[$sumber['sumber']] = KalkulatorRab::hitung($rincian, $sumber['pagu']);
-        }
+        // Pagu dari isian yang sedang diubah (belum tentu tersimpan), rincian dari RAB tersimpan.
+        $kegiatan = ['id' => $this->kegiatanId, 'sumber_dana' => $this->form->sumberDana()];
 
-        return $rekap;
+        return array_map(fn (AnggaranSumber $anggaran) => $anggaran->hasil, AnggaranKegiatan::perSumber($kegiatan));
     }
 
     /**

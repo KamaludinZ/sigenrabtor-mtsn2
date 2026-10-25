@@ -75,6 +75,6 @@ class IdentitasKegiatanTest extends TestCase
             ->assertSee('Tercetak: 3 Januari 2026')
             ->call('saveDraft')
             ->assertHasNoErrors()
-            ->assertRedirect(route('kegiatan.edit', ['kegiatan' => 2]));
+            ->assertRedirect(route('kegiatan.edit', ['kegiatan' => $this->idKegiatanBaru()]));
     }
 }

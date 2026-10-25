@@ -21,7 +21,7 @@ class SimpanMuatKegiatanTest extends TestCase
         $contoh = $this->repo()->temukan(1);
 
         $this->assertSame('Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran', $contoh['nama_kegiatan']);
-        $this->assertCount(1, $this->repo()->terbaru());
+        $this->assertCount($this->jumlahContohKegiatan(), $this->repo()->terbaru());
     }
 
     public function test_simpan_kegiatan_baru_lalu_dialihkan_ke_halaman_edit(): void
@@ -35,9 +35,9 @@ class SimpanMuatKegiatanTest extends TestCase
             ->assertSet('adaPerubahan', true)
             ->call('saveDraft')
             ->assertHasNoErrors()
-            ->assertRedirect(route('kegiatan.edit', ['kegiatan' => 2]));
+            ->assertRedirect(route('kegiatan.edit', ['kegiatan' => $this->idKegiatanBaru()]));
 
-        $tersimpan = $this->repo()->temukan(2);
+        $tersimpan = $this->repo()->temukan($this->idKegiatanBaru());
         $this->assertSame('Pelatihan Moderasi Beragama', $tersimpan['nama_kegiatan']);
         $this->assertSame('PELATIHAN MODERASI BERAGAMA', $tersimpan['nama_kegiatan_cover']);
         $this->assertSame(2, $tersimpan['lama_hari']);
@@ -77,7 +77,7 @@ class SimpanMuatKegiatanTest extends TestCase
             ->assertDispatched('notify');
 
         $this->assertSame('dokumen kurikulum yang disahkan kepala madrasah.', $this->repo()->temukan(1)['sasaran']);
-        $this->assertCount(1, $this->repo()->terbaru());
+        $this->assertCount($this->jumlahContohKegiatan(), $this->repo()->terbaru());
     }
 
     public function test_kegiatan_tidak_ditemukan_menghasilkan_404(): void
@@ -106,7 +106,7 @@ class SimpanMuatKegiatanTest extends TestCase
     {
         $this->repo()->simpan(['nama_kegiatan' => 'Data Lama', 'latar_belakang' => null, 'lama_hari' => '3', 'bulan_pelaksanaan' => ['7'], 'panitia' => [['nama' => 'X']]]);
 
-        Livewire::test(Form::class, ['kegiatan' => 2])
+        Livewire::test(Form::class, ['kegiatan' => $this->idKegiatanBaru()])
             ->assertSet('form.latar_belakang', '')
             ->assertSet('form.lama_hari', 3)
             ->assertSet('form.bulan_pelaksanaan', [7])
