@@ -29,7 +29,7 @@ class PemilihanSumberDanaTest extends TestCase
     public function test_kartu_memuat_ringkasan_dan_tautan_rab(): void
     {
         Livewire::test(Form::class, ['kegiatan' => 2])
-            ->assertSeeInOrder(['RAB DIPA', 'RAB tersusun (6 item)', 'Rp5.400.000', 'Lima Juta Empat Ratus Ribu Rupiah', 'Sisa pagu Rp600.000'])
+            ->assertSeeInOrder(['Pagu DIPA', 'Terhadap total RAB Rp5.400.000', 'Sisa pagu Rp600.000', 'RAB DIPA', 'RAB tersusun (6 item)', 'Rp5.400.000', 'Lima Juta Empat Ratus Ribu Rupiah'])
             ->assertSeeHtml('href="'.route('kegiatan.rab', ['kegiatan' => 2, 'sumber' => 'DIPA']).'"')
             ->assertSee('Buka RAB Komite →');
 
@@ -54,6 +54,27 @@ class PemilihanSumberDanaTest extends TestCase
 
         // Kegiatan baru (belum tersimpan) tidak punya RAB untuk dilepas.
         Livewire::test(Form::class)->set('form.dana_komite', true)->set('form.dana_komite', false)->assertDontSee('tidak ikut dicetak');
+    }
+
+    public function test_input_pagu_bersyarat_dengan_status_batas_pagu(): void
+    {
+        // Sumber belum dicentang: input nonaktif dengan petunjuk; tanpa RAB berisi tidak ada status batas pagu.
+        Livewire::test(Form::class)
+            ->assertSeeHtml('data-testid="input-pagu-dipa"')
+            ->assertSeeHtml('id="pagu_dipa"')
+            ->assertSeeHtml('x-bind:disabled="! $wire.form.dana_dipa"')
+            ->assertSeeHtml('x-bind:placeholder="$wire.form.dana_dipa ? \'0\' : \'Centang DIPA dulu\'"')
+            ->assertDontSeeHtml('data-testid="status-pagu-form-dipa"');
+
+        // RAB DIPA berisi: status awal dari server, dihitung ulang di klien (data-status-pagu ikut x-bind).
+        Livewire::test(Form::class, ['kegiatan' => 3])
+            ->assertSeeHtml('data-testid="status-pagu-form-dipa" aria-live="polite"')
+            ->assertSeeHtml('data-status-pagu="tanpa_pagu" x-bind:data-status-pagu="status.status"')
+            ->assertSeeInOrder(['Pagu DIPA', 'Terhadap total RAB Rp900.000', 'Pagu belum diisi'])
+            ->assertSeeInOrder(['Pagu Komite', 'Terhadap total RAB Rp7.950.000', 'Melebihi pagu Rp450.000'])
+            ->set('form.pagu_komite', '8.000.000')
+            ->assertSeeHtml('data-status-pagu="sisa"')
+            ->assertSee('Sisa pagu Rp50.000');
     }
 
     public function test_pagu_yang_dilepas_dipakai_lagi_saat_dicentang_ulang(): void

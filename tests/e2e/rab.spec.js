@@ -587,6 +587,29 @@ test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA b
         await expect(tabel).toContainText('Melebihi pagu');
     });
 
+    test('Data Kegiatan: status batas pagu ikut berubah selagi pagu diketik', async ({ page }, testInfo) => {
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.goto('/kegiatan/3/edit');
+        const komite = page.getByTestId('status-pagu-form-komite');
+        const dipa = page.getByTestId('status-pagu-form-dipa');
+        await komite.scrollIntoViewIfNeeded();
+        await expect(komite).toHaveText('Melebihi pagu Rp450.000');
+        await expect(dipa).toHaveText('Pagu belum diisi');
+
+        // Tanpa meninggalkan kotak: status dihitung di klien dari total RAB yang sama.
+        const input = page.locator('#pagu_komite');
+        await input.fill('');
+        await input.pressSequentially('8000000');
+        await expect(input).toHaveValue('8.000.000');
+        await expect(komite).toHaveText('Sisa pagu Rp50.000');
+        await expect(komite).toHaveAttribute('data-status-pagu', 'sisa');
+        await expect(input).toBeFocused();
+
+        await page.locator('#pagu_dipa').pressSequentially('900000');
+        await expect(dipa).toHaveText('Sesuai pagu');
+        await page.getByTestId('pemilihan-sumber-dana').screenshot({ path: `storage/playwright/shots/input-pagu-${testInfo.project.name}.png` });
+    });
+
     test('halaman Pagu & RAB: tabel pagu, total, selisih, pemakaian, dan kondisi tiap RAB', async ({ page }, testInfo) => {
         const mobile = testInfo.project.name === 'mobile';
         await page.goto('/kegiatan/3/rab');
@@ -666,8 +689,11 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         // Pagu dikosongkan & dinonaktifkan, tetapi diingat: dicentang lagi, pagu lama dipakai lagi.
         await expect(page.locator('#pagu_dipa')).toBeDisabled();
         await expect(page.locator('#pagu_dipa')).toHaveValue('');
+        await expect(page.locator('#pagu_dipa')).toHaveAttribute('placeholder', 'Centang DIPA dulu');
         await expect(page.getByTestId('pagu-dilepas-dipa')).toHaveText('Pagu sebelumnya Rp6.000.000 dipakai lagi bila DIPA dicentang.');
         await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        // Dicentang: input pagu langsung aktif & difokuskan, pagu lama dipakai lagi.
+        await expect(page.locator('#pagu_dipa')).toBeFocused();
         await expect(page.locator('#pagu_dipa')).toHaveValue('6.000.000');
         await expect(page.getByTestId('rab-terlepas-dipa')).toHaveCount(0);
         await expect(page.getByTestId('sumber-dipa')).toHaveAttribute('data-dipilih', 'ya');

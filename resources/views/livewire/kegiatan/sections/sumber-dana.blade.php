@@ -59,20 +59,8 @@
                 </label>
 
                 <div class="space-y-3 px-4 pt-3 pb-4">
-                    {{-- Pagu --}}
-                    <div>
-                        <label for="{{ $idPagu }}" class="mb-1 block text-xs font-medium text-stone-600">Pagu {{ $label }}</label>
-                        <x-ui.rupiah :id="$idPagu" :model="'form.'.$idPagu" :disabled="! $aktif" :aktif-jika="'form.dana_'.$kunci"
-                                     terbilang :nilai-awal="$form->{$idPagu}" />
-                        @error('form.'.$idPagu) <p class="form-error" id="{{ $idPagu }}-error">{{ $message }}</p> @enderror
-                        @unless ($aktif)
-                            @if (isset($paguDilepas[$kunci]))
-                                <p class="mt-1 text-[11px] text-stone-500" data-testid="pagu-dilepas-{{ $kunci }}">Pagu sebelumnya Rp{{ $paguDilepas[$kunci] }} dipakai lagi bila {{ $label }} dicentang.</p>
-                            @else
-                                <p class="mt-1 text-[11px] text-stone-400">Centang {{ $label }} bila kegiatan ini juga dibiayai {{ $label }}.</p>
-                            @endif
-                        @endunless
-                    </div>
+                    <x-kegiatan.input-pagu :jenis="$jenis" :aktif="$aktif" :nilai-awal="$form->{$idPagu}" :pagu-dilepas="$paguDilepas[$kunci] ?? null"
+                                           :total-rab="$rekap && $rekap->jumlahItem() > 0 ? $rekap->total : null" />
 
                     {{-- Ringkasan RAB sumber ini --}}
                     @if ($rekap)
@@ -81,19 +69,10 @@
                                 <span class="font-semibold text-stone-700">RAB {{ $label }}</span>
                                 <span class="text-stone-500">{{ $rekap->jumlahItem() > 0 ? 'RAB tersusun ('.$rekap->jumlahItem().' item)' : 'RAB belum berisi rincian' }}</span>
                             </div>
-                            <p @class([
-                                'mt-1 text-right text-base font-bold tabular-nums',
-                                'text-brand-700' => $rekap->keteranganPagu()->nada() === 'aman',
-                                'text-red-600' => $rekap->keteranganPagu()->melebihi(),
-                                'text-stone-800' => $rekap->keteranganPagu()->nada() === 'netral',
-                            ])>{{ Format::rupiah($rekap->total) }}</p>
+                            {{-- Warna netral: kondisi batas pagu ditunjukkan langsung di bawah input pagu (ikut ketikan). --}}
+                            <p class="mt-1 text-right text-base font-bold text-stone-900 tabular-nums">{{ Format::rupiah($rekap->total) }}</p>
                             @if ($terbilangRekap = Terbilang::tampil($rekap->total))
                                 <p class="text-right text-xs text-stone-500 italic">{{ $terbilangRekap }}</p>
-                            @endif
-                            @if ($rekap->jumlahItem() > 0)
-                                <p class="mt-1.5 text-right text-xs">
-                                    <x-rab.status-pagu :status="$rekap->keteranganPagu()" data-testid="status-pagu-form-{{ $kunci }}" />
-                                </p>
                             @endif
                             @if ($anggaran && $anggaran->adaTermin())
                                 @php $mekanisme = MekanismePembayaran::dari($anggaran); @endphp
