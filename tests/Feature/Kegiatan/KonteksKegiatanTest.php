@@ -82,10 +82,12 @@ class KonteksKegiatanTest extends TestCase
             ->assertDispatched('notify', type: 'info')
             ->assertSeeHtml('data-testid="konteks-dikosongkan"')
             ->assertSee('kosong — AI hanya memakai isian di atas')
+            ->tap(fn () => $this->assertSame('', app(KegiatanRepository::class)->temukan(1)['konteks'], 'Pengosongan tersimpan otomatis.'))
             ->call('urungkanKosongkanKonteks')
             ->assertSet('form.konteks', $asli)
             ->assertSet('konteksDikosongkan', null)
             ->assertSet('adaPerubahan', true)
+            ->tap(fn () => $this->assertSame($asli, app(KegiatanRepository::class)->temukan(1)['konteks'], 'Pemulihan juga tersimpan.'))
             ->assertDontSeeHtml('data-testid="konteks-dikosongkan"')
             // Dikosongkan lalu diisi ulang: tidak ada lagi yang perlu diurungkan.
             ->set('form.konteks', '')
@@ -99,6 +101,50 @@ class KonteksKegiatanTest extends TestCase
             ->assertNotDispatched('notify')
             ->call('urungkanKosongkanKonteks')
             ->assertSet('form.konteks', '');
+    }
+
+    public function test_konteks_tersimpan_otomatis_tanpa_ikut_menyimpan_isian_lain(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $nama = $repo->temukan(1)['nama_kegiatan'];
+
+        $komponen = Livewire::test(Form::class, ['kegiatan' => 1])
+            ->assertSee('Tersimpan otomatis beberapa saat setelah berhenti mengetik.')
+            ->set('form.nama_kegiatan', 'Nama yang belum disimpan')
+            ->set('form.konteks', 'Peserta   seluruh guru.  ')
+            // Kotak teks tidak dirapikan di tempat (ketikan tidak tertimpa); penyimpanan memakai versi rapi.
+            ->assertSet('form.konteks', 'Peserta   seluruh guru.  ')
+            ->assertDispatched('konteks-tersimpan')
+            ->assertSet('adaPerubahan', true);
+        $this->assertMatchesRegularExpression('/^\d{2}\.\d{2}$/', $komponen->get('konteksTersimpanPada'));
+
+        $tersimpan = $repo->temukan(1);
+        $this->assertSame('Peserta seluruh guru.', $tersimpan['konteks']);
+        $this->assertSame($nama, $tersimpan['nama_kegiatan'], 'Isian lain yang belum disimpan tidak ikut tersimpan.');
+    }
+
+    public function test_simpan_otomatis_hanya_untuk_kegiatan_tersimpan_dan_isian_sah(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $jumlah = count($repo->semua());
+
+        Livewire::test(Form::class)
+            ->assertSee('Tersimpan di perangkat ini sampai kegiatan disimpan.')
+            ->set('form.konteks', 'Catatan kegiatan baru.')
+            ->assertNotDispatched('konteks-tersimpan')
+            ->assertSet('konteksTersimpanPada', null);
+        $this->assertCount($jumlah, $repo->semua(), 'Kegiatan baru tidak dibuat lewat simpan otomatis.');
+
+        $asli = $repo->temukan(1)['konteks'];
+        Livewire::test(Form::class, ['kegiatan' => 1])
+            ->set('form.konteks', str_repeat('a', 3001))
+            ->assertHasErrors('form.konteks')
+            ->assertNotDispatched('konteks-tersimpan');
+        $this->assertSame($asli, $repo->temukan(1)['konteks']);
+
+        // Simpan Draf merapikan spasi konteks.
+        Livewire::test(Form::class, ['kegiatan' => 1])->set('form.konteks', "Output   dokumen\n\n\n\nKTSP")->call('saveDraft');
+        $this->assertSame("Output dokumen\n\nKTSP", $repo->temukan(1)['konteks']);
     }
 
     public function test_bagian_konteks_di_form(): void

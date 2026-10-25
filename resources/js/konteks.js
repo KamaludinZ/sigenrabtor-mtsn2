@@ -33,10 +33,15 @@ const tulis = (kunci, nilai) => {
     }
 };
 
-export default function catatanKonteks({ aspek, kunci, model = 'form.konteks', idInput = 'catatan_konteks' }) {
+export default function catatanKonteks({ aspek, kunci, simpanOtomatis = false, tersimpanPada = null, model = 'form.konteks', idInput = 'catatan_konteks', jeda = 2000 }) {
+    let pewaktu = null;
+
     return {
         teks: '',
         draf: null,
+        /** '' | 'menunggu' | 'tersimpan' — status simpan otomatis ke server (kegiatan yang sudah tersimpan). */
+        simpan: tersimpanPada ? 'tersimpan' : '',
+        pada: tersimpanPada,
 
         init() {
             this.teks = String(this.$wire.$get(model) ?? '');
@@ -67,6 +72,28 @@ export default function catatanKonteks({ aspek, kunci, model = 'form.konteks', i
 
             this.teks = event.target.value;
             tulis(kunci, { teks: this.teks, waktu: new Date().toISOString() });
+
+            // Simpan otomatis setelah berhenti mengetik: nilai dikirim apa adanya (server tidak mengubahnya di tempat).
+            if (simpanOtomatis) {
+                clearTimeout(pewaktu);
+                this.simpan = 'menunggu';
+                pewaktu = setTimeout(() => this.$wire.$set(model, this.teks), jeda);
+            }
+        },
+
+        /** Server sudah menyimpan catatan: draf lokal tidak diperlukan lagi. */
+        konteksTersimpan(event) {
+            clearTimeout(pewaktu);
+            this.simpan = 'tersimpan';
+            this.pada = event.detail?.pada ?? this.pada;
+            tulis(kunci, null);
+        },
+
+        teksSimpan() {
+            if (!simpanOtomatis) return 'Tersimpan di perangkat ini sampai kegiatan disimpan.';
+            if (this.simpan === 'menunggu') return 'Menyimpan otomatis…';
+            if (this.simpan === 'tersimpan') return `Tersimpan otomatis pukul ${this.pada}.`;
+            return 'Tersimpan otomatis beberapa saat setelah berhenti mengetik.';
         },
 
         waktuDraf() {

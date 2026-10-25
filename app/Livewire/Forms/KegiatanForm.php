@@ -589,7 +589,7 @@ class KegiatanForm extends Form
             'peserta_jumlah' => filter_var($this->peserta_jumlah, FILTER_VALIDATE_INT) ?: null,
             'peserta_jenis' => $this->peserta_jenis,
             'uraian_pelaksanaan' => $this->uraian_pelaksanaan,
-            'konteks' => $this->konteks,
+            'konteks' => Teks::rapikan($this->konteks),
             'sumber_dana' => $this->sumberDana(),
         ];
     }

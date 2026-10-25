@@ -13,8 +13,8 @@
     menulis catatan yang berguna; panel kanan menunjukkan apa yang sudah diketahui AI dari isian lain agar tidak diulang.
 --}}
 <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]" data-testid="bagian-konteks"
-     x-data="catatanKonteks({ aspek: @js(KonteksAi::ASPEK), kunci: @js('sirabtor:konteks:'.($kegiatanId ?? 'baru')) })"
-     x-on:input="ketik($event)" x-on:kegiatan-tersimpan.window="tersimpan()">
+     x-data="catatanKonteks({ aspek: @js(KonteksAi::ASPEK), kunci: @js('sirabtor:konteks:'.($kegiatanId ?? 'baru')), simpanOtomatis: @js($kegiatanId !== null && $this->dapatDiedit()), tersimpanPada: @js($konteksTersimpanPada) })"
+     x-on:input="ketik($event)" x-on:kegiatan-tersimpan.window="tersimpan()" x-on:konteks-tersimpan.window="konteksTersimpan($event)">
     <div class="min-w-0 space-y-3">
         {{-- Draf lokal: ketikan yang belum sempat tersimpan (halaman tertutup/koneksi putus) bisa dipulihkan. --}}
         <div x-show="draf" x-cloak class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gold-50 px-3 py-2.5 text-sm text-stone-800 ring-1 ring-gold-200"
@@ -51,6 +51,13 @@
                 <button type="button" wire:click="urungkanKosongkanKonteks" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
             </div>
         @endif
+
+        {{-- Status penyimpanan catatan (simpan otomatis untuk kegiatan tersimpan; draf lokal untuk kegiatan baru). --}}
+        <p class="-mt-1 flex items-center gap-1.5 text-[11px] text-stone-500" data-testid="status-simpan-konteks" aria-live="polite"
+           x-bind:data-simpan="simpan">
+            <x-ui.icon name="save" class="size-3.5 text-stone-400" />
+            <span x-text="teksSimpan()">{{ $kegiatanId ? ($konteksTersimpanPada ? "Tersimpan otomatis pukul {$konteksTersimpanPada}." : 'Tersimpan otomatis beberapa saat setelah berhenti mengetik.') : 'Tersimpan di perangkat ini sampai kegiatan disimpan.' }}</span>
+        </p>
 
         {{-- Peringatan NIP ikut tiap ketukan (dihitung di klien; awal dari server). --}}
         <p x-show="nip" @unless ($nip) style="display: none" @endunless data-testid="peringatan-nip" data-nip="{{ $nip ? 'ya' : 'tidak' }}" x-bind:data-nip="nip ? 'ya' : 'tidak'"

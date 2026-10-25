@@ -13,6 +13,7 @@ use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
 use App\Support\Stub\StubData;
+use App\Support\Teks;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -58,6 +59,10 @@ class Form extends Component
     /** Isi catatan konteks sebelum dikosongkan (untuk "Urungkan"); null bila tidak ada yang dikosongkan. */
     #[Locked]
     public ?string $konteksDikosongkan = null;
+
+    /** Jam (H.i) catatan konteks terakhir tersimpan otomatis; null = belum ada simpan otomatis di sesi ini. */
+    #[Locked]
+    public ?string $konteksTersimpanPada = null;
 
     /** Isian yang ikut divalidasi ulang ketika isian kunci berubah. */
     private const ISIAN_TERKAIT = [
@@ -139,6 +144,8 @@ class Form extends Component
         $this->form->konteks = $this->konteksDikosongkan;
         $this->konteksDikosongkan = null;
         $this->adaPerubahan = true;
+        // Pengosongan tadi ikut tersimpan otomatis, jadi isi yang dipulihkan juga disimpan kembali.
+        $this->simpanKonteksOtomatis();
     }
 
     /**
@@ -179,11 +186,46 @@ class Form extends Component
             default => null,
         };
 
-        $this->form->rapikanUraian($field);
+        // Konteks tidak dirapikan di tempat: nilainya dikirim saat leading masih menulis (simpan otomatis), dan perubahan
+        // dari server akan menimpa ketikan. Spasinya dirapikan saat disimpan (dataUntukDisimpan / simpanKonteksOtomatis).
+        if ($field !== 'konteks') {
+            $this->form->rapikanUraian($field);
+        }
 
         // Isian terkait divalidasi lebih dulu (errornya disimpan), lalu isian utama dengan alur Livewire biasa.
         $this->validasiIsianTerkait(self::ISIAN_TERKAIT[$field] ?? []);
         $this->form->validateOnly($field);
+
+        if ($field === 'konteks') {
+            $this->simpanKonteksOtomatis();
+        }
+    }
+
+    /**
+     * Simulasi persistence catatan konteks: kegiatan yang sudah tersimpan menyimpan catatannya sendiri (tanpa menunggu
+     * "Simpan Draf"), sehingga catatan tidak hilang walau isian lain belum disimpan. Kegiatan baru cukup draf lokal.
+     */
+    private function simpanKonteksOtomatis(): void
+    {
+        if ($this->kegiatanId === null || ! $this->dapatDiedit()) {
+            return;
+        }
+
+        $repo = app(KegiatanRepository::class);
+        $data = $repo->temukan($this->kegiatanId);
+        $bersih = Teks::rapikan($this->form->konteks);
+
+        if ($data === null) {
+            return;
+        }
+
+        if (($data['konteks'] ?? '') !== $bersih) {
+            $data['konteks'] = $bersih;
+            $repo->simpan($data, $this->kegiatanId);
+        }
+
+        $this->konteksTersimpanPada = now()->format('H.i');
+        $this->dispatch('konteks-tersimpan', pada: $this->konteksTersimpanPada);
     }
 
     /**

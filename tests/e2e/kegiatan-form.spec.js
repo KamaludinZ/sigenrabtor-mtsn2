@@ -229,8 +229,13 @@ test.describe('Form Data Kegiatan', () => {
         await contoh.screenshot({ path: `storage/playwright/shots/contoh-konteks-${testInfo.project.name}.png` });
     });
 
-    test('konteks: mengosongkan catatan memberi tahu dampaknya dan bisa diurungkan', async ({ page }) => {
-        await page.goto('/kegiatan/1/edit');
+    test('konteks: mengosongkan catatan memberi tahu dampaknya dan bisa diurungkan', async ({ page }, testInfo) => {
+        // Kegiatan sendiri: catatan tersimpan otomatis, jadi contoh bersama (kegiatan 1) tidak boleh diubah.
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Kosongkan Konteks ${testInfo.project.name} ${Date.now()}`);
+        await page.locator('#catatan_konteks').fill('Peserta: 54 guru. Output: dokumen KTSP.');
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit/, { timeout: 30_000 });
         const catatan = page.locator('#catatan_konteks');
         await catatan.scrollIntoViewIfNeeded();
         const awal = await catatan.inputValue();
@@ -248,6 +253,36 @@ test.describe('Form Data Kegiatan', () => {
         await expect(catatan).toHaveValue(awal);
         await expect(pemberitahuan).toHaveCount(0);
         await expect(page.getByTestId('status-catatan-ai')).toContainText('ikut terkirim');
+
+        // Pemulihan ikut tersimpan otomatis: dimuat ulang, catatan tetap ada.
+        await expect(page.getByTestId('status-simpan-konteks')).toHaveAttribute('data-simpan', 'tersimpan');
+        await page.reload();
+        await expect(catatan).toHaveValue(awal);
+    });
+
+    test('konteks: tersimpan otomatis setelah berhenti mengetik, tetap ada setelah dimuat ulang', async ({ page }, testInfo) => {
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Simpan Otomatis ${testInfo.project.name} ${Date.now()}`);
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit/, { timeout: 30_000 });
+
+        const catatan = page.locator('#catatan_konteks');
+        const status = page.getByTestId('status-simpan-konteks');
+        await catatan.scrollIntoViewIfNeeded();
+        await expect(status).toContainText('Tersimpan otomatis beberapa saat setelah berhenti mengetik.');
+
+        // Mengetik tanpa meninggalkan kotak: status menunggu, lalu tersimpan otomatis.
+        await catatan.click();
+        await page.keyboard.type('Peserta: 30 guru;  narasumber dari MGMP');
+        await expect(status).toHaveAttribute('data-simpan', 'menunggu');
+        await expect(status).toHaveAttribute('data-simpan', 'tersimpan', { timeout: 20_000 });
+        await expect(status).toContainText(/Tersimpan otomatis pukul \d{2}\.\d{2}\./);
+        await expect(catatan).toBeFocused();
+        await expect(catatan).toHaveValue('Peserta: 30 guru;  narasumber dari MGMP');
+
+        await page.reload();
+        await expect(catatan).toHaveValue('Peserta: 30 guru; narasumber dari MGMP');
+        await expect(page.getByTestId('draf-konteks')).toBeHidden();
     });
 
     test('konteks: draf lokal dipulihkan setelah halaman tertutup, hilang setelah disimpan', async ({ page }, testInfo) => {
