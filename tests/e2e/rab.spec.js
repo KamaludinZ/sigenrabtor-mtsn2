@@ -629,6 +629,27 @@ test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA b
         await expect(page.getByTestId('total-rab')).toHaveText('7.950.000');
     });
 
+    test('pratinjau KAK: penanda pagu di Pembiayaan, tanda per dokumen, dan tautan ke RAB', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/3/edit');
+        await page.getByRole('button', { name: 'Pratinjau', exact: true }).click();
+        const panel = page.getByTestId('panel-pratinjau');
+        await expect(panel).toBeVisible();
+        await expect(panel.getByTestId('tanda-pagu-dipa')).toBeVisible();
+        await expect(panel.getByTestId('tanda-pagu-komite')).toBeVisible();
+        await expect(panel.getByTestId('penanda-pagu')).toHaveAttribute('data-status', 'tanpa_pagu');
+
+        await panel.getByRole('tab', { name: /KAK Komite/ }).click();
+        const penanda = panel.getByTestId('penanda-pagu');
+        await expect(penanda).toHaveAttribute('data-status', 'melebihi');
+        await expect(penanda).toContainText('RAB Komite melebihi pagu Rp450.000');
+        await expect(panel.getByTestId('peringatan-pagu-komite')).toContainText('Total RAB Rp7.950.000 dari pagu Rp7.500.000 (106%)');
+        await penanda.scrollIntoViewIfNeeded();
+        await panel.screenshot({ path: `storage/playwright/shots/pratinjau-penanda-pagu-${testInfo.project.name}.png` });
+
+        await panel.getByRole('link', { name: 'Buka RAB Komite' }).click();
+        await expect(page).toHaveURL(/\/kegiatan\/3\/rab\?sumber=Komite/, { timeout: 30_000 });
+    });
+
     test('Data Kegiatan: status batas pagu ikut berubah selagi pagu diketik', async ({ page }, testInfo) => {
         page.on('dialog', (dialog) => dialog.accept());
         await page.goto('/kegiatan/3/edit');

@@ -296,8 +296,16 @@ test.describe('Form Data Kegiatan', () => {
 
         const catatan = page.locator('#catatan_konteks');
         await catatan.scrollIntoViewIfNeeded();
-        await catatan.fill('Output: dokumen evaluasi diri madrasah');
-        await page.reload();
+        // Halaman tertutup sebelum ketikan sampai ke server: request Livewire diputus agar blur/simpan otomatis saat
+        // halaman dimuat ulang tidak sempat menyimpan (tanpa ini hasilnya bergantung pada kecepatan unload).
+        const updateLivewire = /\/livewire[^/]*\/update/;
+        const tutupSebelumTersimpan = async () => {
+            await page.route(updateLivewire, (route) => route.abort());
+            await catatan.fill('Output: dokumen evaluasi diri madrasah');
+            await page.reload();
+            await page.unroute(updateLivewire);
+        };
+        await tutupSebelumTersimpan();
 
         // Ketikan yang belum disimpan ditawarkan untuk dipulihkan; Abaikan membuangnya.
         await expect(page.getByTestId('draf-konteks')).toBeVisible();
@@ -308,8 +316,7 @@ test.describe('Form Data Kegiatan', () => {
         await expect(page.getByTestId('bagian-konteks')).toBeVisible();
         await expect(page.getByTestId('draf-konteks')).toBeHidden();
 
-        await catatan.fill('Output: dokumen evaluasi diri madrasah');
-        await page.reload();
+        await tutupSebelumTersimpan();
         await page.getByTestId('draf-konteks').getByRole('button', { name: 'Pulihkan' }).click();
         await expect(catatan).toHaveValue('Output: dokumen evaluasi diri madrasah');
         await expect(page.getByTestId('bagian-konteks').locator('[data-aspek="output"]')).toHaveAttribute('data-terisi', 'ya');

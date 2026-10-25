@@ -208,8 +208,14 @@
                             @foreach ($kak->daftarSumber as $sumberDok)
                                 <button type="button" role="tab" aria-selected="{{ $sumberDok === $kak->sumber ? 'true' : 'false' }}"
                                         wire:click="$set('pratinjauSumber', '{{ $sumberDok }}')"
-                                        @class(['rounded-md px-3 py-1 text-xs font-semibold', 'bg-white text-stone-900 shadow-xs' => $sumberDok === $kak->sumber, 'text-stone-500 hover:text-stone-800' => $sumberDok !== $kak->sumber])>
+                                        @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold', 'bg-white text-stone-900 shadow-xs' => $sumberDok === $kak->sumber, 'text-stone-500 hover:text-stone-800' => $sumberDok !== $kak->sumber])>
                                     KAK {{ $sumberDok }}
+                                    @if (in_array($kak->statusPagu[$sumberDok] ?? null, ['melebihi', 'tanpa_pagu'], true))
+                                        @php $melebihi = $kak->statusPagu[$sumberDok] === 'melebihi'; @endphp
+                                        <span @class(['size-1.5 rounded-full', 'bg-red-500' => $melebihi, 'bg-gold-500' => ! $melebihi])
+                                              data-testid="tanda-pagu-{{ mb_strtolower($sumberDok) }}" title="{{ $melebihi ? 'RAB melebihi pagu' : 'Pagu belum diisi' }}"></span>
+                                        <span class="sr-only">({{ $melebihi ? 'RAB melebihi pagu' : 'pagu belum diisi' }})</span>
+                                    @endif
                                 </button>
                             @endforeach
                         </div>
@@ -231,6 +237,14 @@
                 @endif
 
                 <div class="flex-1 overflow-y-auto p-3 sm:p-6">
+                    {{-- Ikut tergulir bersama dokumen agar layar sempit tetap lega. --}}
+                    @if ($kak->peringatanPagu)
+                        <x-rab.peringatan-pagu :sumber="$kak->sumber" :hasil="$kak->peringatanPagu->hasil" ringkas class="mx-auto mb-3 max-w-[210mm]">
+                            @if ($kegiatanId)
+                                <a href="{{ route('kegiatan.rab', ['kegiatan' => $kegiatanId, 'sumber' => $kak->sumber]) }}" wire:navigate class="text-brand-700 hover:text-brand-800">Buka RAB {{ $kak->sumber }}</a>
+                            @endif
+                        </x-rab.peringatan-pagu>
+                    @endif
                     <x-dokumen.kak-tor :susunan="$kak" />
                 </div>
             </div>

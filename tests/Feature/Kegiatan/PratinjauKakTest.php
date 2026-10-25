@@ -3,6 +3,7 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\RabRepository;
 use App\Livewire\Kegiatan\Form;
 use App\Support\Dokumen\SusunanKak;
 use Illuminate\Support\Facades\Blade;
@@ -100,6 +101,48 @@ class PratinjauKakTest extends TestCase
             ->assertSee('Ketua Komite MTsN 2 Kota Malang')
             ->set('pratinjauTerbuka', false)
             ->assertDontSeeHtml('data-testid="panel-pratinjau"');
+    }
+
+    public function test_penanda_pagu_di_pembiayaan_dan_cap_draf_bila_melebihi(): void
+    {
+        $komite = SusunanKak::dari($this->kegiatan(3), 'Komite');
+        $this->assertSame(['melebihi', 'RAB Komite melebihi pagu Rp450.000'], [$komite->peringatanPagu->status->status, $komite->peringatanPagu->judul()]);
+        $this->assertSame(['DIPA' => 'tanpa_pagu', 'Komite' => 'melebihi'], $komite->statusPagu);
+        $this->assertSame(['paragraf', 'pagu'], array_column($komite->bagian[7]['isi'], 'jenis'), 'Penanda pagu tepat setelah kalimat Pembiayaan.');
+
+        $dipa = SusunanKak::dari($this->kegiatan(3), 'DIPA');
+        $this->assertSame('tanpa_pagu', $dipa->peringatanPagu->status->status);
+
+        // Tepat pagu: tanpa penanda; disetujui & lengkap tanpa DRAF — sampai RAB-nya melebihi pagu.
+        $workshop = SusunanKak::dari(['status' => 'disetujui'] + $this->kegiatan(1));
+        $this->assertNull($workshop->peringatanPagu);
+        $this->assertNotContains('pagu', array_column($workshop->bagian[7]['isi'], 'jenis'));
+        $this->assertFalse($workshop->draf);
+
+        app(RabRepository::class)->tambahItem(1, 'Komite', ['kode' => '521211', 'uraian' => 'Spanduk', 'kategori' => 'bahan', 'volume' => 1, 'satuan' => 'lembar', 'harga_satuan' => 150_000]);
+        $melebihi = SusunanKak::dari(['status' => 'disetujui'] + $this->kegiatan(1));
+        $this->assertTrue($melebihi->draf, 'RAB melebihi pagu: dokumen tetap bercap DRAF.');
+        $this->assertSame('RAB Komite melebihi pagu Rp150.000', $melebihi->peringatanPagu->judul());
+    }
+
+    public function test_panel_pratinjau_menandai_pagu_per_dokumen(): void
+    {
+        Livewire::test(Form::class, ['kegiatan' => 3])
+            ->set('pratinjauTerbuka', true)
+            ->assertSeeHtml('data-testid="tanda-pagu-dipa"')
+            ->assertSeeHtml('data-testid="tanda-pagu-komite"')
+            ->assertSeeHtml('data-testid="peringatan-pagu-dipa"')
+            ->assertSeeHtml('data-testid="penanda-pagu" data-status="tanpa_pagu"')
+            ->assertSee('Penanda ini hanya di pratinjau, tidak ikut tercetak.')
+            ->set('pratinjauSumber', 'Komite')
+            ->assertSeeHtml('data-testid="penanda-pagu" data-status="melebihi"')
+            ->assertSeeInOrder(['RAB Komite melebihi pagu Rp450.000', 'Buka RAB Komite', '8. Pembiayaan', 'RAB Komite melebihi pagu Rp450.000'])
+            ->assertSeeHtml('href="'.route('kegiatan.rab', ['kegiatan' => 3, 'sumber' => 'Komite']).'"');
+
+        Livewire::test(Form::class, ['kegiatan' => 1])
+            ->set('pratinjauTerbuka', true)
+            ->assertDontSeeHtml('data-testid="penanda-pagu"')
+            ->assertDontSeeHtml('data-testid="peringatan-pagu-');
     }
 
     private function teks(SusunanKak $kak): string

@@ -3,7 +3,8 @@
 {{--
     Pratinjau KAK/TOR bergaya kertas A4: cover lalu sembilan bagian baku dari App\Support\Dokumen\SusunanKak.
     Isian yang belum lengkap tampil sebagai penanda kuning (bukan teks palsu); bagian dari fitur yang belum tersedia
-    tampil abu-abu. Cap "DRAF" muncul selama kegiatan belum disetujui atau belum lengkap.
+    tampil abu-abu. Cap "DRAF" muncul selama kegiatan belum disetujui, belum lengkap, atau RAB-nya melebihi pagu.
+    Penanda pagu di bagian Pembiayaan hanya ada di pratinjau (bukan teks dokumen).
 --}}
 <article {{ $attributes->class(['relative mx-auto w-full max-w-[210mm] overflow-hidden bg-white font-serif text-[15px] leading-relaxed text-stone-900 shadow-sm ring-1 ring-stone-200']) }}
          data-testid="pratinjau-kak">
@@ -52,6 +53,19 @@
                                     <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
                                     {{ $blok['pesan'] }}
                                 </p>
+                                @break
+                            @case('pagu')
+                                @php
+                                    $pagu = $susunan->peringatanPagu;
+                                    $gayaPagu = ['bahaya' => 'bg-red-50 text-red-700 ring-red-200', 'perhatian' => 'bg-gold-50 text-gold-700 ring-gold-200', 'info' => 'bg-sky-50 text-sky-800 ring-sky-200'][$pagu->nada()];
+                                @endphp
+                                <div class="rounded px-2 py-1.5 font-sans text-sm ring-1 {{ $gayaPagu }}" data-testid="penanda-pagu" data-status="{{ $pagu->status->status }}">
+                                    <p class="flex items-start gap-1.5 font-semibold">
+                                        <x-ui.icon :name="$pagu->nada() === 'info' ? 'info' : 'alert'" class="mt-0.5 size-4 shrink-0" />
+                                        {{ $pagu->judul() }}
+                                    </p>
+                                    <p class="mt-0.5 pl-5.5 text-xs text-stone-500">Penanda ini hanya di pratinjau, tidak ikut tercetak.</p>
+                                </div>
                                 @break
                             @case('menunggu')
                                 <p class="flex items-start gap-1.5 rounded bg-stone-50 px-2 py-1 font-sans text-sm text-stone-500 ring-1 ring-stone-200" data-menunggu>

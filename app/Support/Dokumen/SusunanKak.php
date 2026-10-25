@@ -8,16 +8,19 @@ use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
+use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\PeringatanPagu;
 use App\Support\Stub\StubData;
 use Carbon\CarbonImmutable;
 
 /**
  * Susunan isi KAK/TOR satu kegiatan × sumber dana (PRD 7B): cover lalu sembilan bagian baku, siap ditampilkan
  * oleh <x-dokumen.kak-tor>. Isian yang belum lengkap menjadi blok "kosong" dan tercatat di $kurang; dokumen
- * yang belum disetujui atau belum lengkap ditandai DRAF (PRD aturan 8).
+ * yang belum disetujui atau belum lengkap ditandai DRAF (PRD aturan 8), begitu pula selama RAB-nya melebihi pagu.
  *
  * Jenis blok isi: paragraf {teks}, subjudul {teks}, daftar {butir, bernomor}, kosong {pesan},
- * menunggu {pesan} (bagian yang datanya berasal dari fitur yang belum tersedia), pengesahan {kolom}.
+ * menunggu {pesan} (bagian yang datanya berasal dari fitur yang belum tersedia), pengesahan {kolom},
+ * pagu (penanda batas pagu di bagian Pembiayaan; isinya dari $peringatanPagu, tidak ikut tercetak).
  */
 final readonly class SusunanKak
 {
@@ -26,6 +29,8 @@ final readonly class SusunanKak
      * @param  list<array{nomor: int, judul: string, isi: list<array<string, mixed>>}>  $bagian
      * @param  list<string>  $kurang
      * @param  list<string>  $daftarSumber
+     * @param  PeringatanPagu|null  $peringatanPagu  Peringatan batas pagu RAB sumber ini; null bila tepat pagu / RAB kosong.
+     * @param  array<string, string|null>  $statusPagu  Sumber → status pagu RAB-nya (null bila RAB belum berisi), untuk tab dokumen.
      */
     public function __construct(
         public array $cover,
@@ -34,6 +39,8 @@ final readonly class SusunanKak
         public bool $draf,
         public ?string $sumber,
         public array $daftarSumber,
+        public ?PeringatanPagu $peringatanPagu = null,
+        public array $statusPagu = [],
     ) {}
 
     /**
@@ -114,11 +121,16 @@ final readonly class SusunanKak
         ]];
 
         $angka = $sumber ? AngkaDokumen::dari($anggaran[$sumber]->hasil, $sumber, $tahun, $madrasah['nama_singkat']) : null;
-        $bagian[] = ['nomor' => 8, 'judul' => 'Pembiayaan', 'isi' => [match (true) {
+        $peringatanPagu = $sumber ? PeringatanPagu::untuk($sumber, $anggaran[$sumber]->hasil) : null;
+        $pembiayaan = [match (true) {
             $angka === null => $kosong('sumber dana (bagian Sumber Dana)'),
             ! $angka->adaRincian() => $kosong("rincian RAB {$sumber}"),
             default => ['jenis' => 'paragraf', 'teks' => $angka->kalimatPembiayaan()],
-        }]];
+        }];
+        if ($peringatanPagu) {
+            $pembiayaan[] = ['jenis' => 'pagu'];
+        }
+        $bagian[] = ['nomor' => 8, 'judul' => 'Pembiayaan', 'isi' => $pembiayaan];
 
         $bagian[] = ['nomor' => 9, 'judul' => 'Lembar Pengesahan', 'isi' => [self::pengesahan($kegiatan, $leading, $sumber, $madrasah['kota'], $kosong)]];
 
@@ -135,9 +147,11 @@ final readonly class SusunanKak
             $cover,
             $bagian,
             array_values(array_unique($kurang)),
-            ! in_array($status, [StatusKegiatan::Disetujui, StatusKegiatan::Final], true) || $kurang !== [],
+            ! in_array($status, [StatusKegiatan::Disetujui, StatusKegiatan::Final], true) || $kurang !== [] || ($peringatanPagu?->status->melebihi() ?? false),
             $sumber,
             $daftarSumber,
+            $peringatanPagu,
+            array_map(fn (AnggaranSumber $a) => $a->jumlahItem() > 0 ? $a->statusPagu() : null, $anggaran),
         );
     }
 
