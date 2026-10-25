@@ -33,6 +33,10 @@ const tulis = (kunci, nilai) => {
     }
 };
 
+// Teks catatan terakhir yang dikonfirmasi tersimpan di server, per kunci kegiatan. Disimpan di tingkat modul (bukan per
+// komponen) agar tetap berlaku bila komponen Alpine dibuat ulang saat Livewire merender ulang bagian ini.
+const tersimpanDiServer = new Map();
+
 export default function catatanKonteks({ aspek, kunci, simpanOtomatis = false, tersimpanPada = null, model = 'form.konteks', idInput = 'catatan_konteks', jeda = 2000 }) {
     let pewaktu = null;
 
@@ -45,6 +49,7 @@ export default function catatanKonteks({ aspek, kunci, simpanOtomatis = false, t
 
         init() {
             this.teks = String(this.$wire.$get(model) ?? '');
+            tersimpanDiServer.set(kunci, this.teks);
             const lokal = baca(kunci);
 
             // Draf lokal yang berbeda dari data tersimpan ditawarkan untuk dipulihkan; yang sama dibuang.
@@ -77,13 +82,36 @@ export default function catatanKonteks({ aspek, kunci, simpanOtomatis = false, t
             if (simpanOtomatis) {
                 clearTimeout(pewaktu);
                 this.simpan = 'menunggu';
-                pewaktu = setTimeout(() => this.$wire.$set(model, this.teks), jeda);
+                pewaktu = setTimeout(() => this.kirimOtomatis(), jeda);
             }
+        },
+
+        /**
+         * Nilai dibaca saat pewaktu berbunyi dan tidak dikirim bila sama dengan teks yang terakhir dikonfirmasi tersimpan:
+         * pewaktu yang tertunda tidak boleh menimpa catatan yang sudah tersinkron saat blur atau dipulihkan lewat "Urungkan".
+         */
+        kirimOtomatis() {
+            const nilai = document.getElementById(idInput)?.value ?? this.teks;
+
+            if (nilai === tersimpanDiServer.get(kunci)) {
+                this.simpan = this.pada ? 'tersimpan' : '';
+
+                return;
+            }
+
+            this.$wire.$set(model, nilai);
+        },
+
+        destroy() {
+            clearTimeout(pewaktu);
         },
 
         /** Server sudah menyimpan catatan: draf lokal tidak diperlukan lagi. */
         konteksTersimpan(event) {
             clearTimeout(pewaktu);
+            if (typeof event.detail?.teks === 'string') {
+                tersimpanDiServer.set(kunci, event.detail.teks);
+            }
             this.simpan = 'tersimpan';
             this.pada = event.detail?.pada ?? this.pada;
             tulis(kunci, null);

@@ -254,8 +254,10 @@ test.describe('Form Data Kegiatan', () => {
         await expect(pemberitahuan).toHaveCount(0);
         await expect(page.getByTestId('status-catatan-ai')).toContainText('ikut terkirim');
 
-        // Pemulihan ikut tersimpan otomatis: dimuat ulang, catatan tetap ada.
+        // Pemulihan ikut tersimpan otomatis: dimuat ulang, catatan tetap ada. Tunggu melewati jeda simpan otomatis (2 detik)
+        // agar pewaktu dari ketikan kosong tadi tidak bisa menimpa pemulihan setelahnya.
         await expect(page.getByTestId('status-simpan-konteks')).toHaveAttribute('data-simpan', 'tersimpan');
+        await page.waitForTimeout(2_500);
         await page.reload();
         await expect(catatan).toHaveValue(awal);
     });

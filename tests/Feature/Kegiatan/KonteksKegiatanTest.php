@@ -114,7 +114,8 @@ class KonteksKegiatanTest extends TestCase
             ->set('form.konteks', 'Peserta   seluruh guru.  ')
             // Kotak teks tidak dirapikan di tempat (ketikan tidak tertimpa); penyimpanan memakai versi rapi.
             ->assertSet('form.konteks', 'Peserta   seluruh guru.  ')
-            ->assertDispatched('konteks-tersimpan')
+            // Teks yang dikirim klien ikut dikonfirmasi agar pewaktu simpan otomatis tidak mengirim ulang nilai yang sama.
+            ->assertDispatched('konteks-tersimpan', teks: 'Peserta   seluruh guru.  ')
             ->assertSet('adaPerubahan', true);
         $this->assertMatchesRegularExpression('/^\d{2}\.\d{2}$/', $komponen->get('konteksTersimpanPada'));
 

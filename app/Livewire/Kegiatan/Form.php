@@ -226,7 +226,8 @@ class Form extends Component
         }
 
         $this->konteksTersimpanPada = now()->format('H.i');
-        $this->dispatch('konteks-tersimpan', pada: $this->konteksTersimpanPada);
+        // Teks yang baru disimpan ikut dikirim: klien tidak mengirim ulang nilai yang sama dari pewaktu simpan otomatis.
+        $this->dispatch('konteks-tersimpan', pada: $this->konteksTersimpanPada, teks: $this->form->konteks);
     }
 
     /**

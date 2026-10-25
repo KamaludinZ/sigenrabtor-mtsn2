@@ -586,6 +586,36 @@ test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA b
         await expect(tabel).toContainText('Review RKJM dan Penyusunan RKTM');
         await expect(tabel).toContainText('Melebihi pagu');
     });
+
+    test('halaman Pagu & RAB: tabel pagu, total, selisih, pemakaian, dan kondisi tiap RAB', async ({ page }, testInfo) => {
+        const mobile = testInfo.project.name === 'mobile';
+        await page.goto('/kegiatan/3/rab');
+        await page.getByRole('tab', { name: 'Pagu & RAB' }).click();
+        await expect(page).toHaveURL(/halaman=pagu/);
+
+        const bagian = page.getByTestId('tabel-pagu-rab');
+        await expect(page.getByTestId('ringkasan-pagu-rab')).toHaveText('1 RAB melebihi pagu · 1 pagu belum diisi');
+        const komite = bagian.getByTestId(mobile ? 'kartu-pagu-komite' : 'baris-pagu-komite');
+        await expect(komite).toBeVisible();
+        await expect(komite).toHaveAttribute('data-status', 'melebihi');
+        for (const teks of ['Rp7.500.000', 'Rp7.950.000', '-Rp450.000', '106%', 'Melebihi pagu Rp450.000']) {
+            await expect(komite).toContainText(teks);
+        }
+        const dipa = bagian.getByTestId(mobile ? 'kartu-pagu-dipa' : 'baris-pagu-dipa');
+        await expect(dipa).toContainText('Belum diisi');
+        await expect(dipa.getByRole('link', { name: 'Isi pagu' })).toHaveAttribute('href', /\/kegiatan\/3\/edit#sumber-dana$/);
+        await expect(bagian.getByTestId(mobile ? 'jumlah-pagu-rab-kartu' : 'jumlah-pagu-rab')).toContainText('Rp8.850.000');
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/tabel-pagu-${testInfo.project.name}.png`, fullPage: true });
+
+        // "Buka rincian" membuka rincian belanja sumber dana itu.
+        await komite.getByRole('button', { name: 'Buka rincian' }).click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByRole('tab', { name: 'Rincian belanja' })).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByTestId('total-rab')).toHaveText('7.950.000');
+    });
 });
 
 test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {

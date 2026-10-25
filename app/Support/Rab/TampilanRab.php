@@ -6,12 +6,13 @@ namespace App\Support\Rab;
  * Logika render halaman RAB berdasarkan sumber dana kegiatan:
  * - mode "tanpa_sumber" (belum memilih DIPA/Komite), "tunggal" (satu RAB), atau "ganda" (DIPA + Komite);
  * - urutan sumber baku (DIPA lalu Komite) dan sumber yang dibuka di penyunting (fallback ke sumber pertama);
- * - halaman yang tersedia: "Semua RAB" hanya untuk kegiatan dua sumber; "Termin pembayaran" per sumber dana;
+ * - halaman yang tersedia: "Semua RAB" hanya untuk kegiatan dua sumber; "Pagu & RAB" membandingkan semua RAB dengan
+ *   pagunya; "Termin pembayaran" per sumber dana;
  * - RAB tersimpan milik sumber yang sudah dilepas (tidak dicetak, tampil baca-saja).
  */
 final readonly class TampilanRab
 {
-    public const HALAMAN = ['rincian' => 'Rincian belanja', 'semua' => 'Semua RAB', 'rekap' => 'Rekap per kelompok', 'termin' => 'Termin pembayaran'];
+    public const HALAMAN = ['rincian' => 'Rincian belanja', 'semua' => 'Semua RAB', 'rekap' => 'Rekap per kelompok', 'pagu' => 'Pagu & RAB', 'termin' => 'Termin pembayaran'];
 
     /** Halaman yang menampilkan satu RAB (sumber dana aktif); pindah kartu sumber tetap di halaman yang sama. */
     public const HALAMAN_PER_SUMBER = ['rincian', 'termin'];

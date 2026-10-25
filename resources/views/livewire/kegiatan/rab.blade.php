@@ -44,12 +44,13 @@
         @include('livewire.kegiatan.partials.ringkasan-sumber')
 
         {{-- Halaman di dalam RAB --}}
-        <div class="mt-6 inline-flex rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Halaman RAB">
+        {{-- Layar sempit: tab membungkus ke baris berikutnya agar semua halaman tetap terlihat. --}}
+        <div class="mt-6 flex flex-wrap gap-0.5 rounded-xl bg-stone-100 p-1 sm:inline-flex sm:flex-nowrap" role="tablist" aria-label="Halaman RAB">
             @foreach ($this->tampilan->halamanTersedia() as $kunciHalaman => $labelHalaman)
                 <button type="button" role="tab" aria-selected="{{ $halaman === $kunciHalaman ? 'true' : 'false' }}"
                         wire:click="$set('halaman', '{{ $kunciHalaman }}')"
                         @class([
-                            'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition',
+                            'rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap transition sm:px-3.5',
                             'bg-white text-stone-900 shadow-xs' => $halaman === $kunciHalaman,
                             'text-stone-500 hover:text-stone-800' => $halaman !== $kunciHalaman,
                         ])>{{ $labelHalaman }}</button>
@@ -60,6 +61,8 @@
             @include('livewire.kegiatan.partials.rekap-kelompok')
         @elseif ($halaman === 'semua')
             @include('livewire.kegiatan.partials.semua-rab')
+        @elseif ($halaman === 'pagu')
+            @include('livewire.kegiatan.partials.tabel-pagu')
         @elseif ($halaman === 'termin')
             @if ($tujuanTertunda)
                 <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-50 px-4 py-3 text-sm text-stone-800 ring-1 ring-gold-300"
