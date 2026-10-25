@@ -15,11 +15,12 @@ test.describe('Daftar & impor kegiatan dari Excel', () => {
             await page.getByRole('button', { name: /^Filter/ }).click();
         }
         await page.locator('#filter-sumber').selectOption('keduanya');
-        await expect(tabel.locator('tbody tr')).toHaveCount(1);
+        await expect(tabel.locator('tbody tr')).toHaveCount(2);
         await expect(tabel).toContainText('Supervisi Akademik dan Refleksi Pembelajaran');
+        await expect(tabel).toContainText('Review RKJM dan Penyusunan RKTM');
         await expect(page.getByTestId('filter-aktif')).toContainText('DIPA dan Komite');
         await expect(page).toHaveURL(/sumber=keduanya/);
-        await expect(page.getByTestId('ringkasan-daftar')).toContainText('1 kegiatan sesuai filter');
+        await expect(page.getByTestId('ringkasan-daftar')).toContainText('2 kegiatan sesuai filter');
         await page.screenshot({ path: `storage/playwright/shots/daftar-filter-${testInfo.project.name}.png`, fullPage: true });
 
         await page.locator('#filter-bulan').selectOption('7');

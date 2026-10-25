@@ -109,7 +109,54 @@ class StubKegiatanRepository implements KegiatanRepository
      */
     public static function contohSemua(): array
     {
-        return [1 => self::contoh(), 2 => self::contohDuaSumber()];
+        return [1 => self::contoh(), 2 => self::contohDuaSumber(), 3 => self::contohMelebihiPagu()];
+    }
+
+    /**
+     * Contoh Batas Pagu (PRD F12): RAB Komite melebihi pagu, pagu DIPA belum diisi seperti draf dari Cascade Perkin.
+     *
+     * @return array<string, mixed>
+     */
+    public static function contohMelebihiPagu(): array
+    {
+        $tahun = StubData::tahunAktif()['tahun'];
+
+        return [
+            'id' => 3,
+            'status' => 'draf',
+            'dibuat_pada' => "{$tahun}-01-08T13:00:00+07:00",
+            'diperbarui_pada' => "{$tahun}-01-08T13:00:00+07:00",
+            'nama_kegiatan' => 'Review RKJM dan Penyusunan RKTM',
+            'nama_kegiatan_cover' => 'REVIEW RKJM DAN PENYUSUNAN RKTM',
+            'cover_manual' => false,
+            'latar_belakang' => '',
+            'tujuan' => 'meninjau capaian RKJM dan menyusun RKTM tahun berikutnya berdasarkan hasil evaluasi diri madrasah.',
+            'sasaran' => 'dokumen RKTM yang disepakati warga madrasah dan komite madrasah.',
+            'tanggal_dokumen' => "{$tahun}-01-08",
+            'tanggal_laporan' => "{$tahun}-11-27",
+            'laporan_otomatis' => true,
+            'tanggal_mulai' => "{$tahun}-11-16",
+            'lama_hari' => 2,
+            'hari_kerja' => true,
+            'bulan_pelaksanaan' => [11],
+            'leading' => '1.6',
+            'kode_rktm' => '6.17.13',
+            'kode_sk' => 'SK.10',
+            'kode_iksk' => 'IKSK 10.2',
+            'kode_edm' => 'A7',
+            'budaya_mutu' => 2,
+            'tempat' => 'Ruang Rapat Madrasah',
+            'peserta_jumlah' => 30,
+            'peserta_jenis' => 'Tim pengembang madrasah dan perwakilan komite',
+            'uraian_pelaksanaan' => 'rapat kerja dua hari: telaah capaian RKJM dan hasil EDM, dilanjutkan penyusunan program dan anggaran RKTM bersama narasumber.',
+            'konteks' => 'Rapat kerja 2 hari diikuti 30 orang (tim pengembang madrasah dan perwakilan komite); narasumber dari Kankemenag; output dokumen RKTM yang disahkan kepala madrasah dan ketua komite.',
+            'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => null], ['sumber' => 'Komite', 'pagu' => 7_500_000]],
+            // Nama fiktif untuk contoh.
+            'panitia' => [
+                ['nama' => 'Ahmad Fauzi, S.Pd.', 'jabatan' => 'Tim Penjamin Mutu', 'peran' => 'Ketua'],
+                ['nama' => 'Nur Hidayah, S.Pd.', 'jabatan' => 'Guru IPA', 'peran' => 'Sekretaris'],
+            ],
+        ];
     }
 
     /**

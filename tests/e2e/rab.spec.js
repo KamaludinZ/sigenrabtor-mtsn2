@@ -568,6 +568,26 @@ test.describe('Rekap anggaran per kelompok', () => {
     });
 });
 
+test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA belum diisi)', () => {
+    test('setiap RAB dibandingkan dengan pagunya sendiri di RAB dan Data Kegiatan', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/3/rab');
+        await expect(page.getByRole('tab', { name: /RAB DIPA/ })).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByTestId('status-pagu-dipa')).toHaveText('Pagu belum diisi');
+        await expect(page.getByTestId('status-pagu-komite')).toHaveText('Melebihi pagu Rp450.000');
+
+        await page.getByRole('tab', { name: /RAB Komite/ }).click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByTestId('total-rab')).toHaveText('7.950.000');
+        await expect(page.getByTestId('ringkasan-rab')).toContainText('Melebihi pagu Rp450.000');
+        await page.screenshot({ path: `storage/playwright/shots/batas-pagu-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.goto('/kegiatan?pagu=melebihi');
+        const tabel = page.getByTestId('tabel-kegiatan');
+        await expect(tabel).toContainText('Review RKJM dan Penyusunan RKTM');
+        await expect(tabel).toContainText('Melebihi pagu');
+    });
+});
+
 test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
     test('dua RAB terpisah dengan pagu, total, dan terbilang masing-masing', async ({ page }, testInfo) => {
         await page.goto('/kegiatan/2/rab');

@@ -8,11 +8,13 @@ namespace App\Support\Stub;
  * - Kegiatan 1 (Komite) mengikuti "Form RAB Workshop" madrasah: 15 baris, total Rp10.000.000, dua termin.
  * - Kegiatan 2 (DIPA + Komite) contoh RAB terpisah per sumber dana: DIPA Rp5.400.000 dari pagu Rp6.000.000,
  *   Komite Rp2.500.000 tepat pagu. Kode akun memakai akun belanja yang lazim (5212xx/5241xx).
+ * - Kegiatan 3 (DIPA + Komite) contoh Batas Pagu: Komite Rp7.950.000 melebihi pagu Rp7.500.000 sebesar Rp450.000,
+ *   DIPA Rp900.000 dengan pagu belum diisi.
  */
 class StubRab
 {
     /** Kegiatan contoh → sumber dana yang punya RAB contoh. */
-    public const DAFTAR_CONTOH = [1 => ['Komite'], 2 => ['DIPA', 'Komite']];
+    public const DAFTAR_CONTOH = [1 => ['Komite'], 2 => ['DIPA', 'Komite'], 3 => ['DIPA', 'Komite']];
 
     /**
      * @return list<array{kode: string, uraian: string, kategori: string, volume: float|int, satuan: string, harga_satuan: int}>
@@ -33,6 +35,19 @@ class StubRab
                 ['kode' => '521211', 'uraian' => 'Konsumsi refleksi hasil supervisi guru', 'kategori' => 'bahan', 'volume' => 56, 'satuan' => 'kotak', 'harga_satuan' => 25_000],
                 ['kode' => '521213', 'uraian' => 'Honorarium narasumber refleksi pembelajaran', 'kategori' => 'jasa', 'volume' => 2, 'satuan' => 'OJ', 'harga_satuan' => 400_000],
                 ['kode' => '521219', 'uraian' => 'Piagam penghargaan guru terbaik', 'kategori' => 'lain', 'volume' => 3, 'satuan' => 'lembar', 'harga_satuan' => 100_000],
+            ],
+            '3:DIPA' => [
+                ['kode' => '521211', 'uraian' => 'Penggandaan laporan EDM untuk rapat pleno', 'kategori' => 'bahan', 'volume' => 40, 'satuan' => 'eksemplar', 'harga_satuan' => 15_000],
+                ['kode' => '524113', 'uraian' => 'Transport pengawas madrasah (verifikasi RKTM)', 'kategori' => 'lain', 'volume' => 2, 'satuan' => 'OK', 'harga_satuan' => 150_000],
+            ],
+            '3:Komite' => [
+                ['kode' => '521213', 'uraian' => 'Honorarium narasumber penyusunan RKTM', 'kategori' => 'jasa', 'volume' => 2, 'satuan' => 'OJ', 'harga_satuan' => 900_000],
+                ['kode' => '521211', 'uraian' => 'Nasi kotak rapat kerja (30 orang x 2 hari)', 'kategori' => 'bahan', 'volume' => 60, 'satuan' => 'kotak', 'harga_satuan' => 30_000],
+                ['kode' => '521211', 'uraian' => 'Kue kotak rapat kerja (30 orang x 2 hari)', 'kategori' => 'bahan', 'volume' => 60, 'satuan' => 'kotak', 'harga_satuan' => 15_000],
+                ['kode' => '521213', 'uraian' => 'Penyelesaian tugas penyusunan RKTM di luar jam kerja (10 orang x 3 kali)', 'kategori' => 'jasa', 'volume' => 30, 'satuan' => 'OJ', 'harga_satuan' => 50_000],
+                ['kode' => '521211', 'uraian' => 'ATK dan bahan kerja tim', 'kategori' => 'bahan', 'volume' => 1, 'satuan' => 'paket', 'harga_satuan' => 750_000],
+                ['kode' => '521211', 'uraian' => 'Penggandaan dan penjilidan dokumen RKJM dan RKTM', 'kategori' => 'bahan', 'volume' => 12, 'satuan' => 'eksemplar', 'harga_satuan' => 50_000],
+                ['kode' => '521219', 'uraian' => 'Sewa LCD proyektor dan pengeras suara', 'kategori' => 'lain', 'volume' => 2, 'satuan' => 'hari', 'harga_satuan' => 300_000],
             ],
             default => [],
         };
