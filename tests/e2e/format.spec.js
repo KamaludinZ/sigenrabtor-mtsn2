@@ -4,7 +4,7 @@ test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
         await page.goto('/kegiatan/1/rab');
         const hasil = await page.evaluate(() => {
-            const f = window.SIGENRABTOR;
+            const f = window.SIRABTOR;
             return {
                 rupiah: f.rupiah(10000000),
                 negatif: f.rupiah(-600000),
@@ -25,7 +25,7 @@ test.describe('Format mata uang di klien', () => {
     test('terbilang klien sama dengan server & tampil di ringkasan RAB', async ({ page }) => {
         await page.goto('/kegiatan/1/rab');
         await expect(page.getByTestId('total-anggaran-terbilang').first()).toHaveText('“Sepuluh Juta Rupiah”');
-        const hasil = await page.evaluate(() => [0, 11, 115000, 1000, 1001001, 32000000, 9540000, 1000000000000].map((n) => window.SIGENRABTOR.terbilang(n)));
+        const hasil = await page.evaluate(() => [0, 11, 115000, 1000, 1001001, 32000000, 9540000, 1000000000000].map((n) => window.SIRABTOR.terbilang(n)));
         expect(hasil).toEqual([
             'Nol Rupiah',
             'Sebelas Rupiah',

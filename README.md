@@ -1,4 +1,6 @@
-# SIGENRABTOR — MTsN 2 Kota Malang
+# SIRABTOR — MTsN 2 Kota Malang
+
+**Versi 1.0.0** · sebelumnya bernama SIGENRABTOR. Nama database, volume Docker, dan repositori tetap `sigenrabtor` (identitas teknis, tidak tampil ke pengguna).
 
 Generator **KAK/TOR & RAB** madrasah: data kegiatan diisi sekali, lalu cover, KAK/TOR, RAB, dan lembar pengesahan
 dihasilkan otomatis dalam format seragam (Word/PDF), dapat dicetak per leading dan per sumber dana (DIPA/Komite).

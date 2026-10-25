@@ -1,6 +1,8 @@
-# SIGENRABTOR — MTsN 2 Kota Malang
+# SIRABTOR v1.0.0 — MTsN 2 Kota Malang
 
 Generator KAK/TOR & RAB madrasah. PRD lengkap: `npx ngodingpakeai plan get fe0f436c-8f4b-4ce7-92bf-510b53eb56e7`.
+
+Nama & versi tampilan diatur di `config/sigenrabtor.php` (`aplikasi.nama`, `aplikasi.versi`). Nama database, volume Docker, dan repositori tetap `sigenrabtor` (identitas teknis, tidak tampil ke pengguna).
 
 ## Stack
 - PHP 8.4, Laravel 13, Livewire 4 (komponen berbasis kelas di `app/Livewire`, view di `resources/views/livewire`), Alpine.js (bawaan Livewire), Tailwind CSS 4, Vite.

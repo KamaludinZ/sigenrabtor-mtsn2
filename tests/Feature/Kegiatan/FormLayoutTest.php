@@ -19,7 +19,7 @@ class FormLayoutTest extends TestCase
         $response = $this->get(route('kegiatan.create'));
 
         $response->assertOk()
-            ->assertSee('SIGENRABTOR')
+            ->assertSee('SIRABTOR')
             ->assertSee('Tahun Anggaran')
             ->assertSee('2026')
             ->assertSee('Kegiatan Baru')

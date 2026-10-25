@@ -4,6 +4,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Identitas aplikasi
+    |--------------------------------------------------------------------------
+    |
+    | Nama & versi yang tampil di layar (judul tab, sidebar). Sengaja tidak bergantung
+    | pada APP_NAME di .env agar tampilan seragam di semua lingkungan.
+    |
+    */
+
+    'aplikasi' => [
+        'nama' => 'SIRABTOR',
+        'versi' => '1.0.0',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Data tiruan (tahap frontend)
     |--------------------------------------------------------------------------
     |

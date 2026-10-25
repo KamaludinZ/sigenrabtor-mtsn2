@@ -2,9 +2,12 @@
 
 <div class="flex grow flex-col gap-y-6 overflow-y-auto bg-brand-900 px-4 pb-4">
     <a href="{{ url('/') }}" class="flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-1">
-        <span class="grid size-9 place-items-center rounded-lg bg-gold-400 text-sm font-bold text-brand-950">SG</span>
+        <span class="grid size-9 place-items-center rounded-lg bg-gold-400 text-sm font-bold text-brand-950">SR</span>
         <span class="leading-tight">
-            <span class="block text-sm font-bold tracking-wide text-white">SIGENRABTOR</span>
+            <span class="flex items-baseline gap-1.5">
+                <span class="text-sm font-bold tracking-wide text-white">{{ config('sigenrabtor.aplikasi.nama') }}</span>
+                <span class="text-[10px] font-medium text-brand-300" data-testid="versi-aplikasi">v{{ config('sigenrabtor.aplikasi.versi') }}</span>
+            </span>
             <span class="block text-xs text-brand-200">{{ $madrasah['nama_singkat'] }}</span>
         </span>
     </a>
