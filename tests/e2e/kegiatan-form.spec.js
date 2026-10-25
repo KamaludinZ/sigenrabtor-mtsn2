@@ -128,4 +128,22 @@ test.describe('Form Data Kegiatan', () => {
         expect(panjang).toBeGreaterThan(0);
         await expect(page.locator('#pelaksanaan').getByText(`${panjang} / 3.000`)).toBeVisible();
     });
+    test('pelaksanaan: angka bulat saja (ketik & tempel), peringatan angka tak wajar', async ({ page, context }) => {
+        const lama = page.locator('#lama_hari');
+        await lama.click();
+        await page.keyboard.type('1e-2.5');
+        await expect(lama).toHaveValue('125');
+
+        await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+        const peserta = page.locator('#peserta_jumlah');
+        await page.evaluate(() => navigator.clipboard.writeText('2.500'));
+        await peserta.click();
+        await page.keyboard.press('Control+V');
+        await expect(peserta).toHaveValue('2500');
+        await peserta.blur();
+
+        await expect(page.getByText('Lama kegiatan 125 hari (lebih dari sebulan) — pastikan bukan salah ketik.')).toBeVisible();
+        await expect(page.getByText('Jumlah peserta 2.500 orang — pastikan bukan salah ketik.')).toBeVisible();
+        await expect(page.locator('#lama_hari-error')).toHaveCount(0);
+    });
 });

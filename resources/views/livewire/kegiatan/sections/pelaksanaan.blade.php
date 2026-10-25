@@ -9,6 +9,7 @@
     $bulanDariTanggal = $mulai && $selesai ? JadwalPelaksanaan::bulanTercakup($mulai, $selesai) : null;
     $lama = (int) $form->lama_hari;
     $kelompok = $form->kelengkapanPelaksanaan();
+    $peringatan = $form->peringatanPelaksanaan();
     $nama = $form->nama_kegiatan ?: '…';
     $batasLaporan = $form->tanggal_laporan ? rescue(fn () => CarbonImmutable::parse($form->tanggal_laporan), null, false) : null;
 
@@ -26,23 +27,26 @@
 @endphp
 
 <div class="space-y-8">
+    <p class="-mb-4 text-xs text-stone-500"><span class="text-red-600">*</span> wajib sebelum kegiatan diajukan; draf boleh disimpan dulu.</p>
+
     {{-- A. Waktu pelaksanaan --}}
     <div data-kelompok="waktu">
         <x-ui.sub-bagian huruf="A" judul="Waktu pelaksanaan" :kelengkapan="$kelompok['waktu']"
                          keterangan="Tanggal selesai, bulan pelaksanaan, dan batas laporan dihitung otomatis." />
 
         <div class="mt-4 grid gap-4 sm:grid-cols-3">
-            <x-ui.field label="Tanggal mulai" for="tanggal_mulai" error="form.tanggal_mulai"
-                        :warning="$form->peringatanJadwal()['tanggal_mulai'] ?? null">
+            <x-ui.field label="Tanggal mulai" for="tanggal_mulai" error="form.tanggal_mulai" required
+                        :warning="$peringatan['tanggal_mulai'] ?? null">
                 <input type="date" id="tanggal_mulai" wire:model.live="form.tanggal_mulai"
                        min="{{ $tahun }}-01-01" max="{{ $tahun }}-12-31" class="form-input"
                        @error('form.tanggal_mulai') aria-invalid="true" aria-describedby="tanggal_mulai-error" @enderror>
             </x-ui.field>
 
-            <x-ui.field label="Lama kegiatan" for="lama_hari" error="form.lama_hari">
+            <x-ui.field label="Lama kegiatan" for="lama_hari" error="form.lama_hari" required
+                        :warning="$peringatan['lama_hari'] ?? null">
                 <div class="relative">
                     <input type="number" id="lama_hari" wire:model.live.debounce.400ms="form.lama_hari" min="1" max="366" step="1"
-                           inputmode="numeric" placeholder="1" class="form-input pr-12"
+                           inputmode="numeric" x-angka-bulat placeholder="1" class="form-input pr-12"
                            @error('form.lama_hari') aria-invalid="true" aria-describedby="lama_hari-error" @enderror>
                     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-500">hari</span>
                 </div>
@@ -70,7 +74,7 @@
 
         <div class="mt-5">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <p class="form-label mb-0">Bulan pelaksanaan</p>
+                <p class="form-label mb-0">Bulan pelaksanaan <span class="text-red-600" aria-hidden="true">*</span></p>
                 @if ($bulanDariTanggal && $bulanDariTanggal !== $form->bulan_pelaksanaan)
                     <button type="button" wire:click="sesuaikanBulan" class="text-xs font-semibold text-brand-700 hover:text-brand-800">
                         Sesuaikan dengan tanggal
@@ -93,7 +97,9 @@
                 @endforeach
             </div>
 
-            @error('form.bulan_pelaksanaan') <p class="form-error">{{ $message }}</p> @enderror
+            @if ($pesanBulan = $errors->first('form.bulan_pelaksanaan') ?: $errors->first('form.bulan_pelaksanaan.*'))
+                <p class="form-error" role="alert">{{ $pesanBulan }}</p>
+            @endif
             <p class="form-hint">
                 @if ($teksBulan = JadwalPelaksanaan::teksBulan($form->bulan_pelaksanaan, $tahun))
                     Tercetak: {{ $teksBulan }}. Dipakai juga untuk matrik tahapan &amp; jadwal.
@@ -110,8 +116,7 @@
                          keterangan="Tempat tercetak di bagian 5 KAK; peserta melengkapi kalimat Tahapan: Pelaksanaan." />
 
         <div class="mt-4 grid gap-5 sm:grid-cols-2">
-            <x-ui.field class="sm:col-span-2" label="Tempat pelaksanaan" for="tempat" error="form.tempat"
-                        hint="Wajib untuk dokumen lengkap.">
+            <x-ui.field class="sm:col-span-2" label="Tempat pelaksanaan" for="tempat" error="form.tempat" required>
                 <input type="text" id="tempat" wire:model.live.blur="form.tempat" list="saran-tempat" maxlength="255" autocomplete="off"
                        placeholder="mis. Aula Madrasah" class="form-input"
                        @error('form.tempat') aria-invalid="true" aria-describedby="tempat-error" @enderror>
@@ -122,16 +127,17 @@
                 </datalist>
             </x-ui.field>
 
-            <x-ui.field label="Jumlah peserta" for="peserta_jumlah" error="form.peserta_jumlah">
+            <x-ui.field label="Jumlah peserta" for="peserta_jumlah" error="form.peserta_jumlah" required
+                        :warning="$peringatan['peserta_jumlah'] ?? null">
                 <div class="relative">
                     <input type="number" id="peserta_jumlah" wire:model.live.blur="form.peserta_jumlah" min="1" max="100000" step="1"
-                           inputmode="numeric" placeholder="0" class="form-input pr-16"
+                           inputmode="numeric" x-angka-bulat placeholder="0" class="form-input pr-16"
                            @error('form.peserta_jumlah') aria-invalid="true" aria-describedby="peserta_jumlah-error" @enderror>
                     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-stone-500">orang</span>
                 </div>
             </x-ui.field>
 
-            <x-ui.field label="Jenis peserta" for="peserta_jenis" error="form.peserta_jenis">
+            <x-ui.field label="Jenis peserta" for="peserta_jenis" error="form.peserta_jenis" required>
                 <input type="text" id="peserta_jenis" wire:model.live.blur="form.peserta_jenis" list="saran-peserta" maxlength="150" autocomplete="off"
                        placeholder="mis. Guru dan tenaga kependidikan" class="form-input"
                        @error('form.peserta_jenis') aria-invalid="true" aria-describedby="peserta_jenis-error" @enderror>

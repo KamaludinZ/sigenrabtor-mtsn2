@@ -34,6 +34,19 @@ class KegiatanForm extends Form
         'kode_sk' => 'Kode SK wajib dipilih — setiap kegiatan harus mendukung satu Sasaran Kegiatan Perjanjian Kinerja.',
     ];
 
+    /** Isian Pelaksanaan yang wajib terisi sebelum kegiatan diajukan; draf boleh menyimpannya kosong. */
+    public const PELAKSANAAN_WAJIB = [
+        'tanggal_mulai' => 'Tanggal mulai wajib diisi sebelum kegiatan diajukan.',
+        'lama_hari' => 'Lama kegiatan wajib diisi sebelum kegiatan diajukan.',
+        'bulan_pelaksanaan' => 'Pilih minimal satu bulan pelaksanaan sebelum kegiatan diajukan.',
+        'tempat' => 'Tempat pelaksanaan wajib diisi sebelum kegiatan diajukan — tercetak di bagian 5 KAK.',
+        'peserta_jumlah' => 'Jumlah peserta wajib diisi sebelum kegiatan diajukan.',
+        'peserta_jenis' => 'Jenis peserta wajib diisi sebelum kegiatan diajukan.',
+    ];
+
+    /** Di atas batas ini angka masih sah, tetapi diberi peringatan kemungkinan salah ketik. */
+    public const BATAS_WAJAR = ['lama_hari' => 31, 'peserta_jumlah' => 2000];
+
     /** Batas pagu per sumber dana (Rp) untuk menolak salah ketik digit berlebih. */
     public const MAKS_PAGU = 100_000_000_000;
 
@@ -215,6 +228,12 @@ class KegiatanForm extends Form
             'max' => 'Kolom :attribute maksimal :max karakter.',
             'date' => 'Kolom :attribute harus berupa tanggal yang valid.',
             'integer' => 'Kolom :attribute harus berupa angka bulat.',
+            'lama_hari.integer' => 'Lama kegiatan harus angka bulat (jumlah hari), mis. 3.',
+            'peserta_jumlah.integer' => 'Jumlah peserta harus angka bulat tanpa titik atau koma, mis. 56.',
+            'array' => 'Kolom :attribute tidak valid.',
+            'bulan_pelaksanaan.max' => 'Bulan pelaksanaan paling banyak 12.',
+            'bulan_pelaksanaan.*.integer' => 'Bulan pelaksanaan tidak valid.',
+            'bulan_pelaksanaan.*.between' => 'Bulan pelaksanaan harus antara Januari dan Desember.',
             'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
             'tanggal_dokumen.after_or_equal' => $rentangDokumen,
             'tanggal_dokumen.before_or_equal' => $rentangDokumen,
@@ -751,6 +770,24 @@ class KegiatanForm extends Form
      *
      * @return array<string, string>
      */
+    /**
+     * Semua isian wajib pengajuan yang masih kosong: kode SK dan isian Pelaksanaan, berkunci nama error Livewire.
+     *
+     * @return array<string, string>
+     */
+    public function wajibPengajuanKosong(): array
+    {
+        $kosong = $this->kodeWajibKosong();
+
+        foreach (self::PELAKSANAAN_WAJIB as $field => $pesan) {
+            if (blank($this->{$field})) {
+                $kosong['form.'.$field] = $pesan;
+            }
+        }
+
+        return $kosong;
+    }
+
     public function kodeWajibKosong(): array
     {
         $kosong = [];
@@ -824,6 +861,28 @@ class KegiatanForm extends Form
      *
      * @return array<string, string>
      */
+    /**
+     * Peringatan bagian Pelaksanaan (tidak menghalangi simpan): jadwal ditambah angka di atas batas wajar.
+     *
+     * @return array<string, string>
+     */
+    public function peringatanPelaksanaan(): array
+    {
+        $peringatan = $this->peringatanJadwal();
+        $lama = filter_var($this->lama_hari, FILTER_VALIDATE_INT);
+        $peserta = filter_var($this->peserta_jumlah, FILTER_VALIDATE_INT);
+
+        if ($lama !== false && $lama > self::BATAS_WAJAR['lama_hari'] && $lama <= 366) {
+            $peringatan['lama_hari'] = "Lama kegiatan {$lama} hari (lebih dari sebulan) — pastikan bukan salah ketik.";
+        }
+
+        if ($peserta !== false && $peserta > self::BATAS_WAJAR['peserta_jumlah'] && $peserta <= 100_000) {
+            $peringatan['peserta_jumlah'] = 'Jumlah peserta '.Format::angka($peserta).' orang — pastikan bukan salah ketik.';
+        }
+
+        return $peringatan;
+    }
+
     public function peringatanJadwal(): array
     {
         $peringatan = [];

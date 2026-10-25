@@ -42,7 +42,8 @@
                     <div x-cloak x-show="yakin" class="rounded-lg bg-stone-50 p-2.5 ring-1 ring-stone-200">
                         <p class="text-xs text-stone-600">{{ $aksi['konfirmasi'] }}</p>
                         <div class="mt-2 flex gap-2">
-                            <button type="button" wire:click="ubahStatus('{{ $kunci }}')" wire:loading.attr="disabled"
+                            {{-- Konfirmasi ditutup saat dikirim: bila aksi ditolak validasi, tombol aksi kembali tersedia. --}}
+                            <button type="button" wire:click="ubahStatus('{{ $kunci }}')" x-on:click="yakin = false" wire:loading.attr="disabled"
                                     class="{{ $gayaTombol[$aksi['gaya']] }} flex-1 px-2.5 py-1.5 text-xs">
                                 Ya, {{ mb_strtolower($aksi['label']) }}
                             </button>

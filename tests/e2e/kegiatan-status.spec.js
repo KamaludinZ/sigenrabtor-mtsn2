@@ -31,6 +31,19 @@ test.describe.serial('Status kegiatan (Draf → Final)', () => {
         await page.goto(urlKegiatan);
         await expect(page.getByTestId('lencana-kode')).toHaveAttribute('data-status', 'sebagian');
 
+        // Isian pelaksanaan masih kosong: pengajuan ditolak dan isian wajib ditandai.
+        await jalankanAksi(page, 'Ajukan pemeriksaan');
+        await expect(page.getByText(/Lengkapi \d isian yang ditandai merah sebelum mengajukan\./)).toBeVisible();
+        await expect(page.locator('#tempat-error')).toContainText('Tempat pelaksanaan wajib diisi sebelum kegiatan diajukan');
+
+        await page.locator('#tanggal_mulai').fill('2026-07-14');
+        await page.locator('#lama_hari').fill('2');
+        await page.locator('#tempat').fill('Aula Madrasah');
+        await page.locator('#peserta_jumlah').fill('40');
+        await page.locator('#peserta_jenis').fill('Guru');
+        await page.locator('#peserta_jenis').blur();
+        await expect(page.locator('#tempat-error')).toHaveCount(0);
+
         await jalankanAksi(page, 'Ajukan pemeriksaan');
         await expect(page.getByText('Status kegiatan: Diperiksa.')).toBeVisible();
         await expect(page.getByTestId('banner-terkunci')).toContainText('Isian terkunci — status Diperiksa');

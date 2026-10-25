@@ -9,4 +9,23 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.magic('jumlahRab', () => jumlahRab);
     window.Alpine.magic('rapikanKetikan', () => rapikanKetikan);
     window.Alpine.magic('terbilang', () => terbilang);
+
+    // x-angka-bulat: isian angka bulat — tolak ketikan e/+/-/titik/koma dan sisakan digit saat menempel ("1.000" → "1000").
+    window.Alpine.directive('angka-bulat', (el) => {
+        el.addEventListener('keydown', (e) => {
+            if (['e', 'E', '+', '-', '.', ','].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        el.addEventListener('paste', (e) => {
+            const teks = e.clipboardData?.getData('text') ?? '';
+            const digit = teks.replace(/\D/g, '');
+
+            if (digit !== teks) {
+                e.preventDefault();
+                el.value = digit;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+    });
 });
