@@ -50,6 +50,52 @@
         </div>
     @endif
 
+    {{-- Ringkasan batas pagu (PRD F12): jumlah kegiatan per kondisi anggaran sebagai penyaring, dan RAB yang perlu ditindaklanjuti. --}}
+    @php
+        $jumlahPerKondisi = $this->jumlahPerKondisi;
+        $perluPerhatian = $this->perluPerhatian;
+    @endphp
+    <section class="mt-6 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:p-5" aria-labelledby="judul-batas-pagu" data-testid="ringkasan-batas-pagu">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="judul-batas-pagu" class="text-sm font-semibold text-stone-900">Kondisi anggaran terhadap pagu</h2>
+            <p class="text-xs text-stone-500">Jumlah kegiatan per kondisi; kegiatan dengan dua RAB masuk kondisi terberatnya. Pilih kondisi untuk menyaring tabel.</p>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label="Saring menurut kondisi anggaran">
+            @foreach (Daftar::STATUS_PAGU as $kunciKondisi => $labelKondisi)
+                <button type="button" wire:click="saringKondisi('{{ $kunciKondisi }}')" aria-pressed="{{ $statusPagu === $kunciKondisi ? 'true' : 'false' }}"
+                        data-testid="kondisi-{{ $kunciKondisi }}"
+                        class="rounded-xl bg-white px-3 py-2.5 text-left ring-1 ring-stone-200 transition hover:ring-stone-300 aria-pressed:bg-stone-50 aria-pressed:ring-2 aria-pressed:ring-brand-700">
+                    <span @class(['block text-lg font-bold tabular-nums', $jumlahPerKondisi[$kunciKondisi] > 0 ? $statusPaguTampil[$kunciKondisi][1] : 'text-stone-300'])>{{ $jumlahPerKondisi[$kunciKondisi] }}</span>
+                    <span class="block text-xs text-stone-600">{{ $labelKondisi }}</span>
+                </button>
+            @endforeach
+        </div>
+
+        @if ($perluPerhatian !== [])
+            <div class="mt-4" data-testid="perlu-perhatian">
+                <h3 class="text-xs font-semibold tracking-wide text-stone-500 uppercase">Perlu perhatian · {{ count($perluPerhatian) }} RAB</h3>
+                <ul class="mt-2 divide-y divide-stone-100 rounded-xl ring-1 ring-stone-200">
+                    @foreach (array_slice($perluPerhatian, 0, 5) as $p)
+                        <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2.5" data-testid="perhatian-{{ $p['id'] }}-{{ mb_strtolower($p['sumber']) }}">
+                            <div class="min-w-0">
+                                <a href="{{ route('kegiatan.rab', ['kegiatan' => $p['id'], 'sumber' => $p['sumber']]) }}" wire:navigate
+                                   class="text-sm font-medium text-stone-900 hover:text-brand-700">{{ $p['nama'] }}</a>
+                                <span class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-stone-500">
+                                    <x-rab.lencana-sumber :sumber="$p['sumber']" awalan="RAB" class="text-[10px]" />
+                                    <span class="tabular-nums">{{ Format::rupiah($p['total']) }} · pagu {{ $p['pagu'] !== null ? Format::rupiah($p['pagu']) : 'belum diisi' }}</span>
+                                </span>
+                            </div>
+                            <x-rab.status-pagu :status="$p['status']" class="text-xs" />
+                        </li>
+                    @endforeach
+                </ul>
+                @if (count($perluPerhatian) > 5)
+                    <p class="mt-2 text-xs text-stone-500">dan {{ count($perluPerhatian) - 5 }} RAB lainnya — pilih “Melebihi pagu” atau “Pagu belum diisi” untuk melihat semuanya di tabel.</p>
+                @endif
+            </div>
+        @endif
+    </section>
+
     <section class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-label="Tabel kegiatan" x-data="{ filterTerbuka: false }">
         {{-- Cari & filter --}}
         <div class="space-y-3 border-b border-stone-100 px-4 py-4 sm:px-5">

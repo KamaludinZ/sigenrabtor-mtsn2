@@ -603,6 +603,32 @@ test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA b
         await expect(tabel).toContainText('Melebihi pagu');
     });
 
+    test('Data Kegiatan: ringkasan kondisi pagu menyaring tabel dan menuntun ke RAB yang perlu perhatian', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan');
+        const ringkasan = page.getByTestId('ringkasan-batas-pagu');
+        await expect(ringkasan).toContainText('Kondisi anggaran terhadap pagu');
+        const perhatian = ringkasan.getByTestId('perhatian-3-komite');
+        await expect(perhatian).toContainText('Review RKJM dan Penyusunan RKTM');
+        await expect(perhatian).toContainText('Melebihi pagu Rp450.000');
+        await expect(ringkasan.getByTestId('perhatian-3-dipa')).toContainText('Pagu belum diisi');
+        await ringkasan.screenshot({ path: `storage/playwright/shots/ringkasan-batas-pagu-${testInfo.project.name}.png` });
+
+        // Tombol kondisi = penyaring tabel; dipilih lagi untuk melepas.
+        const melebihi = ringkasan.getByTestId('kondisi-melebihi');
+        await melebihi.click();
+        await expect(melebihi).toHaveAttribute('aria-pressed', 'true');
+        await expect(page).toHaveURL(/pagu=melebihi/);
+        await expect(page.getByTestId('tabel-kegiatan')).toContainText('Review RKJM dan Penyusunan RKTM');
+        await expect(page.getByTestId('tabel-kegiatan')).not.toContainText('Workshop Penyusunan Kurikulum');
+        await melebihi.click();
+        await expect(melebihi).toHaveAttribute('aria-pressed', 'false');
+        await expect(page).not.toHaveURL(/pagu=/);
+
+        await perhatian.getByRole('link', { name: 'Review RKJM dan Penyusunan RKTM' }).click();
+        await expect(page).toHaveURL(/\/kegiatan\/3\/rab\?sumber=Komite/, { timeout: 30_000 });
+        await expect(page.getByTestId('total-rab')).toHaveText('7.950.000');
+    });
+
     test('Data Kegiatan: status batas pagu ikut berubah selagi pagu diketik', async ({ page }, testInfo) => {
         page.on('dialog', (dialog) => dialog.accept());
         await page.goto('/kegiatan/3/edit');

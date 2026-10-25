@@ -95,6 +95,48 @@ class DaftarKegiatanTest extends TestCase
         $this->assertNotNull($kosong);
     }
 
+    public function test_ringkasan_kondisi_pagu_dan_rab_yang_perlu_perhatian(): void
+    {
+        $komponen = Livewire::test(Daftar::class)
+            ->assertSeeHtml('data-testid="ringkasan-batas-pagu"')
+            ->assertSee('Kondisi anggaran terhadap pagu')
+            ->assertSee('Perlu perhatian · 2 RAB');
+        $this->assertSame(['sesuai' => 1, 'sisa' => 1, 'melebihi' => 1, 'tanpa_pagu' => 0, 'rab_kosong' => 0], $komponen->instance()->jumlahPerKondisi);
+        $this->assertSame(
+            [[3, 'Komite', 'melebihi'], [3, 'DIPA', 'tanpa_pagu']],
+            array_map(fn ($p) => [$p['id'], $p['sumber'], $p['status']->status], $komponen->instance()->perluPerhatian),
+        );
+
+        // Kelebihan terbesar di atas; RAB kosong tanpa pagu tidak perlu ditindaklanjuti di sini.
+        $kegiatan = app(KegiatanRepository::class);
+        $lomba = $kegiatan->simpan(['nama_kegiatan' => 'Lomba Kebersihan', 'leading' => '1.2', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 100_000]]]);
+        $kegiatan->simpan(['nama_kegiatan' => 'Rapat Tanpa Pagu', 'sumber_dana' => [['sumber' => 'Komite', 'pagu' => null]]]);
+        app(RabRepository::class)->tambahItem($lomba, 'DIPA', ['kode' => '', 'uraian' => 'Hadiah', 'kategori' => 'bahan', 'volume' => 3, 'satuan' => 'paket', 'harga_satuan' => 50_000]);
+
+        $komponen = Livewire::test(Daftar::class);
+        $this->assertSame(['sesuai' => 1, 'sisa' => 1, 'melebihi' => 2, 'tanpa_pagu' => 0, 'rab_kosong' => 1], $komponen->instance()->jumlahPerKondisi);
+        $this->assertSame(
+            [[3, 'Komite', -450_000], [$lomba, 'DIPA', -50_000], [3, 'DIPA', null]],
+            array_map(fn ($p) => [$p['id'], $p['sumber'], $p['status']->selisih], $komponen->instance()->perluPerhatian),
+        );
+        $komponen->assertSeeHtml('href="'.route('kegiatan.rab', ['kegiatan' => 3, 'sumber' => 'Komite']).'"');
+
+        // Tombol kondisi menyaring tabel (pilih lagi untuk melepas); jumlah tombol tetap mengabaikan filter kondisi itu sendiri.
+        $komponen->call('saringKondisi', 'melebihi')
+            ->assertSet('statusPagu', 'melebihi')
+            ->assertSet('halaman', 1);
+        $this->assertMatchesRegularExpression('/aria-pressed="true"\s+data-testid="kondisi-melebihi"/', $komponen->html());
+        $this->assertSame(['Lomba Kebersihan', self::RKTM], $this->nama($komponen));
+        $this->assertSame(1, $komponen->instance()->jumlahPerKondisi['sesuai']);
+        $komponen->call('saringKondisi', 'melebihi')->assertSet('statusPagu', '')
+            ->call('saringKondisi', 'tidak-ada')->assertSet('statusPagu', '');
+
+        // Filter lain ikut membatasi jumlah & daftar perhatian.
+        $komponen->set('leading', '1.2');
+        $this->assertSame(['sesuai' => 0, 'sisa' => 0, 'melebihi' => 1, 'tanpa_pagu' => 0, 'rab_kosong' => 0], $komponen->instance()->jumlahPerKondisi);
+        $this->assertSame([$lomba], array_column($komponen->instance()->perluPerhatian, 'id'));
+    }
+
     public function test_chip_filter_aktif_bisa_dihapus_satu_atau_semua(): void
     {
         $komponen = Livewire::withQueryParams(['sumber' => 'komite', 'bulan' => '8', 'cari' => 'supervisi'])

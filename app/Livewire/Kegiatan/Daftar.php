@@ -10,6 +10,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\StatusPagu;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -19,7 +20,7 @@ use Livewire\Component;
 
 /**
  * Halaman Data Kegiatan: tabel kegiatan tahun anggaran aktif dengan pencarian, filter lengkap, urutan kolom,
- * ringkasan pagu & total RAB, halaman, serta unduh template dan impor dari Excel.
+ * ringkasan pagu & total RAB, ringkasan kondisi batas pagu (PRD F12), halaman, serta unduh template dan impor dari Excel.
  */
 #[Layout('layouts.app')]
 class Daftar extends Component
@@ -105,7 +106,7 @@ class Daftar extends Component
                 'bulan' => $bulan,
                 'bulan_teks' => self::teksBulanSingkat($bulan),
                 'bulan_lengkap' => JadwalPelaksanaan::teksBulan($bulan, $tahun),
-                'sumber' => array_map(fn ($a) => ['sumber' => $a->sumber, 'pagu' => $a->pagu(), 'total' => $a->total()], $anggaran),
+                'sumber' => array_map(fn ($a) => ['sumber' => $a->sumber, 'pagu' => $a->pagu(), 'total' => $a->total(), 'item' => $a->jumlahItem()], $anggaran),
                 'pagu' => array_sum(array_map(fn ($a) => (int) $a->pagu(), $anggaran)),
                 'total' => array_sum(array_map(fn ($a) => $a->total(), $anggaran)),
                 'item' => array_sum(array_map(fn ($a) => $a->jumlahItem(), $anggaran)),
@@ -126,28 +127,7 @@ class Daftar extends Component
     public function terfilter(): array
     {
         $cari = PemeriksaImporKegiatan::kunciNama($this->cari);
-
-        $baris = array_values(array_filter($this->semuaBaris, function (array $b) use ($cari) {
-            $sumber = array_column($b['sumber'], 'sumber');
-
-            return ($cari === '' || str_contains(PemeriksaImporKegiatan::kunciNama($b['nama'].' '.$b['kode_rktm']), $cari))
-                && match ($this->leading) {
-                    '' => true,
-                    'belum' => $b['leading'] === null || $b['leading'] === '',
-                    default => $b['leading'] === $this->leading,
-                }
-            && match ($this->sumber) {
-                'dipa' => in_array(SumberDana::Dipa->value, $sumber, true),
-                'komite' => in_array(SumberDana::Komite->value, $sumber, true),
-                'keduanya' => count($sumber) === 2,
-                'belum' => $sumber === [],
-                default => true,
-            }
-            && ($this->status === '' || $b['status']->value === $this->status)
-            && ($this->bulan === '' || in_array((int) $this->bulan, $b['bulan'], true))
-            && ($this->statusPagu === '' || $b['status_pagu'] === $this->statusPagu)
-            && ($this->asal === '' || $b['asal'] === $this->asal);
-        }));
+        $baris = array_values(array_filter($this->semuaBaris, fn (array $b) => $this->cocok($b, $cari)));
 
         $kunci = match ($this->urut) {
             'nama' => fn ($b) => mb_strtolower($b['nama']),
@@ -162,6 +142,93 @@ class Daftar extends Component
         usort($baris, fn ($a, $b) => ($kunci($a) <=> $kunci($b)) * $arah ?: $a['id'] <=> $b['id']);
 
         return $baris;
+    }
+
+    /**
+     * Baris cocok dengan semua filter aktif; $abaikanKondisi melewatkan filter kondisi anggaran (untuk menghitung tombolnya).
+     *
+     * @param  array<string, mixed>  $b
+     */
+    private function cocok(array $b, string $cari, bool $abaikanKondisi = false): bool
+    {
+        $sumber = array_column($b['sumber'], 'sumber');
+
+        return ($cari === '' || str_contains(PemeriksaImporKegiatan::kunciNama($b['nama'].' '.$b['kode_rktm']), $cari))
+            && match ($this->leading) {
+                '' => true,
+                'belum' => $b['leading'] === null || $b['leading'] === '',
+                default => $b['leading'] === $this->leading,
+            }
+        && match ($this->sumber) {
+            'dipa' => in_array(SumberDana::Dipa->value, $sumber, true),
+            'komite' => in_array(SumberDana::Komite->value, $sumber, true),
+            'keduanya' => count($sumber) === 2,
+            'belum' => $sumber === [],
+            default => true,
+        }
+        && ($this->status === '' || $b['status']->value === $this->status)
+        && ($this->bulan === '' || in_array((int) $this->bulan, $b['bulan'], true))
+        && ($abaikanKondisi || $this->statusPagu === '' || $b['status_pagu'] === $this->statusPagu)
+        && ($this->asal === '' || $b['asal'] === $this->asal);
+    }
+
+    /**
+     * Jumlah kegiatan per kondisi anggaran (kunci STATUS_PAGU) dari kegiatan yang cocok dengan filter lain, sehingga
+     * tombol kondisi tetap menunjukkan pilihan lain saat salah satunya sedang dipakai.
+     *
+     * @return array<string, int>
+     */
+    #[Computed]
+    public function jumlahPerKondisi(): array
+    {
+        $cari = PemeriksaImporKegiatan::kunciNama($this->cari);
+        $jumlah = array_fill_keys(array_keys(self::STATUS_PAGU), 0);
+
+        foreach ($this->semuaBaris as $b) {
+            if (isset($jumlah[$b['status_pagu']]) && $this->cocok($b, $cari, abaikanKondisi: true)) {
+                $jumlah[$b['status_pagu']]++;
+            }
+        }
+
+        return $jumlah;
+    }
+
+    /**
+     * RAB berisi yang perlu perhatian batas pagu dari kegiatan terfilter, per kegiatan × sumber dana: yang melebihi pagu
+     * lebih dulu (kelebihan terbesar di atas), lalu yang pagunya belum diisi (total terbesar di atas).
+     *
+     * @return list<array{id: int, nama: string, sumber: string, pagu: int|null, total: int, status: StatusPagu}>
+     */
+    #[Computed]
+    public function perluPerhatian(): array
+    {
+        $daftar = [];
+
+        foreach ($this->terfilter as $b) {
+            foreach ($b['sumber'] as $s) {
+                $status = StatusPagu::hitung($s['total'], $s['pagu']);
+
+                if ($s['item'] > 0 && in_array($status->status, ['melebihi', 'tanpa_pagu'], true)) {
+                    $daftar[] = ['id' => $b['id'], 'nama' => $b['nama'], 'sumber' => $s['sumber'], 'pagu' => $s['pagu'], 'total' => $s['total'], 'status' => $status];
+                }
+            }
+        }
+
+        $kunci = fn (array $p) => $p['status']->melebihi() ? [0, $p['status']->selisih, $p['id']] : [1, -$p['total'], $p['id']];
+        usort($daftar, fn ($a, $b) => $kunci($a) <=> $kunci($b));
+
+        return $daftar;
+    }
+
+    /** Tombol kondisi anggaran: pilih untuk menyaring tabel, pilih lagi untuk melepas. */
+    public function saringKondisi(string $kondisi): void
+    {
+        if (! isset(self::STATUS_PAGU[$kondisi])) {
+            return;
+        }
+
+        $this->statusPagu = $this->statusPagu === $kondisi ? '' : $kondisi;
+        $this->halaman = 1;
     }
 
     /**
