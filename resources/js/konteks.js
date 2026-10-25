@@ -90,6 +90,20 @@ export default function catatanKonteks({ aspek, kunci, model = 'form.konteks', i
             this.draf = null;
         },
 
+        /** Contoh panduan ke catatan: mengisi bila kosong, menambah di bawah bila sudah ada isi (tidak menimpa). */
+        pakaiContoh(teks) {
+            const input = document.getElementById(idInput);
+
+            if (!input) {
+                return;
+            }
+
+            input.value = input.value.trim() ? `${input.value.replace(/\s*$/, '')}\n\n${teks}` : teks;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('blur'));
+            input.focus();
+        },
+
         /** Kegiatan tersimpan: catatan sudah aman di server, draf lokal tidak diperlukan lagi. */
         tersimpan() {
             tulis(kunci, null);

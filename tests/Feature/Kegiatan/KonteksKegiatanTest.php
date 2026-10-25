@@ -54,6 +54,22 @@ class KonteksKegiatanTest extends TestCase
         $this->assertSame('', KonteksAi::teks([]));
     }
 
+    public function test_contoh_catatan_yang_cocok_didahulukan(): void
+    {
+        $this->assertSame(['workshop', 'supervisi', 'lomba', 'siswa'], array_column(KonteksAi::contoh(''), 'kunci'));
+        $this->assertSame([false, false, false, false], array_column(KonteksAi::contoh(''), 'cocok'));
+
+        $supervisi = KonteksAi::contoh('Supervisi Akademik dan Refleksi Pembelajaran');
+        $this->assertSame(['supervisi', true], [$supervisi[0]['kunci'], $supervisi[0]['cocok']]);
+        $this->assertSame('lomba', KonteksAi::contoh('Lomba Kebersihan Kelas')[0]['kunci']);
+
+        foreach (KonteksAi::contoh('') as $contoh) {
+            // Contoh panduan memuat keempat aspek dan tidak memuat NIP.
+            $this->assertSame(['latar' => true, 'peserta' => true, 'narasumber' => true, 'output' => true], KonteksAi::aspekTerisi($contoh['teks']), $contoh['kunci']);
+            $this->assertNull(KonteksAi::peringatanPrivasi($contoh['teks']));
+        }
+    }
+
     public function test_bagian_konteks_di_form(): void
     {
         Livewire::test(Form::class, ['kegiatan' => 2])
@@ -61,6 +77,10 @@ class KonteksKegiatanTest extends TestCase
             ->assertSee('Sudah diketahui AI')
             ->assertSee('Diambil dari isian lain (8/8)')
             ->assertSeeHtml('data-sisip="narasumber"')
+            ->assertSeeHtml('data-testid="contoh-konteks"')
+            ->assertSee('Cocok dengan nama kegiatan')
+            ->assertSeeInOrder(['data-contoh="supervisi"', 'data-contoh="workshop"'], false)
+            ->assertSee(KonteksAi::CONTOH_ASPEK['narasumber'])
             ->set('form.konteks', 'Peserta seluruh guru; narasumber pengawas madrasah.')
             ->assertSeeHtml('data-aspek="peserta" data-terisi="ya"')
             ->assertSeeHtml('data-aspek="narasumber" data-terisi="ya"')

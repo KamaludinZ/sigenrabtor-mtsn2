@@ -207,6 +207,28 @@ test.describe('Form Data Kegiatan', () => {
         await expect(bagian.locator('[data-aspek="peserta"]')).toHaveAttribute('data-terisi', 'tidak');
         await bagian.screenshot({ path: `storage/playwright/shots/konteks-${testInfo.project.name}.png` });
     });
+    test('konteks: contoh catatan sesuai jenis kegiatan bisa dipakai tanpa menimpa isian', async ({ page }, testInfo) => {
+        await page.locator('#nama_kegiatan').fill('Lomba Futsal Antarkelas');
+        await page.locator('#nama_kegiatan').blur();
+        const contoh = page.getByTestId('contoh-konteks');
+        await contoh.scrollIntoViewIfNeeded();
+        await expect(contoh).toContainText('ada yang cocok');
+        await contoh.locator('summary').click();
+        await expect(contoh.locator('[data-contoh]').first()).toHaveAttribute('data-contoh', 'lomba');
+
+        await contoh.locator('[data-contoh="lomba"]').getByRole('button', { name: 'Pakai contoh' }).click();
+        const catatan = page.locator('#catatan_konteks');
+        await expect(catatan).toHaveValue(/^Latar khusus: seleksi wakil madrasah/);
+        for (const aspek of ['latar', 'peserta', 'narasumber', 'output']) {
+            await expect(page.getByTestId('bagian-konteks').locator(`[data-aspek="${aspek}"]`)).toHaveAttribute('data-terisi', 'ya');
+        }
+
+        // Contoh kedua ditambahkan di bawah, isi sebelumnya tetap ada.
+        await contoh.locator('[data-contoh="siswa"]').getByRole('button', { name: 'Pakai contoh' }).click();
+        await expect(catatan).toHaveValue(/seleksi wakil madrasah[\s\S]*\n\nLatar khusus: program rutin awal tahun/);
+        await contoh.screenshot({ path: `storage/playwright/shots/contoh-konteks-${testInfo.project.name}.png` });
+    });
+
     test('konteks: draf lokal dipulihkan setelah halaman tertutup, hilang setelah disimpan', async ({ page }, testInfo) => {
         page.on('dialog', (dialog) => dialog.accept());
         await page.locator('#nama_kegiatan').fill(`Kegiatan Konteks ${testInfo.project.name} ${Date.now()}`);

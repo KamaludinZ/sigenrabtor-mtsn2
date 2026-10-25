@@ -126,6 +126,38 @@ class StubData
     }
 
     /**
+     * Contoh catatan konteks per jenis kegiatan (panduan pengisian; nanti diatur admin di Pengaturan AI).
+     * Nama orang sengaja tidak dipakai — catatan konteks tidak boleh memuat nama/NIP pejabat.
+     *
+     * @return list<array{kunci: string, judul: string, kata: list<string>, teks: string}>
+     */
+    public static function contohKonteks(): array
+    {
+        return [
+            ['kunci' => 'workshop', 'judul' => 'Workshop / pelatihan guru', 'kata' => ['workshop', 'pelatihan', 'bimtek', 'diklat', 'penyusunan', 'in house'],
+                'teks' => 'Latar khusus: lanjutan workshop tahun lalu; hasil EDM menunjukkan perangkat ajar belum seragam.
+Peserta: 49 guru dan 6 tenaga kependidikan.
+Narasumber: pengawas madrasah dan satu praktisi dari MGMP kota.
+Output: dokumen KTSP dan modul ajar tiap mata pelajaran yang disahkan kepala madrasah.', ],
+            ['kunci' => 'supervisi', 'judul' => 'Supervisi / evaluasi / rapat kerja', 'kata' => ['supervisi', 'evaluasi', 'rapat', 'raker', 'monitoring', 'refleksi', 'audit'],
+                'teks' => 'Latar khusus: tindak lanjut temuan supervisi semester ganjil.
+Peserta: seluruh guru mata pelajaran, dibagi per rumpun.
+Narasumber: tim supervisor internal (TPM) dan pengawas madrasah.
+Output: laporan hasil supervisi, rencana tindak lanjut per guru, dan rekap praktik baik.', ],
+            ['kunci' => 'lomba', 'judul' => 'Lomba / kompetisi siswa', 'kata' => ['lomba', 'olimpiade', 'kompetisi', 'festival', 'porseni', 'pentas'],
+                'teks' => 'Latar khusus: seleksi wakil madrasah untuk kompetisi tingkat kota bulan berikutnya.
+Peserta: siswa kelas VII–IX, sekitar 120 orang, didampingi wali kelas.
+Narasumber: juri dari guru mapel dan alumni berprestasi.
+Output: daftar juara, tim inti untuk kompetisi kota, dan dokumentasi kegiatan.', ],
+            ['kunci' => 'siswa', 'judul' => 'Kegiatan kesiswaan / keagamaan', 'kata' => ['mpls', 'matsama', 'pesantren kilat', 'outbound', 'kemah', 'peringatan', 'phbi', 'kajian'],
+                'teks' => 'Latar khusus: program rutin awal tahun untuk siswa baru.
+Peserta: 320 siswa kelas VII dan 40 pengurus OSIM sebagai pendamping.
+Narasumber: guru BK, pembina OSIM, dan penyuluh agama dari KUA.
+Output: siswa mengenal lingkungan dan tata tertib madrasah; laporan kegiatan dan evaluasi peserta.', ],
+        ];
+    }
+
+    /**
      * Profil madrasah untuk kop dan identitas aplikasi.
      *
      * @return array{nama: string, nama_singkat: string, kota: string}

@@ -23,6 +23,14 @@ final class KonteksAi
         'output' => ['Output yang diharapkan', 'Output: ', ['output', 'hasil', 'luaran', 'dokumen', 'produk', 'target']],
     ];
 
+    /** Contoh singkat tiap aspek untuk panduan di bawah kotak catatan. */
+    public const CONTOH_ASPEK = [
+        'latar' => 'mis. lanjutan kegiatan tahun lalu, temuan EDM/supervisi, atau kebutuhan mendesak.',
+        'peserta' => 'mis. 49 guru dan 6 tenaga kependidikan; siswa kelas VII.',
+        'narasumber' => 'mis. pengawas madrasah, praktisi MGMP, penyuluh agama — tanpa nama & NIP.',
+        'output' => 'mis. dokumen KTSP disahkan, laporan hasil, daftar juara.',
+    ];
+
     private const POLA_NIP = '/(?<!\d)\d{18}(?!\d)|\d{8}\s\d{6}\s\d\s\d{3}/';
 
     /**
@@ -36,6 +44,26 @@ final class KonteksAi
             fn (array $aspek) => collect($aspek[2])->contains(fn (string $kata) => str_contains($teks, $kata)),
             self::ASPEK,
         );
+    }
+
+    /**
+     * Contoh catatan per jenis kegiatan; yang kata kuncinya cocok dengan nama kegiatan didahulukan dan ditandai.
+     *
+     * @return list<array{kunci: string, judul: string, teks: string, cocok: bool}>
+     */
+    public static function contoh(string $namaKegiatan): array
+    {
+        $nama = mb_strtolower($namaKegiatan);
+        $contoh = array_map(fn (array $c) => [
+            'kunci' => $c['kunci'],
+            'judul' => $c['judul'],
+            'teks' => $c['teks'],
+            'cocok' => $nama !== '' && collect($c['kata'])->contains(fn (string $kata) => str_contains($nama, $kata)),
+        ], StubData::contohKonteks());
+
+        usort($contoh, fn ($a, $b) => $b['cocok'] <=> $a['cocok']);
+
+        return $contoh;
     }
 
     /** Peringatan privasi untuk catatan (null bila aman). */

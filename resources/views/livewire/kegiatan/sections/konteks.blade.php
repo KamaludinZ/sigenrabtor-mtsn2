@@ -5,6 +5,7 @@
     $nip = KonteksAi::peringatanPrivasi($form->konteks) !== null;
     $dariIsian = KonteksAi::dariIsian($form->dataUntukDisimpan());
     $terisi = count(array_filter($dariIsian, fn ($b) => $b['nilai'] !== null));
+    $contoh = KonteksAi::contoh($form->nama_kegiatan);
 @endphp
 
 {{--
@@ -54,7 +55,7 @@
         {{-- Panduan aspek: tanda centang bila catatan sudah menyinggungnya (ikut tiap ketukan). --}}
         <div class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="panduan-konteks">
             <p class="text-xs font-semibold text-stone-600">Catatan yang membantu AI biasanya menyebut:</p>
-            <ul class="mt-2 grid gap-1.5 text-xs sm:grid-cols-2">
+            <ul class="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                 @foreach (KonteksAi::ASPEK as $kunci => [$label])
                     <li class="flex items-center gap-1.5" data-aspek="{{ $kunci }}" data-terisi="{{ $aspek[$kunci] ? 'ya' : 'tidak' }}"
                         x-bind:data-terisi="terisi[@js($kunci)] ? 'ya' : 'tidak'">
@@ -64,12 +65,45 @@
                         <span x-show="! terisi[@js($kunci)]" @if ($aspek[$kunci]) style="display: none" @endif>
                             <x-ui.icon name="circle" class="size-4 shrink-0 text-stone-300" />
                         </span>
-                        <span @class(['text-stone-800' => $aspek[$kunci], 'text-stone-500' => ! $aspek[$kunci]])
-                              x-bind:class="terisi[@js($kunci)] ? 'text-stone-800' : 'text-stone-500'">{{ $label }}</span>
+                        <span class="min-w-0">
+                            <span @class(['block font-medium', 'text-stone-800' => $aspek[$kunci], 'text-stone-500' => ! $aspek[$kunci]])
+                                  x-bind:class="terisi[@js($kunci)] ? 'text-stone-800' : 'text-stone-500'">{{ $label }}</span>
+                            <span class="block text-[11px] text-stone-400" data-contoh-aspek="{{ $kunci }}">{{ KonteksAi::CONTOH_ASPEK[$kunci] }}</span>
+                        </span>
                     </li>
                 @endforeach
             </ul>
         </div>
+
+        {{-- Contoh catatan utuh per jenis kegiatan; yang cocok dengan nama kegiatan di urutan pertama. --}}
+        <details class="group rounded-xl bg-white ring-1 ring-stone-200" wire:ignore.self data-testid="contoh-konteks">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-semibold text-brand-700 hover:text-brand-800">
+                <span class="flex items-center gap-1.5">
+                    <x-ui.icon name="note" class="size-4" /> Lihat contoh catatan ({{ count($contoh) }})
+                    @if ($contoh[0]['cocok'])
+                        <span class="rounded-full bg-brand-50 px-1.5 py-px text-[10px] text-brand-800 ring-1 ring-brand-200">ada yang cocok</span>
+                    @endif
+                </span>
+                <x-ui.icon name="chevron-down" class="size-4 transition group-open:rotate-180" />
+            </summary>
+            <div class="grid gap-2 border-t border-stone-100 p-3 sm:grid-cols-2">
+                @foreach ($contoh as $c)
+                    <article class="flex flex-col rounded-lg bg-stone-50 p-3 ring-1 ring-stone-200" data-contoh="{{ $c['kunci'] }}" wire:key="contoh-{{ $c['kunci'] }}">
+                        <h4 class="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-stone-800">
+                            {{ $c['judul'] }}
+                            @if ($c['cocok'])
+                                <span class="rounded-full bg-brand-50 px-1.5 py-px text-[10px] font-semibold text-brand-800 ring-1 ring-brand-200">Cocok dengan nama kegiatan</span>
+                            @endif
+                        </h4>
+                        <p class="mt-1.5 flex-1 text-xs leading-relaxed whitespace-pre-line text-stone-600">{{ $c['teks'] }}</p>
+                        <button type="button" x-on:click="pakaiContoh(@js($c['teks']))" class="btn-ghost mt-2 self-start px-2 py-1 text-xs">
+                            <x-ui.icon name="copy" class="size-3.5" /> Pakai contoh
+                        </button>
+                    </article>
+                @endforeach
+            </div>
+            <p class="border-t border-stone-100 px-3 py-2 text-[11px] text-stone-500">“Pakai contoh” menambahkan teks di bawah catatan yang sudah ada — sesuaikan angka dan kebutuhan kegiatan Anda.</p>
+        </details>
 
         <p class="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-600 ring-1 ring-stone-200">
             <x-ui.icon name="lock" class="mt-px size-4 shrink-0 text-stone-400" />
