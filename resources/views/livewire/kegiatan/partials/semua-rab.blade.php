@@ -25,6 +25,8 @@
                 </button>
             </header>
             <div class="p-3 sm:p-5">
+                <x-rab.peringatan-pagu :sumber="$anggaran->sumber" :hasil="$anggaran->hasil" ringkas class="mb-4"
+                                       :tautan-pagu="route('kegiatan.edit', ['kegiatan' => $kegiatanId]).'#sumber-dana'" />
                 <x-rab.tabel-rincian :anggaran="$anggaran" :kelompok="$kelompok" />
                 @if ($anggaran->adaTermin())
                     <h3 class="mt-5 mb-2 text-sm font-semibold text-stone-800">Termin pembayaran</h3>

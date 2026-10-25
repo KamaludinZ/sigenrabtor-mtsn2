@@ -81,6 +81,10 @@
         @else
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
             <div class="min-w-0 space-y-6">
+                <x-rab.peringatan-pagu :sumber="$sumber" :hasil="$hasil" :tautan-pagu="route('kegiatan.edit', ['kegiatan' => $kegiatanId]).'#sumber-dana'">
+                    <button type="button" wire:click="$set('halaman', 'pagu')" class="text-brand-700 hover:text-brand-800">Lihat Pagu &amp; RAB</button>
+                </x-rab.peringatan-pagu>
+
                 {{-- Header RAB (format resmi) --}}
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="header-rab">
                     <header class="border-b border-stone-100 px-5 py-4 sm:px-6">

@@ -575,11 +575,27 @@ test.describe('Batas pagu (contoh Review RKJM: Komite melebihi pagu, pagu DIPA b
         await expect(page.getByTestId('status-pagu-dipa')).toHaveText('Pagu belum diisi');
         await expect(page.getByTestId('status-pagu-komite')).toHaveText('Melebihi pagu Rp450.000');
 
+        const peringatanDipa = page.getByTestId('peringatan-pagu-dipa');
+        await expect(peringatanDipa).toHaveAttribute('role', 'status');
+        await expect(peringatanDipa).toContainText('Pagu DIPA belum diisi');
+        await expect(peringatanDipa.getByRole('link', { name: 'Isi pagu DIPA' })).toHaveAttribute('href', /\/kegiatan\/3\/edit#sumber-dana$/);
+
         await page.getByRole('tab', { name: /RAB Komite/ }).click();
         await expect(page).toHaveURL(/sumber=Komite/);
         await expect(page.getByTestId('total-rab')).toHaveText('7.950.000');
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Melebihi pagu Rp450.000');
+        const peringatan = page.getByTestId('peringatan-pagu-komite');
+        await expect(peringatan).toHaveAttribute('role', 'alert');
+        await expect(peringatan).toContainText('RAB Komite melebihi pagu Rp450.000');
+        await expect(peringatan).toContainText('Total RAB Rp7.950.000 dari pagu Rp7.500.000 (106%)');
+        await expect(peringatan.getByTestId('item-terbesar').locator('li')).toHaveCount(3);
+        await expect(peringatan.getByTestId('item-terbesar').locator('li').first()).toContainText('Honorarium narasumber penyusunan RKTM');
         await page.screenshot({ path: `storage/playwright/shots/batas-pagu-${testInfo.project.name}.png`, fullPage: true });
+
+        // Dari peringatan langsung ke perbandingan semua RAB.
+        await peringatan.getByRole('button', { name: 'Lihat Pagu & RAB' }).click();
+        await expect(page).toHaveURL(/halaman=pagu/);
+        await expect(page.getByTestId('tabel-pagu-rab')).toBeVisible();
 
         await page.goto('/kegiatan?pagu=melebihi');
         const tabel = page.getByTestId('tabel-kegiatan');
