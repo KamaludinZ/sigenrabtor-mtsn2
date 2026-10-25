@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+// Kasus status pagu bersama: juga diuji di tests/Feature/Rab/TotalLokalTest.php terhadap App\Support\Rab\StatusPagu.
+const KASUS_STATUS_PAGU = JSON.parse(readFileSync(new URL('../fixtures/status-pagu.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -36,5 +40,11 @@ test.describe('Format mata uang di klien', () => {
             'Sembilan Juta Lima Ratus Empat Puluh Ribu Rupiah',
             'Satu Triliun Rupiah',
         ]);
+    });
+
+    test('status pagu klien sama dengan server', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.statusPagu(k.total, k.pagu)), KASUS_STATUS_PAGU);
+        expect(hasil).toEqual(KASUS_STATUS_PAGU.map(({ status, teks, nada }) => ({ status, teks, nada })));
     });
 });

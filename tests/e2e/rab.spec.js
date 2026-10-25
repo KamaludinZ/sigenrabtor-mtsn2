@@ -154,6 +154,48 @@ async function buatKegiatanDenganItem(page, nama, items) {
     }
 }
 
+test.describe('Perkiraan total RAB lokal', () => {
+    test('total, terbilang, dan status pagu ikut ketikan sebelum item disimpan', async ({ page }, testInfo) => {
+        await buatKegiatanDenganItem(page, `Kegiatan Total Lokal ${testInfo.project.name}`, [['Snack rapat', '10', '300000']]);
+        const nilai = page.getByTestId('perkiraan-nilai');
+        const status = page.getByTestId('perkiraan-status');
+
+        await page.getByRole('button', { name: 'Tambah item belanja' }).click();
+        await expect(nilai).toHaveText('Rp3.000.000');
+        await expect(page.getByTestId('perkiraan-total')).toContainText('Total RAB Komite saat ini');
+
+        await page.locator('#item_uraian').fill('Honorarium narasumber');
+        await page.locator('#item_volume').fill('1');
+        await page.locator('#item_satuan').fill('OJ');
+        await page.locator('#item_harga_satuan').pressSequentially('2500000');
+        await expect(nilai).toHaveText('Rp5.500.000');
+        await expect(page.getByTestId('perkiraan-terbilang')).toHaveText('Lima Juta Lima Ratus Ribu Rupiah');
+        await expect(status).toHaveText('Melebihi pagu Rp500.000');
+        await expect(status).toHaveClass(/text-red-600/);
+
+        await page.locator('#item_harga_satuan').fill('');
+        await page.locator('#item_harga_satuan').pressSequentially('2000000');
+        await expect(nilai).toHaveText('Rp5.000.000');
+        await expect(status).toHaveText('Sesuai pagu');
+        await page.getByTestId('form-item').screenshot({ path: `storage/playwright/shots/perkiraan-total-${testInfo.project.name}.png` });
+
+        // Angka lokal = angka server setelah disimpan.
+        await page.getByRole('button', { name: 'Simpan item' }).click();
+        await expect(page.getByTestId('form-item')).toHaveCount(0);
+        await expect(page.getByTestId('total-anggaran-nilai')).toHaveText('Rp5.000.000');
+        await expect(page.getByTestId('total-anggaran-status')).toHaveText('Sesuai pagu');
+
+        // Mode ubah: jumlah lama diganti jumlah baru, bukan ditambahkan.
+        await page.getByRole('button', { name: 'Ubah item 1' }).click();
+        await expect(nilai).toHaveText('Rp5.000.000');
+        await page.locator('#item_volume').fill('5');
+        await expect(nilai).toHaveText('Rp3.500.000');
+        await expect(status).toHaveText('Sisa pagu Rp1.500.000');
+        await page.getByTestId('form-item').getByRole('button', { name: 'Batal' }).click();
+        await expect(page.getByTestId('total-anggaran-nilai')).toHaveText('Rp5.000.000');
+    });
+});
+
 test.describe('Kelompok kategori interaktif', () => {
     test('pindah kategori (seret di desktop, pilihan di mobile), ciutkan, dan lompat dari ringkasan', async ({ page }, testInfo) => {
         await buatKegiatanDenganItem(page, `Kegiatan Kelompok ${testInfo.project.name}`, [

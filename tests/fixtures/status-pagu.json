@@ -1,0 +1,8 @@
+[
+    { "total": 100, "pagu": null, "status": "tanpa_pagu", "teks": "Pagu belum diisi", "nada": "netral" },
+    { "total": 0, "pagu": 0, "status": "sesuai", "teks": "Sesuai pagu", "nada": "aman" },
+    { "total": 2500000, "pagu": 2500000, "status": "sesuai", "teks": "Sesuai pagu", "nada": "aman" },
+    { "total": 5400000, "pagu": 6000000, "status": "sisa", "teks": "Sisa pagu Rp600.000", "nada": "aman" },
+    { "total": 6150000, "pagu": 6000000, "status": "melebihi", "teks": "Melebihi pagu Rp150.000", "nada": "bahaya" },
+    { "total": 1000000000001, "pagu": 1000000000000, "status": "melebihi", "teks": "Melebihi pagu Rp1", "nada": "bahaya" }
+]

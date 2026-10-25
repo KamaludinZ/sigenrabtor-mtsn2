@@ -32,6 +32,20 @@ export function jumlahRab(volume, hargaSatuan) {
     return v > 0 && h > 0 ? Math.floor((Math.round(v * 100) * h + 50) / 100) : null;
 }
 
+// Status total RAB terhadap pagu — kembaran App\Support\Rab\StatusPagu (teks & nada sama; uji bersama tests/fixtures/status-pagu.json).
+export function statusPagu(total, pagu) {
+    if (pagu === null || pagu === undefined || pagu === '') {
+        return { status: 'tanpa_pagu', teks: 'Pagu belum diisi', nada: 'netral' };
+    }
+
+    const t = Number(total);
+    const p = Number(pagu);
+
+    if (t === p) return { status: 'sesuai', teks: 'Sesuai pagu', nada: 'aman' };
+    if (t < p) return { status: 'sisa', teks: `Sisa pagu ${rupiah(p - t)}`, nada: 'aman' };
+    return { status: 'melebihi', teks: `Melebihi pagu ${rupiah(t - p)}`, nada: 'bahaya' };
+}
+
 // Terbilang Rupiah — kembaran App\Support\Terbilang (kaidah "se-" untuk 10, 11, 100, 1.000; "satu" untuk juta ke atas).
 const SATUAN = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
 const SKALA = [[1e12, 'triliun'], [1e9, 'miliar'], [1e6, 'juta']];

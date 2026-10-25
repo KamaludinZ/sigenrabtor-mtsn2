@@ -40,6 +40,20 @@ final readonly class HasilRab
         return StatusPagu::hitung($this->total, $this->pagu);
     }
 
+    /**
+     * Total tanpa satu item (item yang sedang diubah), dasar perkiraan total di form item; null = semua item.
+     */
+    public function totalTanpa(?string $idItem): int
+    {
+        if ($idItem === null) {
+            return $this->total;
+        }
+
+        $item = collect($this->rincian)->firstWhere('id', $idItem);
+
+        return $this->total - (int) ($item['jumlah'] ?? 0);
+    }
+
     /** Persentase pemakaian pagu (0–100, dibatasi) untuk bilah kemajuan. */
     public function persenPagu(): int
     {

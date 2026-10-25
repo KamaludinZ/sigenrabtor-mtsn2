@@ -1,4 +1,6 @@
 @use('App\Livewire\Forms\ItemBelanjaForm')
+@use('App\Support\Format')
+@use('App\Support\Terbilang')
 
 {{-- Form tambah item belanja: jumlah = volume × harga satuan dihitung seketika di layar dan diulang di server. --}}
 <form wire:submit="simpanItem" data-testid="form-item"
@@ -87,6 +89,38 @@
                     x-text="jumlah === null ? '—' : $rupiah(jumlah)">—</output>
             <p class="form-hint text-right italic" x-show="jumlah !== null" x-text="$terbilang(jumlah)" data-testid="jumlah-item-terbilang"></p>
             <p class="form-hint text-right" x-show="jumlah === null">Volume × harga satuan</p>
+        </div>
+
+        {{--
+            Perkiraan total RAB bila item ini disimpan: dihitung di layar (total item lain + jumlah) lengkap dengan terbilang
+            dan status pagu. wire:key berganti saat dasar hitungnya berubah sehingga nilai awal Alpine selalu segar.
+        --}}
+        @php $totalLain = $hasil->totalTanpa($itemDiedit); @endphp
+        <div class="sm:col-span-6" data-testid="perkiraan-total"
+             wire:key="perkiraan-{{ $sumber }}-{{ $itemDiedit ?? 'baru' }}-{{ $totalLain }}-{{ $pagu ?? 'tanpa' }}"
+             x-data="{
+                 totalLain: @js($totalLain),
+                 pagu: @js($pagu),
+                 get total() { return this.totalLain + (this.jumlah ?? 0) },
+                 get status() { return $statusPagu(this.total, this.pagu) },
+             }">
+            <div class="flex flex-col gap-1 rounded-xl bg-white px-4 py-3 ring-1 ring-stone-200 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div class="min-w-0">
+                    <p class="text-xs font-medium text-stone-500">
+                        <span x-show="jumlah !== null">Total RAB {{ $sumber }} bila item ini disimpan</span>
+                        <span x-show="jumlah === null">Total RAB {{ $sumber }} saat ini</span>
+                    </p>
+                    {{-- Total nol tidak diterbilangkan, sama dengan Terbilang::tampil di server. --}}
+                    <p class="text-xs text-stone-500 italic" data-testid="perkiraan-terbilang"
+                       x-text="total > 0 ? $terbilang(total) : ''">{{ Terbilang::tampil($hasil->total) }}</p>
+                </div>
+                <div class="sm:text-right">
+                    <p class="text-base font-bold text-stone-900 tabular-nums" data-testid="perkiraan-nilai"
+                       x-text="$rupiah(total)">{{ Format::rupiah($hasil->total) }}</p>
+                    <p class="text-xs font-medium" data-testid="perkiraan-status" x-text="status.teks"
+                       x-bind:class="{ 'text-stone-500': status.nada === 'netral', 'text-brand-700': status.nada === 'aman', 'text-red-600': status.nada === 'bahaya' }">{{ $hasil->keteranganPagu()->teks() }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
