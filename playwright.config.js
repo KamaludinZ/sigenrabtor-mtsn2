@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
 
 export const E2E_STUB_FILE = 'stub/kegiatan-e2e.json';
 export const E2E_RAB_FILE = 'stub/rab-e2e.json';
@@ -34,6 +35,11 @@ export default defineConfig({
         url: 'http://127.0.0.1:8010/kegiatan/buat',
         reuseExistingServer: true,
         timeout: 60_000,
-        env: { STUB_KEGIATAN_FILE: E2E_STUB_FILE, STUB_RAB_FILE: E2E_RAB_FILE },
+        // VITE_HOT_FILE menunjuk berkas yang tidak ada: aset build dipakai walau `npm run dev` sedang berjalan.
+        env: {
+            STUB_KEGIATAN_FILE: E2E_STUB_FILE,
+            STUB_RAB_FILE: E2E_RAB_FILE,
+            VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
+        },
     },
 });

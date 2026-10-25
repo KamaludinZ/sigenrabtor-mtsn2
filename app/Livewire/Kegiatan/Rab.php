@@ -90,6 +90,17 @@ class Rab extends Component
     }
 
     /**
+     * Anggaran tiap sumber dana kegiatan, termasuk RAB tersimpan milik sumber yang sudah dilepas (dipilih = false).
+     *
+     * @return list<AnggaranSumber>
+     */
+    #[Computed]
+    public function anggaran(): array
+    {
+        return AnggaranKegiatan::untuk($this->dataKegiatan, sertakanTerlepas: true);
+    }
+
+    /**
      * Rekap per kelompok belanja & kode akun untuk semua sumber dana kegiatan.
      *
      * @return array<string, mixed>
@@ -106,6 +117,7 @@ class Rab extends Component
     {
         if (in_array($sumber, $this->daftarSumber(), true)) {
             $this->sumber = $sumber;
+            $this->halaman = 'rincian';
             $this->itemTerhapus = null;
             $this->tutupFormItem();
         }
@@ -214,7 +226,7 @@ class Rab extends Component
 
     private function segarkanRincian(): void
     {
-        unset($this->hasil, $this->rincian, $this->total, $this->kelompokRincian);
+        unset($this->hasil, $this->rincian, $this->total, $this->kelompokRincian, $this->anggaran, $this->angkaDokumen, $this->rekap);
     }
 
     public function updated(string $property): void

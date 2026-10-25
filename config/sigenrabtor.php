@@ -17,4 +17,16 @@ return [
         'rab_file' => env('STUB_RAB_FILE', 'stub/rab.json'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Berkas "hot" Vite
+    |--------------------------------------------------------------------------
+    |
+    | Tes E2E mengarahkan ini ke berkas yang tidak ada agar halaman selalu memakai
+    | aset hasil `npm run build`, walau `npm run dev` sedang berjalan (public/hot ada).
+    |
+    */
+
+    'vite_hot_file' => env('VITE_HOT_FILE'),
+
 ];

@@ -166,16 +166,18 @@ test.describe('Kelompok kategori interaktif', () => {
         if (testInfo.project.name === 'desktop') {
             // Gerakan bertahap & bidik ulang: baris bergeser selama diseret, jadi posisi sasaran dihitung ulang.
             const pegangan = page.getByLabel('Seret item 1');
-            // Pastikan asal & sasaran sama-sama di dalam layar.
-            await page.locator('tbody[data-kelompok="lain"]').evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
+            // Pastikan asal & sasaran sama-sama di dalam layar, jauh dari tepi bawah (autoscroll Sortable menggeser sasaran).
+            await page.locator('tbody[data-kelompok="lain"]').evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
             const asal = await pegangan.boundingBox();
             await page.mouse.move(asal.x + asal.width / 2, asal.y + asal.height / 2);
             await page.mouse.down();
             await page.mouse.move(asal.x + 30, asal.y + 20, { steps: 5 });
             const sasaran = page.locator('tbody[data-kelompok="lain"] td').first();
-            for (let i = 0; i < 4; i++) {
+            // Bidik ulang sampai baris yang diseret benar-benar berada di kelompok sasaran (tata letak bergeser selama diseret).
+            const sudahMasuk = () => page.locator('tbody[data-kelompok="lain"]').getByLabel(/Seret item/).count();
+            for (let i = 0; i < 10 && (await sudahMasuk()) === 0; i++) {
                 const kotak = await sasaran.boundingBox();
-                await page.mouse.move(kotak.x + 60, kotak.y + kotak.height / 2, { steps: 15 });
+                await page.mouse.move(kotak.x + 60, kotak.y + kotak.height / 2 + (i % 2 ? 6 : -6), { steps: 15 });
                 await page.waitForTimeout(150); // beri waktu Sortable memproses dragover saat mesin sibuk
             }
             await page.mouse.up();
@@ -233,8 +235,15 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await expect(page.getByTestId('header-terbilang')).toHaveText('Lima Juta Empat Ratus Ribu Rupiah');
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Sisa pagu Rp600.000');
 
+        await expect(page.getByTestId('total-kegiatan')).toContainText('Rp7.900.000');
+        await expect(page.getByTestId('status-pagu-dipa')).toHaveText('Sisa Rp600.000');
+
+        // Dari Rekap, kartu sumber membuka rincian sumber itu.
+        await page.getByRole('tab', { name: 'Rekap per kelompok' }).click();
+        await expect(page).toHaveURL(/halaman=rekap/);
         await page.getByRole('tab', { name: /RAB Komite/ }).click();
         await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByRole('tab', { name: 'Rincian belanja' })).toHaveAttribute('aria-selected', 'true');
         await expect(page.getByTestId('total-rab')).toHaveText('2.500.000');
         await expect(page.getByTestId('kalimat-pembiayaan')).toContainText('dibebankan pada dana KOMITE');
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Sesuai pagu');

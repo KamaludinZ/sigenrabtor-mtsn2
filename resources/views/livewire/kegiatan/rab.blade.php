@@ -40,6 +40,8 @@
             </a>
         </div>
     @else
+        @include('livewire.kegiatan.partials.ringkasan-sumber')
+
         {{-- Halaman di dalam RAB --}}
         <div class="mt-6 inline-flex rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Halaman RAB">
             @foreach (['rincian' => 'Rincian belanja', 'rekap' => 'Rekap per kelompok'] as $kunciHalaman => $labelHalaman)
@@ -56,25 +58,6 @@
         @if ($halaman === 'rekap')
             @include('livewire.kegiatan.partials.rekap-kelompok')
         @else
-        {{-- Pilih RAB per sumber dana --}}
-        <div class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="RAB per sumber dana">
-            @foreach ($dataKegiatan['sumber_dana'] as $baris)
-                @php $aktif = $baris['sumber'] === $sumber; @endphp
-                <button type="button" role="tab" aria-selected="{{ $aktif ? 'true' : 'false' }}"
-                        wire:click="pilihSumber('{{ $baris['sumber'] }}')"
-                        @class([
-                            'min-w-40 rounded-xl px-4 py-2.5 text-left ring-1 transition',
-                            'bg-brand-800 text-white ring-brand-800 shadow-sm' => $aktif,
-                            'bg-white text-stone-700 ring-stone-200 hover:ring-stone-300' => ! $aktif,
-                        ])>
-                    <span class="block text-sm font-semibold">RAB {{ $baris['sumber'] }}</span>
-                    <span @class(['block text-xs', 'text-brand-100' => $aktif, 'text-stone-500' => ! $aktif])>
-                        Pagu {{ $baris['pagu'] ? Format::rupiah($baris['pagu']) : 'belum diisi' }}
-                    </span>
-                </button>
-            @endforeach
-        </div>
-
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
             <div class="min-w-0 space-y-6">
                 {{-- Header RAB (format resmi) --}}
