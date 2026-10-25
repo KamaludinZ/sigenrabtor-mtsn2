@@ -249,4 +249,17 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Sesuai pagu');
         await page.screenshot({ path: `storage/playwright/shots/rab-dua-sumber-${testInfo.project.name}.png`, fullPage: true });
     });
+
+    test('Data Kegiatan: rincian tiap RAB bisa dibuka tanpa meninggalkan halaman', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/2/edit');
+        const rincianDipa = page.getByTestId('rincian-rab-dipa');
+        await rincianDipa.scrollIntoViewIfNeeded();
+        await expect(rincianDipa.getByTestId('tabel-rab-dipa')).toBeHidden();
+        await rincianDipa.getByText('Lihat rincian RAB DIPA').click();
+        await expect(rincianDipa.getByTestId('tabel-rab-dipa')).toBeVisible();
+        await expect(rincianDipa).toContainText('Honorarium tim supervisor');
+        await expect(rincianDipa).toContainText('Rp5.400.000,-');
+        await expect(page.getByTestId('rincian-rab-komite').getByTestId('tabel-rab-komite')).toBeHidden();
+        await page.getByTestId('sumber-dipa').screenshot({ path: `storage/playwright/shots/rincian-rab-data-kegiatan-${testInfo.project.name}.png` });
+    });
 });

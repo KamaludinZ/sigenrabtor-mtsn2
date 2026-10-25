@@ -47,6 +47,17 @@
                             <span class="w-full text-right text-stone-500 italic">{{ $terbilangRekap }}</span>
                         @endif
                     </p>
+
+                    @if ($rekap->jumlahItem() > 0)
+                        {{-- Rincian baca-saja; status buka/tutup dijaga saat Livewire merender ulang. --}}
+                        <details class="group mt-2" wire:ignore.self data-testid="rincian-rab-{{ $opsi['kunci'] }}">
+                            <summary class="flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800">
+                                <x-ui.icon name="chevron-down" class="size-3.5 transition group-open:rotate-180" />
+                                Lihat rincian RAB {{ $opsi['label'] }}
+                            </summary>
+                            <x-rab.tabel-rincian :anggaran="$this->anggaranRab[$opsi['label']]" class="mt-2" />
+                        </details>
+                    @endif
                 @endif
             </div>
         @endforeach

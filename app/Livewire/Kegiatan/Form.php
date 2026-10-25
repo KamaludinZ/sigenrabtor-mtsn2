@@ -397,6 +397,22 @@ class Form extends Component
     }
 
     /**
+     * Anggaran tiap sumber dana terpilih: pagu dari isian yang sedang diubah (belum tentu tersimpan),
+     * rincian dari RAB tersimpan.
+     *
+     * @return array<string, AnggaranSumber>
+     */
+    #[Computed]
+    public function anggaranRab(): array
+    {
+        if ($this->kegiatanId === null) {
+            return [];
+        }
+
+        return AnggaranKegiatan::perSumber(['id' => $this->kegiatanId, 'sumber_dana' => $this->form->sumberDana()]);
+    }
+
+    /**
      * Hasil hitung RAB yang sudah tersusun untuk tiap sumber dana terpilih (total KAK = total RAB).
      *
      * @return array<string, HasilRab>
@@ -404,14 +420,7 @@ class Form extends Component
     #[Computed]
     public function rekapRab(): array
     {
-        if ($this->kegiatanId === null) {
-            return [];
-        }
-
-        // Pagu dari isian yang sedang diubah (belum tentu tersimpan), rincian dari RAB tersimpan.
-        $kegiatan = ['id' => $this->kegiatanId, 'sumber_dana' => $this->form->sumberDana()];
-
-        return array_map(fn (AnggaranSumber $anggaran) => $anggaran->hasil, AnggaranKegiatan::perSumber($kegiatan));
+        return array_map(fn (AnggaranSumber $anggaran) => $anggaran->hasil, $this->anggaranRab);
     }
 
     /**
