@@ -87,5 +87,14 @@
                 <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}#sumber-dana" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800">Pilih lagi di Data Kegiatan</a>
             </span>
         </p>
+        @if ($anggaran->jumlahItem() > 0)
+            <details class="group mt-2 rounded-xl bg-white p-3 ring-1 ring-stone-200" wire:ignore.self data-testid="isi-rab-terlepas">
+                <summary class="flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-stone-600 hover:text-stone-900">
+                    <x-ui.icon name="chevron-down" class="size-3.5 transition group-open:rotate-180" />
+                    Lihat isi RAB {{ $anggaran->sumber }} (baca-saja)
+                </summary>
+                <x-rab.tabel-rincian :anggaran="$anggaran" class="mt-2" />
+            </details>
+        @endif
     @endforeach
 </section>

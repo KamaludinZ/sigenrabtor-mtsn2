@@ -15,6 +15,7 @@ use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
 use App\Support\Rab\RekapKelompok;
+use App\Support\Rab\TampilanRab;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Arr;
 use Livewire\Attributes\Computed;
@@ -65,12 +66,19 @@ class Rab extends Component
         $this->dataKegiatan = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
         $this->kegiatanId = $kegiatan;
 
-        if (! in_array($this->sumber, $this->daftarSumber(), true)) {
-            $this->sumber = $this->daftarSumber()[0] ?? '';
-        }
-
+        // Sumber & halaman dari URL dinormalkan sesuai sumber dana kegiatan (lihat TampilanRab).
+        $this->sumber = $this->tampilan->aktif ?? '';
         $this->updatedKelompok();
         $this->updatedHalaman();
+    }
+
+    /**
+     * Logika render berdasarkan sumber dana: mode, urutan sumber, sumber aktif, halaman tersedia, RAB terlepas.
+     */
+    #[Computed]
+    public function tampilan(): TampilanRab
+    {
+        return TampilanRab::tentukan($this->anggaran, $this->sumber, $this->halaman);
     }
 
     /**
@@ -84,9 +92,8 @@ class Rab extends Component
 
     public function updatedHalaman(): void
     {
-        if (! in_array($this->halaman, ['rincian', 'rekap'], true)) {
-            $this->halaman = 'rincian';
-        }
+        unset($this->tampilan);
+        $this->halaman = $this->tampilan->halaman;
     }
 
     /**
@@ -226,7 +233,7 @@ class Rab extends Component
 
     private function segarkanRincian(): void
     {
-        unset($this->hasil, $this->rincian, $this->total, $this->kelompokRincian, $this->anggaran, $this->angkaDokumen, $this->rekap);
+        unset($this->hasil, $this->rincian, $this->total, $this->kelompokRincian, $this->anggaran, $this->angkaDokumen, $this->rekap, $this->tampilan);
     }
 
     public function updated(string $property): void
@@ -298,7 +305,7 @@ class Rab extends Component
      */
     public function daftarSumber(): array
     {
-        return array_column($this->dataKegiatan['sumber_dana'] ?? [], 'sumber');
+        return $this->tampilan->sumber;
     }
 
     public function pagu(): ?int

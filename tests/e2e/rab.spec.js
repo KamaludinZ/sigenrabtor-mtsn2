@@ -262,4 +262,19 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await expect(page.getByTestId('rincian-rab-komite').getByTestId('tabel-rab-komite')).toBeHidden();
         await page.getByTestId('sumber-dipa').screenshot({ path: `storage/playwright/shots/rincian-rab-data-kegiatan-${testInfo.project.name}.png` });
     });
+
+    test('Semua RAB: kedua RAB tampil berdampingan, tombol ubah membuka rinciannya', async ({ page }, testInfo) => {
+        await page.goto('/kegiatan/2/rab');
+        await page.getByRole('tab', { name: 'Semua RAB' }).click();
+        await expect(page).toHaveURL(/halaman=semua/);
+        await expect(page.getByTestId('semua-rab-dipa')).toContainText('5.400.000');
+        await expect(page.getByTestId('semua-rab-dipa')).toContainText('Lima Juta Empat Ratus Ribu Rupiah');
+        await expect(page.getByTestId('semua-rab-komite')).toContainText('Piagam penghargaan guru terbaik');
+        await page.screenshot({ path: `storage/playwright/shots/semua-rab-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByRole('button', { name: 'Ubah RAB Komite' }).click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByRole('tab', { name: 'Rincian belanja' })).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByTestId('total-rab')).toHaveText('2.500.000');
+    });
 });

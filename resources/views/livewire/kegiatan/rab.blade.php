@@ -29,7 +29,7 @@
         <x-kegiatan.workspace-tabs active="rab" :kegiatan-id="$kegiatanId" />
     </div>
 
-    @if ($this->daftarSumber() === [])
+    @if ($this->tampilan->mode === 'tanpa_sumber')
         <div class="mt-6 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center" data-testid="rab-tanpa-sumber">
             <x-ui.icon name="wallet" class="mx-auto size-10 text-stone-300" />
             <p class="mt-3 text-base font-semibold text-stone-800">Sumber dana belum dipilih</p>
@@ -44,7 +44,7 @@
 
         {{-- Halaman di dalam RAB --}}
         <div class="mt-6 inline-flex rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Halaman RAB">
-            @foreach (['rincian' => 'Rincian belanja', 'rekap' => 'Rekap per kelompok'] as $kunciHalaman => $labelHalaman)
+            @foreach ($this->tampilan->halamanTersedia() as $kunciHalaman => $labelHalaman)
                 <button type="button" role="tab" aria-selected="{{ $halaman === $kunciHalaman ? 'true' : 'false' }}"
                         wire:click="$set('halaman', '{{ $kunciHalaman }}')"
                         @class([
@@ -57,6 +57,8 @@
 
         @if ($halaman === 'rekap')
             @include('livewire.kegiatan.partials.rekap-kelompok')
+        @elseif ($halaman === 'semua')
+            @include('livewire.kegiatan.partials.semua-rab')
         @else
         <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
             <div class="min-w-0 space-y-6">
