@@ -16,7 +16,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="min-w-0">
             <nav class="flex items-center gap-1 text-xs font-medium text-stone-500" aria-label="Breadcrumb">
-                <span>Data Kegiatan</span>
+                <a href="{{ route('kegiatan.index') }}" wire:navigate class="hover:text-stone-800">Data Kegiatan</a>
                 <x-ui.icon name="chevron-right" class="size-3.5" />
                 <span class="truncate text-stone-700">{{ $kegiatanId ? 'Edit kegiatan' : 'Kegiatan Baru' }}</span>
             </nav>

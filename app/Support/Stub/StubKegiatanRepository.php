@@ -38,15 +38,20 @@ class StubKegiatanRepository implements KegiatanRepository
 
     public function terbaru(int $batas = 10): array
     {
-        $semua = array_values($this->baca());
-        usort($semua, fn ($a, $b) => [$b['diperbarui_pada'], $b['id']] <=> [$a['diperbarui_pada'], $a['id']]);
-
         return array_map(fn (array $k) => [
             'id' => $k['id'],
             'nama_kegiatan' => $k['nama_kegiatan'] ?? '',
             'status' => $k['status'] ?? 'draf',
             'diperbarui_pada' => $k['diperbarui_pada'],
-        ], array_slice($semua, 0, $batas));
+        ], array_slice($this->semua(), 0, $batas));
+    }
+
+    public function semua(): array
+    {
+        $semua = array_values($this->baca());
+        usort($semua, fn ($a, $b) => [$b['diperbarui_pada'] ?? '', $b['id']] <=> [$a['diperbarui_pada'] ?? '', $a['id']]);
+
+        return $semua;
     }
 
     public function riwayatIsian(string $kolom, int $batas = 20): array
@@ -55,11 +60,8 @@ class StubKegiatanRepository implements KegiatanRepository
             throw new InvalidArgumentException("Riwayat isian kolom [{$kolom}] tidak tersedia.");
         }
 
-        $semua = array_values($this->baca());
-        usort($semua, fn ($a, $b) => [$b['diperbarui_pada'] ?? '', $b['id']] <=> [$a['diperbarui_pada'] ?? '', $a['id']]);
-
         $nilai = [];
-        foreach ($semua as $kegiatan) {
+        foreach ($this->semua() as $kegiatan) {
             $isi = is_string($kegiatan[$kolom] ?? null) ? trim($kegiatan[$kolom]) : '';
             $nilai[mb_strtolower($isi)] ??= $isi;
         }

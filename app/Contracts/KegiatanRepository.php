@@ -31,6 +31,13 @@ interface KegiatanRepository
     public function terbaru(int $batas = 10): array;
 
     /**
+     * Seluruh kegiatan (data lengkap), terakhir diperbarui lebih dulu — untuk halaman Daftar Kegiatan dan cek nama ganda.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function semua(): array;
+
+    /**
      * Nilai berbeda yang pernah diisi pada satu kolom (lihat KOLOM_RIWAYAT), dari kegiatan yang terakhir
      * diperbarui lebih dulu. Kosong dilewati; duplikat beda huruf besar/kecil dihitung satu.
      *

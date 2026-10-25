@@ -23,7 +23,7 @@ class Navigation
                 'admin_only' => false,
                 'items' => [
                     ['label' => 'Dashboard', 'icon' => 'dashboard', 'route' => 'dashboard', 'active' => 'dashboard'],
-                    ['label' => 'Data Kegiatan', 'icon' => 'clipboard', 'route' => 'kegiatan.create', 'active' => 'kegiatan.*'],
+                    ['label' => 'Data Kegiatan', 'icon' => 'clipboard', 'route' => 'kegiatan.index', 'active' => 'kegiatan.*'],
                     ['label' => 'Riwayat Dokumen', 'icon' => 'history', 'route' => 'dokumen.index', 'active' => 'dokumen.*'],
                     ['label' => 'Buku Dokumen', 'icon' => 'book', 'route' => 'buku.index', 'active' => 'buku.*'],
                 ],

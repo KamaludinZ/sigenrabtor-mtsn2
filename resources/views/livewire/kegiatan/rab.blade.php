@@ -12,7 +12,7 @@
     {{-- Kepala halaman --}}
     <div class="min-w-0">
         <nav class="flex items-center gap-1 text-xs font-medium text-stone-500" aria-label="Breadcrumb">
-            <span>Data Kegiatan</span>
+            <a href="{{ route('kegiatan.index') }}" wire:navigate class="hover:text-stone-800">Data Kegiatan</a>
             <x-ui.icon name="chevron-right" class="size-3.5" />
             <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="truncate hover:text-stone-800">{{ $dataKegiatan['nama_kegiatan'] }}</a>
             <x-ui.icon name="chevron-right" class="size-3.5" />
