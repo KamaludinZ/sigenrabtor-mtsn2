@@ -70,6 +70,37 @@ class KonteksKegiatanTest extends TestCase
         }
     }
 
+    public function test_mengosongkan_catatan_memberi_tahu_dan_bisa_diurungkan(): void
+    {
+        $asli = app(KegiatanRepository::class)->temukan(1)['konteks'];
+        $this->assertNotSame('', $asli);
+
+        Livewire::test(Form::class, ['kegiatan' => 1])
+            ->assertDontSeeHtml('data-testid="konteks-dikosongkan"')
+            ->set('form.konteks', "  \n ")
+            ->assertSet('konteksDikosongkan', $asli)
+            ->assertDispatched('notify', type: 'info')
+            ->assertSeeHtml('data-testid="konteks-dikosongkan"')
+            ->assertSee('kosong — AI hanya memakai isian di atas')
+            ->call('urungkanKosongkanKonteks')
+            ->assertSet('form.konteks', $asli)
+            ->assertSet('konteksDikosongkan', null)
+            ->assertSet('adaPerubahan', true)
+            ->assertDontSeeHtml('data-testid="konteks-dikosongkan"')
+            // Dikosongkan lalu diisi ulang: tidak ada lagi yang perlu diurungkan.
+            ->set('form.konteks', '')
+            ->set('form.konteks', 'Catatan baru: peserta seluruh guru.')
+            ->assertSet('konteksDikosongkan', null);
+
+        // Catatan yang memang belum pernah diisi: tidak ada pemberitahuan.
+        Livewire::test(Form::class)
+            ->set('form.konteks', '')
+            ->assertSet('konteksDikosongkan', null)
+            ->assertNotDispatched('notify')
+            ->call('urungkanKosongkanKonteks')
+            ->assertSet('form.konteks', '');
+    }
+
     public function test_bagian_konteks_di_form(): void
     {
         Livewire::test(Form::class, ['kegiatan' => 2])

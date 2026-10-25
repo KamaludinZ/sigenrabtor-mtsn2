@@ -55,6 +55,10 @@ class Form extends Component
     #[Locked]
     public ?array $panitiaTerhapus = null;
 
+    /** Isi catatan konteks sebelum dikosongkan (untuk "Urungkan"); null bila tidak ada yang dikosongkan. */
+    #[Locked]
+    public ?string $konteksDikosongkan = null;
+
     /** Isian yang ikut divalidasi ulang ketika isian kunci berubah. */
     private const ISIAN_TERKAIT = [
         'tanggal_dokumen' => ['tanggal_laporan'],
@@ -105,11 +109,36 @@ class Form extends Component
         }
     }
 
-    public function updating(string $property): void
+    public function updating(string $property, mixed $nilai = null): void
     {
         if (str_starts_with($property, 'form.')) {
             $this->pastikanDapatDiedit();
         }
+
+        // Catatan konteks yang tadinya berisi dikosongkan: simpan isinya untuk Urungkan dan beri tahu dampaknya pada AI.
+        if ($property === 'form.konteks') {
+            $sebelum = trim($this->form->konteks);
+
+            if ($sebelum !== '' && trim((string) $nilai) === '') {
+                $this->konteksDikosongkan = $this->form->konteks;
+                $this->dispatch('notify', message: 'Catatan konteks dikosongkan. “Buat dengan AI” hanya memakai isian lain sehingga hasilnya lebih umum.', type: 'info');
+            } elseif (trim((string) $nilai) !== '') {
+                $this->konteksDikosongkan = null;
+            }
+        }
+    }
+
+    public function urungkanKosongkanKonteks(): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if ($this->konteksDikosongkan === null) {
+            return;
+        }
+
+        $this->form->konteks = $this->konteksDikosongkan;
+        $this->konteksDikosongkan = null;
+        $this->adaPerubahan = true;
     }
 
     /**

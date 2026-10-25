@@ -229,6 +229,27 @@ test.describe('Form Data Kegiatan', () => {
         await contoh.screenshot({ path: `storage/playwright/shots/contoh-konteks-${testInfo.project.name}.png` });
     });
 
+    test('konteks: mengosongkan catatan memberi tahu dampaknya dan bisa diurungkan', async ({ page }) => {
+        await page.goto('/kegiatan/1/edit');
+        const catatan = page.locator('#catatan_konteks');
+        await catatan.scrollIntoViewIfNeeded();
+        const awal = await catatan.inputValue();
+        expect(awal.length).toBeGreaterThan(0);
+        await expect(page.getByTestId('status-catatan-ai')).toContainText('ikut terkirim');
+
+        await catatan.fill('');
+        await expect(page.getByTestId('status-catatan-ai')).toContainText('kosong — AI hanya memakai isian di atas');
+        await catatan.blur();
+        const pemberitahuan = page.getByTestId('konteks-dikosongkan');
+        await expect(pemberitahuan).toBeVisible();
+        await expect(page.getByText('Catatan konteks dikosongkan. “Buat dengan AI” hanya memakai isian lain')).toBeVisible();
+
+        await pemberitahuan.getByRole('button', { name: 'Urungkan' }).click();
+        await expect(catatan).toHaveValue(awal);
+        await expect(pemberitahuan).toHaveCount(0);
+        await expect(page.getByTestId('status-catatan-ai')).toContainText('ikut terkirim');
+    });
+
     test('konteks: draf lokal dipulihkan setelah halaman tertutup, hilang setelah disimpan', async ({ page }, testInfo) => {
         page.on('dialog', (dialog) => dialog.accept());
         await page.locator('#nama_kegiatan').fill(`Kegiatan Konteks ${testInfo.project.name} ${Date.now()}`);

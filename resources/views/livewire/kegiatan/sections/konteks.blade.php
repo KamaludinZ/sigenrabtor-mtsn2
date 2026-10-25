@@ -45,6 +45,13 @@
             </x-slot:actions>
         </x-ui.uraian>
 
+        @if ($konteksDikosongkan !== null && trim($form->konteks) === '')
+            <div class="-mt-1 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-stone-800 px-3 py-2 text-xs text-white" role="status" data-testid="konteks-dikosongkan">
+                <span>Catatan konteks dikosongkan — “Buat dengan AI” hanya memakai isian lain, hasilnya lebih umum.</span>
+                <button type="button" wire:click="urungkanKosongkanKonteks" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+            </div>
+        @endif
+
         {{-- Peringatan NIP ikut tiap ketukan (dihitung di klien; awal dari server). --}}
         <p x-show="nip" @unless ($nip) style="display: none" @endunless data-testid="peringatan-nip" data-nip="{{ $nip ? 'ya' : 'tidak' }}" x-bind:data-nip="nip ? 'ya' : 'tidak'"
            class="-mt-1 flex items-start gap-1.5 text-xs font-medium text-gold-700" role="alert">
@@ -125,5 +132,12 @@
                 </div>
             @endforeach
         </dl>
+        <p class="mt-3 border-t border-stone-100 pt-2.5 text-xs" data-testid="status-catatan-ai">
+            <span class="text-stone-400">Catatan leading:</span>
+            <span x-show="teks.trim() !== ''" @if (trim($form->konteks) === '') style="display: none" @endif class="text-stone-800">
+                ikut terkirim (<span x-text="$angka(teks.length)">{{ mb_strlen($form->konteks) }}</span> karakter)
+            </span>
+            <span x-show="teks.trim() === ''" @if (trim($form->konteks) !== '') style="display: none" @endif class="text-gold-700">kosong — AI hanya memakai isian di atas</span>
+        </p>
     </aside>
 </div>
