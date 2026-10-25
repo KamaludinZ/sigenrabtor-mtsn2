@@ -121,13 +121,28 @@
                                 <x-rab.status-pagu :status="$hasil->keteranganPagu()" class="text-xs" />
                             </p>
                         </div>
-                        @if ($this->dapatDiedit() && ! $formItemTerbuka)
-                            <button type="button" wire:click="bukaFormItem" class="btn-secondary shrink-0">
-                                <x-ui.icon name="plus" class="size-4" />
-                                <span class="hidden sm:inline">Tambah item</span>
-                            </button>
+                        @if ($this->dapatDiedit())
+                            <div class="flex shrink-0 gap-2">
+                                <button type="button" wire:click="bukaImpor" class="btn-secondary" aria-expanded="{{ $imporTerbuka ? 'true' : 'false' }}"
+                                        aria-controls="panel-impor-rab" title="Impor rincian RAB {{ $sumber }} dari Excel">
+                                    <x-ui.icon name="sheet" class="size-4" />
+                                    <span class="hidden sm:inline">Impor Excel</span>
+                                </button>
+                                @unless ($formItemTerbuka)
+                                    <button type="button" wire:click="bukaFormItem" class="btn-secondary">
+                                        <x-ui.icon name="plus" class="size-4" />
+                                        <span class="hidden sm:inline">Tambah item</span>
+                                    </button>
+                                @endunless
+                            </div>
                         @endif
                     </header>
+
+                    @if ($imporTerbuka && $this->dapatDiedit())
+                        <div class="border-b border-stone-100 bg-stone-50/70 p-3 sm:p-5" id="panel-impor-rab">
+                            <livewire:kegiatan.impor-rab :kegiatan-id="$kegiatanId" :sumber="$sumber" wire:key="impor-rab-{{ $sumber }}" />
+                        </div>
+                    @endif
 
                     @if ($itemTerhapus && $itemTerhapus['sumber'] === $sumber)
                         <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2.5 text-sm text-white sm:px-6" role="status">

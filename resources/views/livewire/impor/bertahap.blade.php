@@ -1,3 +1,6 @@
+@use('App\Livewire\Impor\ImporBertahap')
+@use('App\Support\Format')
+
 @php
     $langkah = ['unggah' => 'Unggah', 'periksa' => 'Periksa', 'proses' => 'Proses', 'selesai' => 'Laporan'];
     $urutan = array_flip(array_keys($langkah));
@@ -48,7 +51,7 @@
                        class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-stone-300 px-6 py-8 text-center transition hover:border-brand-400 hover:bg-brand-50/40">
                     <x-ui.icon name="upload" class="size-8 text-stone-400" />
                     <span class="text-sm font-semibold text-stone-800">Pilih berkas Excel</span>
-                    <span class="text-xs text-stone-500">.xlsx, .xls, atau .csv · maks. {{ \App\Livewire\Impor\ImporBertahap::MAKS_KB / 1024 }} MB</span>
+                    <span class="text-xs text-stone-500">.xlsx, .xls, atau .csv · maks. {{ ImporBertahap::MAKS_KB / 1024 }} MB</span>
                     <input type="file" id="berkas-impor" wire:model="berkas" accept=".xlsx,.xls,.csv" class="sr-only" data-testid="input-berkas-impor">
                 </label>
 
@@ -109,7 +112,7 @@
                                 <tr data-status="{{ $b['status'] }}" x-show="saring === 'semua' || saring === '{{ $b['status'] }}'" class="align-top">
                                     <td class="px-3 py-2 text-right text-stone-400 tabular-nums">{{ $b['baris'] }}</td>
                                     @foreach (array_keys($kolom) as $kunci)
-                                        <td @class(['px-3 py-2', 'font-medium text-stone-800' => $loop->first, 'hidden text-stone-600 md:table-cell' => ! $loop->first])>
+                                        <td @class(['px-3 py-2', 'font-medium text-stone-800' => $loop->first, 'hidden whitespace-nowrap text-stone-600 md:table-cell' => ! $loop->first])>
                                             {{ $b['tampil'][$kunci] ?? '—' }}
                                             @if ($loop->first)
                                                 {{-- Layar sempit: kolom lain diringkas di bawah nama. --}}
@@ -119,7 +122,7 @@
                                             @endif
                                         </td>
                                     @endforeach
-                                    <td class="px-3 py-2">
+                                    <td class="min-w-[12rem] px-3 py-2">
                                         <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset {{ $lencana[$b['status']][1] }}">{{ $lencana[$b['status']][0] }}</span>
                                         @foreach ($b['pesan'] as $pesan)
                                             <p @class(['mt-1 text-xs', 'text-red-700' => $b['status'] === 'gagal', 'text-stone-500' => $b['status'] !== 'gagal'])>{{ $pesan }}</p>
@@ -133,6 +136,36 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($ringkasanTotal ?? null)
+                    {{-- Impor rincian RAB: cocokkan total dengan baris TOTAL berkas dan lihat dampaknya pada pagu. --}}
+                    @php $selisihBerkas = $ringkasanTotal['berkas'] !== null ? $ringkasanTotal['berkas'] - $ringkasanTotal['siap'] - $ringkasanTotal['dilewati'] : null; @endphp
+                    <div class="mt-3 grid gap-3 rounded-xl bg-stone-50 p-3 text-sm ring-1 ring-stone-200 sm:grid-cols-3" data-testid="ringkasan-total-impor">
+                        <div>
+                            <p class="text-xs text-stone-500">Total item siap diimpor</p>
+                            <p class="font-semibold text-stone-900 tabular-nums">{{ Format::rupiah($ringkasanTotal['siap']) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-stone-500">Baris TOTAL di berkas</p>
+                            @if ($ringkasanTotal['berkas'] === null)
+                                <p class="text-stone-500">Tidak ada</p>
+                            @elseif ($ringkasanTotal['cocok'])
+                                <p class="flex items-center gap-1 font-semibold text-brand-700" data-testid="total-berkas-cocok">
+                                    <x-ui.icon name="check-circle" class="size-4" /> {{ Format::rupiah($ringkasanTotal['berkas']) }} — cocok
+                                </p>
+                            @else
+                                <p class="font-semibold text-gold-700" data-testid="total-berkas-selisih">
+                                    {{ Format::rupiah($ringkasanTotal['berkas']) }} — selisih {{ Format::rupiah(abs($selisihBerkas)) }}{{ $gagal > 0 ? ' (ada baris gagal)' : '' }}
+                                </p>
+                            @endif
+                        </div>
+                        <div>
+                            <p class="text-xs text-stone-500">RAB sesudah impor</p>
+                            <p class="font-semibold text-stone-900 tabular-nums">{{ Format::rupiah($ringkasanTotal['sesudah']) }}</p>
+                            <x-rab.status-pagu :status="$ringkasanTotal['status']" class="text-xs" data-testid="status-pagu-sesudah-impor" />
+                        </div>
+                    </div>
+                @endif
 
                 @if ($gagal > 0)
                     <p class="mt-3 flex items-start gap-2 text-xs text-stone-600">

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
 use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
 use App\Livewire\Kegiatan\Form as KegiatanForm;
@@ -11,6 +12,7 @@ Route::redirect('/', '/kegiatan');
 
 Route::get('/kegiatan', KegiatanDaftar::class)->name('kegiatan.index');
 Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name('kegiatan.template');
+Route::get('/kegiatan/format-rincian-rab', UnduhFormatRincianRab::class)->name('kegiatan.rab.template');
 Route::get('/kegiatan/buat', KegiatanForm::class)->name('kegiatan.create');
 Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegiatan')->name('kegiatan.edit');
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');

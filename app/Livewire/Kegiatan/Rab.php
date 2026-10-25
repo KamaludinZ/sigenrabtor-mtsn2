@@ -21,6 +21,7 @@ use Illuminate\Support\Arr;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -52,6 +53,9 @@ class Rab extends Component
     public ItemBelanjaForm $item;
 
     public bool $formItemTerbuka = false;
+
+    /** Panel impor rincian dari Excel untuk sumber dana yang sedang dibuka. */
+    public bool $imporTerbuka = false;
 
     /** Id item yang sedang diubah; null = form dalam mode tambah. */
     #[Locked]
@@ -126,7 +130,28 @@ class Rab extends Component
             $this->sumber = $sumber;
             $this->halaman = 'rincian';
             $this->itemTerhapus = null;
+            $this->imporTerbuka = false;
             $this->tutupFormItem();
+        }
+    }
+
+    public function bukaImpor(): void
+    {
+        $this->pastikanDapatDiedit();
+        $this->tutupFormItem();
+        $this->imporTerbuka = ! $this->imporTerbuka;
+    }
+
+    /**
+     * Rincian hasil impor Excel sudah tersimpan: muat ulang tabel, total, terbilang, dan rekap.
+     */
+    #[On('rab-diimpor')]
+    public function rabDiimpor(int $jumlah = 0, string $sumber = ''): void
+    {
+        $this->segarkanRincian();
+
+        if ($jumlah > 0) {
+            $this->dispatch('notify', message: "{$jumlah} item hasil impor ditambahkan ke RAB {$sumber}.", type: 'success');
         }
     }
 

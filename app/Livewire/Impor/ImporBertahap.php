@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Impor;
 
-use App\Support\Kegiatan\Impor\GagalBacaImpor;
+use App\Support\Impor\GagalBacaImpor;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;

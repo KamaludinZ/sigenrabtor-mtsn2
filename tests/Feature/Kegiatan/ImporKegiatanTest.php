@@ -5,7 +5,7 @@ namespace Tests\Feature\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Livewire\Kegiatan\Daftar;
 use App\Livewire\Kegiatan\ImporKegiatan;
-use App\Support\Kegiatan\Impor\GagalBacaImpor;
+use App\Support\Impor\GagalBacaImpor;
 use App\Support\Kegiatan\Impor\PembacaImporKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\Impor\TemplateImporKegiatan;
@@ -103,11 +103,15 @@ class ImporKegiatanTest extends TestCase
     public function test_csv_titik_koma_dari_excel_indonesia(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'csv').'.csv';
-        file_put_contents($path, "No;Nama Kegiatan *;Leading;Pagu DIPA;Pagu Komite;Bulan Pelaksanaan\n1;Rapat Kerja;1.6;6.000.000;;7-8\n");
+        file_put_contents($path, "No;Nama Kegiatan *;Leading;Pagu DIPA;Pagu Komite;Bulan Pelaksanaan\n1;Rapat Kerja;1.6;6.000.000;600.000;7-8\n");
 
         $baris = PembacaImporKegiatan::baca($path);
         $this->assertSame('Rapat Kerja', $baris[0]['nilai']['nama_kegiatan']);
         $this->assertSame('7-8', $baris[0]['nilai']['bulan']);
+        // "600.000" tetap teks rupiah (bukan 600 desimal), sehingga pagunya Rp600.000.
+        $this->assertSame('600.000', $baris[0]['nilai']['pagu_komite']);
+        $periksa = PemeriksaImporKegiatan::periksa($baris, [], MasterKode::leadings(), MasterKode::leadings());
+        $this->assertSame([['sumber' => 'DIPA', 'pagu' => 6_000_000], ['sumber' => 'Komite', 'pagu' => 600_000]], $periksa[0]['sumber_dana']);
     }
 
     public function test_pemeriksa_menjelaskan_setiap_kondisi_baris(): void

@@ -196,6 +196,45 @@ test.describe('Perkiraan total RAB lokal', () => {
     });
 });
 
+test.describe('Impor rincian RAB dari Excel', () => {
+    test('tabel RAB lama diimpor, format disesuaikan otomatis, tabel & total ikut diperbarui', async ({ page }, testInfo) => {
+        await buatKegiatanDenganItem(page, `Kegiatan Impor RAB ${testInfo.project.name}`, []);
+
+        await page.getByRole('button', { name: /^Impor (Excel|rincian RAB)/ }).click();
+        const impor = page.getByTestId('impor-bertahap');
+        await expect(impor).toContainText('Impor rincian RAB Komite dari Excel');
+
+        // Tabel seperti Form RAB di REFERENSI (titik ribuan, judul dokumen, baris TOTAL KESELURUHAN, tanda tangan).
+        const csv = [
+            'RENCANA ANGGARAN BIAYA;;;;;',
+            ';;;;;',
+            'No;Uraian;Vol;Satuan;Harga Satuan (Rp);Jumlah (Rp)',
+            '1.;Honorarium Pemateri;6;OJ;600.000;3.600.000',
+            '2.;Nasi Kotak Guru;54;kotak;30.000;1.620.000',
+            '3.;Penyelesaian tugas di luar jam kerja (6 orang);2;OJ;25.000;300.000',
+            ';TOTAL KESELURUHAN;;;;5.520.000',
+            'Mengetahui,;;;Malang, 1 Juli 2026;;',
+        ].join('\n');
+        await page.getByTestId('input-berkas-impor').setInputFiles({ name: 'rab-lama.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+
+        await expect(impor).toHaveAttribute('data-tahap', 'periksa');
+        await expect(page.getByTestId('saring-siap')).toHaveText('Siap (3)');
+        await expect(page.getByTestId('total-berkas-cocok')).toContainText('Rp5.520.000');
+        await expect(page.getByTestId('pratinjau-impor')).toContainText('Volume disesuaikan dari 2 menjadi 12');
+        await expect(page.getByTestId('status-pagu-sesudah-impor')).toHaveText('Melebihi pagu Rp520.000');
+        await impor.screenshot({ path: `storage/playwright/shots/impor-rab-periksa-${testInfo.project.name}.png` });
+
+        await page.getByTestId('mulai-impor').click();
+        await expect(impor).toHaveAttribute('data-tahap', 'selesai', { timeout: 60_000 });
+        await expect(page.getByTestId('ringkasan-impor')).toHaveText('Impor selesai: 3 item berhasil ditambahkan.');
+
+        // Tabel RAB, total, dan terbilang langsung memuat hasil impor.
+        await expect(page.getByTestId('total-anggaran-nilai')).toHaveText('Rp5.520.000');
+        await expect(page.getByTestId('rincian-rab')).toContainText('Penyelesaian tugas di luar jam kerja (6 orang)');
+        await expect(page.getByTestId('pagu-rincian')).toContainText('3 baris');
+    });
+});
+
 test.describe('Kelompok kategori interaktif', () => {
     test('pindah kategori (seret di desktop, pilihan di mobile), ciutkan, dan lompat dari ringkasan', async ({ page }, testInfo) => {
         await buatKegiatanDenganItem(page, `Kegiatan Kelompok ${testInfo.project.name}`, [
