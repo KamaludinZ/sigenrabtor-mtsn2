@@ -33,6 +33,28 @@ class TabelTerminTest extends TestCase
         $this->assertNull($campur->barisTabel()[1]['tanggal']);
     }
 
+    public function test_status_termin_server_sama_dengan_kembaran_klien(): void
+    {
+        // Berkas yang sama dipakai tests/e2e/format.spec.js untuk statusTermin()/persenTermin() di resources/js/termin.js.
+        $kasus = json_decode(file_get_contents(base_path('tests/fixtures/status-termin.json')), true);
+        $this->assertNotEmpty($kasus);
+
+        foreach ($kasus as $k) {
+            $mekanisme = new MekanismePembayaran($k['total'], array_map(fn ($n) => ['tanggal' => null, 'nominal' => $n], $k['nominal']));
+            $this->assertSame([$k['status'], $k['teks'], $k['jumlah']], [$mekanisme->status(), $mekanisme->teksStatus(), $mekanisme->jumlah()], json_encode($k));
+            $this->assertEquals($k['persen'], array_map(fn ($n) => $mekanisme->persen($n), $k['nominal']));
+        }
+    }
+
+    public function test_halaman_termin_menghitung_di_klien(): void
+    {
+        Livewire::test(TerminPembayaran::class, ['kegiatanId' => 1, 'sumber' => 'Komite'])
+            ->assertSeeHtml('x-data="jumlahTermin({ total: 10000000 })"')
+            ->assertSeeHtml('x-bind:data-status="hasil.status"')
+            ->assertSeeHtml('data-persen-termin')
+            ->assertSeeHtml('x-text="hasil.teks"');
+    }
+
     public function test_komponen_tabel_termin_baca_saja(): void
     {
         $html = Blade::render('<x-rab.tabel-termin :mekanisme="$m" sumber="Komite" />', ['m' => $this->mekanismeContoh()]);

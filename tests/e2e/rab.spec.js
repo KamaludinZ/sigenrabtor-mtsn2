@@ -370,10 +370,15 @@ test.describe('Termin pembayaran', () => {
         await expect(page.locator('#termin-nominal-0')).toHaveValue('1.800.000');
         await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'pas');
 
-        // Ubah nominal termin 1: terbilang ikut, selisih tampil, lalu disesuaikan otomatis di termin terakhir.
+        // Ubah nominal termin 1: jumlah, selisih, persen, dan terbilang ikut tiap ketukan (sebelum kotak ditinggalkan).
         await page.locator('#termin-nominal-0').fill('');
         await page.locator('#termin-nominal-0').pressSequentially('2500000');
         await expect(page.getByTestId('termin-nominal-0-terbilang')).toHaveText('Dua Juta Lima Ratus Ribu Rupiah');
+        await expect(page.getByTestId('jumlah-termin')).toHaveText('Rp4.300.000');
+        await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'lebih');
+        await expect(page.getByTestId('teks-status-termin')).toHaveText('Termin lebih Rp700.000 dari total RAB');
+        await expect(termin.locator('tr[data-termin="1"] [data-persen-termin]')).toHaveText('69,4%');
+        await expect(page.locator('#termin-nominal-0')).toBeFocused();
         await page.locator('#termin-nominal-0').blur();
         await expect(page.getByTestId('status-termin')).toHaveAttribute('data-status', 'lebih');
         await page.getByTestId('isi-sisa').click();

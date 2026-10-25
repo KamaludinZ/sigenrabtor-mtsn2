@@ -8,12 +8,14 @@
     $bisaUbah = $this->dapatDiedit();
     $total = $this->anggaran->total();
     $tahun = StubData::tahunAktif()['tahun'];
-    $nadaStatus = [
-        'sekaligus' => ['info', 'bg-stone-50 text-stone-700 ring-stone-200'],
-        'pas' => ['check-circle', 'bg-brand-50 text-brand-900 ring-brand-200'],
-        'kurang' => ['alert', 'bg-gold-50 text-stone-800 ring-gold-300'],
-        'lebih' => ['alert', 'bg-red-50 text-red-800 ring-red-200'],
-    ][$mekanisme->status()];
+    // Warna & ikon status; dipilih ulang di klien tiap ketukan nominal (lihat resources/js/termin.js).
+    $kelasStatus = [
+        'sekaligus' => 'bg-stone-50 text-stone-700 ring-stone-200',
+        'pas' => 'bg-brand-50 text-brand-900 ring-brand-200',
+        'kurang' => 'bg-gold-50 text-stone-800 ring-gold-300',
+        'lebih' => 'bg-red-50 text-red-800 ring-red-200',
+    ];
+    $ikonStatus = ['sekaligus' => 'info', 'pas' => 'check-circle', 'kurang' => 'alert', 'lebih' => 'alert'];
 @endphp
 
 {{--
@@ -21,6 +23,7 @@
     Jumlah termin dibandingkan dengan total RAB secara langsung, dan pratinjau blok "Mekanisme Pembayaran" mengikuti Form RAB.
 --}}
 <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="termin-pembayaran"
+     x-data="jumlahTermin({ total: @js($total) })"
      x-on:beforeunload.window="if ($wire.adaPerubahan) { $event.preventDefault(); $event.returnValue = ''; }">
     <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200">
         <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
@@ -89,10 +92,11 @@
                                     </td>
                                     <td class="px-3 py-2">
                                         <label for="termin-nominal-{{ $i }}" class="sr-only">Nominal termin {{ $i + 1 }}</label>
-                                        <x-ui.rupiah :id="'termin-nominal-'.$i" :model="'baris.'.$i.'.nominal'" :disabled="! $bisaUbah" terbilang :nilai-awal="$b['nominal']" class="py-1.5" />
+                                        <x-ui.rupiah :id="'termin-nominal-'.$i" :model="'baris.'.$i.'.nominal'" :disabled="! $bisaUbah" terbilang :nilai-awal="$b['nominal']" class="py-1.5"
+                                                     x-on:input="ketik(@js($b['key']), $event.target.value)" />
                                         @error("baris.{$i}.nominal") <p class="form-error">{{ $message }}</p> @enderror
                                     </td>
-                                    <td class="px-3 py-3 text-right text-stone-500 tabular-nums">{{ str_replace('.', ',', (string) $mekanisme->persen($nominal)) }}%</td>
+                                    <td class="px-3 py-3 text-right text-stone-500 tabular-nums" data-persen-termin x-text="teksPersen(@js($b['key']))">{{ str_replace('.', ',', (string) $mekanisme->persen($nominal)) }}%</td>
                                     @if ($bisaUbah)
                                         <td class="px-3 py-2.5 text-right">
                                             <button type="button" wire:click="hapusTermin('{{ $b['key'] }}')" title="Hapus termin {{ $i + 1 }}" aria-label="Hapus termin {{ $i + 1 }}"
@@ -139,17 +143,25 @@
             @endif
 
             {{-- Status jumlah termin terhadap total RAB --}}
-            <div class="grid gap-3 rounded-xl px-4 py-3 ring-1 sm:grid-cols-3 {{ $nadaStatus[1] }}" data-testid="status-termin" data-status="{{ $mekanisme->status() }}" role="status">
+            <div class="grid gap-3 rounded-xl px-4 py-3 ring-1 sm:grid-cols-3" data-testid="status-termin" role="status" aria-live="polite"
+                 data-status="{{ $mekanisme->status() }}" x-bind:data-status="hasil.status"
+                 x-bind:class="@js($kelasStatus)[hasil.status]">
                 <div>
                     <p class="text-xs opacity-75">Total RAB {{ $sumber }}</p>
                     <p class="font-semibold tabular-nums">{{ Format::rupiah($total) }}</p>
                 </div>
                 <div>
                     <p class="text-xs opacity-75">Jumlah termin</p>
-                    <p class="font-semibold tabular-nums" data-testid="jumlah-termin">{{ $mekanisme->bertermin() ? Format::rupiah($mekanisme->jumlah()) : '—' }}</p>
+                    <p class="font-semibold tabular-nums" data-testid="jumlah-termin"
+                       x-text="hasil.status === 'sekaligus' ? '—' : $rupiah(hasil.jumlah)">{{ $mekanisme->bertermin() ? Format::rupiah($mekanisme->jumlah()) : '—' }}</p>
                 </div>
                 <p class="flex items-start gap-1.5 text-sm font-medium sm:self-center">
-                    <x-ui.icon :name="$nadaStatus[0]" class="mt-0.5 size-4 shrink-0" /> {{ $mekanisme->teksStatus() }}
+                    @foreach (array_unique($ikonStatus) as $ikon)
+                        <span x-show="@js($ikonStatus)[hasil.status] === @js($ikon)" @if ($ikonStatus[$mekanisme->status()] !== $ikon) style="display: none" @endif>
+                            <x-ui.icon :name="$ikon" class="mt-0.5 size-4 shrink-0" />
+                        </span>
+                    @endforeach
+                    <span data-testid="teks-status-termin" x-text="hasil.teks">{{ $mekanisme->teksStatus() }}</span>
                 </p>
             </div>
 

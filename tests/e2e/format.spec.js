@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 
 // Kasus status pagu bersama: juga diuji di tests/Feature/Rab/TotalLokalTest.php terhadap App\Support\Rab\StatusPagu.
 const KASUS_STATUS_PAGU = JSON.parse(readFileSync(new URL('../fixtures/status-pagu.json', import.meta.url), 'utf-8'));
+// Kasus status termin bersama: juga diuji di tests/Feature/Rab/TabelTerminTest.php terhadap MekanismePembayaran.
+const KASUS_STATUS_TERMIN = JSON.parse(readFileSync(new URL('../fixtures/status-termin.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -54,6 +56,15 @@ test.describe('Format mata uang di klien', () => {
         });
         // Kasus sama dengan tests/Feature/Kegiatan/KonteksKegiatanTest (19 digit bukan NIP).
         expect(hasil).toEqual({ nip: [true, true, true, false, false], aspek: { peserta: true, output: false } });
+    });
+
+    test('status & persen termin klien sama dengan server', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => {
+            const s = window.SIRABTOR.statusTermin(k.total, k.nominal);
+            return { status: s.status, teks: s.teks, jumlah: s.jumlah, persen: k.nominal.map((n) => window.SIRABTOR.persenTermin(n, k.total)) };
+        }), KASUS_STATUS_TERMIN);
+        expect(hasil).toEqual(KASUS_STATUS_TERMIN.map(({ status, teks, jumlah, persen }) => ({ status, teks, jumlah, persen })));
     });
 
     test('status pagu klien sama dengan server', async ({ page }) => {

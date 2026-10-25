@@ -1,0 +1,8 @@
+[
+    { "total": 10000000, "nominal": [], "status": "sekaligus", "teks": "Dibayar sekaligus", "jumlah": 0, "persen": [] },
+    { "total": 10000000, "nominal": [7680000, 2320000], "status": "pas", "teks": "Jumlah termin sama dengan total RAB", "jumlah": 10000000, "persen": [76.8, 23.2] },
+    { "total": 3600000, "nominal": [2500000, 800000], "status": "kurang", "teks": "Termin kurang Rp300.000 dari total RAB", "jumlah": 3300000, "persen": [69.4, 22.2] },
+    { "total": 1000, "nominal": [600, 500], "status": "lebih", "teks": "Termin lebih Rp100 dari total RAB", "jumlah": 1100, "persen": [60, 50] },
+    { "total": 3, "nominal": [1, 1, 1], "status": "pas", "teks": "Jumlah termin sama dengan total RAB", "jumlah": 3, "persen": [33.3, 33.3, 33.3] },
+    { "total": 0, "nominal": [500], "status": "lebih", "teks": "Termin lebih Rp500 dari total RAB", "jumlah": 500, "persen": [0] }
+]
