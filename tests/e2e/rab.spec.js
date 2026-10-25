@@ -663,9 +663,21 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await page.getByTestId('sumber-dipa').getByRole('checkbox').uncheck();
         await expect(page.getByTestId('ringkasan-pilihan-sumber')).toContainText('Akan dibuat 1 dokumen KAK/TOR & RAB Komite.');
         await expect(page.getByTestId('rab-terlepas-dipa')).toContainText('RAB DIPA tersimpan (6 item, Rp5.400.000) tetapi tidak ikut dicetak');
+        // Pagu dikosongkan & dinonaktifkan, tetapi diingat: dicentang lagi, pagu lama dipakai lagi.
+        await expect(page.locator('#pagu_dipa')).toBeDisabled();
+        await expect(page.locator('#pagu_dipa')).toHaveValue('');
+        await expect(page.getByTestId('pagu-dilepas-dipa')).toHaveText('Pagu sebelumnya Rp6.000.000 dipakai lagi bila DIPA dicentang.');
         await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        await expect(page.locator('#pagu_dipa')).toHaveValue('6.000.000');
         await expect(page.getByTestId('rab-terlepas-dipa')).toHaveCount(0);
         await expect(page.getByTestId('sumber-dipa')).toHaveAttribute('data-dipilih', 'ya');
+
+        // Dari peringatan RAB yang dilepas, "Pilih DIPA lagi" memilihnya kembali beserta pagunya.
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').uncheck();
+        await page.getByTestId('rab-terlepas-dipa').getByRole('button', { name: 'Pilih DIPA lagi' }).click();
+        await expect(page.getByTestId('sumber-dipa').getByRole('checkbox')).toBeChecked();
+        await expect(page.locator('#pagu_dipa')).toHaveValue('6.000.000');
+        await expect(page.getByTestId('total-pagu')).toContainText('8.500.000');
     });
 
     test('Data Kegiatan: rincian tiap RAB bisa dibuka tanpa meninggalkan halaman', async ({ page }, testInfo) => {

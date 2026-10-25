@@ -4,6 +4,7 @@ namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
+use App\Enums\SumberDana;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\FormSections;
@@ -64,6 +65,10 @@ class Form extends Component
     /** Jam (H.i) catatan konteks terakhir tersimpan otomatis; null = belum ada simpan otomatis di sesi ini. */
     #[Locked]
     public ?string $konteksTersimpanPada = null;
+
+    /** @var array<string, string> Pagu sumber dana yang centangnya dilepas (kunci "dipa"/"komite"), dipakai lagi bila dicentang ulang. */
+    #[Locked]
+    public array $paguDilepas = [];
 
     /** Isian yang ikut divalidasi ulang ketika isian kunci berubah. */
     private const ISIAN_TERKAIT = [
@@ -182,8 +187,7 @@ class Form extends Component
             'bulan_pelaksanaan' => $this->form->rapikanBulan(),
             'kode_sk' => [$this->form->sinkronIksk(), $this->form->pilihIkskTunggal()],
             'pagu_dipa', 'pagu_komite' => $this->form->rapikanPagu($field),
-            'dana_dipa' => $this->form->dana_dipa ?: $this->form->pagu_dipa = '',
-            'dana_komite' => $this->form->dana_komite ?: $this->form->pagu_komite = '',
+            'dana_dipa', 'dana_komite' => $this->gantiPilihanSumber(substr($field, 5)),
             default => null,
         };
 
@@ -200,6 +204,47 @@ class Form extends Component
         if ($field === 'konteks') {
             $this->simpanKonteksOtomatis();
         }
+    }
+
+    /**
+     * Mencentang/melepas sumber dana ("dipa"/"komite"). Pagu sumber yang dilepas dikosongkan (tidak ikut disimpan) tetapi
+     * diingat, lalu dipakai lagi bila sumber itu dicentang ulang sebelum pagunya diisi baru — salah klik tidak menghapus pagu.
+     */
+    private function gantiPilihanSumber(string $kunci): void
+    {
+        $paguField = 'pagu_'.$kunci;
+        $label = SumberDana::dariKunci($kunci)?->value;
+
+        if (! $this->form->{'dana_'.$kunci}) {
+            if (filled($this->form->{$paguField})) {
+                $this->paguDilepas[$kunci] = $this->form->{$paguField};
+            }
+            $this->form->{$paguField} = '';
+            $this->resetErrorBag('form.'.$paguField);
+
+            return;
+        }
+
+        if (blank($this->form->{$paguField}) && isset($this->paguDilepas[$kunci])) {
+            $this->form->{$paguField} = $this->paguDilepas[$kunci];
+            $this->dispatch('notify', message: "Pagu {$label} Rp{$this->paguDilepas[$kunci]} dipakai lagi.", type: 'info');
+        }
+        unset($this->paguDilepas[$kunci]);
+    }
+
+    /** Pilih lagi sumber dana yang dilepas (tombol pada peringatan RAB yang tidak ikut dicetak). */
+    public function pilihSumberLagi(string $kunci): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if (SumberDana::dariKunci($kunci) === null || $this->form->{'dana_'.$kunci}) {
+            return;
+        }
+
+        $this->form->{'dana_'.$kunci} = true;
+        $this->adaPerubahan = true;
+        $this->gantiPilihanSumber($kunci);
+        $this->validasiIsianTerkait(['pagu_'.$kunci]);
     }
 
     /**

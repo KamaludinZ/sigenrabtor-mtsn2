@@ -17,6 +17,18 @@ enum SumberDana: string
         return mb_strtolower($this->value);
     }
 
+    /** Kebalikan kunci(): "dipa" → DIPA; null bila tidak dikenal. */
+    public static function dariKunci(string $kunci): ?self
+    {
+        foreach (self::cases() as $sumber) {
+            if ($sumber->kunci() === $kunci) {
+                return $sumber;
+            }
+        }
+
+        return null;
+    }
+
     public function keterangan(): string
     {
         return match ($this) {

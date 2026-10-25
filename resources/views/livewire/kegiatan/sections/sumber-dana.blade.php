@@ -66,7 +66,11 @@
                                      terbilang :nilai-awal="$form->{$idPagu}" />
                         @error('form.'.$idPagu) <p class="form-error" id="{{ $idPagu }}-error">{{ $message }}</p> @enderror
                         @unless ($aktif)
-                            <p class="mt-1 text-[11px] text-stone-400">Centang {{ $label }} bila kegiatan ini juga dibiayai {{ $label }}.</p>
+                            @if (isset($paguDilepas[$kunci]))
+                                <p class="mt-1 text-[11px] text-stone-500" data-testid="pagu-dilepas-{{ $kunci }}">Pagu sebelumnya Rp{{ $paguDilepas[$kunci] }} dipakai lagi bila {{ $label }} dicentang.</p>
+                            @else
+                                <p class="mt-1 text-[11px] text-stone-400">Centang {{ $label }} bila kegiatan ini juga dibiayai {{ $label }}.</p>
+                            @endif
                         @endunless
                     </div>
 
@@ -129,10 +133,15 @@
                         @enderror
                     @elseif ($terlepas)
                         {{-- Sumber dilepas padahal RAB-nya sudah berisi: RAB disimpan, tetapi tidak dicetak. --}}
-                        <p class="flex items-start gap-2 rounded-xl bg-gold-50 px-3 py-2.5 text-xs text-stone-800 ring-1 ring-gold-200" role="status" data-testid="rab-terlepas-{{ $kunci }}">
+                        <div class="flex items-start gap-2 rounded-xl bg-gold-50 px-3 py-2.5 text-xs text-stone-800 ring-1 ring-gold-200" role="status" data-testid="rab-terlepas-{{ $kunci }}">
                             <x-ui.icon name="alert" class="mt-px size-4 shrink-0 text-gold-600" />
-                            <span>RAB {{ $label }} tersimpan ({{ $terlepas->jumlahItem() }} item, {{ Format::rupiah($terlepas->total()) }}) tetapi tidak ikut dicetak selama {{ $label }} tidak dipilih. Centang lagi untuk memakainya.</span>
-                        </p>
+                            <div class="min-w-0">
+                                <p>RAB {{ $label }} tersimpan ({{ $terlepas->jumlahItem() }} item, {{ Format::rupiah($terlepas->total()) }}) tetapi tidak ikut dicetak selama {{ $label }} tidak dipilih.</p>
+                                @if ($this->dapatDiedit())
+                                    <button type="button" wire:click="pilihSumberLagi('{{ $kunci }}')" class="mt-1.5 font-semibold text-brand-700 hover:text-brand-800">Pilih {{ $label }} lagi</button>
+                                @endif
+                            </div>
+                        </div>
                     @endif
                 </div>
             </article>
