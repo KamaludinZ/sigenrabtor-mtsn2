@@ -5,6 +5,7 @@ namespace App\Livewire\Forms;
 use App\Rules\KalimatUtuh;
 use App\Support\Format;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\KalimatKak;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
@@ -560,7 +561,7 @@ class KegiatanForm extends Form
      */
     public static function tanpaAwalanKegiatan(string $nama): string
     {
-        return trim(preg_replace('/^kegiatan\s+/iu', '', trim($nama)));
+        return KalimatKak::tanpaAwalanKegiatan($nama);
     }
 
     /**
@@ -642,12 +643,8 @@ class KegiatanForm extends Form
      */
     public function kelengkapan(): array
     {
-        $terisi = fn (array $nilai) => count(array_filter($nilai, fn ($v) => filled($v) && $v !== []));
-        $status = fn (int $isi, int $total) => match (true) {
-            $isi === $total => 'lengkap',
-            $isi === 0 => 'kosong',
-            default => 'sebagian',
-        };
+        $terisi = fn (array $nilai) => self::jumlahTerisi($nilai);
+        $status = fn (int $isi, int $total) => self::statusTerisi($isi, $total);
 
         $identitas = [$this->nama_kegiatan, $this->tujuan, $this->sasaran, $this->tanggal_dokumen];
         $kode = [$this->leading, $this->kode_rktm, $this->kode_sk, $this->kode_iksk, $this->kode_edm, $this->budaya_mutu];
@@ -672,6 +669,40 @@ class KegiatanForm extends Form
                 default => 'sebagian',
             },
         ];
+    }
+
+    /**
+     * Kelengkapan tiap kelompok bagian Pelaksanaan (waktu, tempat & peserta, bentuk — bentuk opsional).
+     *
+     * @return array{waktu: string, tempat: string, bentuk: string}
+     */
+    public function kelengkapanPelaksanaan(): array
+    {
+        $waktu = [$this->tanggal_mulai, $this->lama_hari, $this->bulan_pelaksanaan];
+        $tempat = [$this->tempat, $this->peserta_jumlah, $this->peserta_jenis];
+
+        return [
+            'waktu' => self::statusTerisi(self::jumlahTerisi($waktu), count($waktu)),
+            'tempat' => self::statusTerisi(self::jumlahTerisi($tempat), count($tempat)),
+            'bentuk' => filled($this->uraian_pelaksanaan) ? 'lengkap' : 'opsional',
+        ];
+    }
+
+    /**
+     * @param  list<mixed>  $nilai
+     */
+    private static function jumlahTerisi(array $nilai): int
+    {
+        return count(array_filter($nilai, fn ($v) => filled($v) && $v !== []));
+    }
+
+    private static function statusTerisi(int $isi, int $total): string
+    {
+        return match (true) {
+            $isi === $total => 'lengkap',
+            $isi === 0 => 'kosong',
+            default => 'sebagian',
+        };
     }
 
     /**

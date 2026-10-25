@@ -106,4 +106,26 @@ test.describe('Form Data Kegiatan', () => {
         await expect(page.getByText('Kolom nama kegiatan wajib diisi.')).toBeVisible();
         await expect(page.getByText('Periksa kembali isian yang ditandai merah.')).toBeVisible();
     });
+    test('pelaksanaan: tiga kelompok, pratinjau KAK ikut isian, penghitung uraian terisi saat dimuat', async ({ page }, testInfo) => {
+        const bagian = page.locator('#pelaksanaan');
+        await expect(bagian.locator('[data-kelompok]')).toHaveCount(3);
+        const pratinjau = page.getByTestId('pratinjau-pelaksanaan');
+        await expect(pratinjau.locator('[data-pratinjau="tempat"]')).toContainText('Lengkapi tempat pelaksanaan');
+
+        await page.locator('#nama_kegiatan').fill('Workshop Kurikulum');
+        await page.locator('#tanggal_mulai').fill('2026-07-14');
+        await page.locator('#lama_hari').fill('2');
+        await page.locator('#tempat').fill('Aula Madrasah');
+        await page.locator('#tempat').blur();
+        await expect(pratinjau.locator('[data-pratinjau="pelaksanaan"]')).toContainText('akan dilaksanakan selama 2 hari, 14 – 15 Juli 2026.');
+        await expect(pratinjau.locator('[data-pratinjau="tempat"]')).toContainText('Kegiatan Workshop Kurikulum bertempat di Aula Madrasah.');
+        await expect(bagian.locator('[data-kelompok="waktu"] [data-kelengkapan]')).toHaveAttribute('data-kelengkapan', 'lengkap');
+        await bagian.screenshot({ path: `storage/playwright/shots/pelaksanaan-${testInfo.project.name}.png` });
+
+        // Kegiatan tersimpan: penghitung karakter menunjukkan panjang uraian yang dimuat, bukan 0.
+        await page.goto('/kegiatan/1/edit');
+        const panjang = await page.locator('#uraian_pelaksanaan').evaluate((el) => el.value.length);
+        expect(panjang).toBeGreaterThan(0);
+        await expect(page.locator('#pelaksanaan').getByText(`${panjang} / 3.000`)).toBeVisible();
+    });
 });

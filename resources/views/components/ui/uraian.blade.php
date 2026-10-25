@@ -19,7 +19,10 @@
      x-data="{
         n: 0,
         max: {{ (int) $max }},
-        init() { this.n = this.$refs.ta.value.length },
+        init() {
+            this.$nextTick(() => this.n = this.$refs.ta.value.length);
+            this.$watch(() => this.$wire.$get(@js($model)), (nilai) => this.n = String(nilai ?? '').length);
+        },
         rapikan() {
             const ta = this.$refs.ta;
             ta.value = ta.value.replace(/\r\n?/g, '\n').replace(/[ \t\u00A0]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
