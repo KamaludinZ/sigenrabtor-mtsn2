@@ -2,6 +2,7 @@
 
 namespace App\Support\Kegiatan;
 
+use App\Enums\SumberDana;
 use App\Support\Format;
 use App\Support\Terbilang;
 use Carbon\CarbonImmutable;
@@ -119,7 +120,15 @@ class KalimatKak
     public static function pembiayaan(int $total, string $sumber, int $tahun, string $madrasah): string
     {
         return 'Biaya yang terkait dengan kegiatan ini diperlukan sebesar '.Format::rupiahDokumen($total)
-            .' ('.Terbilang::rupiah($total).') yang dibebankan pada dana '.mb_strtoupper($sumber)
-            ." {$madrasah} Tahun {$tahun}, sebagaimana RAB terlampir.";
+            .' ('.Terbilang::rupiah($total).') yang dibebankan pada dana '.self::sumberDana($sumber, $madrasah, $tahun)
+            .', sebagaimana RAB terlampir.';
+    }
+
+    /**
+     * Sebutan sumber dana di dokumen, mis. "KOMITE MTsN 2 Kota Malang Tahun 2026" (sama dengan header RAB).
+     */
+    public static function sumberDana(string $sumber, string $madrasah, int $tahun): string
+    {
+        return SumberDana::tryFrom($sumber)?->sebutanDokumen($madrasah, $tahun) ?? mb_strtoupper($sumber)." {$madrasah} Tahun {$tahun}";
     }
 }

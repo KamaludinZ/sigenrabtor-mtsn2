@@ -156,7 +156,7 @@
                             <li class="flex items-start justify-between gap-3 px-5 py-2.5 text-sm">
                                 <span class="min-w-0 text-stone-700">
                                     {{ $baris['uraian'] }}
-                                    @if ($duaSumber)<span class="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500">{{ $baris['sumber'] }}</span>@endif
+                                    @if ($duaSumber)<x-rab.lencana-sumber :sumber="$baris['sumber']" class="ml-1 text-[10px]" />@endif
                                 </span>
                                 <x-ui.uang :nilai="$baris['jumlah']" class="shrink-0 font-medium text-stone-900" />
                             </li>

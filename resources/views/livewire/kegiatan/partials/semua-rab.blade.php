@@ -10,12 +10,12 @@
         <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="semua-rab-{{ mb_strtolower($anggaran->sumber) }}">
             <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
                 <div class="min-w-0">
-                    <h2 class="text-base font-semibold text-stone-900">RAB {{ $anggaran->sumber }}</h2>
-                    <p class="text-sm text-stone-500">
-                        {{ $anggaran->jumlahItem() }} item · Pagu {{ $anggaran->pagu() !== null ? Format::rupiah($anggaran->pagu()) : 'belum diisi' }}
-                        @if ($anggaran->statusPagu() === 'melebihi')
-                            · <span class="font-medium text-red-600">melebihi pagu {{ Format::rupiah(-$anggaran->hasil->selisih()) }}</span>
-                        @endif
+                    <h2 class="text-base font-semibold text-stone-900">
+                        <x-rab.lencana-sumber :sumber="$anggaran->sumber" awalan="RAB" class="text-sm" />
+                    </h2>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-stone-500">
+                        <span>{{ $anggaran->jumlahItem() }} item · Pagu {{ $anggaran->pagu() !== null ? Format::rupiah($anggaran->pagu()) : 'belum diisi' }}</span>
+                        <x-rab.status-pagu :status="$anggaran->keteranganPagu()" class="text-xs" data-testid="status-pagu-semua-{{ mb_strtolower($anggaran->sumber) }}" />
                     </p>
                 </div>
                 <button type="button" class="btn-secondary" wire:click="pilihSumber('{{ $anggaran->sumber }}')">

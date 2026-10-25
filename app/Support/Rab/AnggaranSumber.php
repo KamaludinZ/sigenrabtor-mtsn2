@@ -2,6 +2,7 @@
 
 namespace App\Support\Rab;
 
+use App\Enums\SumberDana;
 use App\Support\Terbilang;
 
 /**
@@ -20,6 +21,12 @@ final readonly class AnggaranSumber
         public array $termin = [],
         public bool $dipilih = true,
     ) {}
+
+    /** Jenis sumber dana; null hanya untuk data lama dengan nama sumber di luar enum. */
+    public function jenis(): ?SumberDana
+    {
+        return SumberDana::tryFrom($this->sumber);
+    }
 
     public function pagu(): ?int
     {
@@ -46,6 +53,11 @@ final readonly class AnggaranSumber
     public function statusPagu(): string
     {
         return $this->hasil->statusPagu();
+    }
+
+    public function keteranganPagu(): StatusPagu
+    {
+        return $this->hasil->keteranganPagu();
     }
 
     public function adaTermin(): bool

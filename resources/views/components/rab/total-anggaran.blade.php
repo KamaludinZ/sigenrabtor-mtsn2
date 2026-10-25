@@ -8,6 +8,7 @@
 ])
 
 @use('App\Support\Format')
+@use('App\Support\Rab\StatusPagu')
 @use('App\Support\Terbilang')
 
 @php
@@ -15,13 +16,7 @@
     // Nilai nol/kosong tidak diterbilangkan ("Nol Rupiah" menyesatkan untuk RAB yang belum diisi).
     $nilai = $nilai === null ? null : (int) $nilai;
     $terbilang ??= Terbilang::tampil($nilai);
-    $selisih = $pagu !== null ? $pagu - (int) $nilai : null;
-    $status = match (true) {
-        $pagu === null => ['Pagu belum diisi', 'info', 'text-stone-500'],
-        $nilai === $pagu => ['Sesuai pagu', 'check-circle', 'text-brand-700'],
-        $nilai < $pagu => ['Sisa pagu '.Format::rupiah($selisih), 'check-circle', 'text-brand-700'],
-        default => ['Melebihi pagu '.Format::rupiah(-$selisih), 'alert', 'text-red-600'],
-    };
+    $status = StatusPagu::hitung((int) $nilai, $pagu === null ? null : (int) $pagu);
     $teksSalin = Format::rupiahDokumen((int) $nilai).($terbilang ? ' ('.$terbilang.')' : '');
 @endphp
 
@@ -51,10 +46,7 @@
         <p class="mt-1 text-xs leading-snug text-stone-400" data-testid="total-anggaran-terbilang-kosong">{{ $kosong }}</p>
     @endif
 
-    @if ($status)
-        <p class="mt-2 flex items-center gap-1.5 text-xs font-medium {{ $status[2] }}" data-testid="total-anggaran-status">
-            <x-ui.icon :name="$status[1]" class="size-3.5 shrink-0" />
-            {{ $status[0] }}
-        </p>
-    @endif
+    <p class="mt-2 text-xs">
+        <x-rab.status-pagu :status="$status" data-testid="total-anggaran-status" />
+    </p>
 </div>

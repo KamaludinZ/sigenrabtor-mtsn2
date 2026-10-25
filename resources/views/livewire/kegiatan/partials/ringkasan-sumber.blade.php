@@ -5,12 +5,6 @@
     $dipilih = array_values(array_filter($this->anggaran, fn ($a) => $a->dipilih));
     $terlepas = array_values(array_filter($this->anggaran, fn ($a) => ! $a->dipilih));
     $gabungan = AnggaranKegiatan::gabungan($dipilih);
-    $statusPagu = [
-        'tanpa_pagu' => ['info', 'Pagu belum diisi', 'text-stone-500'],
-        'sesuai' => ['check-circle', 'Sesuai pagu', 'text-brand-700'],
-        'sisa' => ['check-circle', 'Sisa', 'text-brand-700'],
-        'melebihi' => ['alert', 'Melebihi', 'text-red-600'],
-    ];
 @endphp
 
 {{--
@@ -24,7 +18,6 @@
             @foreach ($dipilih as $anggaran)
                 @php
                     $aktif = $anggaran->sumber === $sumber && $halaman === 'rincian';
-                    [$ikon, $label, $warna] = $statusPagu[$anggaran->statusPagu()];
                     $selisih = $anggaran->hasil->selisih();
                 @endphp
                 <button type="button" role="tab" aria-selected="{{ $aktif ? 'true' : 'false' }}"
@@ -35,7 +28,7 @@
                             'bg-white ring-stone-200 hover:ring-stone-300' => ! $aktif,
                         ])>
                     <span class="flex items-center justify-between gap-2">
-                        <span @class(['text-sm font-semibold', 'text-brand-800' => $aktif, 'text-stone-800' => ! $aktif])>RAB {{ $anggaran->sumber }}</span>
+                        <x-rab.lencana-sumber :sumber="$anggaran->sumber" awalan="RAB" class="text-xs" />
                         @if ($aktif)
                             <span class="hidden rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-800 sm:inline">Sedang dibuka</span>
                         @endif
@@ -51,10 +44,7 @@
                         </span>
                     @endif
                     <span class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium">
-                        <span class="inline-flex items-center gap-1 {{ $warna }}" data-testid="status-pagu-{{ mb_strtolower($anggaran->sumber) }}">
-                            <x-ui.icon :name="$ikon" class="size-3.5 shrink-0" />
-                            {{ $label }}{{ in_array($anggaran->statusPagu(), ['sisa', 'melebihi'], true) ? ' '.Format::rupiah(abs($selisih)) : '' }}
-                        </span>
+                        <x-rab.status-pagu :status="$anggaran->keteranganPagu()" data-testid="status-pagu-{{ mb_strtolower($anggaran->sumber) }}" />
                         @if ($anggaran->adaTermin())
                             <span @class(['inline-flex items-center gap-1', 'text-stone-500' => $anggaran->terminSesuai(), 'text-gold-700' => ! $anggaran->terminSesuai()])>
                                 <x-ui.icon :name="$anggaran->terminSesuai() ? 'calendar' : 'alert'" class="size-3.5 shrink-0" />
@@ -82,7 +72,7 @@
         <p class="mt-3 flex items-start gap-2 rounded-xl bg-gold-50 px-4 py-3 text-sm text-stone-800 ring-1 ring-gold-200" role="status" data-testid="rab-terlepas">
             <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0 text-gold-600" />
             <span>
-                RAB {{ $anggaran->sumber }} ({{ $anggaran->jumlahItem() }} item, {{ Format::rupiah($anggaran->total()) }}) masih tersimpan, tetapi {{ $anggaran->sumber }}
+                <x-rab.lencana-sumber :sumber="$anggaran->sumber" awalan="RAB" /> ({{ $anggaran->jumlahItem() }} item, {{ Format::rupiah($anggaran->total()) }}) masih tersimpan, tetapi {{ $anggaran->sumber }}
                 tidak lagi dipilih sebagai sumber dana sehingga tidak ikut dicetak.
                 <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}#sumber-dana" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800">Pilih lagi di Data Kegiatan</a>
             </span>

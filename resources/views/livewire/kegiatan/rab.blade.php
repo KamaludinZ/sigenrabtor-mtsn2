@@ -74,7 +74,7 @@
                             'Nama program kegiatan' => $this->header['program'],
                             'Kode anggaran' => $this->header['kode_anggaran'],
                             'Tahun anggaran' => $this->header['tahun'],
-                            'Sumber dana' => $sumber,
+                            'Sumber dana' => $angkaDokumen->sebutanSumber(),
                         ] as $label => $nilai)
                             <div class="min-w-0">
                                 <dt class="text-xs text-stone-500">{{ $label }}</dt>
@@ -111,9 +111,15 @@
                 {{-- Rincian belanja --}}
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="rincian-rab">
                     <header class="flex items-center justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
-                        <div>
-                            <h2 class="text-base font-semibold text-stone-900">Rincian belanja</h2>
-                            <p class="text-sm text-stone-500">{{ count($this->rincian) }} baris · jumlah = volume × harga satuan</p>
+                        <div class="min-w-0">
+                            <h2 class="flex flex-wrap items-center gap-2 text-base font-semibold text-stone-900">
+                                Rincian belanja <x-rab.lencana-sumber :sumber="$sumber" awalan="RAB" class="text-xs" />
+                            </h2>
+                            {{-- Pagu & statusnya tetap terlihat saat menyunting (di layar sempit ringkasan ada di bawah tabel). --}}
+                            <p class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-stone-500" data-testid="pagu-rincian">
+                                <span>{{ count($this->rincian) }} baris · Pagu {{ $pagu !== null ? Format::rupiah($pagu) : 'belum diisi' }}</span>
+                                <x-rab.status-pagu :status="$hasil->keteranganPagu()" class="text-xs" />
+                            </p>
                         </div>
                         @if ($this->dapatDiedit() && ! $formItemTerbuka)
                             <button type="button" wire:click="bukaFormItem" class="btn-secondary shrink-0">

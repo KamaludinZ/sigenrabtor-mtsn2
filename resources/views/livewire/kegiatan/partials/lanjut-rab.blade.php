@@ -21,7 +21,7 @@
                     <div class="mt-1.5 flex flex-wrap gap-1.5">
                         @foreach ($sumberRab as $sumber)
                             <span class="inline-flex items-center gap-1.5 rounded-md bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700">
-                                RAB {{ $sumber['sumber'] }}
+                                <x-rab.lencana-sumber :sumber="$sumber['sumber']" awalan="RAB" />
                                 @if (($rekap = $this->rekapRab[$sumber['sumber']] ?? null) && $rekap->jumlahItem() > 0)
                                     <span class="text-stone-500">· {{ Format::rupiah($rekap->total) }} dari pagu {{ $sumber['pagu'] ? Format::rupiah($sumber['pagu']) : '—' }}</span>
                                 @else

@@ -1,10 +1,8 @@
+@use('App\Enums\SumberDana')
 @use('App\Support\Format')
 
 @php
-    $sumberDanaOpsi = [
-        ['kunci' => 'dipa', 'label' => 'DIPA', 'keterangan' => 'Daftar Isian Pelaksanaan Anggaran (APBN).'],
-        ['kunci' => 'komite', 'label' => 'Komite', 'keterangan' => 'Dana komite madrasah.'],
-    ];
+    $sumberDanaOpsi = array_map(fn (SumberDana $s) => ['kunci' => $s->kunci(), 'label' => $s->value, 'keterangan' => $s->keterangan()], SumberDana::cases());
 @endphp
 
 <div class="space-y-4">
@@ -22,7 +20,7 @@
                 <label class="flex cursor-pointer items-start gap-3">
                     <input type="checkbox" wire:model.live="form.dana_{{ $opsi['kunci'] }}" class="mt-0.5 size-4 rounded accent-brand-700">
                     <span>
-                        <span class="block text-sm font-semibold text-stone-800">{{ $opsi['label'] }}</span>
+                        <x-rab.lencana-sumber :sumber="$opsi['label']" class="text-xs" />
                         <span class="block text-xs text-stone-500">{{ $opsi['keterangan'] }}</span>
                     </span>
                 </label>
@@ -39,12 +37,15 @@
                         <span class="text-stone-500">{{ $rekap->jumlahItem() > 0 ? 'RAB tersusun ('.$rekap->jumlahItem().' item)' : 'RAB belum berisi rincian' }}</span>
                         <span @class([
                             'font-semibold tabular-nums',
-                            'text-brand-700' => in_array($rekap->statusPagu(), ['sesuai', 'sisa'], true),
-                            'text-red-600' => $rekap->statusPagu() === 'melebihi',
-                            'text-stone-700' => $rekap->statusPagu() === 'tanpa_pagu',
+                            'text-brand-700' => $rekap->keteranganPagu()->nada() === 'aman',
+                            'text-red-600' => $rekap->keteranganPagu()->melebihi(),
+                            'text-stone-700' => $rekap->keteranganPagu()->nada() === 'netral',
                         ])>{{ Format::rupiah($rekap->total) }}</span>
                         @if ($terbilangRekap = \App\Support\Terbilang::tampil($rekap->total))
                             <span class="w-full text-right text-stone-500 italic">{{ $terbilangRekap }}</span>
+                        @endif
+                        @if ($rekap->jumlahItem() > 0)
+                            <x-rab.status-pagu :status="$rekap->keteranganPagu()" class="w-full justify-end" data-testid="status-pagu-form-{{ $opsi['kunci'] }}" />
                         @endif
                     </p>
 

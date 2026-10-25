@@ -3,6 +3,7 @@
 namespace App\Support\Rab;
 
 use App\Contracts\RabRepository;
+use App\Enums\SumberDana;
 
 /**
  * Menyusun anggaran per sumber dana satu kegiatan dari data kegiatan (sumber & pagu) dan RabRepository
@@ -11,7 +12,7 @@ use App\Contracts\RabRepository;
 class AnggaranKegiatan
 {
     /** Urutan baku sumber dana di layar dan buku dokumen. */
-    public const URUTAN_SUMBER = ['DIPA', 'Komite'];
+    public const URUTAN_SUMBER = [SumberDana::Dipa->value, SumberDana::Komite->value];
 
     /**
      * Anggaran setiap sumber dana kegiatan, urut DIPA lalu Komite. Bila $sertakanTerlepas, RAB tersimpan milik sumber

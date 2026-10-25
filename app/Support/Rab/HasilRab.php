@@ -31,12 +31,13 @@ final readonly class HasilRab
      */
     public function statusPagu(): string
     {
-        return match (true) {
-            $this->pagu === null => 'tanpa_pagu',
-            $this->total === $this->pagu => 'sesuai',
-            $this->total < $this->pagu => 'sisa',
-            default => 'melebihi',
-        };
+        return $this->keteranganPagu()->status;
+    }
+
+    /** Status pagu beserta teks & ikon tampilan yang seragam. */
+    public function keteranganPagu(): StatusPagu
+    {
+        return StatusPagu::hitung($this->total, $this->pagu);
     }
 
     /** Persentase pemakaian pagu (0–100, dibatasi) untuk bilah kemajuan. */

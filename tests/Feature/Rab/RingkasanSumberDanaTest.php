@@ -13,7 +13,7 @@ class RingkasanSumberDanaTest extends TestCase
     {
         Livewire::test(Rab::class, ['kegiatan' => 2])
             ->assertSeeHtml('data-testid="ringkasan-sumber"')
-            ->assertSeeInOrder(['RAB DIPA', 'Rp5.400.000', 'Pagu Rp6.000.000 · 6 item', 'Sisa Rp600.000', 'RAB Komite', 'Rp2.500.000', 'Sesuai pagu'])
+            ->assertSeeInOrder(['RAB DIPA', 'Rp5.400.000', 'Pagu Rp6.000.000 · 6 item', 'Sisa pagu Rp600.000', 'RAB Komite', 'Rp2.500.000', 'Sesuai pagu'])
             ->assertSeeHtml('data-testid="total-kegiatan"')
             ->assertSee('Rp7.900.000')
             ->assertSee('Pagu Rp8.500.000 · 9 item')
@@ -38,7 +38,7 @@ class RingkasanSumberDanaTest extends TestCase
             ->set('item.satuan', 'paket')
             ->set('item.harga_satuan', '900000')
             ->call('simpanItem')
-            ->assertSee('Melebihi Rp300.000')
+            ->assertSee('Melebihi pagu Rp300.000')
             ->assertSee('Pagu Rp6.000.000 · 7 item')
             ->assertSee('Rp8.800.000');
     }
@@ -62,7 +62,7 @@ class RingkasanSumberDanaTest extends TestCase
 
         Livewire::test(Rab::class, ['kegiatan' => 2])
             ->assertSeeHtml('data-testid="rab-terlepas"')
-            ->assertSee('RAB DIPA (6 item, Rp5.400.000) masih tersimpan')
+            ->assertSeeInOrder(['RAB DIPA', '(6 item, Rp5.400.000) masih tersimpan'])
             ->assertDontSeeHtml('data-sumber="DIPA"')
             ->assertDontSeeHtml('data-testid="total-kegiatan"');
     }

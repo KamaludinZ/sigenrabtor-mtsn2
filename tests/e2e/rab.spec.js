@@ -236,7 +236,15 @@ test.describe('RAB per sumber dana (contoh DIPA + Komite)', () => {
         await expect(page.getByTestId('ringkasan-rab')).toContainText('Sisa pagu Rp600.000');
 
         await expect(page.getByTestId('total-kegiatan')).toContainText('Rp7.900.000');
-        await expect(page.getByTestId('status-pagu-dipa')).toHaveText('Sisa Rp600.000');
+        await expect(page.getByTestId('status-pagu-dipa')).toHaveText('Sisa pagu Rp600.000');
+
+        // Label sumber & pagu tetap terlihat di kepala rincian; header RAB menyebut sumber dana seperti KAK.
+        await expect(page.getByTestId('pagu-rincian')).toBeVisible();
+        await expect(page.getByTestId('pagu-rincian')).toContainText('Pagu Rp6.000.000');
+        await expect(page.getByTestId('pagu-rincian')).toContainText('Sisa pagu Rp600.000');
+        await expect(page.getByTestId('header-rab')).toContainText('DIPA MTsN 2 Kota Malang Tahun 2026');
+        await expect(page.getByTestId('kalimat-pembiayaan')).toContainText('dana DIPA MTsN 2 Kota Malang Tahun 2026');
+        await page.getByTestId('rincian-rab').screenshot({ path: `storage/playwright/shots/rincian-label-${testInfo.project.name}.png` });
 
         // Dari Rekap, kartu sumber membuka rincian sumber itu.
         await page.getByRole('tab', { name: 'Rekap per kelompok' }).click();

@@ -57,6 +57,12 @@ final readonly class AngkaDokumen
         return $this->adaRincian() ? $this->nominal().' ('.$this->terbilang().')' : null;
     }
 
+    /** Sebutan sumber dana di dokumen, mis. "DIPA MTsN 2 Kota Malang Tahun 2026" (header RAB & Pembiayaan KAK). */
+    public function sebutanSumber(): string
+    {
+        return KalimatKak::sumberDana($this->sumber, $this->madrasah, $this->tahun);
+    }
+
     public function kalimatPembiayaan(): ?string
     {
         return $this->adaRincian() ? KalimatKak::pembiayaan($this->total, $this->sumber, $this->tahun, $this->madrasah) : null;
