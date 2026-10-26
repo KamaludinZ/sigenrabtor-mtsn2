@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
 use App\Http\Middleware\HanyaAdmin;
@@ -10,6 +11,7 @@ use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
+use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/kegiatan');
@@ -27,6 +29,8 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {
     Route::get('/', PengaturanIkhtisar::class)->name('index');
     Route::get('/tahun', PengaturanTahunAnggaran::class)->name('tahun.index');
+    Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
+    Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');
 });
 
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.

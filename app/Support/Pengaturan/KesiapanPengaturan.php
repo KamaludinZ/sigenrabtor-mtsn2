@@ -3,6 +3,7 @@
 namespace App\Support\Pengaturan;
 
 use App\Contracts\TahunAnggaranRepository;
+use App\Contracts\TemplateCoverRepository;
 use App\Support\Format;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
@@ -28,7 +29,7 @@ final readonly class KesiapanPengaturan
         $tahunAnggaran = app(TahunAnggaranRepository::class)->aktif();
         $madrasah = StubData::madrasah();
         $pejabat = StubData::pejabat();
-        $template = StubPengaturan::templateDokumen();
+        $template = ['cover' => count(app(TemplateCoverRepository::class)->semua($tahun))] + StubPengaturan::templateDokumen();
         $ai = StubPengaturan::pengaturanAi();
 
         $profilKurang = array_values(array_filter(['alamat' => 'alamat', 'telepon' => 'telepon', 'logo_path' => 'logo'], fn ($k) => blank($madrasah[$k] ?? null), ARRAY_FILTER_USE_KEY));

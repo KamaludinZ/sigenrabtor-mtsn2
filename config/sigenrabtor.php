@@ -32,6 +32,7 @@ return [
         'rab_file' => env('STUB_RAB_FILE', 'stub/rab.json'),
         'matrik_file' => env('STUB_MATRIK_FILE', 'stub/matrik-jadwal.json'),
         'tahun_file' => env('STUB_TAHUN_FILE', 'stub/tahun-anggaran.json'),
+        'cover_file' => env('STUB_COVER_FILE', 'stub/cover-template.json'),
     ],
 
     /*

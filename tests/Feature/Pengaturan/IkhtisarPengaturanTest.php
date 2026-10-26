@@ -39,14 +39,14 @@ class IkhtisarPengaturanTest extends TestCase
         $this->assertSame(['tahun', 'template', 'madrasah', 'leading', 'master', 'ai'], array_column(BagianPengaturan::semua(), 'kunci'));
         $this->assertSame(['dokumen', 'dokumen', 'madrasah', 'madrasah', 'kode', 'kode'], array_column(BagianPengaturan::semua(), 'kelompok'));
         $this->assertTrue(BagianPengaturan::cari('tahun')['tersedia']);
-        $this->assertFalse(BagianPengaturan::cari('template')['tersedia'], 'Halaman Template Dokumen belum dibuat.');
+        $this->assertFalse(BagianPengaturan::cari('madrasah')['tersedia'], 'Halaman Profil & Pejabat belum dibuat.');
         $this->assertNull(BagianPengaturan::cari('tidak-ada'));
 
         Livewire::test(Ikhtisar::class)
             ->assertSeeInOrder(['Tahun &amp; dokumen', 'Tahun Anggaran', 'Template Dokumen', 'Data madrasah', 'Profil &amp; Pejabat', 'Leading &amp; User', 'Master kode &amp; AI', 'Master Kode', 'Pengaturan AI'], false)
             ->assertSeeHtml('data-testid="bagian-tahun" data-tersedia="ya"')
             ->assertSeeHtml('href="'.route('pengaturan.tahun.index').'" wire:navigate class="btn-secondary')
-            ->assertSeeHtml('data-testid="bagian-template" data-tersedia="tidak"')
+            ->assertSeeHtml('data-testid="bagian-madrasah" data-tersedia="tidak"')
             ->assertSee('Segera disiapkan')
             ->assertSee('Desain cover + posisi teks')
             ->assertSee('NIP dan nama pejabat tidak pernah dikirim.');
