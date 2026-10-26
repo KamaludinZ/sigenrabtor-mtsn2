@@ -80,7 +80,7 @@ class ProfilMadrasahTest extends TestCase
             ->set('tab', 'pejabat')->assertSeeHtml('data-testid="pejabat-leading"')
             ->set('tab', 'acak')->assertSet('tab', 'profil')
             ->assertSee('Dasar hukum & latar belakang')
-            ->assertSee('Segera');
+            ->assertSeeHtml('href="'.route('pengaturan.madrasah.dasar_hukum').'"');
     }
 
     public function test_formulir_profil_menyimpan_merapikan_dan_mencatat_riwayat(): void

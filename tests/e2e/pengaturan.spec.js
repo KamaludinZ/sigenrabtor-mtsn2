@@ -535,4 +535,22 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByText('Blok "Mengetahui" tampil di dokumen DIPA & Komite.')).toBeVisible();
         await expect(ttd.locator('[data-ttd="komite"]')).toBeVisible();
     });
+
+    test('dasar hukum & latar belakang: layout per tahun, kalimat sisip nama kegiatan, pratinjau KAK', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah');
+        await page.getByRole('link', { name: 'Dasar hukum & latar belakang' }).click();
+        await expect(page).toHaveURL(/\/pengaturan\/madrasah\/dasar-hukum$/);
+        await expect(page.getByTestId('daftar-dasar-hukum').locator('li[data-butir]')).toHaveCount(4);
+        await expect(page.getByTestId('kalimat-sisip').locator('mark')).toHaveText('nama kegiatan');
+        await expect(page.getByTestId('pratinjau-dasar-hukum')).toContainText('2. Dasar Hukum');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-dasar-hukum-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByTestId('pemilih-tahun-dasar-hukum').getByRole('button', { name: /TA 2025/ }).click();
+        await expect(page).toHaveURL(/ta=2025/);
+        await expect(page.getByTestId('dasar-hukum-terkunci')).toBeVisible();
+        await expect(page.getByTestId('daftar-dasar-hukum')).toContainText('Tahun 2025.');
+    });
 });

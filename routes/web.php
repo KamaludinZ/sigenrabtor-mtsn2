@@ -15,6 +15,7 @@ use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Monitoring\Anggaran as MonitoringAnggaran;
+use App\Livewire\Pengaturan\DasarHukum as PengaturanDasarHukum;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
 use App\Livewire\Pengaturan\ProfilMadrasah as PengaturanProfilMadrasah;
 use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
@@ -48,6 +49,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/', PengaturanIkhtisar::class)->name('index');
     Route::get('/tahun', PengaturanTahunAnggaran::class)->name('tahun.index');
     Route::get('/madrasah', PengaturanProfilMadrasah::class)->name('madrasah.index');
+    Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
     Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');

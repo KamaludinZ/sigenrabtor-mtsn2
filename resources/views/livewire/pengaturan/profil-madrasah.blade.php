@@ -33,6 +33,9 @@
                                 <span class="rounded-full bg-gold-100 px-1.5 text-[11px] font-semibold text-gold-800 tabular-nums" title="{{ $jumlahKurang }} isian belum lengkap">{{ $jumlahKurang }}</span>
                             @endif
                         </button>
+                    @elseif (isset(ProfilMadrasah::TAB_HALAMAN[$kunci]) && \Illuminate\Support\Facades\Route::has(ProfilMadrasah::TAB_HALAMAN[$kunci]))
+                        <a href="{{ route(ProfilMadrasah::TAB_HALAMAN[$kunci]) }}" wire:navigate data-tab="{{ $kunci }}"
+                           class="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-stone-500 hover:border-stone-300 hover:text-stone-800">{{ $label }}</a>
                     @else
                         <span class="flex shrink-0 cursor-not-allowed items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-stone-400" title="Sedang disiapkan">
                             {{ $label }} <x-ui.segera />

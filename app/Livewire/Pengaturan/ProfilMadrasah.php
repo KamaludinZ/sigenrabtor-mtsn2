@@ -32,8 +32,11 @@ class ProfilMadrasah extends Component
 
     public const TAB = ['profil' => 'Profil madrasah', 'pejabat' => 'Pejabat penanda tangan', 'dasar_hukum' => 'Dasar hukum & latar belakang'];
 
-    /** Tab yang halamannya sudah dibuat; sisanya tampil "Segera". */
+    /** Tab di dalam komponen ini; tab lain berupa halaman tersendiri (TAB_HALAMAN) atau "Segera". */
     public const TAB_TERSEDIA = ['profil', 'pejabat'];
+
+    /** Tab yang berupa halaman tersendiri (nama rute). */
+    public const TAB_HALAMAN = ['dasar_hukum' => 'pengaturan.madrasah.dasar_hukum'];
 
     /**
      * Isian profil madrasah (kolom tabel profil_madrasah): label, tempat tercetak, dan wajib untuk kop.
