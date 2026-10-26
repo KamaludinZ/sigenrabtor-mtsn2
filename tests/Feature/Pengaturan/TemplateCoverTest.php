@@ -42,7 +42,8 @@ class TemplateCoverTest extends TestCase
         $this->withSession(['stub_role' => 'admin'])->get(route('pengaturan.template.index'))->assertOk()->assertSeeLivewire(TemplateDokumen::class);
 
         Livewire::test(TemplateDokumen::class)
-            ->assertSeeHtmlInOrder(['aria-current="page"', 'Cover', 'KAK/TOR', 'Segera', 'Daftar Isi', 'Nomor Halaman'])
+            ->assertSeeHtmlInOrder(['aria-current="page"', 'Cover', 'KAK/TOR', 'Daftar Isi', 'Segera', 'Nomor Halaman'])
+            ->assertSeeHtml('wire:click="$set(\'tab\', \'kak\')"')
             ->assertSeeHtml('data-testid="cover-kosong"')
             ->assertSeeHtml('data-testid="sumber-pratinjau" data-jenis="baku"')
             ->assertSeeHtml('data-testid="pratinjau-cover" data-gambar="tidak"')

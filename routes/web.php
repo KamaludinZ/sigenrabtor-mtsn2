@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\UnduhFormatRincianRab;
+use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
 use App\Http\Middleware\HanyaAdmin;
 use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
@@ -31,6 +32,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/tahun', PengaturanTahunAnggaran::class)->name('tahun.index');
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
     Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');
+    Route::get('/template/master/{template}/unduh', UnduhMasterTemplate::class)->whereUuid('template')->name('template.master.unduh');
 });
 
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.

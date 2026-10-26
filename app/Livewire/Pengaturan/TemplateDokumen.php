@@ -4,9 +4,14 @@ namespace App\Livewire\Pengaturan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TemplateCoverRepository;
+use App\Contracts\TemplateDokumenRepository;
+use App\Support\Dokumen\AnalisisTemplate;
+use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
+use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -14,11 +19,12 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use RuntimeException;
 
 /**
  * Pengaturan › Template Dokumen (PRD Fase 5): tab Cover — unggah desain cover JPG/PNG, lihat hasilnya dengan kotak teks
- * bawaan (TeksCover) berisi contoh kegiatan sebelum disimpan, dan kelola cover tersimpan tahun aktif. Tab KAK/TOR,
- * Daftar Isi, dan Nomor Halaman menyusul.
+ * (TeksCover) berisi contoh kegiatan, atur tata letaknya, dan kelola cover tersimpan; tab KAK/TOR — unggah master .docx,
+ * periksa variabel ${…} terhadap daftar terdaftar (VariabelTemplate) sebelum disimpan. Daftar Isi & Nomor Halaman menyusul.
  */
 #[Layout('layouts.app')]
 class TemplateDokumen extends Component
@@ -28,10 +34,13 @@ class TemplateDokumen extends Component
     public const TAB = ['cover' => 'Cover', 'kak' => 'KAK/TOR', 'daftar_isi' => 'Daftar Isi', 'nomor_halaman' => 'Nomor Halaman'];
 
     /** Tab yang sudah tersedia. */
-    public const TAB_TERSEDIA = ['cover'];
+    public const TAB_TERSEDIA = ['cover', 'kak'];
 
     /** Batas ukuran gambar cover (KB). */
     public const MAKS_KB = 5120;
+
+    /** Batas ukuran master .docx (KB). */
+    public const MAKS_KB_MASTER = 10240;
 
     #[Url(except: 'cover')]
     public string $tab = 'cover';
@@ -67,6 +76,21 @@ class TemplateDokumen extends Component
     #[Locked]
     public ?string $akanDihapus = null;
 
+    /** @var TemporaryUploadedFile|null Master KAK/TOR .docx yang baru dipilih (belum disimpan). */
+    public $berkasMaster = null;
+
+    public string $namaMaster = '';
+
+    public string $jenisMaster = 'KAK+TOR';
+
+    /** @var array<string, int>|null Variabel hasil baca berkas master (null = belum ada berkas sah). */
+    #[Locked]
+    public ?array $temuanMaster = null;
+
+    /** Template master yang menunggu konfirmasi hapus. */
+    #[Locked]
+    public ?string $masterAkanDihapus = null;
+
     public function mount(KegiatanRepository $kegiatan): void
     {
         if (! in_array($this->tab, self::TAB_TERSEDIA, true)) {
@@ -76,6 +100,7 @@ class TemplateDokumen extends Component
         $this->contohKegiatan = $kegiatan->semua()[0]['id'] ?? null;
         $this->contohSumber = $this->sumberContoh()[0] ?? null;
         $this->namaCover = $this->namaBaku();
+        $this->namaMaster = $this->namaMasterBaku();
     }
 
     /** Gambar baru diperiksa begitu dipilih; pratinjau beralih ke gambar itu (editor tata letak ditutup). */
@@ -95,7 +120,7 @@ class TemplateDokumen extends Component
 
     public function simpanCover(TemplateCoverRepository $repo): void
     {
-        $this->validate();
+        $this->validate(Arr::only($this->rules(), ['gambar', 'namaCover']));
 
         $id = $repo->tambah($this->tahun(), trim($this->namaCover), $this->gambar, TeksCover::bawaan());
         $this->gambar->delete();
@@ -196,6 +221,86 @@ class TemplateDokumen extends Component
         $this->dispatch('notify', message: "Cover “{$cover['nama']}” dihapus.", type: 'info');
     }
 
+    /** Master baru langsung dibaca: variabel ${…} dicocokkan dengan daftar terdaftar. */
+    public function updatedBerkasMaster(): void
+    {
+        $this->temuanMaster = null;
+        $this->validateOnly('berkasMaster');
+
+        try {
+            $this->temuanMaster = PembacaTemplateDocx::variabel($this->berkasMaster->getRealPath());
+        } catch (RuntimeException $e) {
+            $this->addError('berkasMaster', $e->getMessage());
+        }
+    }
+
+    public function simpanMaster(TemplateDokumenRepository $repo): void
+    {
+        $this->validate(Arr::only($this->rules(), ['berkasMaster', 'namaMaster', 'jenisMaster']));
+        $analisis = $this->analisisMaster;
+
+        if ($analisis === null || ! $analisis->bisaDisimpan()) {
+            $this->addError('berkasMaster', $analisis?->variabel === []
+                ? 'Belum ada variabel ${…} di dokumen — tandai bagian yang diisi otomatis, mis. ${nama_kegiatan}.'
+                : 'Perbaiki variabel yang tidak terdaftar di Word, lalu unggah ulang.');
+
+            return;
+        }
+
+        $repo->tambah($this->tahun(), trim($this->namaMaster), $this->jenisMaster, $this->berkasMaster, $analisis->namaTerdaftar());
+        $this->batalUnggahMaster();
+        unset($this->masters);
+        $this->namaMaster = $this->namaMasterBaku();
+        $this->dispatch('notify', message: 'Master KAK/TOR tersimpan.', type: 'success');
+    }
+
+    public function batalUnggahMaster(): void
+    {
+        $this->berkasMaster?->delete();
+        $this->reset('berkasMaster', 'temuanMaster');
+        $this->resetValidation(['berkasMaster', 'namaMaster', 'jenisMaster']);
+    }
+
+    public function mintaHapusMaster(string $id): void
+    {
+        $this->masterAkanDihapus = collect($this->masters)->contains('id', $id) ? $id : null;
+    }
+
+    public function batalHapusMaster(): void
+    {
+        $this->masterAkanDihapus = null;
+    }
+
+    public function hapusMaster(TemplateDokumenRepository $repo): void
+    {
+        $template = collect($this->masters)->firstWhere('id', $this->masterAkanDihapus);
+
+        if ($template === null) {
+            return;
+        }
+
+        $repo->hapus($template['id']);
+        $this->masterAkanDihapus = null;
+        unset($this->masters);
+        $this->namaMaster = $this->berkasMaster ? $this->namaMaster : $this->namaMasterBaku();
+        $this->dispatch('notify', message: "Master “{$template['nama']}” dihapus.", type: 'info');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function masters(): array
+    {
+        return app(TemplateDokumenRepository::class)->semua($this->tahun());
+    }
+
+    #[Computed]
+    public function analisisMaster(): ?AnalisisTemplate
+    {
+        return $this->temuanMaster === null ? null : AnalisisTemplate::dari($this->temuanMaster);
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -294,6 +399,9 @@ class TemplateDokumen extends Component
         return [
             'gambar' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:'.self::MAKS_KB, 'dimensions:min_width=600,min_height=600'],
             'namaCover' => ['required', 'string', 'max:100'],
+            'berkasMaster' => ['required', 'file', 'max:'.self::MAKS_KB_MASTER, 'extensions:docx'],
+            'namaMaster' => ['required', 'string', 'max:100'],
+            'jenisMaster' => ['required', Rule::in(array_keys(TemplateDokumenRepository::JENIS))],
         ];
     }
 
@@ -310,6 +418,12 @@ class TemplateDokumen extends Component
             'gambar.dimensions' => 'Gambar terlalu kecil — minimal 600 piksel di setiap sisi agar tajam saat dicetak.',
             'namaCover.required' => 'Beri nama cover, mis. “Cover default 2026”.',
             'namaCover.max' => 'Nama cover maksimal 100 karakter.',
+            'berkasMaster.required' => 'Pilih berkas master KAK/TOR (.docx).',
+            'berkasMaster.extensions' => 'Pilih dokumen Word .docx (bukan .doc atau PDF).',
+            'berkasMaster.max' => 'Ukuran berkas maksimal '.(self::MAKS_KB_MASTER / 1024).' MB.',
+            'namaMaster.required' => 'Beri nama template, mis. “Master KAK/TOR 2026”.',
+            'namaMaster.max' => 'Nama template maksimal 100 karakter.',
+            'jenisMaster.in' => 'Pilih jenis template dari daftar.',
         ];
     }
 
@@ -321,6 +435,11 @@ class TemplateDokumen extends Component
     private function namaBaku(): string
     {
         return $this->covers === [] ? 'Cover default '.$this->tahun() : 'Cover '.(count($this->covers) + 1).' '.$this->tahun();
+    }
+
+    private function namaMasterBaku(): string
+    {
+        return 'Master KAK/TOR '.$this->tahun().($this->masters === [] ? '' : ' ('.(count($this->masters) + 1).')');
     }
 
     private function gambarBisaDitampilkan(): bool

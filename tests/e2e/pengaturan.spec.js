@@ -188,4 +188,40 @@ test.describe('Pengaturan admin', () => {
             }
         }
     });
+
+    test('master KAK/TOR: variabel salah tulis ditolak, master benar disimpan, diunduh, dihapus', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/template?tab=kak');
+        await expect(page.getByTestId('master-kosong')).toBeVisible();
+
+        await page.getByTestId('input-berkas-master').setInputFiles('tests/fixtures/master-kak-salah.docx');
+        await expect(page.getByTestId('ringkasan-variabel')).toHaveText('3 variabel ditemukan · 1 terdaftar · 2 tidak terdaftar', { timeout: 30_000 });
+        await expect(page.getByTestId('master-tidak-terdaftar')).toBeVisible();
+        await expect(page.locator('[data-variabel="nama_kegiaatan"]')).toContainText('Mungkin maksud Anda ${nama_kegiatan}?');
+        await expect(page.getByRole('button', { name: 'Simpan master' })).toBeDisabled();
+        await page.getByTestId('unggah-master').screenshot({ path: `storage/playwright/shots/master-salah-${testInfo.project.name}.png` });
+
+        // Unggah ulang berkas yang sudah diperbaiki.
+        await page.getByTestId('unggah-master').locator('#ganti-berkas-master').setInputFiles('tests/fixtures/master-kak-contoh.docx');
+        await expect(page.getByTestId('ringkasan-variabel')).toHaveText('14 variabel ditemukan · 14 terdaftar', { timeout: 30_000 });
+        await expect(page.getByTestId('master-tidak-terdaftar')).toHaveCount(0);
+        await expect(page.getByTestId('dianjurkan-belum-ada')).toContainText('${nama_kegiatan}');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/master-kak-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByRole('button', { name: 'Simpan master' }).click();
+        await expect(page.getByText('Master KAK/TOR tersimpan.')).toBeVisible({ timeout: 30_000 });
+        const tersimpan = page.getByTestId('master-tersimpan');
+        await expect(tersimpan.getByTestId('master-1')).toContainText('Master KAK/TOR 2026');
+        await expect(tersimpan.getByTestId('master-1')).toContainText('14 variabel');
+        await expect(page.getByText('Mengunggah…')).toBeHidden();
+
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), tersimpan.getByRole('link', { name: 'Unduh' }).click()]);
+        expect(unduhan.suggestedFilename()).toBe('master-kak-contoh.docx');
+
+        await tersimpan.getByRole('button', { name: 'Hapus Master KAK/TOR 2026' }).click();
+        await tersimpan.getByRole('button', { name: 'Hapus', exact: true }).click();
+        await expect(page.getByTestId('master-kosong')).toBeVisible({ timeout: 30_000 });
+    });
 });

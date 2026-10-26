@@ -6,6 +6,7 @@ export const E2E_RAB_FILE = 'stub/rab-e2e.json';
 export const E2E_MATRIK_FILE = 'stub/matrik-jadwal-e2e.json';
 export const E2E_TAHUN_FILE = 'stub/tahun-anggaran-e2e.json';
 export const E2E_COVER_FILE = 'stub/cover-template-e2e.json';
+export const E2E_MASTER_FILE = 'stub/master-template-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -45,6 +46,7 @@ export default defineConfig({
             STUB_MATRIK_FILE: E2E_MATRIK_FILE,
             STUB_TAHUN_FILE: E2E_TAHUN_FILE,
             STUB_COVER_FILE: E2E_COVER_FILE,
+            STUB_MASTER_FILE: E2E_MASTER_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },
