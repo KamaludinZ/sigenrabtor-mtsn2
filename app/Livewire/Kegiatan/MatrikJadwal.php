@@ -6,11 +6,14 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalKegiatan;
+use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Stub\StubData;
+use App\Support\Stub\StubUsulanJadwal;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -33,6 +36,9 @@ class MatrikJadwal extends Component
         'Evaluasi kegiatan',
         'Penyusunan dan penyerahan laporan',
     ];
+
+    /** Instruksi cepat di panel usul jadwal AI (disisipkan ke kotak instruksi, tetap bisa diedit). */
+    public const SARAN_INSTRUKSI = ['lebih ringkas', 'persiapan lebih awal', 'tambahkan rapat evaluasi', 'sertakan publikasi kegiatan'];
 
     #[Locked]
     public int $kegiatanId;
@@ -66,6 +72,23 @@ class MatrikJadwal extends Component
     /** @var array{jadwal: list<array<string, mixed>>, pesan: string}|null Jadwal sebelum diisi baku (untuk "Urungkan"). */
     #[Locked]
     public ?array $jadwalSebelum = null;
+
+    /** Panel "Usulkan dengan AI" (PRD F10 Usul Jadwal AI): permintaan → 2–3 versi usulan → pakai salah satu atau tolak. */
+    public bool $usulTerbuka = false;
+
+    /** Jenis kegiatan acuan usulan (kunci KonteksAi::jenisKegiatan()); ditebak dari nama kegiatan saat panel dibuka. */
+    public string $usulJenis = '';
+
+    /** Instruksi tambahan untuk AI (opsional), mis. "lebih ringkas". */
+    public string $usulInstruksi = '';
+
+    /**
+     * Versi usulan terakhir; kosong selama belum dibuat atau sesudah dipakai/ditolak.
+     *
+     * @var list<array{judul: string, ciri: string, keterangan: string, baris: list<array{uraian: string, mulai: int|null, sampai: int|null}>}>
+     */
+    #[Locked]
+    public array $usulan = [];
 
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
@@ -231,6 +254,63 @@ class MatrikJadwal extends Component
         $this->jadwal = $this->jadwalSebelum['jadwal'];
         $this->jadwalSebelum = null;
         $this->adaPerubahan = true;
+    }
+
+    public function bukaUsulJadwal(): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if (! array_key_exists($this->usulJenis, KonteksAi::jenisKegiatan())) {
+            $this->usulJenis = KonteksAi::tebakJenis((string) ($this->dataKegiatan['nama_kegiatan'] ?? ''));
+        }
+
+        $this->usulTerbuka = true;
+    }
+
+    public function tutupUsulJadwal(): void
+    {
+        $this->usulTerbuka = false;
+    }
+
+    /** Usulan tiruan selama penyedia AI belum tersambung; AI hanya menyusun uraian & bulan, tidak menyentuh angka atau pejabat. */
+    public function buatUsulJadwal(): void
+    {
+        $this->pastikanDapatDiedit();
+        $this->validate([
+            'usulJenis' => ['required', Rule::in(array_keys(KonteksAi::jenisKegiatan()))],
+            'usulInstruksi' => ['nullable', 'string', 'max:300'],
+        ], [
+            'usulJenis.required' => 'Pilih jenis kegiatan.',
+            'usulJenis.in' => 'Pilih jenis kegiatan dari daftar.',
+            'usulInstruksi.max' => 'Instruksi maksimal 300 karakter.',
+        ]);
+
+        $this->usulan = StubUsulanJadwal::versi($this->usulJenis, $this->acuanBulan());
+    }
+
+    /** Ganti seluruh baris jadwal dengan satu versi usulan; bisa diurungkan dan baru tersimpan saat "Simpan". */
+    public function pakaiUsulan(int $versi): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if (! isset($this->usulan[$versi])) {
+            return;
+        }
+
+        $dipakai = $this->usulan[$versi];
+        $sebelum = $this->jadwal;
+        $this->jadwal = $dipakai['baris'];
+        $this->jadwalSebelum = ['jadwal' => $sebelum, 'pesan' => "Jadwal diganti dengan usulan AI ({$dipakai['judul']}) — periksa lalu simpan."];
+        $this->resetValidation();
+        $this->adaPerubahan = true;
+        $this->usulan = [];
+        $this->usulTerbuka = false;
+    }
+
+    /** Tolak semua versi lalu kembali ke permintaan (jenis & instruksi tetap, bisa diubah lalu dibuat ulang). */
+    public function tolakUsulan(): void
+    {
+        $this->usulan = [];
     }
 
     public function kosongkanBarisJadwal(int $index): void

@@ -66,6 +66,24 @@ final class KonteksAi
         return $contoh;
     }
 
+    /**
+     * Jenis kegiatan sebagai bahan usulan AI (mis. usulan jadwal): jenis dari contoh catatan ditambah "lainnya".
+     *
+     * @return array<string, string> Kunci → judul.
+     */
+    public static function jenisKegiatan(): array
+    {
+        return array_column(StubData::contohKonteks(), 'judul', 'kunci') + ['umum' => 'Kegiatan lainnya'];
+    }
+
+    /** Jenis pertama yang kata kuncinya ada di nama kegiatan; "umum" bila tidak ada yang cocok. */
+    public static function tebakJenis(string $namaKegiatan): string
+    {
+        $contoh = self::contoh($namaKegiatan)[0] ?? null;
+
+        return $contoh !== null && $contoh['cocok'] ? $contoh['kunci'] : 'umum';
+    }
+
     /** Peringatan privasi untuk catatan (null bila aman). */
     public static function peringatanPrivasi(string $konteks): ?string
     {

@@ -173,4 +173,47 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(waktu(4)).toHaveText('Agustus 2026');
         await expect(page.getByTestId('kelengkapan-jadwal')).toHaveAttribute('data-lengkap', 'ya');
     });
+
+    test('usul jadwal AI: permintaan, pilih versi, pakai lalu urungkan', async ({ page }, testInfo) => {
+        await bukaMatrikKegiatanBaru(page, `Kegiatan Usul ${testInfo.project.name} ${Date.now()}`);
+        const panel = page.getByTestId('panel-usul-jadwal');
+
+        await page.getByTestId('buka-usul-jadwal').click();
+        await expect(panel).toBeVisible();
+        await expect(panel.getByTestId('acuan-usul-jadwal')).toContainText('Agustus 2026');
+        await expect(panel.getByRole('radio', { name: 'Kegiatan lainnya' })).toBeChecked();
+
+        // Escape menutup panel; membuka lagi mempertahankan permintaan.
+        await page.keyboard.press('Escape');
+        await expect(panel).toBeHidden();
+        await page.getByTestId('buka-usul-jadwal').click();
+
+        await panel.getByText('Workshop / pelatihan guru').click();
+        await expect(panel.getByRole('radio', { name: 'Workshop / pelatihan guru' })).toBeChecked();
+        await panel.getByRole('button', { name: '+ lebih ringkas' }).click();
+        await panel.getByRole('button', { name: '+ persiapan lebih awal' }).click();
+        await expect(panel.getByLabel(/Instruksi tambahan/)).toHaveValue('lebih ringkas; persiapan lebih awal');
+        await panel.screenshot({ path: `storage/playwright/shots/usul-jadwal-permintaan-${testInfo.project.name}.png` });
+
+        await panel.getByRole('button', { name: 'Buat usulan' }).click();
+        await expect(panel.getByTestId('usul-hasil')).toContainText('dengan instruksi “lebih ringkas; persiapan lebih awal”');
+        await expect(panel.locator('article[data-testid^="versi-usulan-"]')).toHaveCount(3);
+        await expect(panel.getByTestId('versi-usulan-2')).toContainText('5 baris');
+        await expect(panel.getByTestId('versi-usulan-2')).toContainText('Juni – Agustus 2026');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await panel.screenshot({ path: `storage/playwright/shots/usul-jadwal-versi-${testInfo.project.name}.png` });
+
+        await panel.getByRole('button', { name: 'Pakai Versi 2' }).click();
+        await expect(panel).toBeHidden();
+        await expect(page.getByTestId('jadwal-berubah')).toContainText('Jadwal diganti dengan usulan AI (Versi 2)');
+        await expect(page.locator('#jadwal-0-uraian')).toHaveValue('Pembentukan panitia dan penyusunan TOR workshop');
+        await expect(page.getByTestId('waktu-jadwal-1')).toHaveText('Juni 2026');
+        await expect(page.getByTestId('ringkasan-jadwal')).toHaveText('5 dari 5 baris terisi');
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+
+        await page.getByTestId('jadwal-berubah').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(page.locator('#jadwal-0-uraian')).toHaveValue('');
+        await expect(page.getByTestId('ringkasan-jadwal')).toHaveText('0 dari 6 baris terisi');
+    });
 });

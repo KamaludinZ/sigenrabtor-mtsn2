@@ -1,6 +1,10 @@
+@use('App\Livewire\Kegiatan\MatrikJadwal')
 @use('App\Support\Format')
+@use('App\Support\Kegiatan\JadwalKegiatan')
 @use('App\Support\Kegiatan\JadwalPelaksanaan')
+@use('App\Support\Kegiatan\KonteksAi')
 @use('App\Support\Kegiatan\MatrikTahapan')
+@use('Illuminate\Support\Str')
 
 @php
     $susunan = $this->susunanMatrik;
@@ -184,6 +188,14 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="text-xs font-medium text-stone-500" data-testid="ringkasan-jadwal">{{ $susunanJadwal->jumlahTerisi() }} dari {{ count($susunanJadwal->baris) }} baris terisi</p>
                         @if ($bisaUbah)
+                            <button type="button" class="btn-secondary px-3 py-1.5 text-xs" wire:click="bukaUsulJadwal" data-testid="buka-usul-jadwal"
+                                    title="AI mengusulkan 4–6 uraian jadwal beserta bulannya dari data kegiatan; Anda memilih versi yang dipakai">
+                                <x-ui.icon name="sparkles" class="size-3.5 text-brand-600" />
+                                {{ $usulan === [] ? 'Usulkan dengan AI' : 'Lihat usulan AI' }}
+                                @if ($usulan !== [])
+                                    <span class="size-1.5 rounded-full bg-brand-600" aria-hidden="true"></span>
+                                @endif
+                            </button>
                             <button type="button" class="btn-secondary px-3 py-1.5 text-xs" wire:click="isiJadwalBaku"
                                     title="Enam uraian baku dengan bulan dari jadwal pelaksanaan (bisa diurungkan)">
                                 <x-ui.icon name="note" class="size-3.5" />
@@ -289,4 +301,207 @@
             </div>
         </aside>
     </div>
+
+    {{-- Panel usul jadwal AI: permintaan (acuan waktu, jenis kegiatan, instruksi) → 2–3 versi → pakai satu versi (bisa diurungkan) atau tolak. --}}
+    @if ($usulTerbuka && $bisaUbah)
+        @php
+            $jenisKegiatan = KonteksAi::jenisKegiatan();
+            $tebakanJenis = KonteksAi::tebakJenis($dataKegiatan['nama_kegiatan'] ?? '');
+            $bahanAi = array_values(array_filter(KonteksAi::dariIsian($dataKegiatan), fn ($b) => $b['nilai'] !== null));
+            $catatanAi = KonteksAi::redaksi((string) ($dataKegiatan['konteks'] ?? ''));
+            $jadwalTerisi = $susunanJadwal->jumlahTerisi();
+            $tahapUsul = $usulan === [] ? 1 : 2;
+        @endphp
+        <div class="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="judul-usul-jadwal" data-testid="panel-usul-jadwal"
+             x-data="{ init() { document.documentElement.classList.add('overflow-hidden') }, destroy() { document.documentElement.classList.remove('overflow-hidden') } }"
+             x-on:keydown.escape.window="$wire.tutupUsulJadwal()">
+            <div class="absolute inset-0 bg-stone-900/40" wire:click="tutupUsulJadwal" aria-hidden="true"></div>
+            <div class="relative ml-auto flex h-full w-full max-w-xl flex-col bg-white shadow-xl" x-trap="true">
+                <header class="flex items-start gap-3 border-b border-stone-200 px-4 py-3 sm:px-6">
+                    <span class="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-200" aria-hidden="true">
+                        <x-ui.icon name="sparkles" class="size-4" />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h2 id="judul-usul-jadwal" class="text-sm font-semibold text-stone-900">Usulkan jadwal dengan AI</h2>
+                        <p class="text-xs text-stone-500">4–6 uraian beserta bulannya untuk KAK bagian 7. Hanya saran — periksa sebelum dipakai.</p>
+                    </div>
+                    <button type="button" class="btn-ghost px-2.5 py-1.5" wire:click="tutupUsulJadwal">
+                        <x-ui.icon name="x" class="size-4" />
+                        Tutup
+                    </button>
+                </header>
+
+                <ol class="flex items-center gap-2 border-b border-stone-100 bg-stone-50 px-4 py-2 text-xs sm:px-6" aria-label="Langkah usulan">
+                    @foreach ([1 => 'Permintaan', 2 => 'Pilih versi'] as $tahap => $label)
+                        @if ($tahap > 1)
+                            <li aria-hidden="true"><x-ui.icon name="chevron-right" class="size-3.5 text-stone-300" /></li>
+                        @endif
+                        <li @class(['flex items-center gap-1.5', 'font-semibold text-stone-900' => $tahap === $tahapUsul, 'text-stone-400' => $tahap !== $tahapUsul])
+                            @if ($tahap === $tahapUsul) aria-current="step" @endif>
+                            <span @class(['grid size-4 place-items-center rounded-full text-[10px] font-bold', 'bg-brand-700 text-white' => $tahap <= $tahapUsul, 'bg-stone-200 text-stone-500' => $tahap > $tahapUsul])>{{ $tahap }}</span>
+                            {{ $label }}
+                        </li>
+                    @endforeach
+                </ol>
+
+                <div class="relative flex min-h-0 flex-1 flex-col">
+                    <div wire:loading.flex wire:target="buatUsulJadwal" class="absolute inset-0 z-10 flex-col items-center justify-center gap-2 bg-white/85 text-sm font-medium text-stone-600" role="status">
+                        <x-ui.icon name="loader" class="size-5 animate-spin text-brand-600" />
+                        AI sedang menyusun usulan…
+                    </div>
+
+                    @if ($usulan === [])
+                        {{-- Langkah 1: permintaan --}}
+                        <div class="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6" wire:key="usul-permintaan" data-testid="usul-permintaan">
+                            <section class="rounded-xl bg-stone-50 p-4 ring-1 ring-stone-200" aria-labelledby="judul-acuan-usul" data-testid="acuan-usul-jadwal">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h3 id="judul-acuan-usul" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Acuan waktu</h3>
+                                    <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}#pelaksanaan" wire:navigate class="text-xs font-semibold text-brand-700 hover:text-brand-800">Ubah di Data Kegiatan</a>
+                                </div>
+                                <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                    <div>
+                                        <dt class="text-xs text-stone-500">Bulan pelaksanaan</dt>
+                                        <dd @class(['font-semibold', 'text-stone-900' => $bulanPelaksanaan !== [], 'text-gold-700' => $bulanPelaksanaan === []])>{{ JadwalPelaksanaan::teksBulan($bulanPelaksanaan, $tahun) ?? 'belum diisi' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-stone-500">Batas laporan</dt>
+                                        <dd @class(['font-semibold', 'text-stone-900' => $batasLaporan, 'text-stone-400' => ! $batasLaporan])>{{ $batasLaporan ?? 'belum diisi' }}</dd>
+                                    </div>
+                                </dl>
+                                @if ($bulanPelaksanaan === [])
+                                    <p class="mt-3 flex items-start gap-2 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700 ring-1 ring-gold-200" data-testid="usul-tanpa-bulan">
+                                        <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" />
+                                        Bulan pelaksanaan belum diisi — AI hanya mengusulkan uraian; bulannya Anda pilih sendiri setelah dipakai.
+                                    </p>
+                                @endif
+
+                                <details class="group mt-3 border-t border-stone-200 pt-3" wire:ignore.self data-testid="bahan-usul-jadwal">
+                                    <summary class="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-stone-600 hover:text-stone-900">
+                                        <span>Bahan lain yang dipakai AI ({{ count($bahanAi) }} isian{{ $catatanAi !== '' ? ' + catatan konteks' : '' }})</span>
+                                        <x-ui.icon name="chevron-down" class="size-4 shrink-0 transition group-open:rotate-180" />
+                                    </summary>
+                                    <dl class="mt-2 space-y-1.5 text-xs">
+                                        @foreach ($bahanAi as $b)
+                                            <div class="flex gap-2">
+                                                <dt class="w-28 shrink-0 text-stone-400">{{ $b['label'] }}</dt>
+                                                <dd class="min-w-0 text-stone-700">{{ $b['nilai'] }}</dd>
+                                            </div>
+                                        @endforeach
+                                        <div class="flex gap-2">
+                                            <dt class="w-28 shrink-0 text-stone-400">Catatan konteks</dt>
+                                            <dd @class(['min-w-0', 'text-stone-700' => $catatanAi !== '', 'text-gold-700' => $catatanAi === ''])>{{ $catatanAi !== '' ? Str::limit($catatanAi, 180) : 'kosong — usulan lebih umum' }}</dd>
+                                        </div>
+                                    </dl>
+                                </details>
+                                <p class="mt-3 flex items-start gap-1.5 text-[11px] text-stone-500">
+                                    <x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" />
+                                    Nama dan NIP pejabat tidak pernah dikirim ke AI.
+                                </p>
+                            </section>
+
+                            <fieldset data-testid="jenis-usul-jadwal">
+                                <legend class="text-sm font-medium text-stone-700">Jenis kegiatan</legend>
+                                <p class="mt-0.5 text-xs text-stone-500">Menentukan langkah yang diusulkan. Ditebak dari nama kegiatan — ubah bila kurang tepat.</p>
+                                <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                    @foreach ($jenisKegiatan as $kunci => $judul)
+                                        <label class="flex cursor-pointer items-start gap-2.5 rounded-lg bg-white px-3 py-2.5 text-sm ring-1 ring-stone-200 transition ring-inset hover:bg-stone-50 has-checked:bg-brand-50 has-checked:ring-2 has-checked:ring-brand-600 has-focus-visible:outline-2 has-focus-visible:outline-brand-600"
+                                               wire:key="jenis-usul-{{ $kunci }}">
+                                            <input type="radio" name="usul_jenis" value="{{ $kunci }}" wire:model="usulJenis" @checked($usulJenis === $kunci) class="mt-0.5 size-4 shrink-0 accent-brand-700">
+                                            <span class="min-w-0">
+                                                <span class="block font-medium text-stone-800">{{ $judul }}</span>
+                                                @if ($kunci === $tebakanJenis && $kunci !== 'umum')
+                                                    <span class="block text-[11px] font-medium text-brand-700">Cocok dengan nama kegiatan</span>
+                                                @endif
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('usulJenis') <p class="form-error">{{ $message }}</p> @enderror
+                            </fieldset>
+
+                            <div x-data="{ sisip(teks) { const ta = $refs.instruksi; ta.value = ta.value.trim() ? ta.value.replace(/[\s.;,]*$/, '; ') + teks : teks; ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus(); } }">
+                                <label for="usul-instruksi" class="form-label">Instruksi tambahan <span class="font-normal text-stone-400">(opsional)</span></label>
+                                <textarea id="usul-instruksi" x-ref="instruksi" wire:model="usulInstruksi" rows="2" maxlength="300" class="form-input resize-y"
+                                          placeholder="mis. tambahkan rapat evaluasi bersama komite" @error('usulInstruksi') aria-invalid="true" @enderror></textarea>
+                                <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[11px] text-stone-400">Sisipkan:</span>
+                                    @foreach (MatrikJadwal::SARAN_INSTRUKSI as $saran)
+                                        <button type="button" x-on:click="sisip(@js($saran))"
+                                                class="rounded-full px-2.5 py-0.5 text-xs font-medium text-stone-600 ring-1 ring-stone-200 ring-inset hover:bg-stone-100 hover:text-stone-900">+ {{ $saran }}</button>
+                                    @endforeach
+                                </div>
+                                @error('usulInstruksi') <p class="form-error">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+
+                        <footer class="flex items-center justify-end gap-2 border-t border-stone-200 px-4 py-3 sm:px-6">
+                            <button type="button" class="btn-ghost" wire:click="tutupUsulJadwal">Batal</button>
+                            <button type="button" class="btn-primary" wire:click="buatUsulJadwal" wire:loading.attr="disabled" wire:target="buatUsulJadwal">
+                                <x-ui.icon name="sparkles" class="size-4" />
+                                Buat usulan
+                            </button>
+                        </footer>
+                    @else
+                        {{-- Langkah 2: pilih versi --}}
+                        <div class="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6" wire:key="usul-hasil" data-testid="usul-hasil">
+                            <p class="text-sm text-stone-600">
+                                {{ count($usulan) }} versi untuk <strong class="font-semibold text-stone-900">{{ $jenisKegiatan[$usulJenis] ?? 'kegiatan ini' }}</strong>@if (trim($usulInstruksi) !== '') dengan instruksi “{{ Str::limit(trim($usulInstruksi), 120) }}”@endif.
+                                Pilih satu untuk mengisi tabel jadwal, lalu sesuaikan bila perlu.
+                            </p>
+                            @if ($jadwalTerisi > 0)
+                                <p class="flex items-start gap-2 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700 ring-1 ring-gold-200" data-testid="usul-ganti-jadwal">
+                                    <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" />
+                                    Memakai satu versi mengganti {{ $jadwalTerisi }} baris jadwal yang sudah terisi. Masih bisa diurungkan sebelum disimpan.
+                                </p>
+                            @endif
+
+                            @foreach ($usulan as $i => $versi)
+                                @php
+                                    $susunanVersi = JadwalKegiatan::dari(['jadwal' => MatrikJadwal::jadwalUntukDisimpan($versi['baris'])]);
+                                @endphp
+                                <article class="rounded-xl bg-white ring-1 ring-stone-200" aria-labelledby="judul-versi-{{ $i }}" data-testid="versi-usulan-{{ $i + 1 }}" wire:key="versi-usulan-{{ $i }}">
+                                    <header class="flex items-start justify-between gap-3 px-4 pt-3">
+                                        <div class="min-w-0">
+                                            <h3 id="judul-versi-{{ $i }}" class="text-sm font-semibold text-stone-900">{{ $versi['judul'] }} · {{ $versi['ciri'] }}</h3>
+                                            <p class="text-xs text-stone-500">{{ $versi['keterangan'] }}</p>
+                                        </div>
+                                        <span class="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-600">{{ count($versi['baris']) }} baris</span>
+                                    </header>
+                                    <ol class="mt-2 divide-y divide-stone-100 px-4 text-sm">
+                                        @foreach ($versi['baris'] as $n => $baris)
+                                            @php
+                                                $waktuUsul = $susunanVersi->waktu($n, $tahun);
+                                            @endphp
+                                            <li class="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2 py-2 sm:grid-cols-[1.25rem_minmax(0,1fr)_auto]">
+                                                <span class="text-stone-400 tabular-nums">{{ $n + 1 }}</span>
+                                                <span class="text-stone-800">{{ $baris['uraian'] }}</span>
+                                                <span @class(['col-start-2 text-xs sm:col-start-auto sm:pt-0.5 sm:text-right sm:whitespace-nowrap', 'text-stone-600' => $waktuUsul, 'text-stone-400 italic' => ! $waktuUsul])>{{ $waktuUsul ?? 'bulan dipilih sendiri' }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ol>
+                                    <div class="flex justify-end border-t border-stone-100 px-4 py-2.5">
+                                        <button type="button" class="btn-secondary px-3 py-1.5 text-xs" wire:click="pakaiUsulan({{ $i }})" wire:loading.attr="disabled">
+                                            <x-ui.icon name="check" class="size-3.5 text-brand-600" />
+                                            Pakai {{ $versi['judul'] }}
+                                        </button>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+
+                        <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-4 py-3 sm:px-6">
+                            <button type="button" class="btn-ghost" wire:click="tolakUsulan" title="Buang semua versi dan kembali ke permintaan">
+                                <x-ui.icon name="x" class="size-4" />
+                                Tolak semua
+                            </button>
+                            <button type="button" class="btn-secondary" wire:click="buatUsulJadwal" wire:loading.attr="disabled" wire:target="buatUsulJadwal">
+                                <x-ui.icon name="sparkles" class="size-4 text-brand-600" />
+                                Buat ulang
+                            </button>
+                        </footer>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
