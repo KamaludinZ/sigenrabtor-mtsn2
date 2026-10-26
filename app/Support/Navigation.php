@@ -41,6 +41,7 @@ class Navigation
                 'label' => 'Pengaturan',
                 'admin_only' => true,
                 'items' => [
+                    ['label' => 'Ikhtisar Pengaturan', 'icon' => 'settings', 'route' => 'pengaturan.index', 'active' => 'pengaturan.index'],
                     ['label' => 'Tahun Anggaran', 'icon' => 'calendar', 'route' => 'pengaturan.tahun.index', 'active' => 'pengaturan.tahun.*'],
                     ['label' => 'Profil & Pejabat', 'icon' => 'building', 'route' => 'pengaturan.madrasah.index', 'active' => 'pengaturan.madrasah.*'],
                     ['label' => 'Leading & User', 'icon' => 'users', 'route' => 'pengaturan.leading.index', 'active' => 'pengaturan.leading.*'],
