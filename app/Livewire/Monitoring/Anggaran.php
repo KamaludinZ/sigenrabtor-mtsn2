@@ -3,13 +3,8 @@
 namespace App\Livewire\Monitoring;
 
 use App\Contracts\KegiatanRepository;
-use App\Contracts\TahunAnggaranRepository;
-use App\Enums\StatusKegiatan;
-use App\Enums\SumberDana;
-use App\Support\Format;
-use App\Support\MasterKode;
 use App\Support\Monitoring\RingkasanAnggaran;
-use App\Support\Stub\StubData;
+use App\Support\Monitoring\SaringanMonitoring;
 use App\Support\Stub\StubPengaturan;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -67,12 +62,7 @@ class Anggaran extends Component
     /** Saringan & urutan yang tidak dikenal (mis. dari URL lama) dilepas. */
     public function mount(): void
     {
-        $this->leading = MasterKode::cari(MasterKode::leadings(), $this->leading) ? $this->leading : '';
-        $this->sumber = in_array($this->sumber, SumberDana::urutan(), true) ? $this->sumber : '';
-        $this->status = StatusKegiatan::tryFrom($this->status) ? $this->status : '';
-        $this->tahun = $this->tahunLain($this->tahun) ? $this->tahun : '';
-        $this->dari = self::tanggalSah($this->dari) ? $this->dari : '';
-        $this->sampai = self::tanggalSah($this->sampai) ? $this->sampai : '';
+        $this->rapikanSaringan();
         if (! isset(RingkasanAnggaran::URUT_RINCIAN[$this->urut])) {
             $this->reset('urut', 'arah');
         }
@@ -88,14 +78,9 @@ class Anggaran extends Component
     /** Saringan berubah → rincian kembali ke halaman pertama; urutan dari pilihan memakai arah bawaannya. */
     public function updated(string $properti): void
     {
-        if (in_array($properti, ['tahun', 'leading', 'sumber', 'status', 'dari', 'sampai'], true)) {
+        if (in_array($properti, SaringanMonitoring::KUNCI, true)) {
             $this->halaman = 1;
-        }
-        if ($properti === 'tahun' && ! $this->tahunLain($this->tahun)) {
-            $this->tahun = '';
-        }
-        if (in_array($properti, ['dari', 'sampai'], true) && ! self::tanggalSah($this->{$properti})) {
-            $this->{$properti} = '';
+            $this->rapikanSaringan();
         }
         if ($properti === 'sumber' && ! $this->urutLeadingTampil()) {
             $this->reset('urutLeading', 'arahLeading');
@@ -119,31 +104,47 @@ class Anggaran extends Component
         $this->halaman = 1;
     }
 
+    /** Saringan halaman sebagai objek bersama (aturan sama dengan berkas ekspor). */
+    public function saringan(): SaringanMonitoring
+    {
+        return new SaringanMonitoring($this->tahun, $this->leading, $this->sumber, $this->status, $this->dari, $this->sampai);
+    }
+
+    /** Saringan yang tidak dikenal (mis. dari URL lama) dilepas; tahun aktif ditulis ''. */
+    private function rapikanSaringan(): void
+    {
+        $rapi = SaringanMonitoring::dari($this->only(SaringanMonitoring::KUNCI));
+        foreach (SaringanMonitoring::KUNCI as $kunci) {
+            $this->{$kunci} = $rapi->{$kunci};
+        }
+    }
+
     /**
-     * Tahun anggaran yang bisa dipantau (terbaru lebih dulu).
-     *
      * @return list<array{tahun: int, is_active: bool, is_locked: bool}>
      */
     public function daftarTahun(): array
     {
-        return app(TahunAnggaranRepository::class)->semua();
+        return SaringanMonitoring::daftarTahun();
     }
 
-    /** $tahun adalah tahun anggaran terdaftar selain tahun aktif. */
-    private function tahunLain(string $tahun): bool
-    {
-        return in_array((int) $tahun, array_column($this->daftarTahun(), 'tahun'), true) && (int) $tahun !== StubData::tahunAktif()['tahun'];
-    }
-
-    /** Rentang terbalik (tanggal akhir sebelum tanggal awal) tidak diterapkan sampai diperbaiki. */
     public function rentangTerbalik(): bool
     {
-        return $this->dari !== '' && $this->sampai !== '' && $this->dari > $this->sampai;
+        return $this->saringan()->rentangTerbalik();
     }
 
-    private static function tanggalSah(string $teks): bool
+    /**
+     * Parameter tautan ekspor: saringan + urutan tabel yang bukan bawaan, sehingga berkas sama dengan layar.
+     *
+     * @return array<string, string>
+     */
+    public function queryEkspor(): array
     {
-        return $teks === '' || (preg_match('/^\d{4}-\d{2}-\d{2}$/', $teks) && checkdate((int) substr($teks, 5, 2), (int) substr($teks, 8, 2), (int) substr($teks, 0, 4)));
+        return $this->saringan()->query() + array_filter([
+            'urut' => $this->urut !== 'total' ? $this->urut : '',
+            'arah' => $this->arah !== RingkasanAnggaran::URUT_RINCIAN[$this->urut][1] ? $this->arah : '',
+            'urut_leading' => $this->urutLeading !== 'kode' ? $this->urutLeading : '',
+            'arah_leading' => $this->arahLeading !== (RingkasanAnggaran::urutLeading()[$this->urutLeading][1] ?? 'asc') ? $this->arahLeading : '',
+        ]);
     }
 
     /** Judul kolom rincian: kolom yang sama membalik arah ($ulang), kolom lain mulai dari arah bawaannya. */
@@ -202,9 +203,7 @@ class Anggaran extends Component
     #[Computed]
     public function ringkasan(): RingkasanAnggaran
     {
-        $rentang = $this->rentangTerbalik() ? [] : ['dari' => $this->dari, 'sampai' => $this->sampai];
-
-        return RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['tahun' => $this->tahun(), 'leading' => $this->leading, 'sumber' => $this->sumber, 'status' => $this->status] + $rentang);
+        return RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), $this->saringan()->untukRingkasan());
     }
 
     /**
@@ -225,27 +224,13 @@ class Anggaran extends Component
      */
     public function saringanAktif(): array
     {
-        $tanggal = fn (string $t) => Format::tanggal($t);
-
-        return array_filter([
-            'tahun' => $this->tahun !== '' ? "TA {$this->tahun}" : null,
-            'leading' => MasterKode::cari(MasterKode::leadings(), $this->leading)['nama_unit'] ?? null,
-            'sumber' => $this->sumber !== '' ? "Dana {$this->sumber}" : null,
-            'status' => StatusKegiatan::tryFrom($this->status)?->label(),
-            'tanggal' => match (true) {
-                $this->rentangTerbalik() => null,
-                $this->dari !== '' && $this->sampai !== '' => 'Pelaksanaan '.$tanggal($this->dari).' – '.$tanggal($this->sampai),
-                $this->dari !== '' => 'Pelaksanaan sejak '.$tanggal($this->dari),
-                $this->sampai !== '' => 'Pelaksanaan s.d. '.$tanggal($this->sampai),
-                default => null,
-            },
-        ]);
+        return $this->saringan()->label();
     }
 
     /** Tahun yang sedang dipantau (saringan tahun atau tahun aktif). */
     public function tahun(): int
     {
-        return $this->tahun !== '' ? (int) $this->tahun : StubData::tahunAktif()['tahun'];
+        return $this->saringan()->tahunDipantau();
     }
 
     public function render()

@@ -223,4 +223,19 @@ test.describe('Monitoring Anggaran', () => {
         await expect(page).not.toHaveURL(/tahun=/);
         await expect(page.getByTestId('tahun-monitoring')).toContainText('TA 2026');
     });
+
+    test('ekspor Excel mengikuti saringan & urutan layar', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const tombol = page.getByTestId('ekspor-excel');
+        await expect(tombol).toBeVisible();
+
+        await page.getByTestId('saringan-monitoring').getByLabel('Sumber dana').selectOption('Komite');
+        await expect(tombol).toHaveAttribute('href', /sumber=Komite/);
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), tombol.click()]);
+        expect(unduhan.suggestedFilename()).toBe('monitoring-anggaran-TA2026-komite.xlsx');
+        const berkas = await unduhan.path();
+        const { statSync } = await import('node:fs');
+        expect(statSync(berkas).size).toBeGreaterThan(5000);
+    });
 });

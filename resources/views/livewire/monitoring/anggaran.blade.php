@@ -24,10 +24,17 @@
             </div>
             <p class="mt-1 max-w-3xl text-sm text-stone-500">Penggunaan anggaran seluruh kegiatan dan leading per tahun anggaran: pagu dari Cascade Perkin dibandingkan dengan total RAB tiap sumber dana.</p>
         </div>
-        <button type="button" class="btn-secondary shrink-0" disabled title="Ekspor Excel & PDF sedang disiapkan">
-            <x-ui.icon name="download" class="size-4" /> Ekspor
-            <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-stone-500 uppercase">Segera</span>
-        </button>
+        {{-- Ekspor mengikuti saringan & urutan di layar (parameter URL yang sama) --}}
+        <div class="flex shrink-0 flex-wrap gap-2" data-testid="ekspor-monitoring">
+            <a href="{{ route('monitoring.ekspor.excel', $this->queryEkspor()) }}" class="btn-secondary" data-testid="ekspor-excel" download
+               title="Unduh ringkasan, per leading, rincian kegiatan, kelompok belanja, dan operator sesuai saringan">
+                <x-ui.icon name="sheet" class="size-4" /> Ekspor Excel
+            </a>
+            <button type="button" class="btn-secondary" disabled title="Ekspor PDF sedang disiapkan">
+                <x-ui.icon name="download" class="size-4" /> PDF
+                <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-stone-500 uppercase">Segera</span>
+            </button>
+        </div>
     </div>
 
     {{-- Saringan --}}
