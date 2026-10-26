@@ -257,7 +257,7 @@ class ImporKegiatanTest extends TestCase
 
     public function test_halaman_daftar_tombol_cari_dan_muat_ulang_setelah_impor(): void
     {
-        $this->get('/')->assertRedirect('/kegiatan');
+        $this->get(route('kegiatan.index'))->assertOk();
 
         Livewire::test(Daftar::class)
             ->assertSee(['Unduh template', 'Impor dari Excel', 'Kegiatan baru'])

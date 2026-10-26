@@ -4,6 +4,7 @@ namespace App\Support\Monitoring;
 
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
+use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 
@@ -23,10 +24,12 @@ final readonly class RingkasanAnggaran
 
     /**
      * @param  list<array<string, mixed>>  $semuaKegiatan
-     * @param  array{leading?: string, sumber?: string, status?: string}  $saringan  Kosong = semua.
+     * @param  array{leading?: string, leadings?: list<string>|null, sumber?: string, status?: string}  $saringan  Kosong = semua;
+     *                                                                                                             leadings = cakupan akun leading.
      */
     public static function dari(array $semuaKegiatan, array $saringan = []): self
     {
+        $cakupan = $saringan['leadings'] ?? null;
         $leading = $saringan['leading'] ?? '';
         $sumber = $saringan['sumber'] ?? '';
         $status = $saringan['status'] ?? '';
@@ -40,7 +43,7 @@ final readonly class RingkasanAnggaran
                 $anggaran = array_values(array_filter($anggaran, fn (AnggaranSumber $a) => $a->sumber === $sumber));
             }
 
-            if (($leading !== '' && ($k['leading'] ?? null) !== $leading) || ($status !== '' && $statusKegiatan->value !== $status) || ($sumber !== '' && $anggaran === [])) {
+            if (($cakupan !== null && ! in_array($k['leading'] ?? null, $cakupan, true)) || ($leading !== '' && ($k['leading'] ?? null) !== $leading) || ($status !== '' && $statusKegiatan->value !== $status) || ($sumber !== '' && $anggaran === [])) {
                 continue;
             }
 
@@ -102,6 +105,38 @@ final readonly class RingkasanAnggaran
         }
 
         return $hasil;
+    }
+
+    /**
+     * Rekap per leading (urutan master leading; kegiatan tanpa leading di baris terakhir bila ada): jumlah kegiatan per
+     * status, pagu, total RAB, selisih, dan RAB melebihi pagu. $semua = tampilkan juga leading tanpa kegiatan.
+     *
+     * @return list<array{kode: string|null, nama_unit: string, jumlah: int, perStatus: array<string, int>, pagu: int, total: int, selisih: int, melebihi: int}>
+     */
+    public function perLeading(bool $semua = true): array
+    {
+        $kosong = fn (?string $kode, string $nama) => ['kode' => $kode, 'nama_unit' => $nama, 'jumlah' => 0, 'perStatus' => array_fill_keys(array_column(StatusKegiatan::cases(), 'value'), 0), 'pagu' => 0, 'total' => 0, 'selisih' => 0, 'melebihi' => 0];
+        $hasil = [];
+        foreach (MasterKode::leadings() as $l) {
+            $hasil[$l['kode']] = $kosong($l['kode'], $l['nama_unit']);
+        }
+
+        foreach ($this->kegiatan as $k) {
+            $kunci = $k['leading'] !== null && isset($hasil[$k['leading']]) ? $k['leading'] : '';
+            $hasil[$kunci] ??= $kosong(null, 'Leading belum dipilih');
+            $baris = &$hasil[$kunci];
+            $baris['jumlah']++;
+            $baris['perStatus'][$k['status']->value]++;
+            foreach ($k['anggaran'] as $a) {
+                $baris['pagu'] += (int) $a->pagu();
+                $baris['total'] += $a->total();
+                $baris['melebihi'] += $a->statusPagu() === 'melebihi' ? 1 : 0;
+            }
+            $baris['selisih'] = $baris['pagu'] - $baris['total'];
+            unset($baris);
+        }
+
+        return array_values(array_filter($hasil, fn (array $b) => $semua || $b['jumlah'] > 0));
     }
 
     /**

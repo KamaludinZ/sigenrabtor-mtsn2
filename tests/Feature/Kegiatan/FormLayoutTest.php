@@ -9,9 +9,9 @@ use Tests\TestCase;
 
 class FormLayoutTest extends TestCase
 {
-    public function test_root_redirects_to_kegiatan_form(): void
+    public function test_root_redirects_to_dashboard(): void
     {
-        $this->get('/')->assertRedirect('/kegiatan');
+        $this->get('/')->assertRedirect('/dashboard');
     }
 
     public function test_form_page_renders_layout_and_all_sections(): void

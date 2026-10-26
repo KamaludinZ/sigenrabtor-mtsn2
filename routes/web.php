@@ -5,6 +5,7 @@ use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
 use App\Http\Middleware\HanyaAdmin;
+use App\Livewire\Dashboard;
 use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
 use App\Livewire\Kegiatan\Form as KegiatanForm;
 use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
@@ -17,7 +18,9 @@ use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/kegiatan');
+Route::redirect('/', '/dashboard');
+
+Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
 Route::get('/kegiatan', KegiatanDaftar::class)->name('kegiatan.index');
 Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name('kegiatan.template');
