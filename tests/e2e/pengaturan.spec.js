@@ -449,4 +449,40 @@ test.describe('Pengaturan admin', () => {
         await formulir.getByRole('button', { name: 'Simpan profil' }).click();
         await expect(identitas.locator('[data-isian="alamat"]')).toHaveAttribute('data-terisi', 'tidak');
     });
+
+    test('pejabat penanda tangan: komponen input dengan pratinjau NIP, validasi, simpan pejabat leading', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah?tab=pejabat');
+        const pimpinan = page.getByTestId('pejabat-pimpinan');
+
+        // Kepala Madrasah: NIP wajib & diperiksa langsung (tidak disimpan — tes lain memerlukan pejabat kosong).
+        await pimpinan.getByRole('button', { name: 'Ubah Kepala Madrasah' }).click();
+        const formulir = pimpinan.getByTestId('formulir-pejabat');
+        await expect(formulir.getByLabel('Jabatan tercetak')).toHaveValue('Kepala MTsN 2 Kota Malang');
+        await formulir.getByLabel('Nama lengkap & gelar').fill('Dr. Uji Kepala, M.Pd.');
+        await formulir.getByLabel('NIP').fill('1970010119950310');
+        await expect(formulir.getByTestId('pejabat-kepala-nip-pratinjau')).toHaveText('NIP harus 18 angka (sekarang 16).');
+        await formulir.getByLabel('NIP').fill('197001011995031001');
+        await expect(formulir.getByTestId('pejabat-kepala-nip-pratinjau')).toHaveText('Tercetak: NIP. 19700101 199503 1 001');
+        await expect(formulir.getByTestId('pejabat-kepala-nip-pratinjau')).not.toHaveClass(/text-gold-700/);
+        await formulir.getByLabel('NIP').fill('');
+        await formulir.getByRole('button', { name: 'Simpan' }).click();
+        await expect(formulir).toContainText('NIP Kepala Madrasah wajib diisi');
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-pejabat-formulir-${testInfo.project.name}.png`, fullPage: true });
+        await formulir.getByRole('button', { name: 'Batal' }).click();
+        await expect(pimpinan.locator('[data-pejabat="kepala"]')).toHaveAttribute('data-lengkap', 'tidak');
+
+        // Pejabat leading 1.8 (tidak dipakai contoh kegiatan): simpan nama & NIP.
+        const leading = page.getByTestId('pejabat-leading');
+        await leading.getByRole('button', { name: 'Ubah pejabat 1.8 PMM' }).locator('visible=true').click();
+        const formulirLeading = leading.getByTestId('formulir-pejabat').locator('visible=true');
+        await formulirLeading.getByLabel('Nama lengkap & gelar').fill('Uji Koordinator PMM, S.Pd.');
+        await formulirLeading.getByLabel('NIP (opsional)').fill('19800101 200501 1 002');
+        await formulirLeading.getByRole('button', { name: 'Simpan' }).click();
+        const baris = leading.locator(testInfo.project.name === 'desktop' ? 'tr[data-pejabat-leading="1.8"]' : 'li[data-pejabat-leading-kartu="1.8"]');
+        await expect(baris).toContainText('Uji Koordinator PMM, S.Pd.');
+        await expect(baris).toContainText('19800101 200501 1 002');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+    });
 });

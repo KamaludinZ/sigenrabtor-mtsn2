@@ -1,4 +1,5 @@
 @use('App\Livewire\Pengaturan\ProfilMadrasah')
+@use('App\Support\Pengaturan\Nip')
 
 @php
     $profil = $this->profil;
@@ -45,13 +46,16 @@
         @if ($tab === 'pejabat')
             {{-- ===================== Pejabat penanda tangan ===================== --}}
             <div class="min-w-0 space-y-6">
+                @if ($this->tahunTerkunci())
+                    <p class="flex items-start gap-2 rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-700 ring-1 ring-stone-200" data-testid="pejabat-terkunci">
+                        <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" /> Tahun Anggaran {{ $tahun }} terkunci — pejabatnya hanya bisa dilihat.
+                    </p>
+                @endif
+
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pimpinan" data-testid="pejabat-pimpinan">
-                    <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
-                        <div class="min-w-0">
-                            <h2 id="judul-pimpinan" class="text-base font-semibold text-stone-900">Pimpinan madrasah &amp; komite</h2>
-                            <p class="mt-0.5 text-sm text-stone-500">Berlaku pada Tahun Anggaran {{ $tahun }}; tahun lain menyimpan pejabatnya sendiri.</p>
-                        </div>
-                        <button type="button" class="btn-secondary shrink-0 self-start" disabled title="Formulir pejabat sedang disiapkan"><x-ui.icon name="pencil" class="size-4" /> Ubah <x-ui.segera /></button>
+                    <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
+                        <h2 id="judul-pimpinan" class="text-base font-semibold text-stone-900">Pimpinan madrasah &amp; komite</h2>
+                        <p class="mt-0.5 text-sm text-stone-500">Berlaku pada Tahun Anggaran {{ $tahun }}; tahun lain menyimpan pejabatnya sendiri.</p>
                     </header>
                     <div class="grid divide-y divide-stone-100 md:grid-cols-2 md:divide-x md:divide-y-0">
                         @foreach ([['kunci' => 'kepala', 'judul' => 'Kepala Madrasah', 'peran' => 'Pengarah kegiatan dan "Menyetujui" di lembar pengesahan', 'nip' => true],
@@ -60,32 +64,49 @@
                                 $orang = $pejabat[$peran['kunci']];
                                 $lengkap = $orang['nama'] && (! $peran['nip'] || $orang['nip']);
                             @endphp
-                            <article class="px-5 py-4 sm:px-6" data-pejabat="{{ $peran['kunci'] }}" data-lengkap="{{ $lengkap ? 'ya' : 'tidak' }}">
+                            <article class="min-w-0 px-5 py-4 sm:px-6" data-pejabat="{{ $peran['kunci'] }}" data-lengkap="{{ $lengkap ? 'ya' : 'tidak' }}" wire:key="pejabat-{{ $peran['kunci'] }}-{{ $ubahPejabat === $peran['kunci'] ? 'ubah' : 'lihat' }}">
                                 <div class="flex items-start justify-between gap-2">
                                     <h3 class="text-sm font-semibold text-stone-900">{{ $peran['judul'] }}</h3>
-                                    @if ($lengkap)
-                                        <span class="inline-flex items-center gap-1 text-xs font-medium text-brand-700"><x-ui.icon name="check-circle" class="size-3.5" /> Lengkap</span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 text-xs font-medium text-gold-700"><x-ui.icon name="alert" class="size-3.5" /> Belum lengkap</span>
+                                    @if ($ubahPejabat !== $peran['kunci'])
+                                        <span class="flex items-center gap-2">
+                                            @if ($lengkap)
+                                                <span class="inline-flex items-center gap-1 text-xs font-medium text-brand-700"><x-ui.icon name="check-circle" class="size-3.5" /> Lengkap</span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 text-xs font-medium text-gold-700"><x-ui.icon name="alert" class="size-3.5" /> Belum lengkap</span>
+                                            @endif
+                                            @unless ($this->tahunTerkunci())
+                                                <button type="button" wire:click="bukaUbahPejabat('{{ $peran['kunci'] }}')" class="btn-ghost px-2 py-1 text-xs" aria-label="Ubah {{ $peran['judul'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                            @endunless
+                                        </span>
                                     @endif
                                 </div>
                                 <p class="mt-0.5 text-xs text-stone-500">{{ $peran['peran'] }}</p>
-                                <dl class="mt-3 space-y-2 text-sm">
-                                    <div>
-                                        <dt class="text-xs text-stone-500">Jabatan tercetak</dt>
-                                        <dd class="font-medium text-stone-800">{{ $orang['jabatan'] }}</dd>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="min-w-0">
-                                            <dt class="text-xs text-stone-500">Nama</dt>
-                                            <dd @class(['truncate', 'font-medium text-stone-900' => $orang['nama'], 'text-gold-700' => ! $orang['nama']])>{{ $orang['nama'] ?? 'Belum diisi' }}</dd>
+                                @if ($ubahPejabat === $peran['kunci'])
+                                    <form wire:submit="simpanPejabat" class="mt-3 space-y-4" data-testid="formulir-pejabat">
+                                        <x-pengaturan.input-pejabat :awalan="'pejabat-'.$peran['kunci']" :nip-wajib="$peran['nip']" :jabatan-bawaan="\App\Support\Stub\StubPejabatRepository::bawaan()[$peran['kunci']]['jabatan']" />
+                                        <div class="flex justify-end gap-2">
+                                            <button type="button" wire:click="batalUbahPejabat" class="btn-ghost">Batal</button>
+                                            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanPejabat"><x-ui.icon name="save" class="size-4" /> Simpan</button>
                                         </div>
-                                        <div class="min-w-0">
-                                            <dt class="text-xs text-stone-500">NIP{{ $peran['nip'] ? '' : ' (opsional)' }}</dt>
-                                            <dd @class(['truncate', 'font-mono text-xs leading-5 text-stone-900' => $orang['nip'], 'text-gold-700' => ! $orang['nip'] && $peran['nip'], 'text-stone-400' => ! $orang['nip'] && ! $peran['nip']])>{{ $orang['nip'] ?? ($peran['nip'] ? 'Belum diisi' : '—') }}</dd>
+                                    </form>
+                                @else
+                                    <dl class="mt-3 space-y-2 text-sm">
+                                        <div>
+                                            <dt class="text-xs text-stone-500">Jabatan tercetak</dt>
+                                            <dd class="font-medium text-stone-800">{{ $orang['jabatan'] }}</dd>
                                         </div>
-                                    </div>
-                                </dl>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="min-w-0">
+                                                <dt class="text-xs text-stone-500">Nama</dt>
+                                                <dd @class(['truncate', 'font-medium text-stone-900' => $orang['nama'], 'text-gold-700' => ! $orang['nama']])>{{ $orang['nama'] ?? 'Belum diisi' }}</dd>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <dt class="text-xs text-stone-500">NIP{{ $peran['nip'] ? '' : ' (opsional)' }}</dt>
+                                                <dd @class(['truncate', 'font-mono text-xs leading-5 text-stone-900' => $orang['nip'], 'text-gold-700' => ! $orang['nip'] && $peran['nip'], 'text-stone-400' => ! $orang['nip'] && ! $peran['nip']])>{{ $orang['nip'] ? Nip::format($orang['nip']) : ($peran['nip'] ? 'Belum diisi' : '—') }}</dd>
+                                            </div>
+                                        </div>
+                                    </dl>
+                                @endif
                             </article>
                         @endforeach
                     </div>
@@ -94,46 +115,89 @@
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pejabat-leading" data-testid="pejabat-leading">
                     <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
                         <h2 id="judul-pejabat-leading" class="text-base font-semibold text-stone-900">Pejabat tiap leading</h2>
-                        <p class="mt-0.5 text-sm text-stone-500">Penanggung jawab kegiatan dan "Pembuat" di lembar pengesahan. Jabatan diambil dari pengaturan leading.</p>
+                        <p class="mt-0.5 text-sm text-stone-500">Penanggung jawab kegiatan dan "Pembuat" di lembar pengesahan. Jabatan bawaan diambil dari pengaturan leading.</p>
                     </header>
                     <div class="hidden overflow-x-auto md:block">
                         <table class="w-full text-sm">
                             <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                                 <tr>
                                     <th scope="col" class="min-w-44 px-5 py-2 text-left sm:pl-6">Leading</th>
-                                    <th scope="col" class="px-3 py-2 text-left">Jabatan penanda tangan</th>
+                                    <th scope="col" class="px-3 py-2 text-left">Jabatan tercetak</th>
                                     <th scope="col" class="px-3 py-2 text-left">Nama</th>
                                     <th scope="col" class="px-3 py-2 text-left">NIP</th>
-                                    <th scope="col" class="px-5 py-2 text-left sm:pr-6">Akun tertaut</th>
+                                    <th scope="col" class="px-3 py-2 text-left">Akun tertaut</th>
+                                    <th scope="col" class="px-5 py-2 sm:pr-6"><span class="sr-only">Aksi</span></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-stone-100">
                                 @foreach ($pejabat['leading'] as $l)
-                                    <tr class="align-top" data-pejabat-leading="{{ $l['kode'] }}">
+                                    @php
+                                        $kunciLeading = 'leading:'.$l['kode'];
+                                    @endphp
+                                    <tr class="align-top" data-pejabat-leading="{{ $l['kode'] }}" wire:key="baris-pejabat-{{ $l['kode'] }}">
                                         <th scope="row" class="px-5 py-2.5 text-left font-normal whitespace-nowrap sm:pl-6">
                                             <span class="font-mono text-xs text-stone-400">{{ $l['kode'] }}</span>
                                             <span class="font-medium text-stone-800">{{ $l['nama_unit'] }}</span>
                                         </th>
                                         <td class="px-3 py-2.5 text-stone-700">{{ $l['jabatan'] }}</td>
                                         <td @class(['px-3 py-2.5 whitespace-nowrap', 'text-stone-900' => $l['nama'], 'text-gold-700' => ! $l['nama']])>{{ $l['nama'] ?? 'Belum diisi' }}</td>
-                                        <td @class(['px-3 py-2.5 font-mono text-xs', 'text-stone-900' => $l['nip'], 'text-stone-400' => ! $l['nip']])>{{ $l['nip'] ?? '—' }}</td>
-                                        <td class="px-5 py-2.5 text-xs text-stone-500 sm:pr-6">{{ $l['akun'] === [] ? '—' : implode(', ', $l['akun']) }}</td>
+                                        <td @class(['px-3 py-2.5 font-mono text-xs whitespace-nowrap', 'text-stone-900' => $l['nip'], 'text-stone-400' => ! $l['nip']])>{{ $l['nip'] ? Nip::format($l['nip']) : '—' }}</td>
+                                        <td class="px-3 py-2.5 text-xs text-stone-500">{{ $l['akun'] === [] ? '—' : implode(', ', $l['akun']) }}</td>
+                                        <td class="px-5 py-2.5 text-right sm:pr-6">
+                                            @if ($ubahPejabat !== $kunciLeading && ! $this->tahunTerkunci())
+                                                <button type="button" wire:click="bukaUbahPejabat('{{ $kunciLeading }}')" class="btn-ghost px-2 py-1 text-xs" aria-label="Ubah pejabat {{ $l['kode'] }} {{ $l['nama_unit'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                            @endif
+                                        </td>
                                     </tr>
+                                    @if ($ubahPejabat === $kunciLeading)
+                                        <tr wire:key="formulir-pejabat-{{ $l['kode'] }}">
+                                            <td colspan="6" class="bg-stone-50/70 px-5 py-4 sm:px-6">
+                                                <form wire:submit="simpanPejabat" class="space-y-4" data-testid="formulir-pejabat">
+                                                    <p class="text-sm font-semibold text-stone-900">Pejabat {{ $l['kode'] }} {{ $l['nama_unit'] }} · TA {{ $tahun }}</p>
+                                                    <x-pengaturan.input-pejabat :awalan="'pejabat-leading-'.str_replace('.', '-', $l['kode'])" :jabatan-bawaan="\App\Support\Stub\StubPejabatRepository::bawaan()['leading'][$l['kode']]['jabatan']" />
+                                                    <div class="flex justify-end gap-2">
+                                                        <button type="button" wire:click="batalUbahPejabat" class="btn-ghost">Batal</button>
+                                                        <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanPejabat"><x-ui.icon name="save" class="size-4" /> Simpan</button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                     <ul class="divide-y divide-stone-100 md:hidden">
                         @foreach ($pejabat['leading'] as $l)
-                            <li class="px-4 py-3" data-pejabat-leading-kartu="{{ $l['kode'] }}">
-                                <p class="text-sm"><span class="font-mono text-xs text-stone-400">{{ $l['kode'] }}</span> <span class="font-medium text-stone-800">{{ $l['nama_unit'] }}</span></p>
-                                <p class="mt-0.5 text-xs text-stone-600">{{ $l['jabatan'] }}</p>
-                                <p @class(['mt-1 text-xs', 'text-stone-900' => $l['nama'], 'text-gold-700' => ! $l['nama']])>
-                                    {{ $l['nama'] ?? 'Nama belum diisi' }}{{ $l['nip'] ? ' · NIP '.$l['nip'] : '' }}
-                                    @if ($l['akun'] !== [])
-                                        <span class="text-stone-500">· akun {{ implode(', ', $l['akun']) }}</span>
+                            @php
+                                $kunciLeading = 'leading:'.$l['kode'];
+                            @endphp
+                            <li class="px-4 py-3" data-pejabat-leading-kartu="{{ $l['kode'] }}" wire:key="kartu-pejabat-{{ $l['kode'] }}-{{ $ubahPejabat === $kunciLeading ? 'ubah' : 'lihat' }}">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="text-sm"><span class="font-mono text-xs text-stone-400">{{ $l['kode'] }}</span> <span class="font-medium text-stone-800">{{ $l['nama_unit'] }}</span></p>
+                                        <p class="mt-0.5 text-xs text-stone-600">{{ $l['jabatan'] }}</p>
+                                    </div>
+                                    @if ($ubahPejabat !== $kunciLeading && ! $this->tahunTerkunci())
+                                        <button type="button" wire:click="bukaUbahPejabat('{{ $kunciLeading }}')" class="btn-ghost shrink-0 px-2 py-1 text-xs" aria-label="Ubah pejabat {{ $l['kode'] }} {{ $l['nama_unit'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
                                     @endif
-                                </p>
+                                </div>
+                                @if ($ubahPejabat === $kunciLeading)
+                                    <form wire:submit="simpanPejabat" class="mt-3 space-y-4" data-testid="formulir-pejabat">
+                                        <x-pengaturan.input-pejabat :awalan="'pejabat-leading-m-'.str_replace('.', '-', $l['kode'])" :jabatan-bawaan="\App\Support\Stub\StubPejabatRepository::bawaan()['leading'][$l['kode']]['jabatan']" />
+                                        <div class="flex justify-end gap-2">
+                                            <button type="button" wire:click="batalUbahPejabat" class="btn-ghost">Batal</button>
+                                            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanPejabat"><x-ui.icon name="save" class="size-4" /> Simpan</button>
+                                        </div>
+                                    </form>
+                                @else
+                                    <p @class(['mt-1 text-xs', 'text-stone-900' => $l['nama'], 'text-gold-700' => ! $l['nama']])>
+                                        {{ $l['nama'] ?? 'Nama belum diisi' }}{{ $l['nip'] ? ' · NIP '.Nip::format($l['nip']) : '' }}
+                                        @if ($l['akun'] !== [])
+                                            <span class="text-stone-500">· akun {{ implode(', ', $l['akun']) }}</span>
+                                        @endif
+                                    </p>
+                                @endif
                             </li>
                         @endforeach
                     </ul>
@@ -164,7 +228,7 @@
                             <p>Menyetujui,</p>
                             <p>{{ $pejabat['kepala']['jabatan'] }}</p>
                             <p class="mt-6 font-semibold underline">{{ $pejabat['kepala']['nama'] ?? '[Nama Kepala Madrasah]' }}</p>
-                            <p>NIP {{ $pejabat['kepala']['nip'] ?? '[NIP]' }}</p>
+                            <p>NIP {{ $pejabat['kepala']['nip'] ? Nip::format($pejabat['kepala']['nip']) : '[NIP]' }}</p>
                         </div>
                     </div>
                     <p class="mt-3 flex items-start gap-1.5 text-xs text-stone-500"><x-ui.icon name="lock" class="mt-0.5 size-3.5 shrink-0" /> Nama dan NIP pejabat tidak pernah dikirim ke penyedia AI.</p>

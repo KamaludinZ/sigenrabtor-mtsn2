@@ -103,3 +103,43 @@ export function terbilang(nilai) {
     const kata = terbilangKata(nilai);
     return kata === '' ? '' : `${kata} rupiah`.replace(/(^|\s)\S/g, (h) => h.toUpperCase());
 }
+
+/** Buang spasi, titik, dan tanda hubung NIP — sama dengan App\Support\Pengaturan\Nip::bersihkan(). */
+function bersihkanNip(teks) {
+    return String(teks ?? '').replace(/[\s.\-]+/gu, '');
+}
+
+/** "197001011995031001" → "19700101 199503 1 001" (kembaran Nip::format(); kasus tests/fixtures/nip.json). */
+export function nip(teks) {
+    const digit = bersihkanNip(teks);
+
+    return /^\d{18}$/.test(digit) ? `${digit.slice(0, 8)} ${digit.slice(8, 14)} ${digit.slice(14, 15)} ${digit.slice(15)}` : digit;
+}
+
+/** Pesan galat NIP atau null — kembaran Nip::galat(). */
+export function galatNip(teks) {
+    const digit = bersihkanNip(teks);
+    if (digit === '') {
+        return null;
+    }
+    if (!/^\d+$/.test(digit)) {
+        return 'NIP hanya boleh berisi angka (spasi, titik, atau tanda hubung diabaikan).';
+    }
+    if (digit.length !== 18) {
+        return `NIP harus 18 angka (sekarang ${digit.length}).`;
+    }
+    const [tahun, bulan, hari] = [+digit.slice(0, 4), +digit.slice(4, 6), +digit.slice(6, 8)];
+    const lahir = new Date(Date.UTC(tahun, bulan - 1, hari));
+    if (tahun < 1900 || lahir.getUTCFullYear() !== tahun || lahir.getUTCMonth() !== bulan - 1 || lahir.getUTCDate() !== hari) {
+        return '8 angka pertama NIP (tanggal lahir) bukan tanggal yang sah.';
+    }
+    const bulanTmt = +digit.slice(12, 14);
+    if (bulanTmt < 1 || bulanTmt > 12 || +digit.slice(8, 12) < 1900) {
+        return 'Angka ke-9 sampai 14 NIP (tahun & bulan TMT) tidak sah.';
+    }
+    if (!['1', '2'].includes(digit[14])) {
+        return 'Angka ke-15 NIP (jenis kelamin) harus 1 atau 2.';
+    }
+
+    return null;
+}

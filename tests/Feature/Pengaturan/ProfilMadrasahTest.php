@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Pengaturan;
 
+use App\Contracts\PejabatRepository;
 use App\Contracts\RiwayatPengaturanRepository;
+use App\Contracts\TahunAnggaranRepository;
 use App\Livewire\Pengaturan\ProfilMadrasah;
 use App\Support\Dokumen\NilaiVariabel;
+use App\Support\Dokumen\SusunanKak;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Stub\StubData;
 use Illuminate\Http\UploadedFile;
@@ -181,5 +184,85 @@ class ProfilMadrasahTest extends TestCase
             ->assertSee('Belum diunggah');
         $this->assertNull(StubData::madrasah()['logo_path']);
         $this->assertSame('hapus_logo', app(RiwayatPengaturanRepository::class)->semua()[0]['aksi']);
+    }
+
+    public function test_ubah_kepala_madrasah_dengan_nip_dan_riwayat(): void
+    {
+        session(['stub_role' => 'admin']);
+
+        Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
+            ->call('bukaUbahPejabat', 'kepala')
+            ->assertSet('ubahPejabat', 'kepala')
+            ->assertSet('isianPejabat.jabatan', 'Kepala MTsN 2 Kota Malang')
+            ->assertSeeHtml('data-testid="formulir-pejabat"')
+            ->assertSeeHtml('data-komponen="input-pejabat"')
+            ->set('isianPejabat.nama', '  Dr. H. Ahmad   Fauzi, M.Pd. ')
+            ->call('simpanPejabat')
+            ->assertHasErrors(['isianPejabat.nip' => 'required'])
+            ->assertSee('NIP Kepala Madrasah wajib diisi')
+            ->set('isianPejabat.nip', '1970010119950310')
+            ->call('simpanPejabat')
+            ->assertHasErrors('isianPejabat.nip')
+            ->assertSee('NIP harus 18 angka (sekarang 16).')
+            ->set('isianPejabat.nip', '19700101 199503 1 001')
+            ->call('simpanPejabat')
+            ->assertHasNoErrors()
+            ->assertSet('ubahPejabat', null)
+            ->assertDispatched('notify', message: 'Kepala Madrasah tersimpan untuk TA 2026.', type: 'success')
+            ->assertSeeHtml('data-pejabat="kepala" data-lengkap="ya"')
+            ->assertSeeHtmlInOrder(['data-testid="pratinjau-ttd"', 'Menyetujui,', 'Dr. H. Ahmad Fauzi, M.Pd.', 'NIP 19700101 199503 1 001']);
+
+        $this->assertSame(['jabatan' => 'Kepala MTsN 2 Kota Malang', 'nama' => 'Dr. H. Ahmad Fauzi, M.Pd.', 'nip' => '197001011995031001'], StubData::pejabat()['kepala'], 'NIP disimpan tanpa pemisah.');
+        $this->assertSame(['Kepala MTsN 2 Kota Malang', 'Dr. H. Ahmad Fauzi, M.Pd.', 'NIP. 19700101 199503 1 001'], NilaiVariabel::untuk([], null)['ttd_kepala']);
+        $this->assertSame('Kepala Madrasah TA 2026 — Nama: — → Dr. H. Ahmad Fauzi, M.Pd.; NIP: — → 19700101 199503 1 001', app(RiwayatPengaturanRepository::class)->semua()[0]['keterangan']);
+        $this->assertNull(app(PejabatRepository::class)->untukTahun(2025)['kepala']['nama'], 'Tahun lain menyimpan pejabatnya sendiri.');
+    }
+
+    public function test_pejabat_leading_menjadi_pembuat_dokumen(): void
+    {
+        $kegiatan = ['nama_kegiatan' => 'Uji', 'leading' => '1.6', 'tanggal_dokumen' => '2026-07-01'];
+        $this->assertSame(['Ketua Tim Penjamin Mutu', 'Muslimin, M.Pd.'], NilaiVariabel::untuk($kegiatan, 'DIPA')['ttd_leading'], 'Sebelum diisi: nama akun leading.');
+
+        session(['stub_role' => 'admin']);
+        $this->assertNull(NilaiVariabel::untuk($kegiatan, 'DIPA')['ttd_leading'], 'Admin bukan pemegang leading → pembuat kosong.');
+        Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
+            ->call('bukaUbahPejabat', 'leading:1.6')
+            ->assertSet('isianPejabat.jabatan', 'Ketua Tim Penjamin Mutu')
+            ->set('isianPejabat.nama', 'Siti Aminah, S.Pd.')
+            ->set('isianPejabat.nip', '19850312 201001 2 004')
+            ->set('isianPejabat.jabatan', 'Koordinator Tim Penjamin Mutu')
+            ->call('simpanPejabat')
+            ->assertHasNoErrors()
+            ->assertSeeHtmlInOrder(['data-pejabat-leading="1.6"', 'Koordinator Tim Penjamin Mutu', 'Siti Aminah, S.Pd.', '19850312 201001 2 004'])
+            ->call('bukaUbahPejabat', 'leading:9.9')
+            ->assertSet('ubahPejabat', null);
+
+        session(['stub_role' => 'leading']);
+        $this->assertSame(['Koordinator Tim Penjamin Mutu', 'Siti Aminah, S.Pd.', 'NIP. 19850312 201001 2 004'], NilaiVariabel::untuk($kegiatan, 'DIPA')['ttd_leading'], 'Pejabat leading menggantikan nama akun.');
+        $pembuat = collect(SusunanKak::dari($kegiatan + ['id' => null], 'DIPA')->bagian)->firstWhere('nomor', 9)['isi'][0]['kolom'];
+        $this->assertSame(['Pembuat,', 'Koordinator Tim Penjamin Mutu', 'Siti Aminah, S.Pd.', '19850312 201001 2 004'], array_values(array_intersect_key(collect($pembuat)->firstWhere('peran', 'Pembuat,'), array_flip(['peran', 'jabatan', 'nama', 'nip']))));
+    }
+
+    public function test_komite_nip_opsional_dan_tahun_terkunci_hanya_dilihat(): void
+    {
+        session(['stub_role' => 'admin']);
+
+        Livewire::test(ProfilMadrasah::class)
+            ->call('bukaUbahPejabat', 'komite')
+            ->set('isianPejabat.nama', 'H. Bambang Sutrisno')
+            ->set('isianPejabat.jabatan', '')
+            ->call('simpanPejabat')
+            ->assertHasErrors(['isianPejabat.jabatan' => 'required'])
+            ->set('isianPejabat.jabatan', 'Ketua Komite MTsN 2 Kota Malang')
+            ->call('simpanPejabat')
+            ->assertHasNoErrors();
+        $this->assertSame(['H. Bambang Sutrisno', null], [StubData::pejabat()['komite']['nama'], StubData::pejabat()['komite']['nip']]);
+
+        app(TahunAnggaranRepository::class)->aktifkan(2025, 'Uji');
+        Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
+            ->assertSeeHtml('data-testid="pejabat-terkunci"')
+            ->assertDontSeeHtml("wire:click=\"bukaUbahPejabat('kepala')\"")
+            ->call('bukaUbahPejabat', 'kepala')
+            ->assertSet('ubahPejabat', null);
     }
 }

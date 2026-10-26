@@ -2,12 +2,15 @@
 
 namespace App\Livewire\Pengaturan;
 
+use App\Contracts\PejabatRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\KesiapanPengaturan;
+use App\Support\Pengaturan\Nip;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
+use Closure;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -68,6 +71,16 @@ class ProfilMadrasah extends Component
 
     /** Konfirmasi hapus logo sedang ditampilkan. */
     public bool $konfirmasiHapusLogo = false;
+
+    /** Pejabat yang sedang disunting: "kepala", "komite", atau "leading:{kode}"; null = tidak ada. */
+    public ?string $ubahPejabat = null;
+
+    /**
+     * Isian <x-pengaturan.input-pejabat> (jabatan, nama, nip); dirapikan saat disimpan.
+     *
+     * @var array{jabatan: string, nama: string, nip: string}
+     */
+    public array $isianPejabat = ['jabatan' => '', 'nama' => '', 'nip' => ''];
 
     public function mount(): void
     {
@@ -151,6 +164,100 @@ class ProfilMadrasah extends Component
         RiwayatPengaturan::catat('hapus_logo', 'Logo kop dihapus; dokumen dicetak tanpa logo sampai diunggah lagi.');
         unset($this->profil);
         $this->dispatch('notify', message: 'Logo kop dihapus.', type: 'info');
+    }
+
+    /** Buka formulir satu pejabat tahun aktif (tahun terkunci hanya bisa dilihat). */
+    public function bukaUbahPejabat(string $kunci): void
+    {
+        $pejabat = $this->pejabatUntuk($kunci);
+        if ($pejabat === null || $this->tahunTerkunci()) {
+            return;
+        }
+
+        $this->isianPejabat = ['jabatan' => $pejabat['jabatan'], 'nama' => (string) $pejabat['nama'], 'nip' => $pejabat['nip'] ? Nip::format($pejabat['nip']) : ''];
+        $this->resetValidation();
+        $this->ubahPejabat = $kunci;
+    }
+
+    public function batalUbahPejabat(): void
+    {
+        $this->reset('ubahPejabat', 'isianPejabat');
+        $this->resetValidation();
+    }
+
+    /** Rapikan & periksa isian (NIP wajib untuk Kepala Madrasah), simpan untuk tahun aktif, catat perubahan di riwayat. */
+    public function simpanPejabat(PejabatRepository $repo): void
+    {
+        $kunci = (string) $this->ubahPejabat;
+        $lama = $this->pejabatUntuk($kunci);
+        if ($lama === null || $this->tahunTerkunci()) {
+            return;
+        }
+
+        $this->isianPejabat = [
+            'jabatan' => self::rapikan((string) ($this->isianPejabat['jabatan'] ?? '')),
+            'nama' => self::rapikan((string) ($this->isianPejabat['nama'] ?? '')),
+            'nip' => self::rapikan((string) ($this->isianPejabat['nip'] ?? '')),
+        ];
+        $this->validate([
+            'isianPejabat.jabatan' => ['required', 'string', 'max:150'],
+            'isianPejabat.nama' => ['required', 'string', 'max:150'],
+            'isianPejabat.nip' => [$kunci === 'kepala' ? 'required' : 'nullable', fn (string $atribut, mixed $nilai, Closure $gagal) => ($pesan = Nip::galat((string) $nilai)) ? $gagal($pesan) : null],
+        ], [
+            'isianPejabat.jabatan.required' => 'Jabatan tercetak wajib diisi.',
+            'isianPejabat.nama.required' => 'Nama pejabat wajib diisi.',
+            'isianPejabat.nip.required' => 'NIP Kepala Madrasah wajib diisi — tercetak di kolom "Menyetujui".',
+            'isianPejabat.*.max' => 'Terlalu panjang (maksimal :max karakter).',
+        ]);
+
+        [$peran, $leading] = array_pad(explode(':', $kunci, 2), 2, null);
+        $baru = ['jabatan' => $this->isianPejabat['jabatan'], 'nama' => $this->isianPejabat['nama'], 'nip' => Nip::bersihkan($this->isianPejabat['nip']) ?: null];
+        $tahun = StubData::tahunAktif()['tahun'];
+        $repo->simpan($tahun, $peran, $leading, $baru);
+
+        $tampil = fn (array $p) => ['nip' => $p['nip'] ? Nip::format($p['nip']) : null] + $p;
+        $ringkasan = RiwayatPengaturan::perubahan($tampil($lama), $tampil($baru), ['jabatan' => 'Jabatan', 'nama' => 'Nama', 'nip' => 'NIP']);
+        if ($ringkasan !== null) {
+            RiwayatPengaturan::catat('ubah_pejabat', $this->judulPejabat($kunci)." TA {$tahun} — {$ringkasan}");
+        }
+
+        unset($this->pejabat);
+        $this->reset('ubahPejabat', 'isianPejabat');
+        $this->dispatch('notify', message: $ringkasan === null ? 'Tidak ada yang berubah.' : $this->judulPejabat($kunci).' tersimpan untuk TA '.$tahun.'.', type: $ringkasan === null ? 'info' : 'success');
+    }
+
+    /** Tahun aktif terkunci: pejabatnya hanya bisa dilihat. */
+    public function tahunTerkunci(): bool
+    {
+        return (bool) StubData::tahunAktif()['is_locked'];
+    }
+
+    /** "Kepala Madrasah", "Ketua Komite", atau "Pejabat 1.6 Tim Penjamin Mutu". */
+    public function judulPejabat(string $kunci): string
+    {
+        $baris = str_starts_with($kunci, 'leading:') ? collect($this->pejabat['leading'])->firstWhere('kode', substr($kunci, 8)) : null;
+
+        return match ($kunci) {
+            'kepala' => 'Kepala Madrasah',
+            'komite' => 'Ketua Komite',
+            default => $baris ? "Pejabat {$baris['kode']} {$baris['nama_unit']}" : 'Pejabat leading',
+        };
+    }
+
+    /**
+     * Data pejabat untuk kunci formulir, atau null bila kunci tidak dikenal.
+     *
+     * @return array{jabatan: string, nama: string|null, nip: string|null}|null
+     */
+    private function pejabatUntuk(string $kunci): ?array
+    {
+        if (in_array($kunci, ['kepala', 'komite'], true)) {
+            return $this->pejabat[$kunci];
+        }
+
+        $baris = str_starts_with($kunci, 'leading:') ? collect($this->pejabat['leading'])->firstWhere('kode', substr($kunci, 8)) : null;
+
+        return $baris ? ['jabatan' => $baris['jabatan'], 'nama' => $baris['nama'], 'nip' => $baris['nip']] : null;
     }
 
     /** URL logo tersimpan (dengan penanda versi agar tembolok browser diperbarui), null bila belum ada. */

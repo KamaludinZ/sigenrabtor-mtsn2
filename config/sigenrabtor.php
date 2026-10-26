@@ -53,6 +53,7 @@ return [
         'nomor_halaman_file' => env('STUB_NOMOR_HALAMAN_FILE', 'stub/nomor-halaman.json'),
         'riwayat_file' => env('STUB_RIWAYAT_FILE', 'stub/riwayat-pengaturan.json'),
         'profil_file' => env('STUB_PROFIL_FILE', 'stub/profil-madrasah.json'),
+        'pejabat_file' => env('STUB_PEJABAT_FILE', 'stub/pejabat.json'),
     ],
 
     /*

@@ -8,6 +8,7 @@ use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\PenandaTangan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 
@@ -47,7 +48,7 @@ final class NilaiVariabel
     {
         $tahun = StubData::tahunAktif()['tahun'];
         $madrasah = StubData::madrasah();
-        $pejabat = StubData::pejabat();
+        $pejabat = PenandaTangan::pimpinan();
         $teks = fn (string $kunci) => ($isi = trim((string) ($kegiatan[$kunci] ?? ''))) === '' ? null : $isi;
         $nama = $teks('nama_kegiatan');
         $kode = fn (array $daftar, string $kunci, string $cari = 'kode') => MasterKode::cari($daftar, $kegiatan[$kunci] ?? null, $cari);
@@ -69,7 +70,7 @@ final class NilaiVariabel
         $jumlahPeserta = filter_var($kegiatan['peserta_jumlah'] ?? null, FILTER_VALIDATE_INT) ?: null;
         $jenisPeserta = $teks('peserta_jenis');
         $ttd = fn (array $p) => $p['nama'] ? array_values(array_filter([$p['jabatan'], $p['nama'], $p['nip'] ? 'NIP. '.$p['nip'] : null])) : null;
-        $pembuat = StubData::currentUser();
+        $pembuat = PenandaTangan::pembuat($kegiatan);
 
         return [
             'tahun_anggaran' => (string) $tahun,
@@ -100,8 +101,7 @@ final class NilaiVariabel
             'matrik' => $matrik->jumlahTanda() > 0 ? "[Tabel matrik tahapan — {$matrik->jumlahTanda()} tanda bulan]" : null,
             'jadwal' => $jadwal->jumlahTerisi() > 0 ? "[Tabel jadwal kegiatan — {$jadwal->jumlahTerisi()} baris]" : null,
             'ttd_kepala' => $ttd($pejabat['kepala']),
-            'ttd_leading' => $leading && $pembuat['role'] === 'leading' && in_array($kegiatan['leading'] ?? null, $pembuat['leadings'], true)
-                ? [$leading['jabatan_penanda_tangan'], $pembuat['name']] : null,
+            'ttd_leading' => $pembuat ? $ttd($pembuat) : null,
             'ttd_komite' => $ttd($pejabat['komite']),
             'nama_madrasah' => $madrasah['nama'],
             'kop' => blank($madrasah['alamat'] ?? null) ? null : array_values(array_filter([mb_strtoupper($madrasah['nama']), $madrasah['alamat'], $madrasah['telepon'] ?? null])),

@@ -11,6 +11,8 @@ const KASUS_TANGGAL = JSON.parse(readFileSync(new URL('../fixtures/tanggal.json'
 const KASUS_RINGKASAN_MATRIK = JSON.parse(readFileSync(new URL('../fixtures/ringkasan-matrik.json', import.meta.url), 'utf-8'));
 // Konsistensi bulan bersama: juga diuji di tests/Feature/Kegiatan/KonsistensiBulanTest.php terhadap KonsistensiBulan.
 const KASUS_KONSISTENSI = JSON.parse(readFileSync(new URL('../fixtures/konsistensi-bulan.json', import.meta.url), 'utf-8'));
+// NIP bersama: juga diuji di tests/Feature/Pengaturan/NipTest.php terhadap App\Support\Pengaturan\Nip.
+const KASUS_NIP = JSON.parse(readFileSync(new URL('../fixtures/nip.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -98,5 +100,13 @@ test.describe('Format mata uang di klien', () => {
         await page.goto('/kegiatan/1/rab');
         const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.statusPagu(k.total, k.pagu)), KASUS_STATUS_PAGU);
         expect(hasil).toEqual(KASUS_STATUS_PAGU.map(({ status, teks, nada }) => ({ status, teks, nada })));
+    });
+});
+
+test.describe('NIP di klien', () => {
+    test('nip() & galatNip() sama dengan server', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => ({ format: window.SIRABTOR.nip(k.masukan), galat: window.SIRABTOR.galatNip(k.masukan) })), KASUS_NIP);
+        expect(hasil).toEqual(KASUS_NIP.map(({ format, galat }) => ({ format, galat })));
     });
 });

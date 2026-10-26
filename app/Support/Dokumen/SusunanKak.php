@@ -11,6 +11,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\PenandaTangan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\PeringatanPagu;
@@ -141,7 +142,7 @@ final readonly class SusunanKak
         }
         $bagian[] = ['nomor' => 8, 'judul' => 'Pembiayaan', 'isi' => $pembiayaan];
 
-        $bagian[] = ['nomor' => 9, 'judul' => 'Lembar Pengesahan', 'isi' => [self::pengesahan($kegiatan, $leading, $sumber, $madrasah['kota'], $kosong)]];
+        $bagian[] = ['nomor' => 9, 'judul' => 'Lembar Pengesahan', 'isi' => [self::pengesahan($kegiatan, $sumber, $madrasah['kota'], $kosong)]];
 
         $status = StatusKegiatan::tryFrom($kegiatan['status'] ?? '') ?? StatusKegiatan::Draf;
         $cover = [
@@ -217,28 +218,23 @@ final readonly class SusunanKak
      * Blok tanda tangan: Mengetahui (Ketua Komite, khusus dana Komite), Pembuat (pejabat leading), Menyetujui (Kepala).
      *
      * @param  array<string, mixed>  $kegiatan
-     * @param  array{jabatan_penanda_tangan: string}|null  $leading
      * @return array{jenis: string, kolom: list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null}>}
      */
-    private static function pengesahan(array $kegiatan, ?array $leading, ?string $sumber, string $kota, callable $kosong): array
+    private static function pengesahan(array $kegiatan, ?string $sumber, string $kota, callable $kosong): array
     {
-        $pejabat = StubData::pejabat();
-        $pengguna = StubData::currentUser();
+        $pejabat = PenandaTangan::pimpinan();
+        $pembuat = PenandaTangan::pembuat($kegiatan);
         $tanggal = Format::tanggal($kegiatan['tanggal_dokumen'] ?? null);
 
         if (! $tanggal) {
             $kosong('tanggal dokumen');
         }
 
-        // Selama data tiruan: pembuat = akun leading yang memegang leading kegiatan ini.
-        $pembuat = $leading && $pengguna['role'] === 'leading' && in_array($kegiatan['leading'] ?? null, $pengguna['leadings'], true)
-            ? $pengguna['name'] : null;
-
         $kolom = [];
         if ($sumber === 'Komite') {
             $kolom[] = ['peran' => 'Mengetahui,', 'jabatan' => $pejabat['komite']['jabatan'], 'nama' => $pejabat['komite']['nama'], 'nip' => $pejabat['komite']['nip'], 'tempat_tanggal' => null];
         }
-        $kolom[] = ['peran' => 'Pembuat,', 'jabatan' => $leading['jabatan_penanda_tangan'] ?? 'Pejabat leading', 'nama' => $pembuat, 'nip' => null, 'tempat_tanggal' => $kota.', '.($tanggal ?? '……………')];
+        $kolom[] = ['peran' => 'Pembuat,', 'jabatan' => $pembuat['jabatan'] ?? 'Pejabat leading', 'nama' => $pembuat['nama'] ?? null, 'nip' => $pembuat['nip'] ?? null, 'tempat_tanggal' => $kota.', '.($tanggal ?? '……………')];
         $kolom[] = ['peran' => 'Menyetujui,', 'jabatan' => $pejabat['kepala']['jabatan'], 'nama' => $pejabat['kepala']['nama'], 'nip' => $pejabat['kepala']['nip'], 'tempat_tanggal' => null];
 
         return ['jenis' => 'pengesahan', 'kolom' => $kolom];

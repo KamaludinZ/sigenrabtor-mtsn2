@@ -2,6 +2,7 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\PejabatRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
 
@@ -101,27 +102,27 @@ class StubData
     }
 
     /**
-     * Pejabat penanda tangan tahun aktif. Nama & NIP diisi admin di master pejabat; selama data tiruan dibiarkan kosong.
+     * Pejabat penanda tangan tahun aktif (PejabatRepository): Kepala Madrasah & Ketua Komite. Nama & NIP diisi admin di
+     * Pengaturan › Profil & Pejabat; yang belum diisi null.
      *
      * @return array{kepala: array{jabatan: string, nama: string|null, nip: string|null}, komite: array{jabatan: string, nama: string|null, nip: string|null}}
      */
     public static function pejabat(): array
     {
-        return [
-            'kepala' => ['jabatan' => 'Kepala MTsN 2 Kota Malang', 'nama' => null, 'nip' => null],
-            'komite' => ['jabatan' => 'Ketua Komite MTsN 2 Kota Malang', 'nama' => null, 'nip' => null],
-        ];
+        $pejabat = app(PejabatRepository::class)->untukTahun(self::tahunAktif()['tahun']);
+
+        return ['kepala' => $pejabat['kepala'], 'komite' => $pejabat['komite']];
     }
 
     /**
-     * Pejabat tiap leading tahun aktif (peran `leading` di pejabat_penanda_tangan): jabatan dari master leading; nama & NIP
-     * diisi admin — selama data tiruan kosong (dokumen sementara memakai nama akun leading pembuat kegiatan).
+     * Pejabat tiap leading tahun aktif (peran `leading`, PejabatRepository): jabatan bawaan dari master leading; nama & NIP
+     * diisi admin (selama kosong, dokumen memakai nama akun leading pembuat kegiatan — PenandaTangan::pembuat()).
      *
      * @return array<string, array{jabatan: string, nama: string|null, nip: string|null}>
      */
     public static function pejabatLeading(): array
     {
-        return array_map(fn (array $l) => ['jabatan' => $l['jabatan_penanda_tangan'], 'nama' => null, 'nip' => null], array_column(self::leadings(), null, 'kode'));
+        return app(PejabatRepository::class)->untukTahun(self::tahunAktif()['tahun'])['leading'];
     }
 
     /**
