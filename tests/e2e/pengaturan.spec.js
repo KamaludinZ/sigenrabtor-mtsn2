@@ -512,4 +512,27 @@ test.describe('Pengaturan admin', () => {
         await pemilih.getByRole('button', { name: /TA 2026/ }).click();
         await expect(page).not.toHaveURL(/ta=/);
     });
+
+    test('blok Mengetahui: atur per sumber dana dengan pratinjau dokumen DIPA/Komite', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah?tab=pejabat');
+        const ttd = page.getByTestId('pratinjau-ttd');
+        const dipa = ttd.getByTestId('aturan-mengetahui').getByLabel('DIPA');
+        await expect(dipa).toBeChecked();
+        await expect(ttd.locator('[data-ttd="komite"]')).toBeVisible();
+
+        await dipa.uncheck();
+        await expect(page.getByText('Blok "Mengetahui" tampil di dokumen Komite.')).toBeVisible();
+        await expect(ttd.locator('[data-ttd="komite"]')).toBeHidden();
+        await ttd.getByRole('button', { name: 'Dokumen Komite' }).click();
+        await expect(ttd.locator('[data-ttd="komite"]')).toBeVisible();
+        await ttd.screenshot({ path: `storage/playwright/shots/pengaturan-mengetahui-${testInfo.project.name}.png` });
+        await page.reload();
+        await expect(ttd.getByTestId('aturan-mengetahui').getByLabel('DIPA')).not.toBeChecked();
+
+        // Pulihkan bawaan (proyek mobile & tes dokumen memakai data yang sama).
+        await ttd.getByTestId('aturan-mengetahui').getByLabel('DIPA').check();
+        await expect(page.getByText('Blok "Mengetahui" tampil di dokumen DIPA & Komite.')).toBeVisible();
+        await expect(ttd.locator('[data-ttd="komite"]')).toBeVisible();
+    });
 });

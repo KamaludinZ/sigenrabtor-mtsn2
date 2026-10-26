@@ -91,7 +91,7 @@
                     </header>
                     <div class="grid divide-y divide-stone-100 md:grid-cols-2 md:divide-x md:divide-y-0">
                         @foreach ([['kunci' => 'kepala', 'judul' => 'Kepala Madrasah', 'peran' => 'Pengarah kegiatan dan "Menyetujui" di lembar pengesahan', 'nip' => true],
-                                   ['kunci' => 'komite', 'judul' => 'Ketua Komite', 'peran' => '"Mengetahui" di dokumen DIPA maupun Komite', 'nip' => false]] as $peran)
+                                   ['kunci' => 'komite', 'judul' => 'Ketua Komite', 'peran' => $this->keteranganMengetahui(), 'nip' => false]] as $peran)
                             @php
                                 $orang = $pejabat[$peran['kunci']];
                                 $lengkap = $orang['nama'] && (! $peran['nip'] || $orang['nip']);
@@ -280,18 +280,40 @@
             </div>
 
             <aside class="min-w-0 space-y-6">
-                {{-- Pratinjau blok tanda tangan lembar pengesahan --}}
-                <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-blok-ttd" data-testid="pratinjau-ttd">
+                {{-- Blok tanda tangan: pengaturan "Mengetahui" per sumber dana + pratinjau lembar pengesahan dokumen DIPA/Komite. --}}
+                <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-blok-ttd" data-testid="pratinjau-ttd"
+                         x-data="{ sumber: @js(\App\Enums\SumberDana::urutan()[0]) }">
                     <h2 id="judul-blok-ttd" class="text-sm font-semibold text-stone-900">Blok tanda tangan</h2>
                     <p class="mt-0.5 text-xs text-stone-500">Lembar pengesahan setiap KAK/TOR &amp; RAB · TA {{ $taPejabat }}.</p>
-                    <div class="mt-4 rounded-lg bg-stone-50 p-3 font-serif text-[11px] leading-snug text-stone-800 ring-1 ring-stone-200">
-                        <div class="grid grid-cols-2 gap-3 text-center">
-                            <div data-ttd="komite">
+
+                    <fieldset class="mt-4" data-testid="aturan-mengetahui" @disabled($this->tahunTerkunci())>
+                        <legend class="text-xs font-semibold text-stone-700">Tampilkan "Mengetahui" (Ketua Komite) di dokumen</legend>
+                        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                            @foreach (\App\Enums\SumberDana::urutan() as $s)
+                                <label class="flex items-center gap-2 text-sm text-stone-700">
+                                    <input type="checkbox" wire:model.live="mengetahui.{{ $s }}" class="size-4 rounded border-stone-300 text-brand-700 focus:ring-brand-600 disabled:opacity-50" data-mengetahui="{{ $s }}">
+                                    {{ $s }}
+                                </label>
+                            @endforeach
+                        </div>
+                        <p class="mt-1.5 text-xs text-stone-500">Bawaan: keduanya. Variabel <code class="font-mono">${ttd_komite}</code> di master tetap terisi; letaknya diatur master template.</p>
+                    </fieldset>
+
+                    <div class="mt-4 inline-flex rounded-lg bg-stone-100 p-0.5 text-xs" role="group" aria-label="Pratinjau dokumen sumber dana">
+                        @foreach (\App\Enums\SumberDana::urutan() as $s)
+                            <button type="button" x-on:click="sumber = @js($s)" class="rounded-md px-2.5 py-1 font-medium"
+                                    x-bind:class="{ 'bg-white text-stone-900 shadow-xs': sumber === @js($s), 'text-stone-500': sumber !== @js($s) }"
+                                    x-bind:aria-pressed="(sumber === @js($s)).toString()">Dokumen {{ $s }}</button>
+                        @endforeach
+                    </div>
+                    <div class="mt-2 rounded-lg bg-stone-50 p-3 font-serif text-[11px] leading-snug text-stone-800 ring-1 ring-stone-200">
+                        <div class="flex justify-center gap-3 text-center">
+                            <div class="flex-1" data-ttd="komite" x-show="$wire.mengetahui[sumber]">
                                 <p>Mengetahui,</p>
                                 <p>{{ $pejabat['komite']['jabatan'] }}</p>
                                 <p class="mt-6 font-semibold underline">{{ $pejabat['komite']['nama'] ?? '[Nama Ketua Komite]' }}</p>
                             </div>
-                            <div data-ttd="leading">
+                            <div class="flex-1" data-ttd="leading">
                                 <p>{{ $profil['kota'] ?? '[Kota]' }}, [tanggal dokumen]</p>
                                 <p>[Jabatan pejabat leading]</p>
                                 <p class="mt-6 font-semibold underline">[Nama pejabat leading]</p>

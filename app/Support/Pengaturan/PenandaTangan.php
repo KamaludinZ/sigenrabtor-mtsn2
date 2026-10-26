@@ -2,6 +2,7 @@
 
 namespace App\Support\Pengaturan;
 
+use App\Contracts\PejabatRepository;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 
@@ -33,6 +34,20 @@ final class PenandaTangan
         $akunLeading = $pengguna['role'] === 'leading' && in_array($kode, $pengguna['leadings'], true);
 
         return ['jabatan' => $pejabat['jabatan'], 'nama' => $akunLeading ? $pengguna['name'] : null, 'nip' => null];
+    }
+
+    /**
+     * Penanda tangan blok "Mengetahui" (Ketua Komite) dokumen sumber dana $sumber menurut pengaturan tahun aktif
+     * (PejabatRepository::aturanMengetahui; bawaan DIPA & Komite); null bila blok tidak ditampilkan. Tanpa sumber dana:
+     * tampil.
+     *
+     * @return array{jabatan: string, nama: string|null, nip: string|null}|null
+     */
+    public static function mengetahui(?string $sumber): ?array
+    {
+        $aturan = app(PejabatRepository::class)->aturanMengetahui(StubData::tahunAktif()['tahun']);
+
+        return $sumber === null || ($aturan[$sumber] ?? true) ? self::pimpinan()['komite'] : null;
     }
 
     /**

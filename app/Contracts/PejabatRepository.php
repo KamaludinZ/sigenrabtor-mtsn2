@@ -21,4 +21,17 @@ interface PejabatRepository
      * @param  array{jabatan: string, nama: string|null, nip: string|null}  $pejabat
      */
     public function simpan(int $tahun, string $peran, ?string $leading, array $pejabat): void;
+
+    /**
+     * Pengaturan blok "Mengetahui" (Ketua Komite) di lembar pengesahan tahun $tahun: tampil atau tidak per sumber dana
+     * (kunci SumberDana). Bawaan PRD §12: tampil di dokumen DIPA maupun Komite.
+     *
+     * @return array<string, bool>
+     */
+    public function aturanMengetahui(int $tahun): array;
+
+    /**
+     * @param  array<string, bool>  $aturan  Sumber dana → tampil.
+     */
+    public function simpanAturanMengetahui(int $tahun, array $aturan): void;
 }

@@ -77,6 +77,13 @@ class ProfilMadrasah extends Component
     #[Url(as: 'ta', except: '')]
     public string $tahunPejabat = '';
 
+    /**
+     * Pengaturan blok "Mengetahui" tahun yang dilihat: sumber dana → tampil; tersimpan begitu dicentang.
+     *
+     * @var array<string, bool>
+     */
+    public array $mengetahui = [];
+
     /** Pejabat yang sedang disunting: "kepala", "komite", atau "leading:{kode}"; null = tidak ada. */
     public ?string $ubahPejabat = null;
 
@@ -91,6 +98,7 @@ class ProfilMadrasah extends Component
     {
         $this->rapikanTab();
         $this->rapikanTahunPejabat();
+        $this->mengetahui = app(PejabatRepository::class)->aturanMengetahui($this->tahunDilihat());
     }
 
     public function updatedTab(): void
@@ -104,6 +112,39 @@ class ProfilMadrasah extends Component
         $this->rapikanTahunPejabat();
         $this->batalUbahPejabat();
         unset($this->pejabat);
+        $this->mengetahui = app(PejabatRepository::class)->aturanMengetahui($this->tahunDilihat());
+    }
+
+    /** Peran Ketua Komite menurut pengaturan blok "Mengetahui", mis. '"Mengetahui" di dokumen DIPA & Komite'. */
+    public function keteranganMengetahui(): string
+    {
+        $tampil = array_keys(array_filter($this->mengetahui));
+
+        return $tampil === [] ? 'Blok "Mengetahui" sedang tidak ditampilkan di dokumen' : '"Mengetahui" di dokumen '.implode(' & ', $tampil);
+    }
+
+    /** Centang blok "Mengetahui" langsung tersimpan untuk tahun yang dilihat (tahun terkunci dikembalikan). */
+    public function updatedMengetahui(): void
+    {
+        $repo = app(PejabatRepository::class);
+        $tahun = $this->tahunDilihat();
+        $lama = $repo->aturanMengetahui($tahun);
+        if ($this->tahunTerkunci()) {
+            $this->mengetahui = $lama;
+
+            return;
+        }
+
+        $baru = array_map(fn (string $s) => (bool) ($this->mengetahui[$s] ?? false), array_combine(array_keys($lama), array_keys($lama)));
+        $repo->simpanAturanMengetahui($tahun, $baru);
+        $this->mengetahui = $repo->aturanMengetahui($tahun);
+
+        $ringkasan = RiwayatPengaturan::perubahan($lama, $this->mengetahui, array_combine(array_keys($lama), array_map(fn (string $s) => "Mengetahui di dokumen {$s}", array_keys($lama))));
+        if ($ringkasan !== null) {
+            RiwayatPengaturan::catat('ubah_mengetahui', "TA {$tahun} — {$ringkasan}");
+        }
+        $tampil = array_keys(array_filter($this->mengetahui));
+        $this->dispatch('notify', message: $tampil === [] ? 'Blok "Mengetahui" tidak ditampilkan di dokumen mana pun.' : 'Blok "Mengetahui" tampil di dokumen '.implode(' & ', $tampil).'.', type: 'success');
     }
 
     /**

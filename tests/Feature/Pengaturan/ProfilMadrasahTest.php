@@ -60,7 +60,7 @@ class ProfilMadrasahTest extends TestCase
             ->assertSeeHtml('data-pejabat="kepala" data-lengkap="tidak"')
             ->assertSeeHtml('data-pejabat="komite" data-lengkap="tidak"')
             ->assertSee('Kepala MTsN 2 Kota Malang')
-            ->assertSee('"Mengetahui" di dokumen DIPA maupun Komite')
+            ->assertSee('"Mengetahui" di dokumen DIPA & Komite')
             ->assertSeeHtmlInOrder(['data-pejabat-leading="1.1"', 'Waka Kurikulum', 'Wakil Kepala Bidang Kurikulum', 'Belum diisi'])
             ->assertSeeHtmlInOrder(['data-pejabat-leading="1.6"', 'Tim Penjamin Mutu', 'Muslimin, M.Pd.'])
             ->assertSeeHtmlInOrder(['data-testid="pratinjau-ttd"', 'Mengetahui,', 'Ketua Komite MTsN 2 Kota Malang', '[Nama Ketua Komite]', 'Malang, [tanggal dokumen]', 'Menyetujui,', '[Nama Kepala Madrasah]'])
@@ -322,5 +322,37 @@ class ProfilMadrasahTest extends TestCase
         $halaman->call('salinPejabat', 2025)->assertDispatched('notify', message: 'Tidak ada yang disalin — pejabat TA 2025 kosong atau TA 2026 sudah terisi.', type: 'info');
         $halaman->set('tahunPejabat', '2025')->call('salinPejabat', 2026);
         $this->assertSame('Siti Rohmah, M.Pd.', app(PejabatRepository::class)->untukTahun(2025)['leading']['1.1']['nama'], 'Tahun terkunci tidak bisa diisi salinan.');
+    }
+
+    public function test_pengaturan_blok_mengetahui_per_sumber_dana(): void
+    {
+        session(['stub_role' => 'admin']);
+        $kegiatan = ['nama_kegiatan' => 'Uji', 'leading' => '1.6', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000]]];
+        $peran = fn (string $sumber) => array_column(collect(SusunanKak::dari($kegiatan, $sumber)->bagian)->firstWhere('nomor', 9)['isi'][0]['kolom'], 'peran');
+
+        $this->assertSame(['DIPA' => true, 'Komite' => true], app(PejabatRepository::class)->aturanMengetahui(2026), 'Bawaan PRD §12: DIPA maupun Komite.');
+        $this->assertSame('Mengetahui,', $peran('DIPA')[0]);
+
+        Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
+            ->assertSet('mengetahui', ['DIPA' => true, 'Komite' => true])
+            ->assertSeeHtml('data-testid="aturan-mengetahui"')
+            ->set('mengetahui.DIPA', false)
+            ->assertDispatched('notify', message: 'Blok "Mengetahui" tampil di dokumen Komite.', type: 'success')
+            ->assertSet('mengetahui', ['DIPA' => false, 'Komite' => true])
+            ->set('mengetahui.Komite', false)
+            ->assertDispatched('notify', message: 'Blok "Mengetahui" tidak ditampilkan di dokumen mana pun.', type: 'success');
+
+        $this->assertSame(['DIPA' => false, 'Komite' => false], app(PejabatRepository::class)->aturanMengetahui(2026));
+        $this->assertSame(['Pembuat,', 'Menyetujui,'], $peran('DIPA'));
+        $this->assertSame(['Pembuat,', 'Menyetujui,'], $peran('Komite'));
+        $this->assertSame('TA 2026 — Mengetahui di dokumen Komite: ya → tidak', app(RiwayatPengaturanRepository::class)->semua()[0]['keterangan']);
+        $this->assertSame(['DIPA' => true, 'Komite' => true], app(PejabatRepository::class)->aturanMengetahui(2025), 'Per tahun anggaran.');
+
+        Livewire::withQueryParams(['tab' => 'pejabat', 'ta' => '2025'])->test(ProfilMadrasah::class)
+            ->assertSet('mengetahui', ['DIPA' => true, 'Komite' => true])
+            ->assertSeeHtml('data-testid="aturan-mengetahui" disabled')
+            ->set('mengetahui.DIPA', false)
+            ->assertSet('mengetahui', ['DIPA' => true, 'Komite' => true]);
+        $this->assertTrue(app(PejabatRepository::class)->aturanMengetahui(2025)['DIPA'], 'Tahun terkunci tidak berubah.');
     }
 }

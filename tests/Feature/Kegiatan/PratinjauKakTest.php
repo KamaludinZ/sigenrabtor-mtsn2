@@ -4,6 +4,7 @@ namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
+use App\Contracts\PejabatRepository;
 use App\Contracts\RabRepository;
 use App\Livewire\Kegiatan\Form;
 use App\Support\Dokumen\SusunanKak;
@@ -71,9 +72,13 @@ class PratinjauKakTest extends TestCase
         $this->assertStringContainsString('dana KOMITE', $this->teks($komite));
 
         $peran = fn (SusunanKak $kak) => array_column($kak->bagian[8]['isi'][0]['kolom'], 'peran');
-        $this->assertSame(['Pembuat,', 'Menyetujui,'], $peran($dipa));
+        $this->assertSame(['Mengetahui,', 'Pembuat,', 'Menyetujui,'], $peran($dipa), 'PRD §12: Mengetahui (Ketua Komite) di dokumen DIPA maupun Komite.');
         $this->assertSame(['Mengetahui,', 'Pembuat,', 'Menyetujui,'], $peran($komite));
         $this->assertSame('Muslimin, M.Pd.', $komite->bagian[8]['isi'][0]['kolom'][1]['nama']);
+
+        app(PejabatRepository::class)->simpanAturanMengetahui(2026, ['DIPA' => false, 'Komite' => true]);
+        $this->assertSame(['Pembuat,', 'Menyetujui,'], $peran(SusunanKak::dari($this->kegiatan(2), 'DIPA')), 'Pengaturan blok Mengetahui per sumber dana.');
+        $this->assertSame(['Mengetahui,', 'Pembuat,', 'Menyetujui,'], $peran(SusunanKak::dari($this->kegiatan(2), 'Komite')));
     }
 
     public function test_isian_kosong_ditandai_bukan_diisi_teks_palsu(): void

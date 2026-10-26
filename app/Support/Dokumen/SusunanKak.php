@@ -215,7 +215,8 @@ final readonly class SusunanKak
     }
 
     /**
-     * Blok tanda tangan: Mengetahui (Ketua Komite, khusus dana Komite), Pembuat (pejabat leading), Menyetujui (Kepala).
+     * Blok tanda tangan: Mengetahui (Ketua Komite; per sumber dana menurut PenandaTangan::mengetahui, bawaan DIPA & Komite),
+     * Pembuat (pejabat leading), Menyetujui (Kepala).
      *
      * @param  array<string, mixed>  $kegiatan
      * @return array{jenis: string, kolom: list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null}>}
@@ -231,8 +232,8 @@ final readonly class SusunanKak
         }
 
         $kolom = [];
-        if ($sumber === 'Komite') {
-            $kolom[] = ['peran' => 'Mengetahui,', 'jabatan' => $pejabat['komite']['jabatan'], 'nama' => $pejabat['komite']['nama'], 'nip' => $pejabat['komite']['nip'], 'tempat_tanggal' => null];
+        if (($mengetahui = PenandaTangan::mengetahui($sumber)) !== null) {
+            $kolom[] = ['peran' => 'Mengetahui,', 'jabatan' => $mengetahui['jabatan'], 'nama' => $mengetahui['nama'], 'nip' => $mengetahui['nip'], 'tempat_tanggal' => null];
         }
         $kolom[] = ['peran' => 'Pembuat,', 'jabatan' => $pembuat['jabatan'] ?? 'Pejabat leading', 'nama' => $pembuat['nama'] ?? null, 'nip' => $pembuat['nip'] ?? null, 'tempat_tanggal' => $kota.', '.($tanggal ?? '……………')];
         $kolom[] = ['peran' => 'Menyetujui,', 'jabatan' => $pejabat['kepala']['jabatan'], 'nama' => $pejabat['kepala']['nama'], 'nip' => $pejabat['kepala']['nip'], 'tempat_tanggal' => null];

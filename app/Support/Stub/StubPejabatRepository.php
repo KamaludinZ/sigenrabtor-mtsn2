@@ -3,6 +3,7 @@
 namespace App\Support\Stub;
 
 use App\Contracts\PejabatRepository;
+use App\Enums\SumberDana;
 use App\Support\MasterKode;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
@@ -47,6 +48,21 @@ class StubPejabatRepository implements PejabatRepository
         } else {
             $semua[(string) $tahun][$peran] = $isi;
         }
+        $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    public function aturanMengetahui(int $tahun): array
+    {
+        $tersimpan = $this->baca()[(string) $tahun]['mengetahui'] ?? [];
+        $bawaan = array_fill_keys(SumberDana::urutan(), true);
+
+        return array_merge($bawaan, array_map('boolval', array_intersect_key(is_array($tersimpan) ? $tersimpan : [], $bawaan)));
+    }
+
+    public function simpanAturanMengetahui(int $tahun, array $aturan): void
+    {
+        $semua = $this->baca();
+        $semua[(string) $tahun]['mengetahui'] = array_map('boolval', array_intersect_key($aturan, array_flip(SumberDana::urutan())));
         $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 
