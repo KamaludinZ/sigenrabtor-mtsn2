@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Contracts\DaftarIsiRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MasterKodeRepository;
 use App\Contracts\MatrikJadwalRepository;
@@ -10,6 +11,7 @@ use App\Contracts\RabRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
+use App\Support\Stub\StubDaftarIsiRepository;
 use App\Support\Stub\StubKegiatanRepository;
 use App\Support\Stub\StubMasterKodeRepository;
 use App\Support\Stub\StubMatrikJadwalRepository;
@@ -38,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TahunAnggaranRepository::class, StubTahunAnggaranRepository::class);
         $this->app->singleton(TemplateCoverRepository::class, StubTemplateCoverRepository::class);
         $this->app->singleton(TemplateDokumenRepository::class, StubTemplateDokumenRepository::class);
+        $this->app->singleton(DaftarIsiRepository::class, StubDaftarIsiRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         $this->app->singleton(PenyusunUsulanJadwal::class, StubUsulanJadwal::class);
     }

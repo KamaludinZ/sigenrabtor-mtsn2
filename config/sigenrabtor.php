@@ -34,6 +34,7 @@ return [
         'tahun_file' => env('STUB_TAHUN_FILE', 'stub/tahun-anggaran.json'),
         'cover_file' => env('STUB_COVER_FILE', 'stub/cover-template.json'),
         'master_file' => env('STUB_MASTER_FILE', 'stub/master-template.json'),
+        'daftar_isi_file' => env('STUB_DAFTAR_ISI_FILE', 'stub/daftar-isi.json'),
     ],
 
     /*

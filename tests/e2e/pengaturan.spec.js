@@ -244,4 +244,58 @@ test.describe('Pengaturan admin', () => {
         await tersimpan.getByRole('button', { name: 'Hapus', exact: true }).click();
         await expect(page.getByTestId('master-kosong')).toBeVisible({ timeout: 30_000 });
     });
+
+    test('daftar isi: pengaturan bawaan & khusus per leading × sumber dana dengan pratinjau halaman', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/template?tab=daftar_isi');
+        const pratinjau = page.getByTestId('pratinjau-daftar-isi');
+        await expect(page.getByTestId('buku-pratinjau')).toContainText('Contoh buku Tim Penjamin Mutu · DIPA');
+        await expect(page.getByTestId('di-judul-tercetak')).toHaveText('DAFTAR KEGIATAN');
+        await expect(pratinjau.locator('tr[data-baris-daftar-isi]').first()).toContainText('Review RKJM dan Penyusunan RKTM');
+
+        try {
+            await page.locator('#di-judul').fill('DAFTAR ISI KEGIATAN');
+            await expect(page.getByTestId('di-judul-tercetak')).toHaveText('DAFTAR ISI KEGIATAN');
+            await page.locator('[data-kolom="bulan"]').check();
+            await expect(pratinjau.locator('[data-kolom-tercetak="bulan"]')).toBeVisible();
+            await expect(page.getByTestId('daftar-isi-berubah')).toBeVisible();
+            await page.getByRole('button', { name: 'Simpan bawaan' }).click();
+            await expect(page.getByText('Pengaturan bawaan daftar isi tersimpan.')).toBeVisible({ timeout: 30_000 });
+
+            // Pengaturan khusus untuk buku TPM · Komite.
+            await page.getByTestId('buku-1.6-komite').click();
+            await expect(page.getByTestId('status-daftar-isi')).toContainText('Mengikuti pengaturan bawaan');
+            await expect(page.getByTestId('di-judul-tercetak')).toHaveText('DAFTAR ISI KEGIATAN');
+            await page.getByRole('radio', { name: 'Nama kegiatan' }).check();
+            await page.locator('#di-catatan').fill('Diurutkan menurut nama kegiatan.');
+            await expect(page.getByTestId('di-catatan-tercetak')).toHaveText('Diurutkan menurut nama kegiatan.');
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+            expect(overflow).toBeLessThanOrEqual(0);
+            await page.screenshot({ path: `storage/playwright/shots/daftar-isi-${testInfo.project.name}.png`, fullPage: true });
+            await page.getByRole('button', { name: 'Simpan sebagai pengaturan khusus' }).click();
+            await expect(page.getByTestId('buku-1.6-komite')).toHaveAttribute('data-khusus', 'ya', { timeout: 30_000 });
+            await expect(page.getByTestId('status-daftar-isi')).toHaveText('Memakai pengaturan khusus.');
+
+            await page.reload();
+            await page.getByTestId('buku-1.6-komite').click();
+            await expect(page.getByTestId('di-catatan-tercetak')).toHaveText('Diurutkan menurut nama kegiatan.');
+        } finally {
+            // Bersihkan: buku kembali ke bawaan, bawaan kembali ke susunan aplikasi.
+            await page.goto('/pengaturan/template?tab=daftar_isi');
+            if ((await page.getByTestId('buku-1.6-komite').getAttribute('data-khusus')) === 'ya') {
+                await page.getByTestId('buku-1.6-komite').click();
+                await page.getByRole('button', { name: 'Kembalikan ke pengaturan bawaan' }).click();
+                await expect(page.getByTestId('buku-1.6-komite')).toHaveAttribute('data-khusus', 'tidak', { timeout: 30_000 });
+            }
+            await page.getByTestId('pilih-bawaan').click();
+            await page.getByRole('button', { name: 'Pakai susunan aplikasi' }).click();
+            await expect(page.getByTestId('di-judul-tercetak')).toHaveText('DAFTAR KEGIATAN', { timeout: 30_000 });
+            const simpan = page.getByRole('button', { name: 'Simpan bawaan' });
+            if (await page.getByTestId('daftar-isi-berubah').count()) {
+                await simpan.click();
+                // Tunggu simpan rampung (bukan hanya pratinjau) agar proyek berikutnya mulai dari bawaan aplikasi.
+                await expect(page.getByRole('button', { name: 'Tersimpan' })).toBeDisabled({ timeout: 30_000 });
+            }
+        }
+    });
 });
