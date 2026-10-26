@@ -16,7 +16,8 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByTestId('jumlah-wajib-siap')).toHaveText('4/7 wajib siap');
         await expect(kesiapan.locator('li[data-siap="tidak"]')).toHaveCount(6);
         await expect(page.locator('article[data-testid^="bagian-"]')).toHaveCount(6);
-        await expect(page.getByTestId('bagian-madrasah')).toContainText('Segera disiapkan');
+        await expect(page.getByTestId('bagian-leading')).toContainText('Segera disiapkan');
+        await expect(page.getByTestId('bagian-madrasah').getByRole('link', { name: 'Buka Profil & Pejabat' })).toBeVisible();
         await expect(page.getByTestId('bagian-tahun').getByRole('link', { name: 'Buka Tahun Anggaran' })).toBeVisible();
 
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -378,5 +379,31 @@ test.describe('Pengaturan admin', () => {
                 await expect(page.getByRole('button', { name: 'Tersimpan' })).toBeDisabled({ timeout: 30_000 });
             }
         }
+    });
+
+    test('profil & pejabat: layout tab profil (kop) dan pejabat penanda tangan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah');
+        await expect(page.getByRole('heading', { name: 'Profil & Pejabat', level: 1 })).toBeVisible();
+        await expect(page.getByTestId('profil-identitas').locator('[data-isian]')).toHaveCount(6);
+        await expect(page.getByTestId('profil-identitas').locator('[data-isian="alamat"]')).toContainText('Belum diisi');
+        await expect(page.getByTestId('pratinjau-kop')).toContainText('Madrasah Tsanawiyah Negeri 2 Kota Malang');
+        await expect(page.getByTestId('kesiapan-madrasah').locator('li[data-kesiapan]')).toHaveCount(3);
+        let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-profil-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByRole('button', { name: /Pejabat penanda tangan/ }).click();
+        await expect(page).toHaveURL(/tab=pejabat/);
+        await expect(page.getByTestId('pejabat-pimpinan').locator('[data-pejabat]')).toHaveCount(2);
+        const lebar = testInfo.project.name === 'desktop';
+        await expect(page.getByTestId('pejabat-leading').locator(lebar ? 'tr[data-pejabat-leading]' : 'li[data-pejabat-leading-kartu]')).toHaveCount(8);
+        await expect(page.getByTestId('pratinjau-ttd')).toContainText('Mengetahui,');
+        overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-pejabat-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.reload();
+        await expect(page.getByTestId('pejabat-pimpinan')).toBeVisible();
     });
 });

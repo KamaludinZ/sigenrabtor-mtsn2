@@ -113,6 +113,17 @@ class StubData
     }
 
     /**
+     * Pejabat tiap leading tahun aktif (peran `leading` di pejabat_penanda_tangan): jabatan dari master leading; nama & NIP
+     * diisi admin — selama data tiruan kosong (dokumen sementara memakai nama akun leading pembuat kegiatan).
+     *
+     * @return array<string, array{jabatan: string, nama: string|null, nip: string|null}>
+     */
+    public static function pejabatLeading(): array
+    {
+        return array_map(fn (array $l) => ['jabatan' => $l['jabatan_penanda_tangan'], 'nama' => null, 'nip' => null], array_column(self::leadings(), null, 'kode'));
+    }
+
+    /**
      * Saran baku tempat & jenis peserta bagian Pelaksanaan (fasilitas dan warga madrasah). Isian tetap bebas;
      * backend nanti membacanya dari pengaturan madrasah.
      *
