@@ -68,7 +68,7 @@
     @endunless
 
     {{-- Acuan waktu dari Data Kegiatan --}}
-    <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600 ring-1 ring-stone-200" data-testid="acuan-pelaksanaan">
+    <div id="acuan" class="mt-6 flex scroll-mt-24 flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600 ring-1 ring-stone-200" data-testid="acuan-pelaksanaan">
         <span class="flex items-center gap-2">
             <x-ui.icon name="calendar" class="size-4 shrink-0 text-stone-400" />
             Bulan pelaksanaan
@@ -86,7 +86,7 @@
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
         <div class="min-w-0 space-y-6">
             {{-- A. Matrik tahapan (KAK bagian 4) --}}
-            <section id="matrik" class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-matrik" data-testid="matrik-tahapan">
+            <section id="matrik" class="scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-matrik" data-testid="matrik-tahapan">
                 <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
                     <div class="min-w-0">
                         <h2 id="judul-matrik" class="text-base font-semibold text-stone-900">Matrik tahapan</h2>
@@ -182,7 +182,7 @@
             </section>
 
             {{-- B. Jadwal kegiatan (KAK bagian 7) --}}
-            <section id="jadwal" class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-jadwal" data-testid="jadwal-kegiatan"
+            <section id="jadwal" class="scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-jadwal" data-testid="jadwal-kegiatan"
                      x-data x-on:jadwal-ditambah.window="$nextTick(() => { const isian = $el.querySelectorAll('[data-isian-jadwal]'); isian[isian.length - 1]?.focus() })">
                 <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
                     <div class="min-w-0">
@@ -231,8 +231,8 @@
                             $nomor = $index + 1;
                             $waktu = $susunanJadwal->waktu($index, $tahun);
                         @endphp
-                        <li @class(['grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-5 py-3 sm:px-6', 'sm:grid-cols-[2rem_minmax(0,1fr)_17rem_6.5rem]' => $bisaUbah, 'sm:grid-cols-[2rem_minmax(0,1fr)_17rem]' => ! $bisaUbah])
-                            data-testid="baris-jadwal-{{ $nomor }}" wire:key="jadwal-{{ $index }}">
+                        <li @class(['grid scroll-mt-24 grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-5 py-3 sm:px-6', 'sm:grid-cols-[2rem_minmax(0,1fr)_17rem_6.5rem]' => $bisaUbah, 'sm:grid-cols-[2rem_minmax(0,1fr)_17rem]' => ! $bisaUbah])
+                            id="baris-jadwal-{{ $nomor }}" data-testid="baris-jadwal-{{ $nomor }}" wire:key="jadwal-{{ $index }}">
                             <span class="row-start-1 pt-2 text-sm text-stone-500 tabular-nums">{{ $nomor }}</span>
                             @if ($bisaUbah)
                                 <div class="col-start-2 row-start-1 min-w-0 sm:col-start-auto sm:row-start-auto">
@@ -351,6 +351,53 @@
                         </li>
                     @endforeach
                 </ul>
+            </section>
+
+            @php
+                $konsistensi = $this->konsistensi;
+                $temuanAwal = $konsistensi->temuan();
+                $peringatanAwal = $konsistensi->jumlahPeringatan();
+                $adaIsianAwal = $konsistensi->adaIsian();
+            @endphp
+            {{--
+                Konsistensi bulan: dihitung di klien (panelKonsistensi, kembaran KonsistensiBulan) karena tanda matrik adalah state
+                lokal; daftar dari server hanya tampil sebelum Alpine siap. wire:ignore: Alpine yang memperbarui isinya.
+            --}}
+            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-konsistensi" data-testid="konsistensi-bulan" wire:ignore
+                     x-data="panelKonsistensi({ pelaksanaan: @js($bulanPelaksanaan), laporan: @js($this->bulanLaporan()) })"
+                     data-jumlah="{{ count($temuanAwal) }}" x-bind:data-jumlah="temuan.length">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 id="judul-konsistensi" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Konsistensi bulan</h2>
+                    <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', 'bg-gold-50 text-gold-700 ring-gold-200' => $peringatanAwal > 0, 'bg-stone-100 text-stone-600 ring-stone-200' => $peringatanAwal === 0 && ($temuanAwal !== [] || ! $adaIsianAwal), 'bg-brand-50 text-brand-800 ring-brand-200' => $temuanAwal === [] && $adaIsianAwal])
+                          x-bind:class="jumlahPeringatan > 0 ? 'bg-gold-50 text-gold-700 ring-gold-200' : (temuan.length > 0 || ! adaIsian ? 'bg-stone-100 text-stone-600 ring-stone-200' : 'bg-brand-50 text-brand-800 ring-brand-200')"
+                          x-text="temuan.length > 0 ? temuan.length + ' temuan' : (adaIsian ? 'Sesuai' : 'Belum diisi')" data-testid="status-konsistensi">{{ $temuanAwal !== [] ? count($temuanAwal).' temuan' : ($adaIsianAwal ? 'Sesuai' : 'Belum diisi') }}</span>
+                </div>
+
+                <ul class="mt-3 space-y-2.5 text-xs" x-show="! siap" aria-label="Temuan konsistensi bulan">
+                    @foreach ($temuanAwal as $t)
+                        <li class="flex items-start gap-2" data-tingkat="{{ $t['tingkat'] }}">
+                            <x-ui.icon :name="$t['tingkat'] === 'peringatan' ? 'alert' : 'info'" class="mt-px size-3.5 shrink-0 {{ $t['tingkat'] === 'peringatan' ? 'text-gold-600' : 'text-stone-400' }}" />
+                            <p class="min-w-0 text-stone-700">{{ $t['pesan'] }} <a href="#{{ $t['tautan'] }}" class="font-semibold text-brand-700 hover:text-brand-800">Lihat</a></p>
+                        </li>
+                    @endforeach
+                </ul>
+                <ul class="mt-3 space-y-2.5 text-xs" x-show="siap" style="display: none" aria-label="Temuan konsistensi bulan" aria-live="polite">
+                    <template x-for="t in temuan" x-bind:key="t.kunci">
+                        <li class="flex items-start gap-2" x-bind:data-tingkat="t.tingkat" x-bind:data-kunci="t.kunci">
+                            <span x-show="t.tingkat === 'peringatan'" class="mt-px shrink-0"><x-ui.icon name="alert" class="size-3.5 text-gold-600" /></span>
+                            <span x-show="t.tingkat !== 'peringatan'" class="mt-px shrink-0"><x-ui.icon name="info" class="size-3.5 text-stone-400" /></span>
+                            <p class="min-w-0 text-stone-700"><span x-text="t.pesan"></span> <a x-bind:href="'#' + t.tautan" class="font-semibold text-brand-700 hover:text-brand-800">Lihat</a></p>
+                        </li>
+                    </template>
+                </ul>
+                <p class="mt-3 flex items-start gap-2 text-xs text-stone-600" x-show="temuan.length === 0 && adaIsian" @if ($temuanAwal !== [] || ! $adaIsianAwal) style="display: none" @endif>
+                    <x-ui.icon name="check-circle" class="mt-px size-3.5 shrink-0 text-brand-600" />
+                    Bulan matrik dan jadwal sesuai dengan bulan pelaksanaan dan batas laporan.
+                </p>
+                <p class="mt-3 text-xs text-stone-500" x-show="temuan.length === 0 && ! adaIsian" @if ($temuanAwal !== [] || $adaIsianAwal) style="display: none" @endif>
+                    Belum ada bulan di matrik maupun jadwal untuk diperiksa.
+                </p>
+                <p class="mt-3 border-t border-stone-100 pt-2.5 text-[11px] text-stone-400">Hanya pengingat — tidak menghalangi Simpan. Dokumen tetap bisa dicetak sebagai DRAF.</p>
             </section>
 
             <div class="rounded-2xl bg-gold-50 p-4 text-xs text-gold-700 ring-1 ring-gold-200">

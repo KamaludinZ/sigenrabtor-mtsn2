@@ -1,5 +1,6 @@
 import { akhirPekan, angka, jumlahRab, rapikanKetikan, rupiah, statusPagu, tanggalPanjang, terbilang } from './format';
 import catatanKonteks, { aspekTerisi, memuatNip } from './konteks';
+import panelKonsistensi, { periksaKonsistensiBulan } from './konsistensi-bulan';
 import gridMatrik, { ringkasanMatrik } from './matrik';
 import paguKegiatan from './pagu-kegiatan';
 import pemilihBulan from './pemilih-bulan';
@@ -8,7 +9,7 @@ import jumlahTermin, { persenTermin, statusTermin } from './termin';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu), $ringkasanMatrik(matrik).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan };
 
 pasangSiaranAnggaran();
 
@@ -28,6 +29,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('jumlahTermin', jumlahTermin);
     window.Alpine.data('paguKegiatan', paguKegiatan);
     window.Alpine.data('gridMatrik', gridMatrik);
+    window.Alpine.data('panelKonsistensi', panelKonsistensi);
 
     // x-angka-bulat: isian angka bulat — tolak ketikan e/+/-/titik/koma dan sisakan digit saat menempel ("1.000" → "1000").
     window.Alpine.directive('angka-bulat', (el) => {

@@ -49,7 +49,7 @@ export function statusPagu(total, pagu) {
 // Tanggal Indonesia — kembaran Carbon translatedFormat('l, j F Y') locale id (uji bersama tests/fixtures/tanggal.json).
 // Dibentuk manual (tanpa toLocaleDateString) agar tidak bergantung bahasa/locale browser.
 const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+export const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
 function bacaTanggal(iso) {
     const cocok = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));

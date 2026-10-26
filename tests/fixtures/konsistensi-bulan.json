@@ -1,0 +1,477 @@
+[
+    {
+        "keterangan": "bulan pelaksanaan belum diisi",
+        "pelaksanaan": [],
+        "laporan": null,
+        "matrik": {
+            "persiapan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        6
+                    ]
+                }
+            ],
+            "pelaksanaan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                }
+            ],
+            "evaluasi_pelaporan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                }
+            ]
+        },
+        "jadwal": [
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            }
+        ],
+        "temuan": [
+            {
+                "kunci": "tanpa-bulan",
+                "tautan": "acuan",
+                "tingkat": "saran",
+                "pesan": "Bulan pelaksanaan belum diisi di Data Kegiatan — konsistensi bulan belum bisa diperiksa."
+            }
+        ]
+    },
+    {
+        "keterangan": "matrik & jadwal sesuai bulan pelaksanaan Juli, laporan Juli",
+        "pelaksanaan": [
+            7
+        ],
+        "laporan": 7,
+        "matrik": {
+            "persiapan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        6
+                    ]
+                },
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        6
+                    ]
+                }
+            ],
+            "pelaksanaan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                },
+                {
+                    "uraian": "Butir",
+                    "bulan": []
+                }
+            ],
+            "evaluasi_pelaporan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                }
+            ]
+        },
+        "jadwal": [
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    6
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    6
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    6,
+                    7
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            }
+        ],
+        "temuan": []
+    },
+    {
+        "keterangan": "contoh kegiatan 3: sebagian tersalin dari workshop Juli (November, laporan November)",
+        "pelaksanaan": [
+            11
+        ],
+        "laporan": 11,
+        "matrik": {
+            "persiapan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        10
+                    ]
+                },
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        10
+                    ]
+                }
+            ],
+            "pelaksanaan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                },
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                }
+            ],
+            "evaluasi_pelaporan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        11
+                    ]
+                },
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        12
+                    ]
+                }
+            ]
+        },
+        "jadwal": [
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    10
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    10
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    10,
+                    11
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    11
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    12
+                ]
+            }
+        ],
+        "temuan": [
+            {
+                "kunci": "matrik-pelaksanaan-kurang",
+                "tautan": "matrik",
+                "tingkat": "peringatan",
+                "pesan": "Tahap Pelaksanaan belum ditandai di November (bulan pelaksanaan)."
+            },
+            {
+                "kunci": "matrik-pelaksanaan-dini",
+                "tautan": "matrik",
+                "tingkat": "peringatan",
+                "pesan": "Tahap Pelaksanaan ditandai di Juli, jauh sebelum bulan pelaksanaan (November)."
+            },
+            {
+                "kunci": "matrik-evaluasi-lewat",
+                "tautan": "matrik",
+                "tingkat": "peringatan",
+                "pesan": "Tahap Evaluasi dan Pelaporan ditandai di Desember, melewati bulan batas laporan (November)."
+            },
+            {
+                "kunci": "jadwal-4-dini",
+                "tautan": "baris-jadwal-4",
+                "tingkat": "peringatan",
+                "pesan": "Baris 4 dijadwalkan Juli, lebih dari 3 bulan sebelum pelaksanaan (November) — mungkin tersalin dari kegiatan lain."
+            },
+            {
+                "kunci": "jadwal-4-urutan",
+                "tautan": "baris-jadwal-4",
+                "tingkat": "saran",
+                "pesan": "Baris 4 (Juli) lebih awal dari baris 3 (Oktober) — urutkan agar kronologis."
+            },
+            {
+                "kunci": "jadwal-6-lewat",
+                "tautan": "baris-jadwal-6",
+                "tingkat": "peringatan",
+                "pesan": "Baris 6 dijadwalkan Desember, melewati bulan batas laporan (November)."
+            }
+        ]
+    },
+    {
+        "keterangan": "persiapan sesudah & evaluasi sebelum pelaksanaan, baris tidak urut & lewat laporan, bulan jadwal tanpa matrik",
+        "pelaksanaan": [
+            8,
+            9
+        ],
+        "laporan": 9,
+        "matrik": {
+            "persiapan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                },
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        10
+                    ]
+                }
+            ],
+            "pelaksanaan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        8
+                    ]
+                }
+            ],
+            "evaluasi_pelaporan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        7
+                    ]
+                }
+            ]
+        },
+        "jadwal": [
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    8,
+                    9
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    7
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    10
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": []
+            }
+        ],
+        "temuan": [
+            {
+                "kunci": "matrik-pelaksanaan-kurang",
+                "tautan": "matrik",
+                "tingkat": "peringatan",
+                "pesan": "Tahap Pelaksanaan belum ditandai di September (bulan pelaksanaan)."
+            },
+            {
+                "kunci": "matrik-persiapan-sesudah",
+                "tautan": "matrik",
+                "tingkat": "peringatan",
+                "pesan": "Tahap Persiapan ditandai di Oktober, sesudah pelaksanaan dimulai (Agustus)."
+            },
+            {
+                "kunci": "matrik-evaluasi-sebelum",
+                "tautan": "matrik",
+                "tingkat": "peringatan",
+                "pesan": "Tahap Evaluasi dan Pelaporan ditandai di Juli, sebelum pelaksanaan dimulai (Agustus)."
+            },
+            {
+                "kunci": "jadwal-3-urutan",
+                "tautan": "baris-jadwal-3",
+                "tingkat": "saran",
+                "pesan": "Baris 3 (Juli) lebih awal dari baris 2 (Agustus) — urutkan agar kronologis."
+            },
+            {
+                "kunci": "jadwal-4-lewat",
+                "tautan": "baris-jadwal-4",
+                "tingkat": "peringatan",
+                "pesan": "Baris 4 dijadwalkan Oktober, melewati bulan batas laporan (September)."
+            },
+            {
+                "kunci": "jadwal-tanpa-matrik",
+                "tautan": "jadwal",
+                "tingkat": "saran",
+                "pesan": "Jadwal memuat September yang tidak ditandai di matrik tahapan."
+            }
+        ]
+    },
+    {
+        "keterangan": "tanpa tanggal laporan: persiapan terlalu dini; jadwal kosong tidak dibandingkan; bulan ganda dirapikan",
+        "pelaksanaan": [
+            12
+        ],
+        "laporan": null,
+        "matrik": {
+            "persiapan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        8
+                    ]
+                }
+            ],
+            "pelaksanaan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        11,
+                        12,
+                        12
+                    ]
+                }
+            ],
+            "evaluasi_pelaporan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        12
+                    ]
+                }
+            ]
+        },
+        "jadwal": [
+            {
+                "uraian": "Butir",
+                "bulan": []
+            },
+            {
+                "uraian": "Butir",
+                "bulan": []
+            }
+        ],
+        "temuan": [
+            {
+                "kunci": "matrik-persiapan-dini",
+                "tautan": "matrik",
+                "tingkat": "saran",
+                "pesan": "Tahap Persiapan ditandai di Agustus, lebih dari 3 bulan sebelum pelaksanaan (Desember)."
+            }
+        ]
+    },
+    {
+        "keterangan": "bulan matrik yang tidak ada di jadwal",
+        "pelaksanaan": [
+            3
+        ],
+        "laporan": 4,
+        "matrik": {
+            "persiapan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        2
+                    ]
+                }
+            ],
+            "pelaksanaan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        3
+                    ]
+                }
+            ],
+            "evaluasi_pelaporan": [
+                {
+                    "uraian": "Butir",
+                    "bulan": [
+                        4
+                    ]
+                }
+            ]
+        },
+        "jadwal": [
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    2
+                ]
+            },
+            {
+                "uraian": "Butir",
+                "bulan": [
+                    3
+                ]
+            }
+        ],
+        "temuan": [
+            {
+                "kunci": "matrik-tanpa-jadwal",
+                "tautan": "matrik",
+                "tingkat": "saran",
+                "pesan": "Matrik tahapan menandai April yang tidak ada di jadwal."
+            }
+        ]
+    }
+]

@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalKegiatan;
+use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Stub\StubData;
@@ -110,6 +111,13 @@ class MatrikJadwal extends Component
     public function susunanJadwal(): JadwalKegiatan
     {
         return JadwalKegiatan::dari(['jadwal' => self::jadwalUntukDisimpan($this->jadwal)]);
+    }
+
+    /** Konsistensi bulan matrik & jadwal terhadap bulan pelaksanaan dan batas laporan (isian saat ini). */
+    #[Computed]
+    public function konsistensi(): KonsistensiBulan
+    {
+        return new KonsistensiBulan($this->pelaksanaan->bulan, $this->bulanLaporan(), $this->susunanMatrik->butir, $this->susunanJadwal->baris);
     }
 
     #[Computed]
@@ -483,7 +491,7 @@ class MatrikJadwal extends Component
     }
 
     /** Bulan batas laporan di tahun anggaran aktif; laporan yang jatuh di tahun berikutnya ditandai Desember. */
-    private function bulanLaporan(): ?int
+    public function bulanLaporan(): ?int
     {
         $tanggal = $this->dataKegiatan['tanggal_laporan'] ?? null;
 

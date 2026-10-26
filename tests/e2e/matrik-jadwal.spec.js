@@ -238,6 +238,35 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(page.getByTestId('waktu-jadwal-6')).toHaveText('September 2026');
     });
 
+    test('konsistensi bulan: temuan contoh tersalin berubah seketika saat matrik & jadwal diperbaiki', async ({ page }, testInfo) => {
+        // Contoh kegiatan 3 (November, laporan 27 November); tidak disimpan agar contoh bersama tetap utuh.
+        page.on('dialog', (dialog) => dialog.accept());
+        await page.goto('/kegiatan/3/matrik');
+        const panel = page.getByTestId('konsistensi-bulan');
+        const temuan = panel.locator('li[data-kunci]');
+        await expect(page.getByTestId('status-konsistensi')).toHaveText('6 temuan');
+        await expect(temuan).toHaveCount(6);
+        await expect(panel.locator('li[data-kunci="jadwal-4-dini"]')).toContainText('mungkin tersalin dari kegiatan lain');
+        await panel.screenshot({ path: `storage/playwright/shots/konsistensi-bulan-${testInfo.project.name}.png` });
+
+        // Tandai November pada tahap Pelaksanaan (state lokal) → temuan "belum ditandai di November" hilang seketika.
+        const sel = page.getByTestId('butir-pelaksanaan-1').locator('td[data-bulan="11"] button');
+        await sel.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' }));
+        await (testInfo.project.name === 'mobile' ? sel.tap() : sel.click());
+        await expect(panel.locator('li[data-kunci="matrik-pelaksanaan-kurang"]')).toHaveCount(0);
+        await expect(temuan).toHaveCount(5);
+
+        // Baris 4 dipindah ke November → temuan "tersalin" & urutan hilang; Juli kini hanya ada di matrik (temuan silang).
+        await page.locator('#jadwal-3-mulai').selectOption('11');
+        await expect(panel.locator('li[data-kunci^="jadwal-4-"]')).toHaveCount(0);
+        await expect(panel.locator('li[data-kunci="matrik-tanpa-jadwal"]')).toContainText('Matrik tahapan menandai Juli yang tidak ada di jadwal.');
+        await expect(temuan).toHaveCount(4);
+
+        // Tautan "Lihat" menuju baris jadwal yang dimaksud.
+        await panel.locator('li[data-kunci="jadwal-6-lewat"]').getByRole('link', { name: 'Lihat' }).click();
+        await expect(page).toHaveURL(/#baris-jadwal-6$/);
+    });
+
     test('usul jadwal AI: permintaan, pilih versi, pakai lalu urungkan', async ({ page }, testInfo) => {
         await bukaMatrikKegiatanBaru(page, `Kegiatan Usul ${testInfo.project.name} ${Date.now()}`);
         const panel = page.getByTestId('panel-usul-jadwal');

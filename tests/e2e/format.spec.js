@@ -9,6 +9,8 @@ const KASUS_STATUS_TERMIN = JSON.parse(readFileSync(new URL('../fixtures/status-
 const KASUS_TANGGAL = JSON.parse(readFileSync(new URL('../fixtures/tanggal.json', import.meta.url), 'utf-8'));
 // Ringkasan matrik bersama: juga diuji di tests/Feature/Kegiatan/MatrikJadwalTest.php terhadap MatrikTahapan.
 const KASUS_RINGKASAN_MATRIK = JSON.parse(readFileSync(new URL('../fixtures/ringkasan-matrik.json', import.meta.url), 'utf-8'));
+// Konsistensi bulan bersama: juga diuji di tests/Feature/Kegiatan/KonsistensiBulanTest.php terhadap KonsistensiBulan.
+const KASUS_KONSISTENSI = JSON.parse(readFileSync(new URL('../fixtures/konsistensi-bulan.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -84,6 +86,12 @@ test.describe('Format mata uang di klien', () => {
         await page.goto('/kegiatan/1/matrik');
         const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.ringkasanMatrik(k.matrik)), KASUS_RINGKASAN_MATRIK);
         expect(hasil).toEqual(KASUS_RINGKASAN_MATRIK.map(({ jumlahTanda, lengkap }) => ({ jumlahTanda, lengkap })));
+    });
+
+    test('konsistensi bulan klien sama dengan server', async ({ page }) => {
+        await page.goto('/kegiatan/1/matrik');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.periksaKonsistensiBulan(k)), KASUS_KONSISTENSI);
+        expect(hasil).toEqual(KASUS_KONSISTENSI.map((k) => k.temuan));
     });
 
     test('status pagu klien sama dengan server', async ({ page }) => {
