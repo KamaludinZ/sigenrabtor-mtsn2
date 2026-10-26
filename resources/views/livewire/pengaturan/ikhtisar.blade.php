@@ -117,7 +117,7 @@
 
             <p class="flex items-start gap-2 rounded-xl bg-gold-50 px-4 py-3 text-xs text-gold-700 ring-1 ring-gold-200">
                 <x-ui.icon name="info" class="mt-px size-4 shrink-0" />
-                Pengaturan & master berlaku per tahun anggaran. Mengganti tahun aktif menyembunyikan data tahun lain (tidak menghapusnya); master bisa disalin dari tahun sebelumnya.
+                Pengaturan &amp; master berlaku per tahun anggaran. Mengganti tahun aktif tidak menghapus data tahun lain; master bisa disalin dari tahun sebelumnya.
             </p>
         </div>
     </div>

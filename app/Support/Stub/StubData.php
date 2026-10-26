@@ -2,6 +2,8 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\TahunAnggaranRepository;
+
 /**
  * Data tiruan untuk tahap frontend.
  *
@@ -11,13 +13,18 @@ namespace App\Support\Stub;
 class StubData
 {
     /**
-     * Tahun anggaran yang sedang aktif.
+     * Tahun anggaran yang sedang aktif (dipilih admin di Pengaturan › Tahun Anggaran). Selama layar "belum ada tahun
+     * aktif" belum dibuat, 2026 dipakai sebagai cadangan.
      *
      * @return array{id: int, tahun: int, is_locked: bool}
      */
     public static function tahunAktif(): array
     {
-        return ['id' => 1, 'tahun' => 2026, 'is_locked' => false];
+        $aktif = app(TahunAnggaranRepository::class)->aktif();
+
+        return $aktif === null
+            ? ['id' => 1, 'tahun' => 2026, 'is_locked' => false]
+            : ['id' => $aktif['id'], 'tahun' => $aktif['tahun'], 'is_locked' => $aktif['is_locked']];
     }
 
     /**

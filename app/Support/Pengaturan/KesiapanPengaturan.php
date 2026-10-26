@@ -2,6 +2,7 @@
 
 namespace App\Support\Pengaturan;
 
+use App\Contracts\TahunAnggaranRepository;
 use App\Support\Format;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
@@ -24,7 +25,7 @@ final readonly class KesiapanPengaturan
     public static function tahunAktif(): self
     {
         $tahun = StubData::tahunAktif()['tahun'];
-        $tahunAnggaran = collect(StubPengaturan::tahunAnggaran())->firstWhere('is_active', true);
+        $tahunAnggaran = app(TahunAnggaranRepository::class)->aktif();
         $madrasah = StubData::madrasah();
         $pejabat = StubData::pejabat();
         $template = StubPengaturan::templateDokumen();
@@ -41,7 +42,7 @@ final readonly class KesiapanPengaturan
 
         $butir = [
             ['kunci' => 'tahun', 'bagian' => 'tahun', 'judul' => 'Tahun anggaran aktif', 'siap' => $tahunAnggaran !== null, 'wajib' => true,
-                'keterangan' => "Tahun Anggaran {$tahun} aktif; data tahun lain disembunyikan."],
+                'keterangan' => "Tahun Anggaran {$tahun} aktif."],
             ['kunci' => 'sk_rktm', 'bagian' => 'tahun', 'judul' => 'SK RKTM/RKAM', 'siap' => $sk, 'wajib' => true,
                 'keterangan' => $sk ? "Nomor {$tahunAnggaran['no_sk_rktm']}, ".Format::tanggal($tahunAnggaran['tanggal_sk_rktm']).'.' : 'Nomor & tanggal SK belum diisi — tercetak di dasar hukum KAK.'],
             ['kunci' => 'profil', 'bagian' => 'madrasah', 'judul' => 'Profil madrasah (kop)', 'siap' => $profilKurang === [], 'wajib' => true,

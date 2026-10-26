@@ -9,6 +9,7 @@ use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
+use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/kegiatan');
@@ -25,6 +26,7 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 // Pengaturan admin (PRD Fase 5–7): seluruh halaman khusus admin.
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {
     Route::get('/', PengaturanIkhtisar::class)->name('index');
+    Route::get('/tahun', PengaturanTahunAnggaran::class)->name('tahun.index');
 });
 
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.

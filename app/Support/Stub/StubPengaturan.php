@@ -3,27 +3,12 @@
 namespace App\Support\Stub;
 
 /**
- * Data tiruan pengaturan admin (PRD Fase 5–7) yang belum punya layar sendiri: daftar tahun anggaran, akun, template
- * dokumen, dan pengaturan AI. Task backend menggantinya dengan tabel tahun_anggaran, users, cover_templates,
+ * Data tiruan pengaturan admin (PRD Fase 5–7) yang belum punya layar sendiri: akun, template dokumen, dan pengaturan
+ * AI. Task backend menggantinya dengan tabel users, cover_templates,
  * document_templates, daftar_isi_templates, page_number_settings, dan ai_settings tanpa mengubah bentuk array.
  */
 class StubPengaturan
 {
-    /**
-     * Tahun anggaran yang pernah dibuat (tepat satu aktif); tahun lalu dikunci. SK RKTM tahun aktif belum diisi.
-     *
-     * @return list<array{id: int, tahun: int, is_active: bool, is_locked: bool, no_sk_rktm: string|null, tanggal_sk_rktm: string|null}>
-     */
-    public static function tahunAnggaran(): array
-    {
-        $aktif = StubData::tahunAktif();
-
-        return [
-            ['id' => $aktif['id'], 'tahun' => $aktif['tahun'], 'is_active' => true, 'is_locked' => $aktif['is_locked'], 'no_sk_rktm' => null, 'tanggal_sk_rktm' => null],
-            ['id' => 2, 'tahun' => $aktif['tahun'] - 1, 'is_active' => false, 'is_locked' => true, 'no_sk_rktm' => 'Contoh 001/SK/RKTM/'.($aktif['tahun'] - 1), 'tanggal_sk_rktm' => ($aktif['tahun'] - 1).'-01-06'],
-        ];
-    }
-
     /**
      * Akun aplikasi (nama fiktif): persona yang sama dengan sakelar "lihat sebagai".
      *
