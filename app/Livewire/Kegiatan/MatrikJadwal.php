@@ -13,6 +13,7 @@ use App\Support\Stub\StubUsulanJadwal;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -299,7 +300,25 @@ class MatrikJadwal extends Component
         $this->usulan = [];
     }
 
-    public function kosongkanBarisJadwal(int $index): void
+    /** Baris kosong di akhir jadwal (maks. JadwalKegiatan::MAKS_BARIS); kolom uraiannya langsung difokuskan di klien. */
+    public function tambahBarisJadwal(): void
+    {
+        $this->pastikanDapatDiedit();
+
+        if (count($this->jadwal) >= JadwalKegiatan::MAKS_BARIS) {
+            $this->dispatch('notify', message: 'Jadwal sudah mencapai batas '.JadwalKegiatan::MAKS_BARIS.' baris.', type: 'error');
+
+            return;
+        }
+
+        $this->jadwal[] = ['uraian' => '', 'mulai' => null, 'sampai' => null];
+        $this->adaPerubahan = true;
+        $this->jadwalSebelum = null;
+        $this->dispatch('jadwal-ditambah');
+    }
+
+    /** Hapus satu baris; nomor baris sesudahnya ikut naik. Bisa diurungkan sampai jadwal diubah lagi. */
+    public function hapusBarisJadwal(int $index): void
     {
         $this->pastikanDapatDiedit();
 
@@ -307,8 +326,27 @@ class MatrikJadwal extends Component
             return;
         }
 
-        $this->jadwal[$index] = ['uraian' => '', 'mulai' => null, 'sampai' => null];
-        $this->resetValidation(["jadwal.{$index}.uraian", "jadwal.{$index}.mulai", "jadwal.{$index}.sampai"]);
+        $sebelum = $this->jadwal;
+        $uraian = Teks::rapikan((string) $this->jadwal[$index]['uraian']);
+        array_splice($this->jadwal, $index, 1);
+
+        $this->jadwalSebelum = ['jadwal' => $sebelum, 'pesan' => 'Baris '.($index + 1).($uraian !== '' ? ' “'.Str::limit($uraian, 60).'”' : '').' dihapus.'];
+        $this->resetErrorJadwal();
+        $this->adaPerubahan = true;
+    }
+
+    /** Naikkan (-1) atau turunkan (+1) satu baris — urutan ini yang tercetak di tabel Jadwal Kegiatan KAK. */
+    public function geserBarisJadwal(int $index, int $arah): void
+    {
+        $this->pastikanDapatDiedit();
+        $tujuan = $index + ($arah > 0 ? 1 : -1);
+
+        if (! isset($this->jadwal[$index], $this->jadwal[$tujuan])) {
+            return;
+        }
+
+        [$this->jadwal[$index], $this->jadwal[$tujuan]] = [$this->jadwal[$tujuan], $this->jadwal[$index]];
+        $this->resetErrorJadwal();
         $this->adaPerubahan = true;
         $this->jadwalSebelum = null;
     }
@@ -353,7 +391,7 @@ class MatrikJadwal extends Component
             'matrik.*.*.uraian' => ['required', 'string', 'max:150'],
             'matrik.*.*.bulan' => ['array'],
             'matrik.*.*.bulan.*' => ['integer', 'between:1,12'],
-            'jadwal' => ['array', 'max:12'],
+            'jadwal' => ['array', 'max:'.JadwalKegiatan::MAKS_BARIS],
             // Baris boleh kosong; uraian baru wajib bila bulannya sudah dipilih (required_with bersifat implisit, tetap
             // diperiksa walau uraian kosong).
             'jadwal.*.uraian' => ['nullable', 'string', 'max:200', 'required_with:jadwal.*.mulai'],
@@ -369,6 +407,7 @@ class MatrikJadwal extends Component
     {
         return [
             'matrik.*.*.uraian.required' => 'Uraian butir tahapan wajib diisi.',
+            'jadwal.max' => 'Jadwal maksimal :max baris.',
             'jadwal.*.uraian.max' => 'Uraian jadwal maksimal 200 karakter.',
             'jadwal.*.uraian.required_with' => 'Isi uraian kegiatan untuk bulan yang sudah dipilih.',
         ];
@@ -480,6 +519,16 @@ class MatrikJadwal extends Component
         if ($this->matrik !== $sebelum) {
             $this->matrikSebelum = ['matrik' => $sebelum, 'pesan' => $pesan];
             $this->adaPerubahan = true;
+        }
+    }
+
+    /** Pesan galat baris jadwal terikat ke indeks; buang setelah baris dihapus/digeser agar tidak salah tempat. */
+    private function resetErrorJadwal(): void
+    {
+        $kunci = array_filter(array_keys($this->getErrorBag()->messages()), fn (string $k) => str_starts_with($k, 'jadwal.'));
+
+        if ($kunci !== []) {
+            $this->resetValidation($kunci);
         }
     }
 

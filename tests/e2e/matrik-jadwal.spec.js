@@ -165,13 +165,15 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(page.getByTestId('ringkasan-jadwal')).toHaveText('1 dari 6 baris terisi');
         await expect(page.getByTestId('belum-disimpan')).toBeVisible();
 
-        // Bulan tanpa uraian ditolak saat disimpan; baris bisa dikosongkan.
+        // Bulan tanpa uraian ditolak saat disimpan; baris itu bisa dihapus (galatnya ikut hilang).
         await mulai(2).selectOption('8');
         await page.getByRole('button', { name: 'Simpan', exact: true }).click();
         await expect(page.getByTestId('baris-jadwal-2')).toContainText('Isi uraian kegiatan untuk bulan yang sudah dipilih.');
-        await page.getByRole('button', { name: 'Kosongkan baris 2' }).click();
+        await page.getByRole('button', { name: 'Hapus baris 2' }).click();
+        await expect(page.getByTestId('jadwal-berubah')).toContainText('Baris 2 dihapus.');
         await expect(mulai(2)).toHaveValue('');
         await expect(page.getByTestId('baris-jadwal-2')).not.toContainText('Isi uraian kegiatan');
+        await expect(page.getByTestId('ringkasan-jadwal')).toHaveText('1 dari 5 baris terisi');
 
         // Isi jadwal baku dari jadwal pelaksanaan (Agustus) — bisa diurungkan.
         await page.getByRole('button', { name: 'Isi jadwal baku' }).click();
@@ -194,6 +196,46 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(uraian(6)).toHaveValue('Penyusunan dan penyerahan laporan');
         await expect(waktu(4)).toHaveText('Agustus 2026');
         await expect(page.getByTestId('kelengkapan-jadwal')).toHaveAttribute('data-lengkap', 'ya');
+    });
+
+    test('jadwal: tambah baris, naikkan, hapus lalu urungkan, simpan urutan', async ({ page }, testInfo) => {
+        await bukaMatrikKegiatanBaru(page, `Kegiatan Baris ${testInfo.project.name} ${Date.now()}`);
+        const uraian = (baris) => page.locator(`#jadwal-${baris - 1}-uraian`);
+        const daftar = page.getByTestId('jadwal-kegiatan').locator('li[data-testid^="baris-jadwal-"]');
+
+        await page.getByRole('button', { name: 'Tambah baris' }).click();
+        await expect(daftar).toHaveCount(7);
+        await expect(uraian(7)).toBeFocused();
+        await uraian(7).fill('Rapat evaluasi bersama komite');
+        await page.locator('#jadwal-6-mulai').selectOption('9');
+        await expect(page.getByTestId('waktu-jadwal-7')).toHaveText('September 2026');
+        await expect(page.getByTestId('jumlah-baris-jadwal')).toContainText('7 dari maks. 12 baris');
+
+        await page.getByRole('button', { name: 'Naikkan baris 7' }).click();
+        await expect(uraian(6)).toHaveValue('Rapat evaluasi bersama komite');
+        await expect(page.getByTestId('waktu-jadwal-6')).toHaveText('September 2026');
+        await expect(uraian(7)).toHaveValue('');
+
+        await page.getByRole('button', { name: 'Hapus baris 6' }).click();
+        await expect(daftar).toHaveCount(6);
+        await expect(page.getByTestId('jadwal-berubah')).toContainText('Baris 6 “Rapat evaluasi bersama komite” dihapus.');
+        await page.getByTestId('jadwal-berubah').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(daftar).toHaveCount(7);
+        await expect(uraian(6)).toHaveValue('Rapat evaluasi bersama komite');
+
+        // Baris kosong terakhir dibuang lalu simpan: jumlah & urutan baris tetap setelah dimuat ulang.
+        await page.getByRole('button', { name: 'Hapus baris 7' }).click();
+        await expect(daftar).toHaveCount(6);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.getByTestId('jadwal-kegiatan').screenshot({ path: `storage/playwright/shots/jadwal-baris-${testInfo.project.name}.png` });
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(page.getByText('Matrik & jadwal tersimpan.')).toBeVisible({ timeout: 30_000 });
+
+        await page.reload();
+        await expect(daftar).toHaveCount(6);
+        await expect(uraian(6)).toHaveValue('Rapat evaluasi bersama komite');
+        await expect(page.getByTestId('waktu-jadwal-6')).toHaveText('September 2026');
     });
 
     test('usul jadwal AI: permintaan, pilih versi, pakai lalu urungkan', async ({ page }, testInfo) => {

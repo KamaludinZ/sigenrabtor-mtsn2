@@ -216,9 +216,7 @@ class MatrikJadwalTest extends TestCase
             ->assertSet('jadwal.0.mulai', null)
             ->assertSet('jadwal.0.sampai', null)
             ->set('jadwal.1.sampai', '5')
-            ->assertSet('jadwal.1.sampai', null)
-            ->call('kosongkanBarisJadwal', 0)
-            ->assertSet('jadwal.0', ['uraian' => '', 'mulai' => null, 'sampai' => null]);
+            ->assertSet('jadwal.1.sampai', null);
 
         // Opsi "s.d." hanya bulan setelah bulan mulai.
         $komponen->set('jadwal.2.mulai', '10');
@@ -261,7 +259,8 @@ class MatrikJadwalTest extends TestCase
             ->call('simpan')
             ->assertHasErrors(['jadwal.1.uraian'])
             ->assertSee('Isi uraian kegiatan untuk bulan yang sudah dipilih.')
-            ->call('kosongkanBarisJadwal', 1)
+            // Galat baris terikat indeks: dibuang begitu baris dihapus.
+            ->call('hapusBarisJadwal', 1)
             ->assertHasNoErrors()
             ->set('jadwal.0.uraian', ' Rapat   panitia ')
             ->set('jadwal.0.mulai', '7')
@@ -274,13 +273,74 @@ class MatrikJadwalTest extends TestCase
 
         $tersimpan = app(KegiatanRepository::class)->temukan(1)['jadwal'];
         $this->assertSame(['uraian' => 'Rapat panitia', 'bulan' => [7, 8]], $tersimpan[0]);
-        $this->assertSame(['uraian' => '', 'bulan' => []], $tersimpan[5]);
+        $this->assertCount(5, $tersimpan);
+        $this->assertSame(['uraian' => '', 'bulan' => []], $tersimpan[4]);
 
         Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
             ->assertSet('jadwal.0', ['uraian' => 'Rapat panitia', 'mulai' => 7, 'sampai' => 8])
-            ->assertSee('1 dari 6 baris terisi');
+            ->assertSee('1 dari 5 baris terisi');
 
         $this->assertSame([['uraian' => 'Laporan', 'bulan' => [12]]], MatrikJadwal::jadwalUntukDisimpan([['uraian' => "Laporan\n", 'mulai' => '12', 'sampai' => '3']]));
+    }
+
+    public function test_tambah_geser_hapus_baris_jadwal_dan_urungkan(): void
+    {
+        $komponen = Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->assertSee('6 dari maks. 12 baris')
+            ->assertSeeHtml('wire:click="geserBarisJadwal(0, -1)" disabled')
+            ->assertSeeHtml('wire:click="geserBarisJadwal(5, 1)" disabled')
+            ->call('tambahBarisJadwal')
+            ->assertDispatched('jadwal-ditambah')
+            ->assertCount('jadwal', 7)
+            ->assertSet('jadwal.6', ['uraian' => '', 'mulai' => null, 'sampai' => null])
+            ->assertSet('adaPerubahan', true)
+            ->assertSee('0 dari 7 baris terisi')
+            ->assertSeeHtml('data-testid="baris-jadwal-7"')
+            ->set('jadwal.6.uraian', 'Rapat evaluasi bersama komite')
+            ->set('jadwal.6.mulai', '8')
+            // Naikkan/turunkan menukar baris; baris pertama tidak bisa dinaikkan.
+            ->call('geserBarisJadwal', 6, -1)
+            ->assertSet('jadwal.5', ['uraian' => 'Rapat evaluasi bersama komite', 'mulai' => 8, 'sampai' => null])
+            ->assertSet('jadwal.6.uraian', '')
+            ->call('geserBarisJadwal', 0, -1)
+            ->call('geserBarisJadwal', 6, 1)
+            ->assertSet('jadwal.5.uraian', 'Rapat evaluasi bersama komite')
+            ->call('hapusBarisJadwal', 5)
+            ->assertCount('jadwal', 6)
+            ->assertSee('Baris 6 “Rapat evaluasi bersama komite” dihapus.')
+            ->call('urungkanJadwal')
+            ->assertCount('jadwal', 7)
+            ->assertSet('jadwal.5.uraian', 'Rapat evaluasi bersama komite')
+            ->call('hapusBarisJadwal', 6)
+            ->assertSee('Baris 7 dihapus.')
+            ->call('hapusBarisJadwal', 99)
+            ->assertCount('jadwal', 6);
+
+        // Batas 12 baris.
+        foreach (range(1, 6) as $_) {
+            $komponen->call('tambahBarisJadwal');
+        }
+        $komponen->assertCount('jadwal', 12)
+            ->assertSeeHtml('wire:click="tambahBarisJadwal" disabled')
+            ->call('tambahBarisJadwal')
+            ->assertDispatched('notify', message: 'Jadwal sudah mencapai batas 12 baris.')
+            ->assertCount('jadwal', 12);
+
+        // Semua baris boleh dihapus; jadwal kosong tersimpan apa adanya (tidak kembali ke 6 baris baku).
+        foreach (range(1, 12) as $_) {
+            $komponen->call('hapusBarisJadwal', 0);
+        }
+        $komponen->assertSet('jadwal', [])
+            ->assertSeeHtml('data-testid="jadwal-kosong"')
+            ->assertSee('Belum ada baris jadwal.')
+            ->assertSeeHtml('data-testid="kelengkapan-jadwal" data-lengkap="tidak"')
+            ->call('simpan')
+            ->assertHasNoErrors();
+
+        $this->assertSame([], app(KegiatanRepository::class)->temukan(1)['jadwal']);
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->assertSet('jadwal', [])
+            ->assertSeeHtml('data-testid="ringkasan-jadwal">Belum ada baris');
     }
 
     public function test_jadwal_terkunci_di_luar_draf(): void
@@ -295,8 +355,14 @@ class MatrikJadwalTest extends TestCase
             ->assertSeeHtml('data-testid="waktu-jadwal-1">Mei 2026')
             ->assertDontSeeHtml('wire:model.live.blur="jadwal.0.uraian"')
             ->assertDontSee('Isi jadwal baku')
+            ->assertDontSee('Tambah baris')
+            ->assertDontSeeHtml('wire:click="hapusBarisJadwal(0)"')
             ->set('jadwal.0.uraian', 'Diubah')
             ->assertForbidden();
+
+        foreach (['tambahBarisJadwal' => [], 'hapusBarisJadwal' => [0], 'geserBarisJadwal' => [0, 1]] as $aksi => $argumen) {
+            Livewire::test(MatrikJadwal::class, ['kegiatan' => $id])->call($aksi, ...$argumen)->assertForbidden();
+        }
     }
 
     public function test_tab_matrik_jadwal_aktif_di_ruang_kerja_kegiatan(): void

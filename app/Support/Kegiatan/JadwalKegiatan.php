@@ -11,6 +11,9 @@ final readonly class JadwalKegiatan
 {
     public const JUMLAH_BAKU = 6;
 
+    /** Batas baris jadwal yang bisa ditambahkan leading (satu baris per bulan sudah mencakup setahun). */
+    public const MAKS_BARIS = 12;
+
     /**
      * @param  list<array{uraian: string, bulan: list<int>}>  $baris
      */
