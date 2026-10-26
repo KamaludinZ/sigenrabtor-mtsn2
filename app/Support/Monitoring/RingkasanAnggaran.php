@@ -4,6 +4,8 @@ namespace App\Support\Monitoring;
 
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
+use App\Support\Kegiatan\DataPelaksanaan;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -11,6 +13,7 @@ use App\Support\Rab\HasilRab;
 use App\Support\Rab\RekapKelompok;
 use App\Support\Rab\StatusPagu;
 use App\Support\Rab\TabelPagu;
+use Carbon\CarbonImmutable;
 
 /**
  * Agregat Monitoring Anggaran (PRD Fase 5 §11) untuk tahun aktif: kegiatan yang cocok dengan saringan (leading, sumber
@@ -41,23 +44,30 @@ final readonly class RingkasanAnggaran
 
     /**
      * @param  list<array{id: int, nama: string, kode_rktm: string|null, leading: string|null, user_id: int|null, diperbarui: string|null, status: StatusKegiatan, anggaran: list<AnggaranSumber>}>  $kegiatan
+     * @param  int  $tanpaJadwal  Kegiatan yang tidak ikut saringan rentang tanggal karena tanggal & bulan pelaksanaannya kosong.
      */
     public function __construct(
         public array $kegiatan,
+        public int $tanpaJadwal = 0,
     ) {}
 
     /**
      * @param  list<array<string, mixed>>  $semuaKegiatan
-     * @param  array{leading?: string, leadings?: list<string>|null, sumber?: string, status?: string}  $saringan  Kosong = semua;
-     *                                                                                                             leadings = cakupan akun leading.
+     * @param  array{tahun?: int|null, leading?: string, leadings?: list<string>|null, sumber?: string, status?: string, dari?: string, sampai?: string}  $saringan
+     *                                                                                                                                                               Kosong = semua; tahun = tahun anggaran pemilik (TahunKegiatan); leadings = cakupan akun leading;
+     *                                                                                                                                                               dari/sampai (Y-m-d) = rentang tanggal pelaksanaan.
      */
     public static function dari(array $semuaKegiatan, array $saringan = []): self
     {
+        $tahun = $saringan['tahun'] ?? null;
         $cakupan = $saringan['leadings'] ?? null;
         $leading = $saringan['leading'] ?? '';
         $sumber = $saringan['sumber'] ?? '';
         $status = $saringan['status'] ?? '';
+        $dari = self::tanggal($saringan['dari'] ?? null);
+        $sampai = self::tanggal($saringan['sampai'] ?? null);
         $baris = [];
+        $tanpaJadwal = 0;
 
         foreach ($semuaKegiatan as $k) {
             $statusKegiatan = StatusKegiatan::tryFrom($k['status'] ?? '') ?? StatusKegiatan::Draf;
@@ -67,8 +77,16 @@ final readonly class RingkasanAnggaran
                 $anggaran = array_values(array_filter($anggaran, fn (AnggaranSumber $a) => $a->sumber === $sumber));
             }
 
-            if (($cakupan !== null && ! in_array($k['leading'] ?? null, $cakupan, true)) || ($leading !== '' && ($k['leading'] ?? null) !== $leading) || ($status !== '' && $statusKegiatan->value !== $status) || ($sumber !== '' && $anggaran === [])) {
+            if (($tahun !== null && TahunKegiatan::dari($k) !== $tahun) || ($cakupan !== null && ! in_array($k['leading'] ?? null, $cakupan, true)) || ($leading !== '' && ($k['leading'] ?? null) !== $leading) || ($status !== '' && $statusKegiatan->value !== $status) || ($sumber !== '' && $anggaran === [])) {
                 continue;
+            }
+
+            if ($dari !== null || $sampai !== null) {
+                $cocok = self::dalamRentang($k, $dari, $sampai);
+                $tanpaJadwal += $cocok === null ? 1 : 0;
+                if ($cocok !== true) {
+                    continue;
+                }
             }
 
             $baris[] = [
@@ -83,7 +101,48 @@ final readonly class RingkasanAnggaran
             ];
         }
 
-        return new self($baris);
+        return new self($baris, $tanpaJadwal);
+    }
+
+    /**
+     * Pelaksanaan kegiatan beririsan dengan rentang [dari, sampai] (batas boleh terbuka): memakai tanggal mulai–selesai bila
+     * ada, selain itu tiap bulan pelaksanaan pada tahun anggaran kegiatan. Null = tanggal & bulan pelaksanaan kosong.
+     *
+     * @param  array<string, mixed>  $k
+     */
+    private static function dalamRentang(array $k, ?CarbonImmutable $dari, ?CarbonImmutable $sampai): ?bool
+    {
+        $pelaksanaan = DataPelaksanaan::dari($k);
+        $beririsan = fn (CarbonImmutable $awal, CarbonImmutable $akhir) => ($dari === null || $akhir >= $dari) && ($sampai === null || $awal <= $sampai);
+
+        if ($pelaksanaan->mulai !== null) {
+            return $beririsan($pelaksanaan->mulai, $pelaksanaan->selesai() ?? $pelaksanaan->mulai);
+        }
+        if ($pelaksanaan->bulan === []) {
+            return null;
+        }
+
+        $tahun = TahunKegiatan::dari($k);
+        foreach ($pelaksanaan->bulan as $bulan) {
+            $awal = CarbonImmutable::create($tahun, $bulan, 1);
+            if ($beririsan($awal, $awal->endOfMonth()->startOfDay())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** "2026-07-01" → tanggal; kosong/tidak sah → null. */
+    private static function tanggal(?string $teks): ?CarbonImmutable
+    {
+        if ($teks === null || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $teks)) {
+            return null;
+        }
+
+        $tanggal = CarbonImmutable::createFromFormat('!Y-m-d', $teks);
+
+        return $tanggal !== false && $tanggal->format('Y-m-d') === $teks ? $tanggal : null;
     }
 
     public function jumlahKegiatan(): int

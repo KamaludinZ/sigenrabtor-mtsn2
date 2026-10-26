@@ -55,6 +55,7 @@ class DashboardTest extends TestCase
             ->assertSee('Melebihi pagu Rp450.000')
             ->assertSeeHtml('data-testid="meter-pagu-dipa" data-status="melebihi"');
 
+        app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Tahun lalu', 'leading' => '1.1', 'tahun_anggaran' => 2025]);
         session(['stub_role' => 'admin']);
         Livewire::test(Dashboard::class)
             ->assertSee('Semua leading')

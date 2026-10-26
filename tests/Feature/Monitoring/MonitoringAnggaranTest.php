@@ -4,6 +4,7 @@ namespace Tests\Feature\Monitoring;
 
 use App\Contracts\KegiatanRepository;
 use App\Livewire\Monitoring\Anggaran;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Monitoring\RingkasanAnggaran;
 use App\Support\Rab\RekapKelompok;
 use App\Support\Stub\StubData;
@@ -396,5 +397,85 @@ class MonitoringAnggaranTest extends TestCase
             ->assertSeeHtmlInOrder(['data-operator="1"', 'Rp5.400.000', 'data-operator="2"', 'Rp900.000'])
             ->set('status', 'final')
             ->assertSeeHtml('data-testid="operator-kosong"');
+    }
+
+    public function test_tahun_anggaran_kegiatan(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $this->assertSame([2026, 2026, 2026], array_map(fn ($id) => $repo->temukan($id)['tahun_anggaran'], [1, 2, 3]));
+        $this->assertSame(2025, TahunKegiatan::dari(['tahun_anggaran' => 2025]));
+        $this->assertSame(2025, TahunKegiatan::dari(['dibuat_pada' => '2025-03-01T08:00:00+07:00']), 'Kegiatan lama: tahun dibuatnya.');
+        $this->assertSame(2026, TahunKegiatan::dari([]), 'Tanpa keterangan: tahun aktif.');
+
+        $id = $repo->simpan(['nama_kegiatan' => 'Lama', 'tahun_anggaran' => 2025]);
+        $repo->simpan(['nama_kegiatan' => 'Lama diubah', 'tahun_anggaran' => 2026], $id);
+        $this->assertSame(2025, $repo->temukan($id)['tahun_anggaran'], 'Mengubah kegiatan tidak memindahkan tahunnya.');
+        $this->assertSame(2026, $repo->temukan($repo->simpan(['nama_kegiatan' => 'Baru']))['tahun_anggaran']);
+
+        $semua = $repo->semua();
+        $this->assertSame(4, RingkasanAnggaran::dari($semua, ['tahun' => 2026])->jumlahKegiatan());
+        $this->assertSame(1, RingkasanAnggaran::dari($semua, ['tahun' => 2025])->jumlahKegiatan());
+        $this->assertSame(5, RingkasanAnggaran::dari($semua)->jumlahKegiatan(), 'Tanpa saringan tahun: semua.');
+    }
+
+    public function test_saringan_rentang_tanggal_pelaksanaan(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $bulanSaja = $repo->simpan(['nama_kegiatan' => 'Bulan saja', 'bulan_pelaksanaan' => [3, 10]]);
+        $repo->simpan(['nama_kegiatan' => 'Tanpa jadwal']);
+        $semua = $repo->semua();
+        $id = fn (array $saringan) => array_column(RingkasanAnggaran::dari($semua, $saringan)->rincianKegiatan('nama'), 'id');
+
+        $this->assertSame([1], $id(['dari' => '2026-07-01', 'sampai' => '2026-07-31']), 'Workshop 14 Juli.');
+        $this->assertSame([$bulanSaja, 3, 2], $id(['dari' => '2026-09-01']), 'Bulan Oktober, Review November, Supervisi 31 Agu–4 Sep beririsan.');
+        $this->assertSame([$bulanSaja, 2, 1], $id(['sampai' => '2026-08-31']), 'Bulan Maret, Supervisi mulai 31 Agustus, Workshop Juli.');
+        $this->assertSame([$bulanSaja], $id(['dari' => '2026-10-15', 'sampai' => '2026-10-20']), 'Tanpa tanggal: dicocokkan per bulan pelaksanaan.');
+        $this->assertSame([], $id(['dari' => '2026-04-01', 'sampai' => '2026-06-30']), 'Bulan Maret & Oktober tidak menutup April–Juni.');
+        $this->assertSame(1, RingkasanAnggaran::dari($semua, ['dari' => '2026-01-01'])->tanpaJadwal);
+        $this->assertSame(0, RingkasanAnggaran::dari($semua)->tanpaJadwal);
+        $this->assertCount(5, $id(['dari' => '2026-02-30']), 'Tanggal tidak sah diabaikan.');
+    }
+
+    public function test_formulir_saringan_tahun_dan_tanggal(): void
+    {
+        app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Kegiatan 2025', 'leading' => '1.1', 'tahun_anggaran' => 2025, 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 2_000_000]]]);
+
+        Livewire::test(Anggaran::class)
+            ->assertSeeHtmlInOrder(['Tahun anggaran', '2026 · aktif', '2025 · terkunci'])
+            ->assertSeeHtml('min="2026-01-01" max="2026-12-31"')
+            ->assertSeeHtmlInOrder(['data-testid="kartu-kegiatan"', 'Kegiatan', '3'])
+            ->set('tahun', '2025')
+            ->assertSee('TA 2025')
+            ->assertSeeHtml('data-testid="tahun-bukan-aktif"')
+            ->assertSeeHtml('min="2025-01-01" max="2025-12-31"')
+            ->assertSeeHtmlInOrder(['data-testid="kartu-kegiatan"', 'Kegiatan', '1'])
+            ->assertSeeHtml('data-kegiatan="4"')
+            ->set('tahun', '2026')
+            ->assertSet('tahun', '')
+            ->assertDontSeeHtml('data-testid="tahun-bukan-aktif"')
+            ->set('dari', '2026-07-01')
+            ->set('sampai', '2026-07-31')
+            ->assertSee('Pelaksanaan 1 Juli 2026 – 31 Juli 2026')
+            ->assertSeeHtmlInOrder(['data-testid="kartu-kegiatan"', 'Kegiatan', '1'])
+            ->assertSeeHtml('data-kegiatan="1"')
+            ->assertDontSeeHtml('data-kegiatan="3"')
+            ->set('dari', '2026-08-15')
+            ->assertSeeHtml('data-testid="rentang-terbalik"')
+            ->assertSee('Kosongkan tanggal')
+            ->assertSeeHtmlInOrder(['data-testid="kartu-kegiatan"', 'Kegiatan', '3'])
+            ->set('sampai', '2026-02-30')
+            ->assertSet('sampai', '')
+            ->assertSee('Pelaksanaan sejak 15 Agustus 2026')
+            ->call('hapusSaringan', 'tanggal')
+            ->assertSet('dari', '')
+            ->set('tahun', '2025')
+            ->set('leading', '1.1')
+            ->call('hapusSaringan')
+            ->assertSet('tahun', '')
+            ->assertSet('leading', '');
+
+        Livewire::withQueryParams(['tahun' => '1999', 'dari' => 'kemarin', 'sampai' => '2026-13-01'])->test(Anggaran::class)
+            ->assertSet('tahun', '')->assertSet('dari', '')->assertSet('sampai', '');
+        Livewire::withQueryParams(['tahun' => '2025'])->test(Anggaran::class)->assertSet('tahun', '2025');
     }
 }

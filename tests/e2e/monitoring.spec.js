@@ -187,4 +187,40 @@ test.describe('Monitoring Anggaran', () => {
         await page.getByTestId('saringan-monitoring').getByLabel('Status dokumen').selectOption('final');
         await expect(bagian.getByTestId('operator-kosong')).toBeVisible();
     });
+
+    test('saringan tahun anggaran & rentang tanggal pelaksanaan: tersimpan di URL, chip, rentang terbalik', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const saringan = page.getByTestId('saringan-monitoring');
+        await expect(saringan.getByLabel('Tahun anggaran')).toHaveValue('');
+
+        await saringan.getByLabel('Dari tanggal').fill('2026-07-01');
+        await saringan.getByLabel('Sampai tanggal').fill('2026-07-31');
+        await expect(page).toHaveURL(/dari=2026-07-01/);
+        await expect(page).toHaveURL(/sampai=2026-07-31/);
+        await expect(page.getByTestId('saringan-aktif')).toContainText('Pelaksanaan 1 Juli 2026 – 31 Juli 2026');
+        await expect(page.getByTestId('bagian-monitoring-kegiatan')).toContainText('Workshop Penyusunan Kurikulum');
+        await expect(page.getByTestId('bagian-monitoring-kegiatan')).not.toContainText('Review RKJM');
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await saringan.screenshot({ path: `storage/playwright/shots/monitoring-saringan-${testInfo.project.name}.png` });
+
+        await saringan.getByLabel('Dari tanggal').fill('2026-09-01');
+        await expect(saringan.getByTestId('rentang-terbalik')).toBeVisible();
+        await saringan.getByRole('button', { name: 'Kosongkan tanggal' }).click();
+        await expect(page).not.toHaveURL(/dari=/);
+        await expect(saringan.getByLabel('Dari tanggal')).toHaveValue('');
+
+        await saringan.getByLabel('Tahun anggaran').selectOption('2025');
+        await expect(page).toHaveURL(/tahun=2025/);
+        await expect(page.getByTestId('tahun-monitoring')).toContainText('TA 2025');
+        await expect(page.getByTestId('tahun-bukan-aktif')).toBeVisible();
+        await expect(page.getByTestId('rincian-kosong')).toBeVisible();
+        await page.reload();
+        await expect(saringan.getByLabel('Tahun anggaran')).toHaveValue('2025');
+        await page.getByTestId('saringan-aktif').getByRole('button', { name: 'Lepas saringan TA 2025' }).click();
+        await expect(page).not.toHaveURL(/tahun=/);
+        await expect(page.getByTestId('tahun-monitoring')).toContainText('TA 2026');
+    });
 });

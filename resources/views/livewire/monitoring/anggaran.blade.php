@@ -13,11 +13,16 @@
         <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Monitoring Anggaran</h1>
-                <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-brand-200 ring-inset">
+                <span class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-brand-200 ring-inset" data-testid="tahun-monitoring">
                     <x-ui.icon name="calendar" class="size-3.5" /> TA {{ $this->tahun() }}
                 </span>
+                @if ($tahun !== '')
+                    <span class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-600" data-testid="tahun-bukan-aktif">
+                        <x-ui.icon name="lock" class="size-3" /> Bukan tahun aktif — hanya dipantau
+                    </span>
+                @endif
             </div>
-            <p class="mt-1 max-w-3xl text-sm text-stone-500">Penggunaan anggaran seluruh kegiatan dan leading tahun ini: pagu dari Cascade Perkin dibandingkan dengan total RAB tiap sumber dana.</p>
+            <p class="mt-1 max-w-3xl text-sm text-stone-500">Penggunaan anggaran seluruh kegiatan dan leading per tahun anggaran: pagu dari Cascade Perkin dibandingkan dengan total RAB tiap sumber dana.</p>
         </div>
         <button type="button" class="btn-secondary shrink-0" disabled title="Ekspor Excel & PDF sedang disiapkan">
             <x-ui.icon name="download" class="size-4" /> Ekspor
@@ -27,7 +32,15 @@
 
     {{-- Saringan --}}
     <section class="mt-6 rounded-2xl bg-white px-5 py-4 shadow-xs ring-1 ring-stone-200 sm:px-6" aria-label="Saringan monitoring" data-testid="saringan-monitoring">
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label>
+                <span class="form-label">Tahun anggaran</span>
+                <select wire:model.live="tahun" class="form-input">
+                    @foreach ($this->daftarTahun() as $ta)
+                        <option value="{{ $ta['is_active'] ? '' : $ta['tahun'] }}">{{ $ta['tahun'] }}{{ $ta['is_active'] ? ' · aktif' : ($ta['is_locked'] ? ' · terkunci' : '') }}</option>
+                    @endforeach
+                </select>
+            </label>
             <label>
                 <span class="form-label">Leading</span>
                 <select wire:model.live="leading" class="form-input">
@@ -56,6 +69,30 @@
                 </select>
             </label>
         </div>
+
+        {{-- Rentang tanggal pelaksanaan (batas boleh salah satu) --}}
+        <fieldset class="mt-3" data-testid="rentang-tanggal">
+            <legend class="form-label">Tanggal pelaksanaan</legend>
+            <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:flex sm:flex-wrap">
+                <input type="date" wire:model.live="dari" min="{{ $this->tahun() }}-01-01" max="{{ $this->tahun() }}-12-31" aria-label="Dari tanggal"
+                       @class(['form-input w-full sm:w-auto', 'border-red-400' => $this->rentangTerbalik()]) aria-describedby="keterangan-rentang">
+                <span class="text-sm text-stone-400" aria-hidden="true">s.d.</span>
+                <input type="date" wire:model.live="sampai" min="{{ $this->tahun() }}-01-01" max="{{ $this->tahun() }}-12-31" aria-label="Sampai tanggal"
+                       @class(['form-input w-full sm:w-auto', 'border-red-400' => $this->rentangTerbalik()]) aria-describedby="keterangan-rentang">
+                @if ($dari !== '' || $sampai !== '')
+                    <button type="button" wire:click="hapusSaringan('tanggal')" class="btn-ghost col-span-3 justify-self-start px-2 py-1 text-xs">Kosongkan tanggal</button>
+                @endif
+            </div>
+            @if ($this->rentangTerbalik())
+                <p id="keterangan-rentang" class="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-700" role="alert" data-testid="rentang-terbalik">
+                    <x-ui.icon name="alert" class="size-3.5 shrink-0" /> Tanggal akhir sebelum tanggal awal — rentang belum diterapkan.
+                </p>
+            @elseif ($ringkasan->tanpaJadwal > 0)
+                <p id="keterangan-rentang" class="mt-1.5 text-xs text-gold-700" data-testid="tanpa-jadwal">{{ $ringkasan->tanpaJadwal }} kegiatan belum punya tanggal maupun bulan pelaksanaan sehingga tidak ikut tersaring.</p>
+            @else
+                <p id="keterangan-rentang" class="mt-1.5 text-xs text-stone-500">Kegiatan yang jadwal pelaksanaannya (atau bulan pelaksanaannya) beririsan dengan rentang ini.</p>
+            @endif
+        </fieldset>
         @if ($aktif !== [])
             <div class="mt-3 flex flex-wrap items-center gap-2 text-xs" data-testid="saringan-aktif">
                 @foreach ($aktif as $kunci => $label)
@@ -69,7 +106,7 @@
         @endif
     </section>
 
-    {{-- Ringkasan tahun aktif --}}
+    {{-- Ringkasan tahun terpilih --}}
     <x-monitoring.ringkasan :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" class="mt-6" />
 
     {{-- Perbandingan pagu DIPA & Komite --}}

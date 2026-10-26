@@ -33,7 +33,7 @@ class Dashboard extends Component
     #[Computed]
     public function ringkasan(): RingkasanAnggaran
     {
-        return RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['leadings' => $this->cakupan]);
+        return RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['tahun' => StubData::tahunAktif()['tahun'], 'leadings' => $this->cakupan]);
     }
 
     public function namaCakupan(): string
