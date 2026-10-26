@@ -55,4 +55,36 @@ test.describe('Monitoring Anggaran', () => {
         await expect(page).not.toHaveURL(/sumber=/);
         await expect(kartu.locator('article[data-testid^="perbandingan-"]')).toHaveCount(2);
     });
+
+    test('tabel total per leading: DIPA & Komite terpisah, baris jumlah, kartu di layar sempit', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const bagian = page.getByTestId('bagian-monitoring-leading');
+        await expect(bagian.getByRole('heading', { name: 'Total per leading' })).toBeVisible();
+        const lebar = testInfo.project.name === 'desktop';
+        if (lebar) {
+            const tabel = bagian.getByRole('table');
+            await expect(tabel.locator('thead th[scope="colgroup"]')).toHaveCount(3);
+            expect(await tabel.locator('tbody tr').count()).toBeGreaterThanOrEqual(8);
+            await expect(tabel.locator('tbody tr[data-leading="1.6"]')).toContainText('Tim Penjamin Mutu');
+            await expect(bagian.getByTestId('jumlah-per-leading')).toBeVisible();
+        } else {
+            await expect(bagian.getByRole('table')).toBeHidden();
+            await expect(bagian.locator('li[data-leading-kartu="1.6"]')).toContainText('Tim Penjamin Mutu');
+            await expect(bagian.getByTestId('jumlah-per-leading-kartu')).toBeVisible();
+        }
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await bagian.screenshot({ path: `storage/playwright/shots/monitoring-leading-${testInfo.project.name}.png` });
+
+        await page.getByTestId('saringan-monitoring').getByLabel('Sumber dana').selectOption('Komite');
+        await expect(bagian).toContainText('sumber dana Komite');
+        if (lebar) {
+            await expect(bagian.locator('thead th[scope="colgroup"]')).toHaveCount(1);
+        }
+        await page.getByTestId('saringan-monitoring').getByLabel('Leading').selectOption('1.6');
+        await expect(page).toHaveURL(/leading=1\.6/);
+        await expect(bagian.getByTestId('jumlah-leading')).toHaveText('1 dari 1 leading punya kegiatan');
+    });
 });

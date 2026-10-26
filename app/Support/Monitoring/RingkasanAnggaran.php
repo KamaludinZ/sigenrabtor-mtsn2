@@ -200,13 +200,16 @@ final readonly class RingkasanAnggaran
 
     /**
      * Rekap per leading (urutan master leading; kegiatan tanpa leading di baris terakhir bila ada): jumlah kegiatan per
-     * status, pagu, total RAB, selisih, dan RAB melebihi pagu. $semua = tampilkan juga leading tanpa kegiatan.
+     * status, lalu angka anggaran gabungan dan per sumber dana (sel(): pagu, total RAB, selisih, persen pemakaian, jumlah
+     * RAB, RAB melebihi pagunya sendiri, RAB tanpa pagu). $semua = tampilkan juga leading tanpa kegiatan.
      *
-     * @return list<array{kode: string|null, nama_unit: string, jumlah: int, perStatus: array<string, int>, pagu: int, total: int, selisih: int, melebihi: int}>
+     * @return list<array{kode: string|null, nama_unit: string, jumlah: int, perStatus: array<string, int>, pagu: int, total: int, selisih: int|null, persen: float|null, rab: int, melebihi: int, tanpa_pagu: int, sumber: array<string, array{pagu: int, total: int, selisih: int|null, persen: float|null, rab: int, melebihi: int, tanpa_pagu: int}>}>
      */
     public function perLeading(bool $semua = true): array
     {
-        $kosong = fn (?string $kode, string $nama) => ['kode' => $kode, 'nama_unit' => $nama, 'jumlah' => 0, 'perStatus' => array_fill_keys(array_column(StatusKegiatan::cases(), 'value'), 0), 'pagu' => 0, 'total' => 0, 'selisih' => 0, 'melebihi' => 0];
+        $nol = ['pagu' => 0, 'total' => 0, 'rab' => 0, 'melebihi' => 0, 'tanpa_pagu' => 0];
+        $kosong = fn (?string $kode, string $nama) => ['kode' => $kode, 'nama_unit' => $nama, 'jumlah' => 0, 'perStatus' => array_fill_keys(array_column(StatusKegiatan::cases(), 'value'), 0)]
+            + $nol + ['sumber' => array_fill_keys(SumberDana::urutan(), $nol)];
         $hasil = [];
         foreach (MasterKode::leadings() as $l) {
             $hasil[$l['kode']] = $kosong($l['kode'], $l['nama_unit']);
@@ -219,15 +222,50 @@ final readonly class RingkasanAnggaran
             $baris['jumlah']++;
             $baris['perStatus'][$k['status']->value]++;
             foreach ($k['anggaran'] as $a) {
-                $baris['pagu'] += (int) $a->pagu();
-                $baris['total'] += $a->total();
-                $baris['melebihi'] += $a->statusPagu() === 'melebihi' ? 1 : 0;
+                $baris['sumber'][$a->sumber] ??= $nol;
+                foreach ([&$baris, &$baris['sumber'][$a->sumber]] as &$sel) {
+                    $sel['pagu'] += (int) $a->pagu();
+                    $sel['total'] += $a->total();
+                    $sel['rab']++;
+                    $sel['melebihi'] += $a->statusPagu() === 'melebihi' ? 1 : 0;
+                    $sel['tanpa_pagu'] += $a->pagu() === null ? 1 : 0;
+                }
+                unset($sel);
             }
-            $baris['selisih'] = $baris['pagu'] - $baris['total'];
             unset($baris);
         }
 
-        return array_values(array_filter($hasil, fn (array $b) => $semua || $b['jumlah'] > 0));
+        $lengkap = [];
+        foreach ($hasil as $b) {
+            if ($semua || $b['jumlah'] > 0) {
+                $b['sumber'] = array_map(fn (array $s) => self::sel($s), $b['sumber']);
+                $lengkap[] = self::sel($b);
+            }
+        }
+
+        return $lengkap;
+    }
+
+    /**
+     * Lengkapi angka satu sel rekap (pagu, total, rab, melebihi, tanpa_pagu) dengan selisih (pagu − total) dan persen
+     * pemakaian. Seperti baris jumlah TabelPagu keduanya hanya dihitung bila ada RAB dan semuanya sudah berpagu (null bila
+     * belum), sebab RAB tanpa pagu tidak bisa dibandingkan; RAB yang melebihi pagunya sendiri tetap terhitung di
+     * `melebihi` walau selisih gabungannya masih sisa.
+     *
+     * @template T of array{pagu: int, total: int, rab: int, melebihi: int, tanpa_pagu: int}
+     *
+     * @param  T  $angka
+     * @return T&array{selisih: int|null, persen: float|null}
+     */
+    public static function sel(array $angka): array
+    {
+        $bisa = $angka['rab'] > 0 && $angka['tanpa_pagu'] === 0;
+
+        return [
+            ...$angka,
+            'selisih' => $bisa ? $angka['pagu'] - $angka['total'] : null,
+            'persen' => $bisa ? TabelPagu::persen($angka['total'], $angka['pagu'] ?: null) : null,
+        ];
     }
 
     /**

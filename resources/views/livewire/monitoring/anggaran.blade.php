@@ -6,10 +6,9 @@
     $ringkasan = $this->ringkasan;
     $aktif = $this->saringanAktif();
     $bagianBerikut = [
-        ['kunci' => 'leading', 'judul' => 'Total per leading', 'isi' => 'Pagu, total RAB, dan selisih tiap leading — DIPA dan Komite terpisah.', 'lebar' => false],
         ['kunci' => 'kelompok', 'judul' => 'Rekap per kelompok belanja', 'isi' => 'Total belanja bahan, jasa, dan lain-lain seluruh kegiatan.', 'lebar' => false],
+        ['kunci' => 'operator', 'judul' => 'Rekap per operator', 'isi' => 'Jumlah kegiatan dan anggaran per pembuat kegiatan.', 'lebar' => false],
         ['kunci' => 'kegiatan', 'judul' => 'Rincian per kegiatan', 'isi' => 'Tabel kegiatan dengan pagu, total RAB, selisih, dan status, diurutkan dari anggaran terbesar.', 'lebar' => true],
-        ['kunci' => 'operator', 'judul' => 'Rekap per operator', 'isi' => 'Jumlah kegiatan dan anggaran per pembuat kegiatan.', 'lebar' => true],
     ];
 @endphp
 
@@ -80,6 +79,9 @@
 
     {{-- Perbandingan pagu DIPA & Komite --}}
     <x-monitoring.perbandingan-sumber :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" class="mt-6" />
+
+    {{-- Total per leading --}}
+    <x-monitoring.tabel-leading :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" :leading="$leading === '' ? null : $leading" class="mt-6" />
 
     {{-- Bagian rekap (diisi bertahap) --}}
     <div class="mt-6 grid gap-6 lg:grid-cols-2">

@@ -51,7 +51,7 @@ class MonitoringAnggaranTest extends TestCase
             ->assertSeeHtml('data-testid="jumlah-melebihi"')
             ->assertSee('1 RAB melebihi pagunya')
             ->assertSee('1 RAB belum berpagu')
-            ->assertSeeHtmlInOrder(['Total per leading', 'Rekap per kelompok belanja', 'Rincian per kegiatan', 'Rekap per operator'])
+            ->assertSeeHtmlInOrder(['Total per leading', 'Rekap per kelompok belanja', 'Rekap per operator', 'Rincian per kegiatan'])
             ->set('sumber', 'Komite')
             ->assertSeeHtml('data-testid="saringan-aktif"')
             ->assertSee('Dana Komite')
@@ -125,5 +125,51 @@ class MonitoringAnggaranTest extends TestCase
             ->assertSeeHtml('data-testid="perbandingan-komite"')
             ->call('hapusSaringan', 'sumber')
             ->assertSeeHtml('data-testid="perbandingan-dipa"');
+    }
+
+    public function test_total_per_leading_dipa_dan_komite_terpisah(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $repo->simpan(['nama_kegiatan' => 'Lomba', 'leading' => '1.1', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000]]]);
+        $ringkasan = RingkasanAnggaran::dari($repo->semua());
+        $perLeading = array_column($ringkasan->perLeading(), null, 'kode');
+
+        $mutu = $perLeading['1.6'];
+        $this->assertSame(['pagu' => 6_000_000, 'total' => 6_300_000, 'rab' => 2, 'melebihi' => 0, 'tanpa_pagu' => 1, 'selisih' => null, 'persen' => null], $mutu['sumber']['DIPA'], 'Ada RAB tanpa pagu → selisih tidak dihitung.');
+        $this->assertSame(['pagu' => 20_000_000, 'total' => 20_450_000, 'rab' => 3, 'melebihi' => 1, 'tanpa_pagu' => 0, 'selisih' => -450_000, 'persen' => 102.3], $mutu['sumber']['Komite']);
+        $this->assertSame([26_000_000, 26_750_000, 5, null], [$mutu['pagu'], $mutu['total'], $mutu['rab'], $mutu['selisih']]);
+        $this->assertSame(['pagu' => 1_000_000, 'total' => 0, 'rab' => 1, 'melebihi' => 0, 'tanpa_pagu' => 0, 'selisih' => 1_000_000, 'persen' => 0.0], $perLeading['1.1']['sumber']['DIPA']);
+        $this->assertSame([0, null], [$perLeading['1.1']['sumber']['Komite']['rab'], $perLeading['1.1']['sumber']['Komite']['selisih']]);
+        $this->assertSame([0, null], [$perLeading['1.3']['rab'], $perLeading['1.3']['selisih']]);
+
+        foreach ($ringkasan->perSumber() as $sumber => $s) {
+            $this->assertSame($s['total'], array_sum(array_map(fn ($b) => $b['sumber'][$sumber]['total'], $perLeading)), "Jumlah {$sumber} per leading = total sumber.");
+            $this->assertSame($s['pagu'], array_sum(array_map(fn ($b) => $b['sumber'][$sumber]['pagu'], $perLeading)));
+        }
+    }
+
+    public function test_tabel_total_per_leading_di_halaman(): void
+    {
+        app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Lomba', 'leading' => '1.1', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000]]]);
+
+        Livewire::test(Anggaran::class)
+            ->assertSeeHtml('data-testid="bagian-monitoring-leading"')
+            ->assertSee('2 dari 8 leading punya kegiatan')
+            ->assertSeeHtml('data-leading="1.3"')
+            ->assertSeeHtmlInOrder(['data-leading="1.6"', 'Rp6.000.000', 'Rp6.300.000', 'data-selisih=""', '1 belum berpagu', 'Rp20.000.000', 'Rp20.450.000', 'data-selisih="-450000"', '-Rp450.000', '1 dari 3 RAB melebihi'])
+            ->assertSeeHtmlInOrder(['data-leading="1.1"', 'Rp1.000.000', 'Rp0', 'data-selisih="1000000"', 'Rp1.000.000'])
+            ->assertSeeHtml('data-testid="jumlah-per-leading"')
+            ->assertSeeHtmlInOrder(['data-testid="jumlah-per-leading"', 'Rp7.000.000', 'Rp6.300.000', 'Rp20.000.000', 'Rp20.450.000', 'Rp27.000.000', 'Rp26.750.000'])
+            ->set('sumber', 'Komite')
+            ->assertSee('sumber dana Komite')
+            ->assertSeeHtml('min-w-[40rem]')
+            ->assertSee('1 dari 8 leading punya kegiatan')
+            ->assertSeeHtmlInOrder(['data-leading-kartu="1.1"', 'Belum ada kegiatan.'])
+            ->set('sumber', '')
+            ->set('leading', '1.6')
+            ->assertSeeHtml('data-leading="1.6"')
+            ->assertDontSeeHtml('data-leading="1.1"')
+            ->assertDontSeeHtml('data-testid="jumlah-per-leading"')
+            ->assertSee('1 dari 1 leading punya kegiatan');
     }
 }
