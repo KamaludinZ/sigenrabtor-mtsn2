@@ -1,5 +1,22 @@
 import { expect, test } from '@playwright/test';
 
+/** Kegiatan sendiri (10–12 Agustus 2026, laporan 22 Agustus) agar contoh bersama tidak berubah; membuka tab Matrik & Jadwal. */
+async function bukaMatrikKegiatanBaru(page, nama) {
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.goto('/kegiatan/buat');
+    await page.locator('#nama_kegiatan').fill(nama);
+    await page.locator('#tanggal_mulai').fill('2026-08-10');
+    await page.locator('#lama_hari').fill('3');
+    await page.locator('#lama_hari').press('Tab');
+    await expect(page.locator('#tanggal_laporan')).toHaveValue('2026-08-22', { timeout: 30_000 });
+    await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+    await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit/, { timeout: 30_000 });
+    const id = page.url().match(/\/kegiatan\/(\d+)\/edit/)[1];
+    await page.goto(`/kegiatan/${id}/matrik`);
+
+    return id;
+}
+
 test.describe('Matrik & Jadwal Kegiatan', () => {
     test('tab ruang kerja membuka halaman: acuan bulan pelaksanaan, matrik tahapan, dan 6 baris jadwal', async ({ page }, testInfo) => {
         await page.goto('/kegiatan/1/edit');
@@ -15,7 +32,7 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(matrik.getByTestId('butir-persiapan-1')).toContainText('Rapat dan pembagian job deskripsi');
 
         const jadwal = page.getByTestId('jadwal-kegiatan');
-        await expect(jadwal.locator('tbody tr')).toHaveCount(6);
+        await expect(jadwal.locator('li[data-testid^="baris-jadwal-"]')).toHaveCount(6);
         await expect(page.getByTestId('ringkasan-jadwal')).toHaveText('0 dari 6 baris terisi');
         await expect(page.getByTestId('kelengkapan-matrik')).toHaveAttribute('data-lengkap', 'tidak');
 
@@ -35,19 +52,7 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
 
     test('grid: klik/ketuk sel, seret beberapa bulan, keyboard, isi dari jadwal pelaksanaan, lalu simpan', async ({ page }, testInfo) => {
         const mobile = testInfo.project.name === 'mobile';
-        page.on('dialog', (dialog) => dialog.accept());
-
-        // Kegiatan sendiri (10–12 Agustus 2026) agar contoh bersama tidak berubah.
-        await page.goto('/kegiatan/buat');
-        await page.locator('#nama_kegiatan').fill(`Kegiatan Matrik ${testInfo.project.name} ${Date.now()}`);
-        await page.locator('#tanggal_mulai').fill('2026-08-10');
-        await page.locator('#lama_hari').fill('3');
-        await page.locator('#lama_hari').press('Tab');
-        await expect(page.locator('#tanggal_laporan')).toHaveValue('2026-08-22', { timeout: 30_000 });
-        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
-        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit/, { timeout: 30_000 });
-        const id = page.url().match(/\/kegiatan\/(\d+)\/edit/)[1];
-        await page.goto(`/kegiatan/${id}/matrik`);
+        await bukaMatrikKegiatanBaru(page, `Kegiatan Matrik ${testInfo.project.name} ${Date.now()}`);
 
         const sel = (tahapan, butir, bulan) => page.getByTestId(`butir-${tahapan}-${butir}`).locator(`td[data-bulan="${bulan}"] button`);
         const tekan = (target) => (mobile ? target.tap() : target.click());
@@ -111,12 +116,61 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await page.getByRole('button', { name: 'Isi dari jadwal pelaksanaan' }).click();
         await expect(sel('persiapan', 2, 7)).toHaveAttribute('aria-pressed', 'true');
         await page.getByRole('button', { name: 'Simpan', exact: true }).click();
-        await expect(page.getByText('Matrik tahapan tersimpan.')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText('Matrik & jadwal tersimpan.')).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
 
         await page.reload();
         await expect(sel('pelaksanaan', 2, 8)).toHaveAttribute('aria-pressed', 'true');
         await expect(page.getByTestId('ringkasan-matrik')).toHaveText('6 tanda bulan');
         await expect(page.getByTestId('kelengkapan-matrik')).toHaveAttribute('data-lengkap', 'ya');
+    });
+
+    test('jadwal: ketik uraian, pilih bulan & s.d., isi jadwal baku yang bisa diurungkan, lalu simpan', async ({ page }, testInfo) => {
+        await bukaMatrikKegiatanBaru(page, `Kegiatan Jadwal ${testInfo.project.name} ${Date.now()}`);
+        const uraian = (baris) => page.locator(`#jadwal-${baris - 1}-uraian`);
+        const mulai = (baris) => page.locator(`#jadwal-${baris - 1}-mulai`);
+        const sampai = (baris) => page.locator(`#jadwal-${baris - 1}-sampai`);
+        const waktu = (baris) => page.getByTestId(`waktu-jadwal-${baris}`);
+
+        await expect(sampai(1)).toBeDisabled();
+        await uraian(1).fill('Rapat panitia');
+        await mulai(1).selectOption('7');
+        await expect(waktu(1)).toHaveText('Juli 2026');
+        await expect(sampai(1)).toBeEnabled();
+        await expect(sampai(1).locator('option')).toHaveCount(6); // — + Agustus s.d. Desember
+        await sampai(1).selectOption('8');
+        await expect(waktu(1)).toHaveText('Juli – Agustus 2026');
+        await expect(page.getByTestId('ringkasan-jadwal')).toHaveText('1 dari 6 baris terisi');
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+
+        // Bulan tanpa uraian ditolak saat disimpan; baris bisa dikosongkan.
+        await mulai(2).selectOption('8');
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(page.getByTestId('baris-jadwal-2')).toContainText('Isi uraian kegiatan untuk bulan yang sudah dipilih.');
+        await page.getByRole('button', { name: 'Kosongkan baris 2' }).click();
+        await expect(mulai(2)).toHaveValue('');
+        await expect(page.getByTestId('baris-jadwal-2')).not.toContainText('Isi uraian kegiatan');
+
+        // Isi jadwal baku dari jadwal pelaksanaan (Agustus) — bisa diurungkan.
+        await page.getByRole('button', { name: 'Isi jadwal baku' }).click();
+        await expect(page.getByTestId('jadwal-berubah')).toContainText('Jadwal baku diisi dari jadwal pelaksanaan.');
+        await expect(uraian(4)).toHaveValue('Pelaksanaan kegiatan');
+        await expect(waktu(1)).toHaveText('Juli 2026');
+        await expect(waktu(3)).toHaveText('Juli – Agustus 2026');
+        await expect(waktu(6)).toHaveText('Agustus 2026');
+        await page.getByTestId('jadwal-kegiatan').screenshot({ path: `storage/playwright/shots/jadwal-kegiatan-${testInfo.project.name}.png` });
+        await page.getByTestId('jadwal-berubah').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(uraian(1)).toHaveValue('Rapat panitia');
+        await expect(uraian(4)).toHaveValue('');
+
+        await page.getByRole('button', { name: 'Isi jadwal baku' }).click();
+        await expect(uraian(6)).toHaveValue('Penyusunan dan penyerahan laporan');
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(page.getByText('Matrik & jadwal tersimpan.')).toBeVisible({ timeout: 30_000 });
+
+        await page.reload();
+        await expect(uraian(6)).toHaveValue('Penyusunan dan penyerahan laporan');
+        await expect(waktu(4)).toHaveText('Agustus 2026');
+        await expect(page.getByTestId('kelengkapan-jadwal')).toHaveAttribute('data-lengkap', 'ya');
     });
 });

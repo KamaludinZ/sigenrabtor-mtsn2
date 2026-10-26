@@ -4,7 +4,7 @@
 
 @php
     $susunan = $this->susunanMatrik;
-    $jadwal = $this->jadwal;
+    $susunanJadwal = $this->susunanJadwal;
     $pelaksanaan = $this->pelaksanaan;
     $tahun = $this->tahun();
     $bisaUbah = $this->dapatDiedit();
@@ -179,31 +179,82 @@
                 <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
                     <div class="min-w-0">
                         <h2 id="judul-jadwal" class="text-base font-semibold text-stone-900">Jadwal kegiatan</h2>
-                        <p class="mt-0.5 text-sm text-stone-500">Urutan kegiatan dan waktu pelaksanaannya — tercetak di KAK bagian 7. Jadwal Kegiatan.</p>
+                        <p class="mt-0.5 text-sm text-stone-500">Urutan kegiatan dan waktu pelaksanaannya — tercetak di KAK bagian 7. Jadwal Kegiatan. Cukup pilih bulan; tahunnya Tahun Anggaran {{ $tahun }}.</p>
                     </div>
-                    <p class="text-xs font-medium text-stone-500" data-testid="ringkasan-jadwal">{{ $jadwal->jumlahTerisi() }} dari {{ count($jadwal->baris) }} baris terisi</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-xs font-medium text-stone-500" data-testid="ringkasan-jadwal">{{ $susunanJadwal->jumlahTerisi() }} dari {{ count($susunanJadwal->baris) }} baris terisi</p>
+                        @if ($bisaUbah)
+                            <button type="button" class="btn-secondary px-3 py-1.5 text-xs" wire:click="isiJadwalBaku"
+                                    title="Enam uraian baku dengan bulan dari jadwal pelaksanaan (bisa diurungkan)">
+                                <x-ui.icon name="note" class="size-3.5" />
+                                Isi jadwal baku
+                            </button>
+                        @endif
+                    </div>
                 </header>
 
-                <table class="w-full text-sm">
-                    <caption class="sr-only">Jadwal kegiatan, Tahun Anggaran {{ $tahun }}</caption>
-                    <thead>
-                        <tr class="bg-stone-50 text-xs font-semibold text-stone-500">
-                            <th scope="col" class="w-12 py-2 pr-2 pl-5 text-left sm:pl-6">No</th>
-                            <th scope="col" class="px-3 py-2 text-left">Uraian kegiatan</th>
-                            <th scope="col" class="w-36 py-2 pr-5 pl-3 text-left sm:w-48 sm:pr-6">Waktu pelaksanaan</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-stone-100">
-                        @foreach ($jadwal->baris as $index => $baris)
-                            @php $waktu = $jadwal->waktu($index, $tahun); @endphp
-                            <tr class="align-top" data-testid="baris-jadwal-{{ $index + 1 }}">
-                                <td class="py-2.5 pr-2 pl-5 text-stone-500 tabular-nums sm:pl-6">{{ $index + 1 }}</td>
-                                <td @class(['px-3 py-2.5', 'text-stone-800' => $baris['uraian'] !== '', 'text-stone-400 italic' => $baris['uraian'] === ''])>{{ $baris['uraian'] ?: 'Belum diisi' }}</td>
-                                <td @class(['py-2.5 pr-5 pl-3 sm:pr-6', 'text-stone-800' => $waktu, 'text-stone-400' => ! $waktu])>{{ $waktu ?? '—' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                @if ($jadwalSebelum)
+                    <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2 text-sm text-white sm:px-6" role="status" data-testid="jadwal-berubah">
+                        <span>{{ $jadwalSebelum['pesan'] }}</span>
+                        <button type="button" wire:click="urungkanJadwal" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                    </div>
+                @endif
+
+                {{-- Kepala kolom (layar lebar); di layar sempit tiap baris bertumpuk: uraian lalu waktu. --}}
+                <div class="hidden grid-cols-[2rem_minmax(0,1fr)_17rem_2rem] gap-3 bg-stone-50 px-6 py-2 text-xs font-semibold text-stone-500 sm:grid" aria-hidden="true">
+                    <span>No</span><span>Uraian kegiatan</span><span>Waktu pelaksanaan</span><span></span>
+                </div>
+                <ol class="divide-y divide-stone-100" aria-label="Baris jadwal kegiatan">
+                    @foreach ($jadwal as $index => $baris)
+                        @php
+                            $nomor = $index + 1;
+                            $waktu = $susunanJadwal->waktu($index, $tahun);
+                        @endphp
+                        <li class="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[2rem_minmax(0,1fr)_17rem_2rem] sm:px-6"
+                            data-testid="baris-jadwal-{{ $nomor }}" wire:key="jadwal-{{ $index }}">
+                            <span class="row-start-1 pt-2 text-sm text-stone-500 tabular-nums">{{ $nomor }}</span>
+                            @if ($bisaUbah)
+                                <div class="col-start-2 row-start-1 min-w-0 sm:col-start-auto sm:row-start-auto">
+                                    <label for="jadwal-{{ $index }}-uraian" class="sr-only">Uraian kegiatan baris {{ $nomor }}</label>
+                                    <input type="text" id="jadwal-{{ $index }}-uraian" wire:model.live.blur="jadwal.{{ $index }}.uraian" maxlength="200" autocomplete="off"
+                                           placeholder="mis. {{ \App\Livewire\Kegiatan\MatrikJadwal::JADWAL_BAKU[$index] ?? 'Uraian kegiatan' }}" class="form-input"
+                                           @error("jadwal.{$index}.uraian") aria-invalid="true" aria-describedby="jadwal-{{ $index }}-uraian-error" @enderror>
+                                    @error("jadwal.{$index}.uraian") <p class="form-error" id="jadwal-{{ $index }}-uraian-error">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="col-start-2 row-start-2 min-w-0 sm:col-start-auto sm:row-start-auto">
+                                    <div class="flex items-center gap-1.5">
+                                        <label for="jadwal-{{ $index }}-mulai" class="sr-only">Bulan mulai baris {{ $nomor }}</label>
+                                        <select id="jadwal-{{ $index }}-mulai" wire:model.live="jadwal.{{ $index }}.mulai" class="form-input min-w-0 flex-1 py-1.5">
+                                            <option value="">Bulan</option>
+                                            @foreach ($namaBulan as $n => $nama)
+                                                <option value="{{ $n }}">{{ $nama }}</option>
+                                            @endforeach
+                                        </select>
+                                        <span class="text-xs text-stone-400">s.d.</span>
+                                        <label for="jadwal-{{ $index }}-sampai" class="sr-only">Bulan selesai baris {{ $nomor }} (opsional)</label>
+                                        <select id="jadwal-{{ $index }}-sampai" wire:model.live="jadwal.{{ $index }}.sampai" @disabled($baris['mulai'] === null) class="form-input min-w-0 flex-1 py-1.5">
+                                            <option value="">—</option>
+                                            @foreach ($namaBulan as $n => $nama)
+                                                @if ($baris['mulai'] !== null && $n > $baris['mulai'])
+                                                    <option value="{{ $n }}">{{ $nama }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <p @class(['mt-1 text-xs', 'text-stone-600' => $waktu, 'text-stone-400' => ! $waktu]) data-testid="waktu-jadwal-{{ $nomor }}">{{ $waktu ?? 'Waktu belum dipilih' }}</p>
+                                    @error("jadwal.{$index}.sampai") <p class="form-error">{{ $message }}</p> @enderror
+                                </div>
+                                <button type="button" wire:click="kosongkanBarisJadwal({{ $index }})" title="Kosongkan baris {{ $nomor }}" aria-label="Kosongkan baris {{ $nomor }}"
+                                        class="col-start-3 row-start-1 mt-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 sm:col-start-auto sm:row-start-auto">
+                                    <x-ui.icon name="x" class="size-4" />
+                                </button>
+                            @else
+                                <p @class(['col-start-2 row-start-1 pt-2 text-sm sm:col-start-auto', 'text-stone-800' => $baris['uraian'] !== '', 'text-stone-400 italic' => $baris['uraian'] === ''])>{{ $baris['uraian'] ?: 'Belum diisi' }}</p>
+                                <p @class(['col-start-2 row-start-2 text-sm sm:col-start-auto sm:row-start-auto sm:pt-2', 'text-stone-800' => $waktu, 'text-stone-400' => ! $waktu]) data-testid="waktu-jadwal-{{ $nomor }}">{{ $waktu ?? '—' }}</p>
+                            @endif
+                        </li>
+                    @endforeach
+                </ol>
             </section>
         </div>
 
@@ -215,8 +266,8 @@
                     @foreach ([
                         ['kunci' => 'matrik', 'judul' => '4. Tahapan Kegiatan', 'lengkap' => $susunan->lengkap(),
                          'teks' => $susunan->lengkap() ? 'Ketiga tahapan sudah bertanda bulan.' : 'Tandai minimal satu bulan di setiap tahapan.'],
-                        ['kunci' => 'jadwal', 'judul' => '7. Jadwal Kegiatan', 'lengkap' => $jadwal->lengkap(),
-                         'teks' => $jadwal->jumlahTerisi().' dari '.count($jadwal->baris).' baris berisi uraian & waktu.'],
+                        ['kunci' => 'jadwal', 'judul' => '7. Jadwal Kegiatan', 'lengkap' => $susunanJadwal->lengkap(),
+                         'teks' => $susunanJadwal->jumlahTerisi().' dari '.count($susunanJadwal->baris).' baris berisi uraian & waktu.'],
                     ] as $bagian)
                         <li class="flex items-start gap-2.5" data-testid="kelengkapan-{{ $bagian['kunci'] }}" data-lengkap="{{ $bagian['lengkap'] ? 'ya' : 'tidak' }}">
                             <x-ui.icon :name="$bagian['lengkap'] ? 'check-circle' : 'circle'" class="mt-0.5 size-4 shrink-0 {{ $bagian['lengkap'] ? 'text-brand-600' : 'text-stone-300' }}" />

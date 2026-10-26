@@ -60,7 +60,7 @@ class MatrikJadwalTest extends TestCase
             ->assertSeeHtml('aria-current="page"')
             ->assertSeeInOrder(['Bulan pelaksanaan', 'Juli 2026', 'Tanggal', '14 Juli 2026', 'Batas laporan', '30 Juli 2026'])
             ->assertSeeInOrder(['Matrik tahapan', '1. Persiapan', 'Rapat dan pembagian job deskripsi', '2. Pelaksanaan', '3. Evaluasi dan Pelaporan', 'Penyerahan laporan'])
-            ->assertSeeInOrder(['Jadwal kegiatan', '0 dari 6 baris terisi', 'Belum diisi'])
+            ->assertSeeInOrder(['Jadwal kegiatan', '0 dari 6 baris terisi', 'Waktu belum dipilih'])
             ->assertSeeHtml('data-testid="baris-jadwal-6"')
             ->assertSeeHtml('data-testid="kelengkapan-matrik" data-lengkap="tidak"')
             ->assertSeeHtml('href="'.route('kegiatan.edit', ['kegiatan' => 1]).'#pelaksanaan"');
@@ -140,7 +140,7 @@ class MatrikJadwalTest extends TestCase
             ->call('isiDariPelaksanaan')
             ->call('simpan')
             ->assertHasNoErrors()
-            ->assertDispatched('notify', message: 'Matrik tahapan tersimpan.')
+            ->assertDispatched('notify', message: 'Matrik & jadwal tersimpan.')
             ->assertSet('adaPerubahan', false)
             ->assertDontSeeHtml('data-testid="matrik-berubah"');
 
@@ -166,6 +166,113 @@ class MatrikJadwalTest extends TestCase
             ->assertDontSee('Isi dari jadwal pelaksanaan')
             ->assertDontSeeHtml('wire:click="simpan"')
             ->call('aturBulan', 'persiapan', 0, [5])
+            ->assertForbidden();
+    }
+
+    public function test_baris_jadwal_disunting_dan_waktu_dirapikan(): void
+    {
+        $komponen = Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->assertSeeHtml('wire:model.live.blur="jadwal.0.uraian"')
+            ->assertSeeHtml('placeholder="mis. Pembentukan kepanitiaan"')
+            // Uraian tidak dirapikan di tempat (ketikan tidak tertimpa); dirapikan saat disimpan.
+            ->set('jadwal.0.uraian', ' Pembentukan  panitia ')
+            ->assertSet('jadwal.0.uraian', ' Pembentukan  panitia ')
+            ->assertSet('adaPerubahan', true)
+            ->set('jadwal.0.mulai', '7')
+            ->assertSet('jadwal.0.mulai', 7)
+            ->assertSeeHtml('data-testid="waktu-jadwal-1">Juli 2026')
+            ->set('jadwal.0.sampai', '8')
+            ->assertSet('jadwal.0.sampai', 8)
+            ->assertSeeHtml('data-testid="waktu-jadwal-1">Juli – Agustus 2026')
+            ->assertSee('1 dari 6 baris terisi')
+            // Bulan mulai dipindah melewati "s.d." → "s.d." dilepas; bulan mulai dikosongkan → keduanya kosong.
+            ->set('jadwal.0.mulai', '9')
+            ->assertSet('jadwal.0.sampai', null)
+            ->set('jadwal.0.sampai', '12')
+            ->set('jadwal.0.mulai', '')
+            ->assertSet('jadwal.0.mulai', null)
+            ->assertSet('jadwal.0.sampai', null)
+            ->set('jadwal.1.sampai', '5')
+            ->assertSet('jadwal.1.sampai', null)
+            ->call('kosongkanBarisJadwal', 0)
+            ->assertSet('jadwal.0', ['uraian' => '', 'mulai' => null, 'sampai' => null]);
+
+        // Opsi "s.d." hanya bulan setelah bulan mulai.
+        $komponen->set('jadwal.2.mulai', '10');
+        $this->assertSame(1, preg_match('/id="jadwal-2-sampai".*?<\/select>/s', $komponen->html(), $select));
+        preg_match_all('/<option value="(\d*)">/', $select[0], $opsi);
+        $this->assertSame(['', '11', '12'], $opsi[1]);
+    }
+
+    public function test_isi_jadwal_baku_dari_jadwal_pelaksanaan_dan_urungkan(): void
+    {
+        // Supervisi: Agustus–September, laporan 14 September.
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 2])
+            ->call('isiJadwalBaku')
+            ->assertSet('jadwal', [
+                ['uraian' => 'Pembentukan kepanitiaan', 'mulai' => 7, 'sampai' => null],
+                ['uraian' => 'Rapat koordinasi panitia', 'mulai' => 7, 'sampai' => null],
+                ['uraian' => 'Persiapan sarana dan bahan kegiatan', 'mulai' => 7, 'sampai' => 8],
+                ['uraian' => 'Pelaksanaan kegiatan', 'mulai' => 8, 'sampai' => 9],
+                ['uraian' => 'Evaluasi kegiatan', 'mulai' => 9, 'sampai' => null],
+                ['uraian' => 'Penyusunan dan penyerahan laporan', 'mulai' => 9, 'sampai' => null],
+            ])
+            ->assertSee('Jadwal baku diisi dari jadwal pelaksanaan.')
+            ->assertSee('6 dari 6 baris terisi')
+            ->assertSeeHtml('data-testid="kelengkapan-jadwal" data-lengkap="ya"')
+            ->call('urungkanJadwal')
+            ->assertSet('jadwal.3', ['uraian' => '', 'mulai' => null, 'sampai' => null])
+            ->assertSet('jadwalSebelum', null);
+
+        $tanpaBulan = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Tanpa jadwal']);
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => $tanpaBulan])
+            ->call('isiJadwalBaku')
+            ->assertSet('jadwal.0', ['uraian' => 'Pembentukan kepanitiaan', 'mulai' => null, 'sampai' => null])
+            ->assertSee('Uraian jadwal baku diisi; pilih bulannya karena bulan pelaksanaan belum diisi.');
+    }
+
+    public function test_simpan_jadwal_dan_validasi(): void
+    {
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->set('jadwal.1.mulai', '5')
+            ->call('simpan')
+            ->assertHasErrors(['jadwal.1.uraian'])
+            ->assertSee('Isi uraian kegiatan untuk bulan yang sudah dipilih.')
+            ->call('kosongkanBarisJadwal', 1)
+            ->assertHasNoErrors()
+            ->set('jadwal.0.uraian', ' Rapat   panitia ')
+            ->set('jadwal.0.mulai', '7')
+            ->set('jadwal.0.sampai', '8')
+            ->call('simpan')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify', message: 'Matrik & jadwal tersimpan.')
+            ->assertSet('jadwal.0.uraian', 'Rapat panitia')
+            ->assertSet('adaPerubahan', false);
+
+        $tersimpan = app(KegiatanRepository::class)->temukan(1)['jadwal'];
+        $this->assertSame(['uraian' => 'Rapat panitia', 'bulan' => [7, 8]], $tersimpan[0]);
+        $this->assertSame(['uraian' => '', 'bulan' => []], $tersimpan[5]);
+
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->assertSet('jadwal.0', ['uraian' => 'Rapat panitia', 'mulai' => 7, 'sampai' => 8])
+            ->assertSee('1 dari 6 baris terisi');
+
+        $this->assertSame([['uraian' => 'Laporan', 'bulan' => [12]]], MatrikJadwal::jadwalUntukDisimpan([['uraian' => "Laporan\n", 'mulai' => '12', 'sampai' => '3']]));
+    }
+
+    public function test_jadwal_terkunci_di_luar_draf(): void
+    {
+        $id = app(KegiatanRepository::class)->simpan([
+            'nama_kegiatan' => 'Sudah final', 'status' => 'final', 'bulan_pelaksanaan' => [5],
+            'jadwal' => [['uraian' => 'Rapat akhir', 'bulan' => [5]]],
+        ]);
+
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => $id])
+            ->assertSee('Rapat akhir')
+            ->assertSeeHtml('data-testid="waktu-jadwal-1">Mei 2026')
+            ->assertDontSeeHtml('wire:model.live.blur="jadwal.0.uraian"')
+            ->assertDontSee('Isi jadwal baku')
+            ->set('jadwal.0.uraian', 'Diubah')
             ->assertForbidden();
     }
 
