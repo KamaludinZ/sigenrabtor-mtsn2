@@ -22,6 +22,7 @@
 <div class="mx-auto max-w-7xl"
      x-data="{ dirty: $wire.entangle('adaPerubahan') }"
      x-on:beforeunload.window="if (dirty) { $event.preventDefault(); $event.returnValue = ''; }"
+     x-on:livewire:navigate.document="if (dirty && ! confirm('Perubahan matrik & jadwal belum disimpan. Tinggalkan halaman ini?')) $event.preventDefault()"
      @if ($bisaUbah) x-on:keydown.window.ctrl.s.prevent="$wire.simpan()" x-on:keydown.window.meta.s.prevent="$wire.simpan()" @endif>
     {{-- Kepala halaman --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -41,12 +42,11 @@
         </div>
         @if ($bisaUbah)
             <div class="flex shrink-0 flex-wrap items-center gap-2">
-                @if ($adaPerubahan)
-                    <span class="inline-flex items-center gap-1 text-sm font-medium text-gold-700" data-testid="belum-disimpan">
-                        <span class="size-1.5 rounded-full bg-gold-500"></span> Belum disimpan
-                    </span>
-                    <button type="button" class="btn-ghost" wire:click="batalkanPerubahan" wire:loading.attr="disabled">Batalkan</button>
-                @endif
+                {{-- Ikut state lokal: sel matrik yang ditandai belum terkirim ke server sampai Simpan. --}}
+                <span x-show="dirty" @unless ($adaPerubahan) style="display: none" @endunless class="inline-flex items-center gap-1 text-sm font-medium text-gold-700" data-testid="belum-disimpan">
+                    <span class="size-1.5 rounded-full bg-gold-500"></span> Belum disimpan
+                </span>
+                <button type="button" x-show="dirty" @unless ($adaPerubahan) style="display: none" @endunless class="btn-ghost" wire:click="batalkanPerubahan" wire:loading.attr="disabled">Batalkan</button>
                 <button type="button" class="btn-primary" wire:click="simpan" wire:loading.attr="disabled" wire:target="simpan" title="Simpan (Ctrl+S)">
                     <x-ui.icon name="save" class="size-4" />
                     <span wire:loading.remove wire:target="simpan">Simpan</span>
@@ -99,29 +99,32 @@
                         </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <p class="text-xs font-medium text-stone-500" data-testid="ringkasan-matrik">{{ $susunan->jumlahTanda() }} tanda bulan</p>
+                        <p class="text-xs font-medium text-stone-500" data-testid="ringkasan-matrik" x-text="$ringkasanMatrik($wire.matrik).jumlahTanda + ' tanda bulan'">{{ $susunan->jumlahTanda() }} tanda bulan</p>
                         @if ($bisaUbah)
                             <button type="button" class="btn-secondary px-3 py-1.5 text-xs" wire:click="isiDariPelaksanaan" @disabled($bulanPelaksanaan === [])
                                     title="{{ $bulanPelaksanaan === [] ? 'Isi bulan pelaksanaan di Data Kegiatan dulu' : 'Persiapan sebelum, Pelaksanaan pada, Evaluasi & Pelaporan pada bulan batas laporan' }}">
                                 <x-ui.icon name="sparkles" class="size-3.5" />
                                 Isi dari jadwal pelaksanaan
                             </button>
-                            @if ($susunan->jumlahTanda() > 0)
-                                <button type="button" class="btn-ghost px-3 py-1.5 text-xs text-stone-600" wire:click="kosongkanMatrik">Kosongkan</button>
-                            @endif
+                            <button type="button" class="btn-ghost px-3 py-1.5 text-xs text-stone-600" wire:click="kosongkanMatrik"
+                                    x-show="$ringkasanMatrik($wire.matrik).jumlahTanda > 0" @if ($susunan->jumlahTanda() === 0) style="display: none" @endif>Kosongkan</button>
                         @endif
                     </div>
                 </header>
 
                 @if ($matrikSebelum)
-                    <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2 text-sm text-white sm:px-6" role="status" data-testid="matrik-berubah">
+                    {{-- Hilang begitu sel diubah tangan (state lokal); kunci per isi otomatis agar banner berikutnya tampil lagi. --}}
+                    <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2 text-sm text-white sm:px-6" role="status" data-testid="matrik-berubah"
+                         wire:key="matrik-berubah-{{ md5(json_encode($matrikSebelum)) }}" x-data="{ tampil: true }" x-show="tampil" x-on:matrik-diubah-lokal.window="tampil = false">
                         <span>{{ $matrikSebelum['pesan'] }}</span>
                         <button type="button" wire:click="urungkanMatrik" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
                     </div>
                 @endif
 
-                <div class="overflow-x-auto" data-testid="matrik-wadah"
-                     x-data="gridMatrik({ dapatDiedit: @js($bisaUbah) })" x-on:pointerup.window="selesai()" x-on:pointercancel.window="selesai()">
+                {{-- Selama aksi server yang menimpa matrik berjalan, sel dikunci agar tanda baru tidak tertimpa responsnya. --}}
+                <div class="overflow-x-auto transition-opacity" data-testid="matrik-wadah"
+                     x-data="gridMatrik({ dapatDiedit: @js($bisaUbah) })" x-on:pointerup.window="selesai()" x-on:pointercancel.window="selesai()"
+                     wire:loading.class="pointer-events-none opacity-60" wire:target="isiDariPelaksanaan, kosongkanMatrik, urungkanMatrik, batalkanPerubahan, simpan">
                     <table class="w-full min-w-[33rem] text-sm select-none sm:min-w-[44rem]">
                         <caption class="sr-only">Matrik tahapan kegiatan per bulan, Tahun Anggaran {{ $tahun }}</caption>
                         <thead>
@@ -275,9 +278,23 @@
             <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-tercetak" data-testid="kelengkapan-matrik-jadwal">
                 <h2 id="judul-tercetak" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Tercetak di KAK</h2>
                 <ul class="mt-3 space-y-3 text-sm">
+                    {{-- Matrik mengikuti state lokal (dihitung di klien, kembaran MatrikTahapan::lengkap()). --}}
+                    <li class="flex items-start gap-2.5" data-testid="kelengkapan-matrik" data-lengkap="{{ $susunan->lengkap() ? 'ya' : 'tidak' }}"
+                        x-data="{ get lengkap() { return $ringkasanMatrik($wire.matrik).lengkap } }" x-bind:data-lengkap="lengkap ? 'ya' : 'tidak'">
+                        <span x-show="lengkap" @unless ($susunan->lengkap()) style="display: none" @endunless class="mt-0.5 shrink-0">
+                            <x-ui.icon name="check-circle" class="size-4 text-brand-600" />
+                        </span>
+                        <span x-show="! lengkap" @if ($susunan->lengkap()) style="display: none" @endif class="mt-0.5 shrink-0">
+                            <x-ui.icon name="circle" class="size-4 text-stone-300" />
+                        </span>
+                        <div class="min-w-0">
+                            <a href="#matrik" class="font-medium text-stone-800 hover:text-brand-700">4. Tahapan Kegiatan</a>
+                            <p class="text-xs text-stone-500" x-text="lengkap ? 'Ketiga tahapan sudah bertanda bulan.' : 'Tandai minimal satu bulan di setiap tahapan.'">
+                                {{ $susunan->lengkap() ? 'Ketiga tahapan sudah bertanda bulan.' : 'Tandai minimal satu bulan di setiap tahapan.' }}
+                            </p>
+                        </div>
+                    </li>
                     @foreach ([
-                        ['kunci' => 'matrik', 'judul' => '4. Tahapan Kegiatan', 'lengkap' => $susunan->lengkap(),
-                         'teks' => $susunan->lengkap() ? 'Ketiga tahapan sudah bertanda bulan.' : 'Tandai minimal satu bulan di setiap tahapan.'],
                         ['kunci' => 'jadwal', 'judul' => '7. Jadwal Kegiatan', 'lengkap' => $susunanJadwal->lengkap(),
                          'teks' => $susunanJadwal->jumlahTerisi().' dari '.count($susunanJadwal->baris).' baris berisi uraian & waktu.'],
                     ] as $bagian)

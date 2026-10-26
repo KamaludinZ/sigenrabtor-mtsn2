@@ -1,17 +1,30 @@
 // Grid matrik tahapan × bulan (halaman Matrik & Jadwal). Sel ditampilkan dari state $wire.matrik sehingga ikut berubah
-// saat server mengisi otomatis/mengurungkan. Mouse: tekan lalu seret melintasi sel untuk menandai/menghapus beberapa bulan
-// sekaligus — selama menyeret hanya state klien yang berubah ($set tanpa request), lalu tiap baris yang berubah dikirim
-// sekali lewat aturBulan(). Sentuh & keyboard: ketuk/Enter/Spasi pada sel (event click), agar geser tabel di layar
+// saat server mengisi otomatis/mengurungkan. Menandai sel hanya mengubah state lokal di browser ($set tanpa request):
+// ringkasan, kelengkapan, dan penanda "Belum disimpan" dihitung di klien, lalu seluruh matrik terkirim sekali bersama
+// aksi berikutnya (Simpan, Batalkan, isi otomatis). Mouse: tekan lalu seret melintasi sel untuk menandai/menghapus
+// beberapa bulan sekaligus. Sentuh & keyboard: ketuk/Enter/Spasi pada sel (event click), agar geser tabel di layar
 // sempit tidak ikut menandai sel.
 
 const urut = (bulan) => [...new Set(bulan.map(Number))].filter((b) => b >= 1 && b <= 12).sort((a, b) => a - b);
+
+/**
+ * Kembaran klien MatrikTahapan::jumlahTanda()/lengkap(): jumlah tanda (butir × bulan) dan apakah setiap tahapan punya
+ * minimal satu bulan bertanda. Kasus bersama: tests/fixtures/ringkasan-matrik.json.
+ */
+export function ringkasanMatrik(matrik) {
+    const tahapan = Object.values(matrik ?? {});
+    const bulan = (daftar) => (Array.isArray(daftar) ? daftar : Object.values(daftar ?? {})).map((b) => urut(Object.values(b?.bulan ?? {})));
+
+    return {
+        jumlahTanda: tahapan.reduce((jumlah, daftar) => jumlah + bulan(daftar).reduce((n, b) => n + b.length, 0), 0),
+        lengkap: tahapan.length > 0 && tahapan.every((daftar) => bulan(daftar).some((b) => b.length > 0)),
+    };
+}
 
 export default function gridMatrik({ dapatDiedit = true } = {}) {
     return {
         /** 'tandai' | 'hapus' | null — mode seretan mouse yang sedang berjalan. */
         menyeret: null,
-        /** Baris yang berubah selama seretan: "tahapan|index". */
-        berubah: new Set(),
         /** Klik setelah pointerdown mouse sudah ditangani oleh seretan. */
         abaikanKlik: false,
 
@@ -39,7 +52,10 @@ export default function gridMatrik({ dapatDiedit = true } = {}) {
             return this.bulan(tahapan, index).includes(bulan);
         },
 
-        /** Ubah satu sel di state klien saja; dikirim ke server lewat kirim(). */
+        /**
+         * Ubah satu sel di state lokal saja (bentuk sudah rapi: urut & unik, sehingga normalisasi server tidak mengubah
+         * apa pun). Menandai halaman belum disimpan dan memberi tahu banner "Urungkan" bahwa isi otomatis sudah diubah.
+         */
         atur(tahapan, index, bulan, tandai) {
             const lama = this.bulan(tahapan, index);
             const baru = urut(tandai ? [...lama, bulan] : lama.filter((b) => b !== bulan));
@@ -49,15 +65,8 @@ export default function gridMatrik({ dapatDiedit = true } = {}) {
             }
 
             this.$wire.$set(`matrik.${tahapan}.${index}.bulan`, baru, false);
-            this.berubah.add(`${tahapan}|${index}`);
-        },
-
-        kirim() {
-            for (const kunci of this.berubah) {
-                const [tahapan, index] = kunci.split('|');
-                this.$wire.aturBulan(tahapan, Number(index), this.bulan(tahapan, Number(index)));
-            }
-            this.berubah.clear();
+            this.$wire.$set('adaPerubahan', true, false);
+            this.$dispatch('matrik-diubah-lokal');
         },
 
         mulai(event, tahapan, index, bulan) {
@@ -80,7 +89,6 @@ export default function gridMatrik({ dapatDiedit = true } = {}) {
         selesai() {
             if (this.menyeret) {
                 this.menyeret = null;
-                this.kirim();
                 // Bila tombol dilepas di sel lain, tidak ada event click yang perlu diabaikan.
                 setTimeout(() => (this.abaikanKlik = false), 0);
             }
@@ -95,7 +103,6 @@ export default function gridMatrik({ dapatDiedit = true } = {}) {
 
             if (dapatDiedit) {
                 this.atur(tahapan, index, bulan, !this.ditandai(tahapan, index, bulan));
-                this.kirim();
             }
         },
     };

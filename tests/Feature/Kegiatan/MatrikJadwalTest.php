@@ -72,24 +72,44 @@ class MatrikJadwalTest extends TestCase
         $this->get(route('kegiatan.matrik', ['kegiatan' => 999]))->assertNotFound();
     }
 
-    public function test_sel_grid_diatur_per_baris_dan_dirapikan(): void
+    public function test_sel_grid_state_lokal_terkirim_bersama_aksi_dan_dirapikan(): void
     {
         $komponen = Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
             ->assertSeeHtml('x-data="gridMatrik({ dapatDiedit: true })"')
             ->assertSeeHtml('aria-label="Persiapan: Rapat dan pembagian job deskripsi — Juli"')
-            ->call('aturBulan', 'persiapan', 0, [7, '6', 6, 13])
+            // Tanda sel adalah state lokal: tidak ada request per sel; ringkasan, kelengkapan & "Belum disimpan" dihitung di klien.
+            ->assertDontSeeHtml('aturBulan')
+            ->assertSeeHtml('x-text="$ringkasanMatrik($wire.matrik).jumlahTanda + \' tanda bulan\'"')
+            ->assertSeeHtml('x-bind:data-lengkap="lengkap ? \'ya\' : \'tidak\'"')
+            ->assertSeeHtml('wire:target="isiDariPelaksanaan, kosongkanMatrik, urungkanMatrik, batalkanPerubahan, simpan"')
+            ->assertSeeHtml('x-on:livewire:navigate.document=');
+        $this->assertMatchesRegularExpression('/x-show="dirty"\s+style="display: none"[^>]*data-testid="belum-disimpan"/', $komponen->html());
+
+        // Nilai yang dikirim klien dirapikan lewat updatedMatrik; tahapan tak dikenal dibuang.
+        $komponen->set('matrik.persiapan.0.bulan', [7, '6', 6, 13])
             ->assertSet('matrik.persiapan.0.bulan', [6, 7])
             ->assertSet('adaPerubahan', true)
             ->assertSee('2 tanda bulan')
-            ->assertSeeHtml('data-testid="belum-disimpan"')
-            // Butir/tahapan tak dikenal diabaikan; nilai dari klien juga dirapikan lewat updatedMatrik.
-            ->call('aturBulan', 'tahapan-lain', 0, [1])
-            ->call('aturBulan', 'persiapan', 9, [1])
+            ->set('matrik.tahapan-lain', [['uraian' => 'Lain', 'bulan' => [1]]])
             ->set('matrik.pelaksanaan.1.bulan', [9, 3, 3])
             ->assertSet('matrik.pelaksanaan.1.bulan', [3, 9]);
 
+        $this->assertSame(['persiapan', 'pelaksanaan', 'evaluasi_pelaporan'], array_keys($komponen->get('matrik')));
         $this->assertMatchesRegularExpression('/data-bulan="7" data-ditandai="ya"/', $komponen->html());
+        $this->assertDoesNotMatchRegularExpression('/style="display: none"[^>]*data-testid="belum-disimpan"/', $komponen->html());
         $this->assertSame(4, $komponen->instance()->susunanMatrik->jumlahTanda());
+    }
+
+    public function test_ringkasan_matrik_server_sama_dengan_kembaran_klien(): void
+    {
+        // Berkas yang sama dipakai tests/e2e/format.spec.js untuk ringkasanMatrik() di resources/js/matrik.js.
+        $kasus = json_decode(file_get_contents(base_path('tests/fixtures/ringkasan-matrik.json')), true);
+        $this->assertNotEmpty($kasus);
+
+        foreach ($kasus as $k) {
+            $matrik = MatrikTahapan::dari(['matrik' => $k['matrik']]);
+            $this->assertSame([$k['jumlahTanda'], $k['lengkap']], [$matrik->jumlahTanda(), $matrik->lengkap()], $k['keterangan']);
+        }
     }
 
     public function test_isi_dari_jadwal_pelaksanaan_kosongkan_dan_urungkan(): void
@@ -116,8 +136,11 @@ class MatrikJadwalTest extends TestCase
             ->assertSet('matrik.persiapan.0.bulan', [7])
             ->assertSet('matrik.pelaksanaan.1.bulan', [8, 9])
             ->assertSet('matrik.evaluasi_pelaporan.0.bulan', [9])
-            ->call('aturBulan', 'persiapan', 0, [6, 7])
-            ->assertSet('matrikSebelum', null);
+            ->assertSeeHtml('x-on:matrik-diubah-lokal.window="tampil = false"')
+            // Sel yang diubah tangan membatalkan "Urungkan" isi otomatis.
+            ->set('matrik.persiapan.0.bulan', [6, 7])
+            ->assertSet('matrikSebelum', null)
+            ->assertDontSeeHtml('data-testid="matrik-berubah"');
 
         $tanpaBulan = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Tanpa jadwal']);
         Livewire::test(MatrikJadwal::class, ['kegiatan' => $tanpaBulan])
@@ -133,7 +156,7 @@ class MatrikJadwalTest extends TestCase
         $namaSemula = $repo->temukan(1)['nama_kegiatan'];
 
         Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
-            ->call('aturBulan', 'pelaksanaan', 0, [7])
+            ->set('matrik.pelaksanaan.0.bulan', [7])
             ->call('batalkanPerubahan')
             ->assertSet('matrik.pelaksanaan.0.bulan', [])
             ->assertSet('adaPerubahan', false)
@@ -165,7 +188,7 @@ class MatrikJadwalTest extends TestCase
             ->assertSeeHtml('x-data="gridMatrik({ dapatDiedit: false })"')
             ->assertDontSee('Isi dari jadwal pelaksanaan')
             ->assertDontSeeHtml('wire:click="simpan"')
-            ->call('aturBulan', 'persiapan', 0, [5])
+            ->set('matrik.persiapan.0.bulan', [5])
             ->assertForbidden();
     }
 

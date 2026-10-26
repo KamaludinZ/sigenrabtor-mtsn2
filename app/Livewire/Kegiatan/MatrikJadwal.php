@@ -48,8 +48,8 @@ class MatrikJadwal extends Component
     public array $dataKegiatan = [];
 
     /**
-     * Matrik yang sedang disunting: kunci tahapan → butir {uraian, bulan}. Sel diatur di klien (seret/klik) lalu dikirim
-     * per baris lewat aturBulan(); tersimpan ke data kegiatan saat "Simpan".
+     * Matrik yang sedang disunting: kunci tahapan → butir {uraian, bulan}. Sel diatur sebagai state lokal di klien
+     * (seret/klik, tanpa request) dan baru terkirim bersama aksi berikutnya; tersimpan ke data kegiatan saat "Simpan".
      *
      * @var array<string, list<array{uraian: string, bulan: list<int>}>>
      */
@@ -125,11 +125,15 @@ class MatrikJadwal extends Component
         }
     }
 
-    /** Nilai bulan yang dikirim klien dirapikan (urut, unik, 1–12); klien sudah mengirim bentuk yang sama. */
+    /**
+     * Perubahan sel dari state lokal klien: bulan dirapikan (urut, unik, 1–12; klien sudah mengirim bentuk yang sama),
+     * tahapan tak dikenal dibuang, dan "Urungkan" isi otomatis tidak berlaku lagi karena matrik sudah diubah tangan.
+     */
     public function updatedMatrik(): void
     {
         $this->matrik = MatrikTahapan::dari(['matrik' => $this->matrik])->butir;
         $this->adaPerubahan = true;
+        $this->matrikSebelum = null;
     }
 
     /** Pilihan bulan dari <select> datang sebagai teks: jadikan angka (kosong → null); "s.d." sebelum bulan mulai dilepas. */
@@ -148,24 +152,6 @@ class MatrikJadwal extends Component
 
         $this->adaPerubahan = true;
         $this->jadwalSebelum = null;
-    }
-
-    /**
-     * Bulan bertanda satu butir — dikirim sekali setelah klik atau seretan selesai.
-     *
-     * @param  list<int|string>  $bulan
-     */
-    public function aturBulan(string $tahapan, int $index, array $bulan): void
-    {
-        $this->pastikanDapatDiedit();
-
-        if (! isset($this->matrik[$tahapan][$index])) {
-            return;
-        }
-
-        $this->matrik[$tahapan][$index]['bulan'] = MatrikTahapan::rapikanBulan($bulan);
-        $this->adaPerubahan = true;
-        $this->matrikSebelum = null;
     }
 
     /**

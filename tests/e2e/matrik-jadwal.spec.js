@@ -62,11 +62,30 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
             return [kotak.x + kotak.width / 2, kotak.y + kotak.height / 2];
         };
 
+        // Menandai sel hanya mengubah state lokal: tidak ada request ke server sampai aksi berikutnya (Simpan, isi otomatis).
+        const permintaan = [];
+        const catat = (r) => r.method() === 'POST' && r.url().includes('livewire') && permintaan.push(r.url());
+        page.on('request', catat);
+
         // Klik (mouse) / ketuk (layar sentuh) menandai satu bulan seketika.
         await tekan(sel('persiapan', 1, 7));
         await expect(sel('persiapan', 1, 7)).toHaveAttribute('aria-pressed', 'true');
         await expect(page.getByTestId('ringkasan-matrik')).toHaveText('1 tanda bulan');
         await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+        await expect(page.getByTestId('kelengkapan-matrik')).toContainText('Tandai minimal satu bulan di setiap tahapan.');
+
+        // Pindah tab ruang kerja (wire:navigate) selagi ada perubahan lokal meminta konfirmasi; batal → tetap di sini.
+        page.removeAllListeners('dialog');
+        let pesanDialog = '';
+        page.once('dialog', (dialog) => {
+            pesanDialog = dialog.message();
+            dialog.dismiss();
+        });
+        await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Data Kegiatan' }).click();
+        await expect.poll(() => pesanDialog).toContain('Perubahan matrik & jadwal belum disimpan.');
+        await expect(page).toHaveURL(/\/matrik$/);
+        await expect(sel('persiapan', 1, 7)).toHaveAttribute('aria-pressed', 'true');
+        page.on('dialog', (dialog) => dialog.accept());
 
         if (!mobile) {
             // Tekan lalu seret: Agu–Okt ditandai sekaligus; seret lagi dari sel bertanda untuk menghapus.
@@ -98,7 +117,10 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
             await expect(sel('evaluasi_pelaporan', 2, 12)).toHaveAttribute('aria-pressed', 'true');
             await page.keyboard.press('Space');
             await expect(sel('evaluasi_pelaporan', 2, 12)).toHaveAttribute('aria-pressed', 'false');
+            await expect(page.getByTestId('ringkasan-matrik')).toHaveText('2 tanda bulan');
         }
+        expect(permintaan).toEqual([]);
+        page.off('request', catat);
 
         // Isi dari jadwal pelaksanaan (Persiapan Juli, Pelaksanaan & laporan Agustus) — bisa diurungkan.
         await page.getByRole('button', { name: 'Isi dari jadwal pelaksanaan' }).click();
@@ -117,7 +139,7 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(sel('persiapan', 2, 7)).toHaveAttribute('aria-pressed', 'true');
         await page.getByRole('button', { name: 'Simpan', exact: true }).click();
         await expect(page.getByText('Matrik & jadwal tersimpan.')).toBeVisible({ timeout: 30_000 });
-        await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
+        await expect(page.getByTestId('belum-disimpan')).toBeHidden();
 
         await page.reload();
         await expect(sel('pelaksanaan', 2, 8)).toHaveAttribute('aria-pressed', 'true');

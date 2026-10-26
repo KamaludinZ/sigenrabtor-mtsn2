@@ -1,0 +1,42 @@
+[
+    {
+        "keterangan": "matrik baku tanpa tanda",
+        "matrik": {
+            "persiapan": [{"uraian": "Rapat", "bulan": []}, {"uraian": "Anggaran", "bulan": []}],
+            "pelaksanaan": [{"uraian": "Persiapan", "bulan": []}],
+            "evaluasi_pelaporan": [{"uraian": "Laporan", "bulan": []}]
+        },
+        "jumlahTanda": 0,
+        "lengkap": false
+    },
+    {
+        "keterangan": "satu tahapan belum bertanda",
+        "matrik": {
+            "persiapan": [{"uraian": "Rapat", "bulan": [6, 7]}],
+            "pelaksanaan": [{"uraian": "Persiapan", "bulan": [7]}],
+            "evaluasi_pelaporan": [{"uraian": "Laporan", "bulan": []}]
+        },
+        "jumlahTanda": 3,
+        "lengkap": false
+    },
+    {
+        "keterangan": "setiap tahapan bertanda di salah satu butir",
+        "matrik": {
+            "persiapan": [{"uraian": "Rapat", "bulan": [6]}, {"uraian": "Anggaran", "bulan": []}],
+            "pelaksanaan": [{"uraian": "Persiapan", "bulan": [7, 8]}, {"uraian": "Pengawasan", "bulan": [8]}],
+            "evaluasi_pelaporan": [{"uraian": "Penyusunan", "bulan": []}, {"uraian": "Penyerahan", "bulan": [9]}]
+        },
+        "jumlahTanda": 5,
+        "lengkap": true
+    },
+    {
+        "keterangan": "tahapan tanpa butir tidak lengkap; bulan ganda/di luar 1–12 tidak dihitung",
+        "matrik": {
+            "persiapan": [{"uraian": "Rapat", "bulan": [6, 6, 13, 0]}],
+            "pelaksanaan": [{"uraian": "Persiapan", "bulan": [12, 1]}],
+            "evaluasi_pelaporan": []
+        },
+        "jumlahTanda": 3,
+        "lengkap": false
+    }
+]
