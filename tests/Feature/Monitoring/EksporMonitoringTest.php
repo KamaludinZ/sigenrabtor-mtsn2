@@ -87,7 +87,11 @@ class EksporMonitoringTest extends TestCase
         $this->assertSame(['Kelompok belanja', 'DIPA', 'Komite', 'Total', 'Persen (%)', 'Jumlah item', 'Jumlah kegiatan'], $kelompok[0]);
         $this->assertSame(['Bahan', 2_100_000, 9_380_000, 11_480_000, 42.9, 20, 3], $kelompok[1]);
         $this->assertSame(['Jumlah', 6_300_000, 20_450_000, 26_750_000, 100, 33, 3], $kelompok[4]);
-        $this->assertSame(['521211', 'Belanja Bahan', 2_100_000, 9_380_000, 11_480_000], array_slice($kelompok[7], 0, 5));
+        $this->assertCount(5, $kelompok, 'Kepala + 3 kelompok + jumlah.');
+        $kode = $this->isi($buku, 'Kode Akun');
+        $this->assertSame(['Kode akun', 'Uraian', 'DIPA', 'Komite', 'Total'], $kode[0]);
+        $this->assertSame(['521211', 'Belanja Bahan', 2_100_000, 9_380_000, 11_480_000], $kode[1]);
+        $this->assertSame(['', 'Jumlah', 6_300_000, 20_450_000, 26_750_000], $kode[5]);
 
         $operator = $this->isi($buku, 'Operator');
         $this->assertSame(['Muslimin, M.Pd.', 'Leading', '1.6 Tim Penjamin Mutu', 2, 2], array_slice($operator[1], 0, 5));

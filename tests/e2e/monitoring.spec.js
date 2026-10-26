@@ -238,4 +238,16 @@ test.describe('Monitoring Anggaran', () => {
         const { statSync } = await import('node:fs');
         expect(statSync(berkas).size).toBeGreaterThan(5000);
     });
+
+    test('ekspor PDF: berkas A4 dari saringan yang sama', async ({ page }) => {
+        test.setTimeout(120_000);
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring?leading=1.6');
+        const tombol = page.getByTestId('ekspor-pdf');
+        await expect(tombol).toHaveAttribute('href', /leading=1\.6/);
+        const [unduhan] = await Promise.all([page.waitForEvent('download', { timeout: 90_000 }), tombol.click()]);
+        expect(unduhan.suggestedFilename()).toBe('monitoring-anggaran-TA2026-leading-1.6.pdf');
+        const { readFileSync } = await import('node:fs');
+        expect(readFileSync(await unduhan.path()).subarray(0, 4).toString()).toBe('%PDF');
+    });
 });

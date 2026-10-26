@@ -30,10 +30,10 @@
                title="Unduh ringkasan, per leading, rincian kegiatan, kelompok belanja, dan operator sesuai saringan">
                 <x-ui.icon name="sheet" class="size-4" /> Ekspor Excel
             </a>
-            <button type="button" class="btn-secondary" disabled title="Ekspor PDF sedang disiapkan">
-                <x-ui.icon name="download" class="size-4" /> PDF
-                <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-stone-500 uppercase">Segera</span>
-            </button>
+            <a href="{{ route('monitoring.ekspor.pdf', $this->queryEkspor()) }}" class="btn-secondary" data-testid="ekspor-pdf"
+               title="Unduh PDF A4 lanskap berisi lembar yang sama dengan Excel">
+                <x-ui.icon name="printer" class="size-4" /> Ekspor PDF
+            </a>
         </div>
     </div>
 

@@ -19,6 +19,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Pengubah PDF
+    |--------------------------------------------------------------------------
+    |
+    | LibreOffice headless mengubah .xlsx/.docx menjadi PDF (PRD "Mesin Dokumen").
+    | Isi lokasi program bila `soffice` tidak ada di PATH server.
+    |
+    */
+
+    'pdf' => [
+        'soffice' => env('SIRABTOR_SOFFICE', 'soffice'),
+        'batas_detik' => (int) env('SIRABTOR_PDF_BATAS_DETIK', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Data tiruan (tahap frontend)
     |--------------------------------------------------------------------------
     |

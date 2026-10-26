@@ -7,12 +7,14 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\MasterKodeRepository;
 use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\NomorHalamanRepository;
+use App\Contracts\PengubahPdf;
 use App\Contracts\PenyusunUsulanJadwal;
 use App\Contracts\RabRepository;
 use App\Contracts\RiwayatPengaturanRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
+use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Stub\StubDaftarIsiRepository;
 use App\Support\Stub\StubKegiatanRepository;
 use App\Support\Stub\StubMasterKodeRepository;
@@ -49,6 +51,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(RiwayatPengaturanRepository::class, StubRiwayatPengaturanRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         $this->app->singleton(PenyusunUsulanJadwal::class, StubUsulanJadwal::class);
+
+        // Konversi PDF (ekspor Monitoring; kelak cetak KAK/RAB & buku) lewat LibreOffice headless.
+        $this->app->singleton(PengubahPdf::class, PengubahPdfLibreOffice::class);
     }
 
     /**
