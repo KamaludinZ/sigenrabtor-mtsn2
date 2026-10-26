@@ -30,6 +30,13 @@ interface TemplateCoverRepository
      */
     public function tambah(int $tahun, string $nama, UploadedFile $gambar, array $teksItems): string;
 
+    /**
+     * Ganti susunan kotak teks satu cover (editor tata letak); gambarnya tetap.
+     *
+     * @param  list<array<string, mixed>>  $teksItems  Sudah dirapikan TeksCover::rapikan().
+     */
+    public function ubahTeks(string $id, array $teksItems): void;
+
     /** Hapus cover beserta gambarnya; bila cover default yang dihapus, cover terbaru berikutnya menjadi default. */
     public function hapus(string $id): void;
 }

@@ -117,4 +117,75 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByTestId('cover-kosong')).toBeVisible({ timeout: 30_000 });
         await expect(page.getByTestId('sumber-pratinjau')).toHaveAttribute('data-jenis', 'baku');
     });
+
+    test('editor cover: seret/isian posisi, ukuran huruf, sembunyikan kolom, simpan tata letak', async ({ page }, testInfo) => {
+        const mobile = testInfo.project.name === 'mobile';
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/template');
+        await page.getByTestId('input-gambar-cover').setInputFiles('tests/fixtures/cover-contoh.png');
+        await expect(page.getByTestId('info-gambar')).toBeVisible({ timeout: 30_000 });
+        await page.getByRole('button', { name: 'Simpan sebagai cover default' }).click();
+        await expect(page.getByText('Cover tersimpan.')).toBeVisible({ timeout: 30_000 });
+
+        try {
+            await page.getByRole('button', { name: 'Atur kotak teks' }).click();
+            const editor = page.getByTestId('editor-cover');
+            await expect(editor).toBeVisible();
+            const kanvas = editor.getByTestId('kanvas-cover');
+            const judul = kanvas.locator('[data-field="judul"]');
+            await expect(kanvas.locator('[data-field]')).toHaveCount(8);
+            const atasAwal = await judul.evaluate((el) => parseFloat(el.style.top));
+            expect(atasAwal).toBe(22);
+
+            await editor.getByRole('button', { name: 'Judul dokumen' }).click();
+            await expect(judul).toHaveAttribute('data-terpilih', 'ya');
+            const atas = editor.getByTestId('properti-kotak').locator('[data-properti="y"]');
+            if (!mobile) {
+                // Seret kotak judul ke bawah ±10% tinggi halaman.
+                await judul.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+                const kotak = await judul.boundingBox();
+                const halaman = await kanvas.boundingBox();
+                await page.mouse.move(kotak.x + kotak.width / 2, kotak.y + kotak.height / 2);
+                await page.mouse.down();
+                await page.mouse.move(kotak.x + kotak.width / 2, kotak.y + kotak.height / 2 + halaman.height * 0.05, { steps: 4 });
+                await page.mouse.move(kotak.x + kotak.width / 2, kotak.y + kotak.height / 2 + halaman.height * 0.1, { steps: 4 });
+                await page.mouse.up();
+                await expect.poll(() => judul.evaluate((el) => parseFloat(el.style.top))).toBeGreaterThan(30);
+                await expect(atas).not.toHaveValue('22');
+            }
+            // Isian angka (juga cara di layar sentuh): posisi atas tepat 30%.
+            await atas.fill('30');
+            await atas.press('Tab');
+            await expect.poll(() => judul.evaluate((el) => el.style.top)).toBe('30%');
+            const ukuran = editor.getByTestId('properti-kotak').locator('[data-properti="font_size"]');
+            await ukuran.fill('22');
+            await ukuran.press('Tab');
+            // Browser menormalkan calc(22 * 100cqw / 595) menjadi calc(3.69748cqw).
+            await expect.poll(() => judul.evaluate((el) => el.style.fontSize)).toContain((22 * 100 / 595).toFixed(3));
+
+            await editor.getByLabel('Tampilkan “Disusun oleh”').uncheck();
+            await expect(kanvas.locator('[data-field]')).toHaveCount(7);
+            await expect(editor.getByTestId('tata-letak-berubah')).toBeVisible();
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+            expect(overflow).toBeLessThanOrEqual(0);
+            await editor.screenshot({ path: `storage/playwright/shots/editor-cover-${testInfo.project.name}.png` });
+
+            await editor.getByRole('button', { name: 'Simpan tata letak' }).click();
+            await expect(page.getByText('Tata letak “Cover default 2026” tersimpan.')).toBeVisible({ timeout: 30_000 });
+            const pratinjau = page.getByTestId('pratinjau-cover');
+            await expect(pratinjau.locator('[data-field]')).toHaveCount(7);
+            await expect.poll(() => pratinjau.locator('[data-field="judul"]').evaluate((el) => el.style.top)).toBe('30%');
+
+            await page.reload();
+            await expect.poll(() => page.getByTestId('pratinjau-cover').locator('[data-field="judul"]').evaluate((el) => el.style.top)).toBe('30%');
+        } finally {
+            await page.goto('/pengaturan/template');
+            const hapus = page.getByTestId('cover-tersimpan').getByRole('button', { name: 'Hapus Cover default 2026' });
+            if (await hapus.count()) {
+                await hapus.click();
+                await page.getByTestId('cover-tersimpan').getByRole('button', { name: 'Hapus', exact: true }).click();
+                await expect(page.getByTestId('cover-kosong')).toBeVisible({ timeout: 30_000 });
+            }
+        }
+    });
 });

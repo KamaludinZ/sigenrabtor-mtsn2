@@ -53,6 +53,14 @@ class StubTemplateCoverRepository implements TemplateCoverRepository
         return $id;
     }
 
+    public function ubahTeks(string $id, array $teksItems): void
+    {
+        $this->tulis(array_map(
+            fn (array $c) => $c['id'] === $id ? ['teks_items' => array_values($teksItems), 'diperbarui_pada' => now()->toIso8601String()] + $c : $c,
+            $this->baca(),
+        ));
+    }
+
     public function hapus(string $id): void
     {
         $cover = $this->temukan($id);

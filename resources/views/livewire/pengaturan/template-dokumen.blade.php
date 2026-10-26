@@ -30,6 +30,120 @@
         </x-slot:tab>
     </x-pengaturan.kepala>
 
+    @if ($coverDiatur && ($coverEditor = collect($covers)->firstWhere('id', $coverDiatur)))
+        {{--
+            Editor tata letak: kanvas & panel properti dirender Alpine dari $wire.kotak (state lokal, wire:ignore). Kunci
+            memuat contoh kegiatan × sumber agar editor dibuat ulang dengan isi contoh baru — perubahan lokal ikut terkirim
+            bersama pergantian contoh sehingga tidak hilang.
+        --}}
+        <section class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-brand-200" aria-labelledby="judul-editor-cover" data-testid="editor-cover">
+            <header class="flex flex-wrap items-center gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
+                <div class="min-w-0 flex-1">
+                    <h2 id="judul-editor-cover" class="text-base font-semibold text-stone-900">Atur kotak teks — {{ $coverEditor['nama'] }}</h2>
+                    <p class="mt-0.5 text-sm text-stone-500">Seret kotak untuk memindahkan, tarik pegangan kanan untuk mengubah lebar. Isi kotak hanya contoh; saat dicetak diisi data tiap kegiatan.</p>
+                </div>
+                <label class="min-w-0 sm:w-64">
+                    <span class="sr-only">Contoh kegiatan</span>
+                    <select wire:model.live="contohKegiatan" class="form-input py-1.5 text-xs" aria-label="Contoh kegiatan untuk editor">
+                        @foreach ($this->daftarContoh as $contoh)
+                            <option value="{{ $contoh['id'] }}">{{ $contoh['nama'] }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="btn-ghost" wire:click="batalAtur">Batal</button>
+                    <button type="button" class="btn-primary" wire:click="simpanTataLetak" wire:loading.attr="disabled" wire:target="simpanTataLetak">
+                        <x-ui.icon name="save" class="size-4" /> Simpan tata letak
+                    </button>
+                </div>
+            </header>
+            @error('kotak')
+                <p class="flex items-center gap-2 border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-700 sm:px-6" role="alert"><x-ui.icon name="alert" class="size-4" /> {{ $message }}</p>
+            @enderror
+
+            <div wire:ignore wire:key="editor-{{ $coverDiatur }}-{{ $contohKegiatan }}-{{ $contohSumber }}"
+                 x-data="editorCover({ bawaan: @js(TeksCover::bawaan()), label: @js(TeksCover::FIELD), nilai: @js($this->nilaiContoh) })"
+                 x-on:pointermove.window="gerak($event)" x-on:pointerup.window="selesai()" x-on:pointercancel.window="selesai()"
+                 class="grid gap-6 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                <div class="min-w-0">
+                    <div x-ref="kanvas" tabindex="0" x-on:keydown="tombol($event)" data-testid="kanvas-cover"
+                         aria-label="Kanvas cover. Panah menggeser kotak terpilih 0,5%, Shift + panah 2%."
+                         class="@container relative mx-auto aspect-[210/297] w-full max-w-md overflow-hidden bg-white shadow-sm ring-1 ring-stone-200 select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                        <img src="{{ route('pengaturan.template.cover.gambar', $coverEditor['id']) }}" alt="Desain cover" draggable="false" class="pointer-events-none absolute inset-0 size-full object-cover">
+                        <template x-for="(k, i) in kotak" x-bind:key="k.field">
+                            <div class="absolute cursor-move touch-none font-serif leading-tight break-words whitespace-pre-line"
+                                 x-bind:style="gaya(k)" x-bind:data-field="k.field" x-bind:data-terpilih="i === pilih ? 'ya' : 'tidak'"
+                                 x-bind:class="i === pilih ? 'outline-2 outline-offset-1 outline-brand-600 bg-brand-50/40' : 'outline-1 outline-offset-1 outline-dashed outline-brand-500/70 hover:bg-brand-50/30'"
+                                 x-on:pointerdown="mulai($event, i, 'pindah')">
+                                <span x-text="nilai[k.field] ?? ''"></span>
+                                <span x-show="i === pilih" x-on:pointerdown.stop="mulai($event, i, 'lebar')" data-testid="pegangan-lebar"
+                                      class="absolute top-1/2 -right-2 h-5 w-2.5 -translate-y-1/2 cursor-ew-resize rounded-sm bg-brand-600 ring-2 ring-white" aria-hidden="true"></span>
+                            </div>
+                        </template>
+                    </div>
+                    <p class="mx-auto mt-2 max-w-md text-center text-xs text-stone-500">Klik kanvas lalu pakai panah untuk menggeser halus (Shift: lebih jauh).</p>
+                </div>
+
+                <div class="min-w-0 space-y-5">
+                    <section aria-labelledby="judul-kolom-cover">
+                        <h3 id="judul-kolom-cover" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Kolom di cover</h3>
+                        <ul class="mt-2 space-y-1" data-testid="daftar-kolom-cover">
+                            @foreach (TeksCover::FIELD as $field => $labelField)
+                                <li class="flex items-center gap-2 rounded-lg px-1.5 py-1" x-bind:class="terpilih && terpilih.field === '{{ $field }}' ? 'bg-brand-50' : ''">
+                                    <input type="checkbox" id="tampil-{{ $field }}" class="size-4 rounded accent-brand-700" x-bind:checked="tampil('{{ $field }}')" x-on:change="alihTampil('{{ $field }}')">
+                                    <label for="tampil-{{ $field }}" class="sr-only">Tampilkan {{ $labelField }}</label>
+                                    <button type="button" class="min-w-0 flex-1 truncate text-left text-sm text-stone-700 hover:text-brand-700 disabled:text-stone-400"
+                                            x-bind:disabled="! tampil('{{ $field }}')" x-on:click="pilihField('{{ $field }}')">{{ $labelField }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </section>
+
+                    <section aria-labelledby="judul-kotak-terpilih" x-show="terpilih" data-testid="properti-kotak">
+                        <h3 id="judul-kotak-terpilih" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Kotak terpilih: <span class="normal-case tracking-normal text-stone-700" x-text="terpilih ? label(terpilih.field) : ''"></span></h3>
+                        <div class="mt-2 grid grid-cols-2 gap-3">
+                            @foreach (['x' => 'Kiri (%)', 'y' => 'Atas (%)', 'width' => 'Lebar (%)', 'font_size' => 'Ukuran huruf (pt)'] as $kolom => $labelKolom)
+                                <label class="text-xs text-stone-600">
+                                    {{ $labelKolom }}
+                                    <input type="number" step="0.5" inputmode="decimal" class="form-input mt-1 py-1.5" data-properti="{{ $kolom }}"
+                                           x-bind:value="terpilih ? terpilih.{{ $kolom }} : ''" x-on:change="aturAngka('{{ $kolom }}', $event.target.value)">
+                                </label>
+                            @endforeach
+                        </div>
+                        <div class="mt-3 flex flex-wrap items-center gap-3">
+                            <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Perataan">
+                                @foreach (['left' => 'Kiri', 'center' => 'Tengah', 'right' => 'Kanan'] as $rata => $labelRata)
+                                    <button type="button" class="rounded-md px-2.5 py-1 text-xs font-semibold" x-on:click="atur(pilih, 'align', '{{ $rata }}')"
+                                            x-bind:aria-pressed="terpilih && terpilih.align === '{{ $rata }}' ? 'true' : 'false'"
+                                            x-bind:class="terpilih && terpilih.align === '{{ $rata }}' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-800'">{{ $labelRata }}</button>
+                                @endforeach
+                            </div>
+                            <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Ketebalan">
+                                @foreach (['normal' => 'Biasa', 'bold' => 'Tebal'] as $tebal => $labelTebal)
+                                    <button type="button" class="rounded-md px-2.5 py-1 text-xs font-semibold" x-on:click="atur(pilih, 'weight', '{{ $tebal }}')"
+                                            x-bind:aria-pressed="terpilih && terpilih.weight === '{{ $tebal }}' ? 'true' : 'false'"
+                                            x-bind:class="terpilih && terpilih.weight === '{{ $tebal }}' ? 'bg-white text-stone-900 shadow-xs' : 'text-stone-500 hover:text-stone-800'">{{ $labelTebal }}</button>
+                                @endforeach
+                            </div>
+                            <label class="flex items-center gap-2 text-xs text-stone-600">
+                                Warna
+                                <input type="color" class="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0" x-bind:value="terpilih ? terpilih.color : '#1c1917'"
+                                       x-on:input="atur(pilih, 'color', $event.target.value)" aria-label="Warna teks">
+                            </label>
+                        </div>
+                        <button type="button" class="btn-secondary mt-3 px-3 py-1.5 text-xs" x-on:click="tengahkan()">Tengahkan di halaman</button>
+                    </section>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-4">
+                        <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" x-on:click="kembalikan()">Kembalikan susunan bawaan</button>
+                        <span x-show="berubah" x-cloak class="inline-flex items-center gap-1 text-xs font-medium text-gold-700" data-testid="tata-letak-berubah">
+                            <span class="size-1.5 rounded-full bg-gold-500"></span> Belum disimpan
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    @else
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
         <div class="min-w-0 space-y-6">
             {{-- Unggah desain cover --}}
@@ -191,10 +305,20 @@
                     </div>
                     <x-dokumen.cover :gambar="$pratinjau['url']" :teks="$pratinjau['teks']" :nilai="$this->nilaiContoh" :garis="$tampilkanKotak" class="max-w-sm" />
                 </div>
+                @if ($pratinjau['jenis'] === 'tersimpan')
+                    <button type="button" class="btn-secondary mt-3 w-full justify-center" wire:click="aturKotak('{{ $pratinjau['cover']['id'] }}')">
+                        <x-ui.icon name="pencil" class="size-4" /> Atur kotak teks
+                    </button>
+                @endif
                 <p class="mt-3 text-xs text-stone-500">
-                    Kotak teks memakai susunan bawaan ({{ count(TeksCover::FIELD) }} kolom: kop, judul, nama kegiatan, sumber dana, “Disusun oleh”, leading, kota, tahun). Isinya diambil dari data tiap kegiatan saat dicetak.
+                    @if ($pratinjau['jenis'] === 'tersimpan')
+                        Posisi, lebar, dan gaya kotak bisa diatur per cover. Isinya diambil dari data tiap kegiatan saat dicetak.
+                    @else
+                        Kotak teks memakai susunan bawaan ({{ count(TeksCover::FIELD) }} kolom: kop, judul, nama kegiatan, sumber dana, “Disusun oleh”, leading, kota, tahun); posisinya bisa diatur setelah cover disimpan.
+                    @endif
                 </p>
             </section>
         </aside>
     </div>
+    @endif
 </div>

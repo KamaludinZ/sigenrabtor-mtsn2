@@ -1,4 +1,5 @@
 import { akhirPekan, angka, jumlahRab, rapikanKetikan, rupiah, statusPagu, tanggalPanjang, terbilang } from './format';
+import editorCover from './editor-cover';
 import catatanKonteks, { aspekTerisi, memuatNip } from './konteks';
 import panelKonsistensi, { periksaKonsistensiBulan } from './konsistensi-bulan';
 import gridMatrik, { ringkasanMatrik } from './matrik';
@@ -30,6 +31,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('paguKegiatan', paguKegiatan);
     window.Alpine.data('gridMatrik', gridMatrik);
     window.Alpine.data('panelKonsistensi', panelKonsistensi);
+    window.Alpine.data('editorCover', editorCover);
 
     // x-angka-bulat: isian angka bulat — tolak ketikan e/+/-/titik/koma dan sisakan digit saat menempel ("1.000" → "1000").
     window.Alpine.directive('angka-bulat', (el) => {

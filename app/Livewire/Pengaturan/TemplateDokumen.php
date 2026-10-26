@@ -52,6 +52,17 @@ class TemplateDokumen extends Component
 
     public bool $tampilkanKotak = true;
 
+    /** Cover yang tata letak kotak teksnya sedang diatur di editor; null = editor tertutup. */
+    #[Locked]
+    public ?string $coverDiatur = null;
+
+    /**
+     * Kotak teks yang sedang diatur (state lokal editor: diseret/diubah di klien, terkirim saat disimpan).
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $kotak = [];
+
     /** Cover yang menunggu konfirmasi hapus. */
     #[Locked]
     public ?string $akanDihapus = null;
@@ -67,9 +78,10 @@ class TemplateDokumen extends Component
         $this->namaCover = $this->namaBaku();
     }
 
-    /** Gambar baru diperiksa begitu dipilih; pratinjau beralih ke gambar itu. */
+    /** Gambar baru diperiksa begitu dipilih; pratinjau beralih ke gambar itu (editor tata letak ditutup). */
     public function updatedGambar(): void
     {
+        $this->batalAtur();
         $this->coverDipilih = null;
         $this->validateOnly('gambar');
     }
@@ -109,6 +121,52 @@ class TemplateDokumen extends Component
         }
     }
 
+    /** Buka editor tata letak untuk cover tersimpan. */
+    public function aturKotak(string $id): void
+    {
+        $cover = collect($this->covers)->firstWhere('id', $id);
+
+        if ($cover === null) {
+            return;
+        }
+
+        $this->batalUnggah();
+        $this->akanDihapus = null;
+        $this->coverDipilih = $id;
+        $this->coverDiatur = $id;
+        $this->kotak = TeksCover::rapikan($cover['teks_items']);
+    }
+
+    public function batalAtur(): void
+    {
+        $this->coverDiatur = null;
+        $this->kotak = [];
+        $this->resetValidation('kotak');
+    }
+
+    /** Simpan susunan dari editor; nilai dari klien selalu dirapikan (kolom dikenal, posisi & ukuran dalam batas). */
+    public function simpanTataLetak(TemplateCoverRepository $repo): void
+    {
+        $cover = collect($this->covers)->firstWhere('id', $this->coverDiatur);
+
+        if ($cover === null) {
+            return;
+        }
+
+        $kotak = TeksCover::rapikan($this->kotak);
+
+        if ($kotak === []) {
+            $this->addError('kotak', 'Tampilkan minimal satu kotak teks di cover.');
+
+            return;
+        }
+
+        $repo->ubahTeks($cover['id'], $kotak);
+        $this->batalAtur();
+        unset($this->covers);
+        $this->dispatch('notify', message: "Tata letak “{$cover['nama']}” tersimpan.", type: 'success');
+    }
+
     public function mintaHapus(string $id): void
     {
         $this->akanDihapus = collect($this->covers)->contains('id', $id) ? $id : null;
@@ -129,6 +187,9 @@ class TemplateDokumen extends Component
 
         $repo->hapus($cover['id']);
         $this->akanDihapus = null;
+        if ($this->coverDiatur === $cover['id']) {
+            $this->batalAtur();
+        }
         $this->coverDipilih = $this->coverDipilih === $cover['id'] ? null : $this->coverDipilih;
         unset($this->covers);
         $this->namaCover = $this->gambar ? $this->namaCover : $this->namaBaku();
