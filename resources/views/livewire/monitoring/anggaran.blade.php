@@ -5,9 +5,6 @@
 @php
     $ringkasan = $this->ringkasan;
     $aktif = $this->saringanAktif();
-    $bagianBerikut = [
-        ['kunci' => 'operator', 'judul' => 'Rekap per operator', 'isi' => 'Jumlah kegiatan dan anggaran per pembuat kegiatan.', 'lebar' => false],
-    ];
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -82,19 +79,10 @@
     <x-monitoring.tabel-leading :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" :leading="$leading === '' ? null : $leading"
                               :urut="$urutLeading" :arah="$arahLeading" class="mt-6" />
 
-    {{-- Rekap per kelompok belanja & bagian rekap berikutnya (diisi bertahap) --}}
+    {{-- Rekap per kelompok belanja & per operator --}}
     <div class="mt-6 grid items-start gap-6 lg:grid-cols-2">
         <x-monitoring.rekap-kelompok :ringkasan="$ringkasan" />
-        @foreach ($bagianBerikut as $bagian)
-            <section id="monitoring-{{ $bagian['kunci'] }}" class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200 {{ $bagian['lebar'] ? 'lg:col-span-2' : '' }}"
-                     aria-labelledby="judul-monitoring-{{ $bagian['kunci'] }}" data-testid="bagian-monitoring-{{ $bagian['kunci'] }}">
-                <header class="flex items-center justify-between gap-2 border-b border-stone-100 px-5 py-4 sm:px-6">
-                    <h2 id="judul-monitoring-{{ $bagian['kunci'] }}" class="text-base font-semibold text-stone-900">{{ $bagian['judul'] }}</h2>
-                    <span class="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-stone-500 uppercase">Segera</span>
-                </header>
-                <p class="px-5 py-6 text-sm text-stone-500 sm:px-6">{{ $bagian['isi'] }}</p>
-            </section>
-        @endforeach
+        <x-monitoring.rekap-operator :operator="$this->operator" />
     </div>
 
     {{-- Rincian per kegiatan --}}

@@ -168,4 +168,23 @@ test.describe('Monitoring Anggaran', () => {
         await expect(bagian.getByTestId('batang-gabungan')).toHaveCount(0);
         await expect(bagian.getByTestId('batang-komite')).toBeVisible();
     });
+
+    test('rekap per operator: pembuat kegiatan, jumlah kegiatan per status, total RAB, perubahan terakhir', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const bagian = page.getByTestId('bagian-monitoring-operator');
+        await expect(bagian.getByRole('heading', { name: 'Rekap per operator' })).toBeVisible();
+        await expect(bagian.locator('li[data-operator="1"]')).toContainText('Muslimin, M.Pd.');
+        await expect(bagian.locator('li[data-operator="2"]')).toContainText('Koordinator PUSKOM');
+        await expect(bagian.locator('li[data-operator="2"]')).toContainText('melebihi pagu');
+        await expect(bagian.getByTestId('jumlah-operator')).toContainText('operator');
+        await expect(page.getByText('Segera disiapkan')).toHaveCount(0);
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await bagian.screenshot({ path: `storage/playwright/shots/monitoring-operator-${testInfo.project.name}.png` });
+
+        await page.getByTestId('saringan-monitoring').getByLabel('Status dokumen').selectOption('final');
+        await expect(bagian.getByTestId('operator-kosong')).toBeVisible();
+    });
 });

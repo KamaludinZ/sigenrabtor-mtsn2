@@ -6,6 +6,8 @@ use App\Contracts\KegiatanRepository;
 use App\Livewire\Monitoring\Anggaran;
 use App\Support\Monitoring\RingkasanAnggaran;
 use App\Support\Rab\RekapKelompok;
+use App\Support\Stub\StubData;
+use App\Support\Stub\StubPengaturan;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -345,5 +347,54 @@ class MonitoringAnggaranTest extends TestCase
             ->assertSeeHtmlInOrder(['data-kelompok="jasa"', 'Rp3.600.000'])
             ->set('status', 'final')
             ->assertSeeHtml('data-testid="kelompok-kosong"');
+    }
+
+    public function test_pembuat_kegiatan_tercatat_sekali(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $this->assertSame([1, 1, 2], [$repo->temukan(1)['user_id'], $repo->temukan(2)['user_id'], $repo->temukan(3)['user_id']]);
+
+        $id = $repo->simpan(['nama_kegiatan' => 'Baru oleh leading']);
+        $this->assertSame(1, $repo->temukan($id)['user_id']);
+        session(['stub_role' => 'admin']);
+        $repo->simpan(['nama_kegiatan' => 'Diubah admin', 'user_id' => 2], $id);
+        $this->assertSame(1, $repo->temukan($id)['user_id'], 'Mengubah kegiatan tidak mengganti pembuatnya.');
+        $this->assertSame(2, $repo->temukan($repo->simpan(['nama_kegiatan' => 'Baru oleh admin']))['user_id']);
+    }
+
+    public function test_rekap_per_operator(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $operator = RingkasanAnggaran::dari($repo->semua())->perOperator(StubPengaturan::pengguna());
+
+        $this->assertSame([1, 2], array_column($operator, 'user_id'), 'Total RAB terbesar lebih dulu.');
+        [$leading, $admin] = $operator;
+        $this->assertSame(['Muslimin, M.Pd.', 'leading', 'Tim Penjamin Mutu', 2, ['1.6'], 18_500_000, 17_900_000, 600_000, 3, 0, 0],
+            [$leading['nama'], $leading['peran'], $leading['jabatan'], $leading['jumlah'], $leading['leading'], $leading['pagu'], $leading['total'], $leading['selisih'], $leading['rab'], $leading['melebihi'], $leading['tanpa_pagu']]);
+        $this->assertStringStartsWith(StubData::tahunAktif()['tahun'].'-01-05', $leading['terakhir'], 'Perubahan terakhir = kegiatan terbaru miliknya.');
+        $this->assertSame(['Koordinator PUSKOM', 'admin', 1, 8_850_000, null, 1, 1, 7_950_000],
+            [$admin['nama'], $admin['peran'], $admin['jumlah'], $admin['total'], $admin['selisih'], $admin['melebihi'], $admin['tanpa_pagu'], $admin['sumber']['Komite']['total']]);
+
+        $repo->simpan(['nama_kegiatan' => 'Lama', 'leading' => '1.1', 'user_id' => 99, 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 50_000_000]]]);
+        $operator = RingkasanAnggaran::dari($repo->semua())->perOperator(StubPengaturan::pengguna());
+        $this->assertSame([1, 2, null], array_column($operator, 'user_id'), 'Pembuat yang tidak dikenal di baris terakhir.');
+        $this->assertSame(['Pembuat tidak tercatat', 1, ['1.1']], [$operator[2]['nama'], $operator[2]['jumlah'], $operator[2]['leading']]);
+        $this->assertSame(RingkasanAnggaran::dari($repo->semua())->total()['total'], array_sum(array_column($operator, 'total')));
+    }
+
+    public function test_kartu_rekap_operator_di_halaman(): void
+    {
+        $tahun = StubData::tahunAktif()['tahun'];
+
+        Livewire::test(Anggaran::class)
+            ->assertSeeHtml('data-testid="bagian-monitoring-operator"')
+            ->assertDontSee('Segera disiapkan')
+            ->assertSeeHtmlInOrder(['data-operator="1"', 'Muslimin, M.Pd.', 'Leading', 'untuk 1.6 Tim Penjamin Mutu', 'Rp17.900.000', '2 kegiatan', 'data-status-operator="draf"', '3 RAB', "Terakhir mengubah 5 Januari {$tahun}"])
+            ->assertSeeHtmlInOrder(['data-operator="2"', 'Koordinator PUSKOM', 'Admin', 'Admin Aplikasi ·', 'untuk 1.6 Tim Penjamin Mutu', 'Rp8.850.000', '1 kegiatan', '1 melebihi pagu', '1 belum berpagu'])
+            ->assertSeeHtmlInOrder(['data-testid="jumlah-operator"', 'Jumlah 2 operator · 3 kegiatan', 'Rp26.750.000'])
+            ->set('sumber', 'DIPA')
+            ->assertSeeHtmlInOrder(['data-operator="1"', 'Rp5.400.000', 'data-operator="2"', 'Rp900.000'])
+            ->set('status', 'final')
+            ->assertSeeHtml('data-testid="operator-kosong"');
     }
 }

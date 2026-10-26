@@ -18,11 +18,14 @@ class StubKegiatanRepository implements KegiatanRepository
     {
         $semua = $this->baca();
 
+        // Pembuat (activities.user_id) dicatat sekali saat kegiatan dibuat dan tidak berubah oleh penyimpanan berikutnya.
         if ($id === null || ! isset($semua[$id])) {
             $id = $semua === [] ? 1 : max(array_keys($semua)) + 1;
             $data['dibuat_pada'] = now()->toIso8601String();
+            $data['user_id'] ??= StubData::currentUser()['id'];
         } else {
             $data['dibuat_pada'] = $semua[$id]['dibuat_pada'] ?? now()->toIso8601String();
+            $data['user_id'] = $semua[$id]['user_id'] ?? null;
         }
 
         $semua[$id] = ['id' => $id, 'status' => $data['status'] ?? 'draf', 'diperbarui_pada' => now()->toIso8601String()] + $data;
@@ -114,6 +117,7 @@ class StubKegiatanRepository implements KegiatanRepository
 
     /**
      * Contoh Batas Pagu (PRD F12): RAB Komite melebihi pagu, pagu DIPA belum diisi seperti draf dari Cascade Perkin.
+     * Dibuat oleh admin (contoh operator selain akun leading di rekap Monitoring).
      *
      * @return array<string, mixed>
      */
@@ -125,6 +129,7 @@ class StubKegiatanRepository implements KegiatanRepository
             'id' => 3,
             'status' => 'draf',
             'dibuat_pada' => "{$tahun}-01-08T13:00:00+07:00",
+            'user_id' => 2,
             'diperbarui_pada' => "{$tahun}-01-08T13:00:00+07:00",
             'nama_kegiatan' => 'Review RKJM dan Penyusunan RKTM',
             'nama_kegiatan_cover' => 'REVIEW RKJM DAN PENYUSUNAN RKTM',
@@ -172,6 +177,7 @@ class StubKegiatanRepository implements KegiatanRepository
             'id' => 2,
             'status' => 'draf',
             'dibuat_pada' => "{$tahun}-01-05T09:00:00+07:00",
+            'user_id' => 1,
             'diperbarui_pada' => "{$tahun}-01-05T09:00:00+07:00",
             'nama_kegiatan' => 'Supervisi Akademik dan Refleksi Pembelajaran',
             'nama_kegiatan_cover' => 'SUPERVISI AKADEMIK DAN REFLEKSI PEMBELAJARAN',
@@ -219,6 +225,7 @@ class StubKegiatanRepository implements KegiatanRepository
             'id' => 1,
             'status' => 'draf',
             'dibuat_pada' => "{$tahun}-01-03T08:00:00+07:00",
+            'user_id' => 1,
             'diperbarui_pada' => "{$tahun}-01-03T08:00:00+07:00",
             'nama_kegiatan' => 'Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran',
             'nama_kegiatan_cover' => 'WORKSHOP PENYUSUNAN KURIKULUM MADRASAH DAN PERANGKAT PEMBELAJARAN',

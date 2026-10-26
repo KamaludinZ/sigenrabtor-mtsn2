@@ -40,7 +40,7 @@ final readonly class RingkasanAnggaran
     ];
 
     /**
-     * @param  list<array{id: int, nama: string, kode_rktm: string|null, leading: string|null, status: StatusKegiatan, anggaran: list<AnggaranSumber>}>  $kegiatan
+     * @param  list<array{id: int, nama: string, kode_rktm: string|null, leading: string|null, user_id: int|null, diperbarui: string|null, status: StatusKegiatan, anggaran: list<AnggaranSumber>}>  $kegiatan
      */
     public function __construct(
         public array $kegiatan,
@@ -76,6 +76,8 @@ final readonly class RingkasanAnggaran
                 'nama' => trim((string) ($k['nama_kegiatan'] ?? '')) ?: 'Tanpa nama',
                 'kode_rktm' => ($k['kode_rktm'] ?? null) ?: null,
                 'leading' => $k['leading'] ?? null,
+                'user_id' => isset($k['user_id']) ? (int) $k['user_id'] : null,
+                'diperbarui' => $k['diperbarui_pada'] ?? null,
                 'status' => $statusKegiatan,
                 'anggaran' => $anggaran,
             ];
@@ -463,6 +465,67 @@ final readonly class RingkasanAnggaran
         unset($kelompok);
 
         return $rekap;
+    }
+
+    /**
+     * Rekap per operator (pembuat kegiatan, activities.user_id): jumlah kegiatan per status, leading yang kegiatannya
+     * dibuat, waktu perubahan terakhir, dan angka anggaran gabungan & per sumber dana (sel()). Diurutkan dari total RAB
+     * terbesar lalu nama; kegiatan yang pembuatnya tidak tercatat dikumpulkan di baris terakhir.
+     *
+     * @param  list<array{id: int, name: string, role: string, jabatan?: string}>  $pengguna  Akun aplikasi (nama & peran).
+     * @return list<array{user_id: int|null, nama: string, peran: string|null, jabatan: string|null, jumlah: int, perStatus: array<string, int>, leading: list<string>, terakhir: string|null, pagu: int, total: int, selisih: int|null, persen: float|null, rab: int, melebihi: int, tanpa_pagu: int, sumber: array<string, array{pagu: int, total: int, selisih: int|null, persen: float|null, rab: int, melebihi: int, tanpa_pagu: int}>}>
+     */
+    public function perOperator(array $pengguna): array
+    {
+        $akun = array_column($pengguna, null, 'id');
+        $nol = ['pagu' => 0, 'total' => 0, 'rab' => 0, 'melebihi' => 0, 'tanpa_pagu' => 0];
+        $hasil = [];
+
+        foreach ($this->kegiatan as $k) {
+            $id = $k['user_id'] !== null && isset($akun[$k['user_id']]) ? $k['user_id'] : null;
+            $kunci = $id ?? 'tanpa';
+            $hasil[$kunci] ??= [
+                'user_id' => $id,
+                'nama' => $id !== null ? $akun[$id]['name'] : 'Pembuat tidak tercatat',
+                'peran' => $id !== null ? $akun[$id]['role'] : null,
+                'jabatan' => $id !== null ? ($akun[$id]['jabatan'] ?? null) : null,
+                'jumlah' => 0,
+                'perStatus' => array_fill_keys(array_column(StatusKegiatan::cases(), 'value'), 0),
+                'leading' => [],
+                'terakhir' => null,
+            ] + $nol + ['sumber' => array_fill_keys(SumberDana::urutan(), $nol)];
+            $baris = &$hasil[$kunci];
+            $baris['jumlah']++;
+            $baris['perStatus'][$k['status']->value]++;
+            if ($k['leading'] !== null && ! in_array($k['leading'], $baris['leading'], true)) {
+                $baris['leading'][] = $k['leading'];
+            }
+            if ($k['diperbarui'] !== null && ($baris['terakhir'] === null || strtotime($k['diperbarui']) > strtotime($baris['terakhir']))) {
+                $baris['terakhir'] = $k['diperbarui'];
+            }
+            foreach ($k['anggaran'] as $a) {
+                $baris['sumber'][$a->sumber] ??= $nol;
+                foreach ([&$baris, &$baris['sumber'][$a->sumber]] as &$sel) {
+                    $sel['pagu'] += (int) $a->pagu();
+                    $sel['total'] += $a->total();
+                    $sel['rab']++;
+                    $sel['melebihi'] += $a->statusPagu() === 'melebihi' ? 1 : 0;
+                    $sel['tanpa_pagu'] += $a->pagu() === null ? 1 : 0;
+                }
+                unset($sel);
+            }
+            unset($baris);
+        }
+
+        $posisi = self::posisiLeading();
+        $lengkap = array_map(function (array $b) use ($posisi) {
+            usort($b['leading'], fn (string $x, string $y) => ($posisi[$x] ?? PHP_INT_MAX) <=> ($posisi[$y] ?? PHP_INT_MAX));
+            $b['sumber'] = array_map(fn (array $s) => self::sel($s), $b['sumber']);
+
+            return self::sel($b);
+        }, array_values($hasil));
+
+        return self::urutkan($lengkap, fn (array $b) => $b['user_id'] === null ? null : $b['total'], 'desc', fn (array $a, array $b) => mb_strtolower($a['nama']) <=> mb_strtolower($b['nama']));
     }
 
     /**

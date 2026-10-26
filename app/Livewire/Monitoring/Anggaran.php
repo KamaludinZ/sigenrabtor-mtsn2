@@ -8,6 +8,7 @@ use App\Enums\SumberDana;
 use App\Support\MasterKode;
 use App\Support\Monitoring\RingkasanAnggaran;
 use App\Support\Stub\StubData;
+use App\Support\Stub\StubPengaturan;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -147,6 +148,17 @@ class Anggaran extends Component
     public function ringkasan(): RingkasanAnggaran
     {
         return RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['leading' => $this->leading, 'sumber' => $this->sumber, 'status' => $this->status]);
+    }
+
+    /**
+     * Rekap per operator (pembuat kegiatan) dari akun aplikasi.
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function operator(): array
+    {
+        return $this->ringkasan->perOperator(StubPengaturan::pengguna());
     }
 
     /**
