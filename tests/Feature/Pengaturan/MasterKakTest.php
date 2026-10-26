@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Pengaturan;
 
+use App\Contracts\KegiatanRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Pengaturan\TemplateDokumen;
 use App\Support\Dokumen\AnalisisTemplate;
+use App\Support\Dokumen\NilaiVariabel;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\VariabelTemplate;
 use App\Support\Pengaturan\KesiapanPengaturan;
@@ -170,5 +172,84 @@ class MasterKakTest extends TestCase
 
         $this->assertTrue($repo->temukan($kak2)['is_default'], 'Default jenis KAK+TOR pindah ke template berikutnya.');
         $this->assertTrue($repo->temukan($rab)['is_default']);
+    }
+
+    public function test_nilai_variabel_dari_contoh_kegiatan(): void
+    {
+        $kegiatan = app(KegiatanRepository::class)->temukan(1);
+        $nilai = NilaiVariabel::untuk($kegiatan, 'Komite');
+
+        $this->assertSame(array_keys(VariabelTemplate::DAFTAR), array_keys($nilai), 'Setiap variabel terdaftar punya pemetaan nilai.');
+        $this->assertSame(['2026', 'Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran', 'Rp10.000.000,-', 'Sepuluh Juta Rupiah'],
+            [$nilai['tahun_anggaran'], $nilai['nama_kegiatan'], $nilai['total'], $nilai['terbilang']]);
+        $this->assertSame('KOMITE MTsN 2 Kota Malang Tahun 2026', $nilai['sumber_dana']);
+        $this->assertSame(['6.17.12', 'SK.10', 'IKSK 10.6', 'C1', '2. Profesionalitas'], [$nilai['kode_rktm'], $nilai['kode_sk'], $nilai['kode_iksk'], $nilai['kode_edm'], $nilai['budaya_mutu']]);
+        $this->assertCount(4, $nilai['dasar_hukum']);
+        $this->assertStringStartsWith('[Tabel rincian RAB Komite — ', $nilai['rab']);
+        $this->assertSame(['Ketua Tim Penjamin Mutu', 'Muslimin, M.Pd.'], $nilai['ttd_leading']);
+        // Belum ada datanya di data tiruan: matrik/jadwal kegiatan 1, pejabat, kop beralamat, logo.
+        $this->assertSame([null, null, null, null, null, null], [$nilai['matrik'], $nilai['jadwal'], $nilai['ttd_kepala'], $nilai['ttd_komite'], $nilai['kop'], $nilai['logo']]);
+
+        $kosong = NilaiVariabel::untuk([], null);
+        $this->assertSame([null, null, null, null], [$kosong['nama_kegiatan'], $kosong['total'], $kosong['sumber_dana'], $kosong['rab']]);
+    }
+
+    public function test_pratinjau_penanda_dan_uji_isi(): void
+    {
+        $isi = Docx::isi([
+            ['Kegiatan ', '${nama_', 'kegiatan}', ' tahun ${tahun_anggaran}'],
+            'Biaya ${total} (${terbilang}) — ${ttd_kepala} — ${nama_kegiaatan}',
+            '${dasar_hukum}',
+        ], header: ['${kop}']);
+
+        $komponen = Livewire::test(TemplateDokumen::class)
+            ->set('tab', 'kak')
+            ->set('contohKegiatan', 1)
+            ->set('berkasMaster', $this->berkas('uji.docx', $isi))
+            ->assertSee('Pratinjau & uji isi')
+            ->call('bukaPratinjauMaster', 'baru')
+            ->assertSet('pratinjauMaster', 'baru')
+            ->assertSeeHtml('data-testid="panel-pratinjau-master"')
+            ->assertSee('Pratinjau master — uji.docx (belum disimpan)')
+            ->assertSeeHtml('data-testid="isi-master" data-mode="penanda"')
+            ->assertSeeHtmlInOrder(['data-bagian-master="header"', '${kop}', 'data-bagian-master="isi"', 'Kegiatan', 'data-penanda="terdaftar">${nama_kegiatan}', 'data-penanda="tidak-terdaftar">${nama_kegiaatan}']);
+
+        $pratinjau = $komponen->instance()->pratinjauTemplate;
+        $this->assertSame(['nama_kegiaatan'], $pratinjau->tidakTerdaftar());
+
+        $komponen->set('modeMaster', 'isi')
+            ->assertSeeHtml('data-testid="isi-master" data-mode="isi"')
+            ->assertSeeHtml('data-isi="nama_kegiatan">Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran</mark>')
+            ->assertSeeHtml('data-isi="total">Rp10.000.000,-</mark>')
+            ->assertSeeHtml('data-isi="dasar_hukum">')
+            ->assertSeeHtml('data-testid="variabel-kosong"')
+            ->assertSeeHtml('data-kosong="kop"')
+            ->assertSeeHtml('data-kosong="ttd_kepala"')
+            ->assertSee('Pengaturan › Profil & Pejabat')
+            ->assertSeeHtml('data-isi="kosong">${ttd_kepala} kosong</mark>')
+            ->assertSeeHtml('data-penanda="tidak-terdaftar">${nama_kegiaatan}');
+        $this->assertSame(['kop', 'ttd_kepala'], $komponen->instance()->pratinjauTemplate->kosong());
+
+        // Ganti contoh: kegiatan baru tanpa RAB → total & terbilang ikut kosong.
+        $baru = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Rapat Kecil']);
+        $komponen->set('contohKegiatan', $baru)->assertSeeHtml('data-kosong="total"')->assertSeeHtml('data-kosong="terbilang"');
+
+        $komponen->call('tutupPratinjauMaster')->assertDontSeeHtml('data-testid="panel-pratinjau-master"');
+        // Tanpa berkas baru, pratinjau "baru" tidak dibuka.
+        $komponen->call('batalUnggahMaster')->call('bukaPratinjauMaster', 'baru')->assertSet('pratinjauMaster', null);
+    }
+
+    public function test_pratinjau_master_tersimpan(): void
+    {
+        $id = app(TemplateDokumenRepository::class)->tambah(2026, 'Master A', 'KAK+TOR', $this->berkas('a.docx', $this->masterBenar()), ['total']);
+
+        Livewire::test(TemplateDokumen::class)
+            ->set('tab', 'kak')
+            ->assertSeeHtml('aria-label="Pratinjau Master A"')
+            ->call('bukaPratinjauMaster', $id)
+            ->assertSee('Pratinjau master — Master A')
+            ->assertSeeHtml('data-penanda="terdaftar">${rab}')
+            ->call('bukaPratinjauMaster', 'tidak-ada')
+            ->assertSet('pratinjauMaster', null);
     }
 }

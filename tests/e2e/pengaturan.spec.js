@@ -210,6 +210,26 @@ test.describe('Pengaturan admin', () => {
         expect(overflow).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/master-kak-${testInfo.project.name}.png`, fullPage: true });
 
+        // Pratinjau sebelum disimpan: penanda variabel, lalu uji isi dengan contoh kegiatan.
+        await page.getByRole('button', { name: 'Pratinjau & uji isi' }).click();
+        const panel = page.getByTestId('panel-pratinjau-master');
+        await expect(panel).toBeVisible();
+        const isi = panel.getByTestId('isi-master');
+        await expect(isi).toHaveAttribute('data-mode', 'penanda');
+        await expect(isi.locator('[data-penanda="terdaftar"]').first()).toBeVisible();
+        await expect(isi.locator('[data-bagian-master="header"]')).toContainText('${kop}');
+        await panel.getByRole('button', { name: 'Uji isi' }).click();
+        await expect(isi).toHaveAttribute('data-mode', 'isi');
+        await panel.getByLabel('Contoh kegiatan untuk uji isi').selectOption({ label: 'Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran' });
+        await expect(isi.locator('[data-isi="total"]')).toHaveText('Rp10.000.000,-');
+        await expect(isi.locator('[data-isi="nama_kegiatan_cover"]')).toContainText('WORKSHOP PENYUSUNAN KURIKULUM');
+        await expect(panel.getByTestId('variabel-kosong')).toContainText('${ttd_kepala}');
+        const lebarPanel = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(lebarPanel).toBeLessThanOrEqual(0);
+        await panel.screenshot({ path: `storage/playwright/shots/master-uji-isi-${testInfo.project.name}.png` });
+        await page.keyboard.press('Escape');
+        await expect(panel).toHaveCount(0);
+
         await page.getByRole('button', { name: 'Simpan master' }).click();
         await expect(page.getByText('Master KAK/TOR tersimpan.')).toBeVisible({ timeout: 30_000 });
         const tersimpan = page.getByTestId('master-tersimpan');

@@ -1,5 +1,6 @@
 @use('App\Contracts\TemplateDokumenRepository')
 @use('App\Livewire\Pengaturan\TemplateDokumen')
+@use('App\Support\Dokumen\NilaiVariabel')
 @use('App\Support\Dokumen\VariabelTemplate')
 @use('App\Support\Format')
 @use('Illuminate\Support\Carbon')
@@ -126,6 +127,11 @@
                         <p class="form-error" role="alert">{{ $message }}</p>
                     @enderror
                     <div class="flex flex-wrap justify-end gap-2">
+                        @if ($analisis->variabel !== [])
+                            <button type="button" class="btn-secondary sm:mr-auto" wire:click="bukaPratinjauMaster('baru')">
+                                <x-ui.icon name="eye" class="size-4" /> Pratinjau &amp; uji isi
+                            </button>
+                        @endif
                         <button type="button" class="btn-ghost" wire:click="batalUnggahMaster">Batal</button>
                         {{-- Dua varian berkunci: @disabled server + wire:loading.attr pada elemen yang sama membuat Livewire memulihkan "disabled" lama setelah unggah ulang. --}}
                         @if ($analisis->bisaDisimpan())
@@ -177,6 +183,9 @@
                                 </div>
                             @else
                                 <div class="flex shrink-0 items-center gap-1">
+                                    <button type="button" class="btn-secondary px-2.5 py-1 text-xs" wire:click="bukaPratinjauMaster('{{ $master['id'] }}')" aria-label="Pratinjau {{ $master['nama'] }}">
+                                        <x-ui.icon name="eye" class="size-3.5" /> Pratinjau
+                                    </button>
                                     <a href="{{ route('pengaturan.template.master.unduh', $master['id']) }}" class="btn-secondary px-2.5 py-1 text-xs">
                                         <x-ui.icon name="download" class="size-3.5" /> Unduh
                                     </a>
@@ -228,3 +237,109 @@
         </section>
     </aside>
 </div>
+
+{{-- Panel pratinjau isi master: mode penanda (variabel sebagai penanda) atau uji isi (nilai contoh kegiatan × sumber dana). --}}
+@if ($pratinjauMaster && ($isiMaster = $this->pratinjauTemplate))
+    @php
+        $kosongMaster = $isiMaster->kosong();
+        $judulPratinjau = $pratinjauMaster === 'baru' ? ($berkasMaster?->getClientOriginalName() ?? 'Berkas baru').' (belum disimpan)' : (collect($masters)->firstWhere('id', $pratinjauMaster)['nama'] ?? '');
+        $sumberContoh = $this->sumberContoh();
+        $gayaBagian = ['header' => 'border-b border-dashed border-stone-300 pb-3 text-sm text-stone-600', 'isi' => '', 'footer' => 'border-t border-dashed border-stone-300 pt-3 text-sm text-stone-600'];
+    @endphp
+    <div class="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="judul-pratinjau-master" data-testid="panel-pratinjau-master"
+         x-data="{ init() { document.documentElement.classList.add('overflow-hidden') }, destroy() { document.documentElement.classList.remove('overflow-hidden') } }"
+         x-on:keydown.escape.window="$wire.tutupPratinjauMaster()">
+        <div class="absolute inset-0 bg-stone-900/40" wire:click="tutupPratinjauMaster" aria-hidden="true"></div>
+        <div class="relative ml-auto flex h-full w-full max-w-4xl flex-col bg-stone-100 shadow-xl" x-trap="true">
+            <header class="flex flex-wrap items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
+                <div class="min-w-0 flex-1">
+                    <h2 id="judul-pratinjau-master" class="truncate text-sm font-semibold text-stone-900">Pratinjau master — {{ $judulPratinjau }}</h2>
+                    <p class="text-xs text-stone-500">Teks dokumen tanpa format Word; variabel ditandai atau diganti isi contoh kegiatan.</p>
+                </div>
+                <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Mode pratinjau">
+                    @foreach (['penanda' => 'Penanda', 'isi' => 'Uji isi'] as $mode => $labelMode)
+                        <button type="button" wire:click="$set('modeMaster', '{{ $mode }}')" aria-pressed="{{ $modeMaster === $mode ? 'true' : 'false' }}"
+                                @class(['rounded-md px-3 py-1 text-xs font-semibold', 'bg-white text-stone-900 shadow-xs' => $modeMaster === $mode, 'text-stone-500 hover:text-stone-800' => $modeMaster !== $mode])>{{ $labelMode }}</button>
+                    @endforeach
+                </div>
+                <button type="button" class="btn-ghost" wire:click="tutupPratinjauMaster"><x-ui.icon name="x" class="size-4" /> Tutup</button>
+            </header>
+
+            @if ($modeMaster === 'isi')
+                <div class="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-4 py-2 sm:px-6">
+                    <label class="min-w-0 flex-1 sm:max-w-sm">
+                        <span class="sr-only">Contoh kegiatan</span>
+                        <select wire:model.live="contohKegiatan" class="form-input py-1.5 text-xs" aria-label="Contoh kegiatan untuk uji isi">
+                            @foreach ($this->daftarContoh as $contoh)
+                                <option value="{{ $contoh['id'] }}">{{ $contoh['nama'] }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    @if (count($sumberContoh) > 1)
+                        <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Sumber dana contoh">
+                            @foreach ($sumberContoh as $sumber)
+                                <button type="button" wire:click="$set('contohSumber', '{{ $sumber }}')" aria-pressed="{{ $sumber === $contohSumber ? 'true' : 'false' }}"
+                                        @class(['rounded-md px-2.5 py-1 text-xs font-semibold', 'bg-white text-stone-900 shadow-xs' => $sumber === $contohSumber, 'text-stone-500 hover:text-stone-800' => $sumber !== $contohSumber])>{{ $sumber }}</button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                @if ($kosongMaster !== [])
+                    <div class="border-b border-gold-200 bg-gold-50 px-4 py-2 text-xs text-stone-700 sm:px-6" data-testid="variabel-kosong">
+                        <p class="flex items-center gap-1.5 font-semibold"><x-ui.icon name="alert" class="size-4 text-gold-600" /> {{ count($kosongMaster) }} variabel kosong untuk contoh ini — dokumen akan bercap DRAF:</p>
+                        <ul class="mt-1 flex flex-wrap gap-1.5">
+                            @foreach ($kosongMaster as $nama)
+                                <li class="rounded-full bg-white px-2 py-0.5 ring-1 ring-gold-200" data-kosong="{{ $nama }}"><code class="font-semibold">${{ '{' }}{{ $nama }}{{ '}' }}</code>{{ isset(NilaiVariabel::ASAL[$nama]) ? ' · '.NilaiVariabel::ASAL[$nama] : '' }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @else
+                    <p class="flex items-center gap-1.5 border-b border-brand-200 bg-brand-50 px-4 py-2 text-xs font-medium text-brand-800 sm:px-6" data-testid="variabel-lengkap">
+                        <x-ui.icon name="check-circle" class="size-4" /> Semua variabel terisi untuk contoh ini.
+                    </p>
+                @endif
+            @else
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-stone-200 bg-white px-4 py-2 text-xs text-stone-500 sm:px-6" aria-label="Keterangan penanda">
+                    <span class="inline-flex items-center gap-1.5"><code class="rounded bg-brand-50 px-1 font-semibold text-brand-800">${…}</code> terdaftar</span>
+                    <span class="inline-flex items-center gap-1.5"><code class="rounded bg-red-50 px-1 font-semibold text-red-700">${…}</code> tidak terdaftar</span>
+                </div>
+            @endif
+
+            <div class="flex-1 overflow-y-auto p-3 sm:p-6">
+                <article class="mx-auto w-full max-w-[210mm] space-y-2 bg-white px-6 py-8 font-serif text-[15px] leading-relaxed text-stone-900 shadow-sm ring-1 ring-stone-200 sm:px-12 sm:py-10" data-testid="isi-master" data-mode="{{ $modeMaster }}">
+                    @foreach ($isiMaster->paragraf as $paragraf)
+                        <div class="{{ $gayaBagian[$paragraf['bagian']] }} break-words" data-bagian-master="{{ $paragraf['bagian'] }}">
+                            @foreach ($paragraf['segmen'] as $s)
+                                @if ($s['jenis'] === 'teks')
+                                    {{ $s['teks'] }}
+                                @elseif (! $s['terdaftar'])
+                                    <code class="rounded bg-red-50 px-1 font-sans text-[13px] font-semibold text-red-700" title="Tidak terdaftar" data-penanda="tidak-terdaftar">${{ '{' }}{{ $s['nama'] }}{{ '}' }}</code>
+                                @elseif ($modeMaster === 'penanda')
+                                    <code class="rounded bg-brand-50 px-1 font-sans text-[13px] font-semibold text-brand-800" title="{{ VariabelTemplate::DAFTAR[$s['nama']][0] }}" data-penanda="terdaftar">${{ '{' }}{{ $s['nama'] }}{{ '}' }}</code>
+                                @elseif (in_array($s['nilai'], [null, '', []], true))
+                                    <mark class="rounded bg-gold-100 px-1 font-sans text-[13px] font-semibold text-gold-700" title="Belum ada datanya{{ isset(NilaiVariabel::ASAL[$s['nama']]) ? ' — isi di '.NilaiVariabel::ASAL[$s['nama']] : '' }}" data-isi="kosong">${{ '{' }}{{ $s['nama'] }}{{ '}' }} kosong</mark>
+                                @elseif (is_array($s['nilai']))
+                                    <div class="rounded bg-brand-50/60 px-1 text-stone-900" title="${{ '{' }}{{ $s['nama'] }}{{ '}' }}" data-isi="{{ $s['nama'] }}">
+                                        @if (VariabelTemplate::DAFTAR[$s['nama']][2] === 'daftar')
+                                            <ol class="list-decimal space-y-0.5 pl-6">
+                                                @foreach ($s['nilai'] as $butir)
+                                                    <li>{{ $butir }}</li>
+                                                @endforeach
+                                            </ol>
+                                        @else
+                                            @foreach ($s['nilai'] as $baris)
+                                                <span class="block">{{ $baris }}</span>
+                                            @endforeach
+                                        @endif
+                                    </div>
+                                @else
+                                    <mark class="rounded bg-brand-50/60 px-0.5 text-stone-900" title="${{ '{' }}{{ $s['nama'] }}{{ '}' }}" data-isi="{{ $s['nama'] }}">{{ $s['nilai'] }}</mark>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endforeach
+                </article>
+            </div>
+        </div>
+    </div>
+@endif

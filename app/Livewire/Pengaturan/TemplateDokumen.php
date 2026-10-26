@@ -6,11 +6,14 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\AnalisisTemplate;
+use App\Support\Dokumen\NilaiVariabel;
 use App\Support\Dokumen\PembacaTemplateDocx;
+use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -90,6 +93,13 @@ class TemplateDokumen extends Component
     /** Template master yang menunggu konfirmasi hapus. */
     #[Locked]
     public ?string $masterAkanDihapus = null;
+
+    /** Panel pratinjau isi master: 'baru' (berkas yang baru diunggah) atau id master tersimpan; null = tertutup. */
+    #[Locked]
+    public ?string $pratinjauMaster = null;
+
+    /** Mode pratinjau master: 'penanda' (variabel sebagai penanda) atau 'isi' (diganti nilai contoh kegiatan). */
+    public string $modeMaster = 'penanda';
 
     public function mount(KegiatanRepository $kegiatan): void
     {
@@ -256,9 +266,44 @@ class TemplateDokumen extends Component
 
     public function batalUnggahMaster(): void
     {
+        $this->pratinjauMaster = $this->pratinjauMaster === 'baru' ? null : $this->pratinjauMaster;
         $this->berkasMaster?->delete();
         $this->reset('berkasMaster', 'temuanMaster');
         $this->resetValidation(['berkasMaster', 'namaMaster', 'jenisMaster']);
+    }
+
+    public function bukaPratinjauMaster(string $sumber): void
+    {
+        $ada = $sumber === 'baru' ? $this->temuanMaster !== null : collect($this->masters)->contains('id', $sumber);
+        $this->pratinjauMaster = $ada ? $sumber : null;
+    }
+
+    public function tutupPratinjauMaster(): void
+    {
+        $this->pratinjauMaster = null;
+    }
+
+    /** Isi master yang dipratinjau, dengan nilai variabel dari contoh kegiatan × sumber dana. */
+    #[Computed]
+    public function pratinjauTemplate(): ?PratinjauTemplate
+    {
+        $path = match (true) {
+            $this->pratinjauMaster === null => null,
+            $this->pratinjauMaster === 'baru' => $this->berkasMaster instanceof TemporaryUploadedFile ? $this->berkasMaster->getRealPath() : null,
+            default => ($master = collect($this->masters)->firstWhere('id', $this->pratinjauMaster)) ? Storage::disk('local')->path($master['file_path']) : null,
+        };
+
+        if ($path === null) {
+            return null;
+        }
+
+        $kegiatan = $this->contohKegiatan ? app(KegiatanRepository::class)->temukan($this->contohKegiatan) : null;
+
+        try {
+            return PratinjauTemplate::susun(PembacaTemplateDocx::paragraf($path), NilaiVariabel::untuk($kegiatan ?? [], $this->contohSumber));
+        } catch (RuntimeException) {
+            return null;
+        }
     }
 
     public function mintaHapusMaster(string $id): void
@@ -281,6 +326,7 @@ class TemplateDokumen extends Component
 
         $repo->hapus($template['id']);
         $this->masterAkanDihapus = null;
+        $this->pratinjauMaster = $this->pratinjauMaster === $template['id'] ? null : $this->pratinjauMaster;
         unset($this->masters);
         $this->namaMaster = $this->berkasMaster ? $this->namaMaster : $this->namaMasterBaku();
         $this->dispatch('notify', message: "Master “{$template['nama']}” dihapus.", type: 'info');
