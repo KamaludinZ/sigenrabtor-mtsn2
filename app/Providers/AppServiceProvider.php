@@ -9,6 +9,7 @@ use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\NomorHalamanRepository;
 use App\Contracts\PengubahPdf;
 use App\Contracts\PenyusunUsulanJadwal;
+use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\RabRepository;
 use App\Contracts\RiwayatPengaturanRepository;
 use App\Contracts\TahunAnggaranRepository;
@@ -20,6 +21,7 @@ use App\Support\Stub\StubKegiatanRepository;
 use App\Support\Stub\StubMasterKodeRepository;
 use App\Support\Stub\StubMatrikJadwalRepository;
 use App\Support\Stub\StubNomorHalamanRepository;
+use App\Support\Stub\StubProfilMadrasahRepository;
 use App\Support\Stub\StubRabRepository;
 use App\Support\Stub\StubRiwayatPengaturanRepository;
 use App\Support\Stub\StubTahunAnggaranRepository;
@@ -49,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(DaftarIsiRepository::class, StubDaftarIsiRepository::class);
         $this->app->singleton(NomorHalamanRepository::class, StubNomorHalamanRepository::class);
         $this->app->singleton(RiwayatPengaturanRepository::class, StubRiwayatPengaturanRepository::class);
+        $this->app->singleton(ProfilMadrasahRepository::class, StubProfilMadrasahRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         $this->app->singleton(PenyusunUsulanJadwal::class, StubUsulanJadwal::class);
 

@@ -10,6 +10,7 @@ export const E2E_MASTER_FILE = 'stub/master-template-e2e.json';
 export const E2E_DAFTAR_ISI_FILE = 'stub/daftar-isi-e2e.json';
 export const E2E_NOMOR_HALAMAN_FILE = 'stub/nomor-halaman-e2e.json';
 export const E2E_RIWAYAT_FILE = 'stub/riwayat-pengaturan-e2e.json';
+export const E2E_PROFIL_FILE = 'stub/profil-madrasah-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -53,6 +54,7 @@ export default defineConfig({
             STUB_DAFTAR_ISI_FILE: E2E_DAFTAR_ISI_FILE,
             STUB_NOMOR_HALAMAN_FILE: E2E_NOMOR_HALAMAN_FILE,
             STUB_RIWAYAT_FILE: E2E_RIWAYAT_FILE,
+            STUB_PROFIL_FILE: E2E_PROFIL_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },

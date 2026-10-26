@@ -3,6 +3,7 @@
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
+use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
@@ -38,6 +39,9 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');
 Route::get('/monitoring/ekspor/excel', EksporMonitoringExcel::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.excel');
 Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.pdf');
+
+// Logo kop madrasah: tampil di kop & pratinjau dokumen semua pengguna.
+Route::get('/madrasah/logo', LogoMadrasah::class)->name('madrasah.logo');
 
 // Pengaturan admin (PRD Fase 5–7): seluruh halaman khusus admin.
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {

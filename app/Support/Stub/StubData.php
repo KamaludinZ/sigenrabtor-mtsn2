@@ -2,6 +2,7 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
 
 /**
@@ -176,16 +177,13 @@ Output: siswa mengenal lingkungan dan tata tertib madrasah; laporan kegiatan dan
     }
 
     /**
-     * Profil madrasah untuk kop dan identitas aplikasi.
+     * Profil madrasah untuk kop, dokumen, dan identitas aplikasi — dibaca dari ProfilMadrasahRepository sehingga isian
+     * admin (Pengaturan › Profil & Pejabat) langsung berlaku di seluruh aplikasi.
      *
-     * @return array{nama: string, nama_singkat: string, kota: string}
+     * @return array{nama: string, nama_singkat: string, kota: string, alamat: string|null, telepon: string|null, visi: string|null, logo_path: string|null, diperbarui_pada: string|null}
      */
     public static function madrasah(): array
     {
-        return [
-            'nama' => 'Madrasah Tsanawiyah Negeri 2 Kota Malang',
-            'nama_singkat' => 'MTsN 2 Kota Malang',
-            'kota' => 'Malang',
-        ];
+        return app(ProfilMadrasahRepository::class)->ambil();
     }
 }

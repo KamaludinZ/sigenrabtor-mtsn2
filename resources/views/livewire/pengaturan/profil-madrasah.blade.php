@@ -180,71 +180,165 @@
                             <h2 id="judul-identitas" class="text-base font-semibold text-stone-900">Identitas madrasah</h2>
                             <p class="mt-0.5 text-sm text-stone-500">Satu profil untuk semua tahun; perubahan langsung dipakai dokumen yang dicetak berikutnya.</p>
                         </div>
-                        <button type="button" class="btn-secondary shrink-0 self-start" disabled title="Formulir profil sedang disiapkan"><x-ui.icon name="pencil" class="size-4" /> Ubah <x-ui.segera /></button>
+                        @unless ($ubahProfil)
+                            <button type="button" wire:click="bukaUbahProfil" class="btn-secondary shrink-0 self-start"><x-ui.icon name="pencil" class="size-4" /> Ubah</button>
+                        @endunless
                     </header>
-                    <dl class="divide-y divide-stone-100">
-                        @foreach (ProfilMadrasah::ISIAN_PROFIL as $kunci => $isian)
-                            <div class="grid gap-1 px-5 py-3 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4 sm:px-6" data-isian="{{ $kunci }}" data-terisi="{{ $profil[$kunci] !== null ? 'ya' : 'tidak' }}">
-                                <dt class="text-sm text-stone-500">
-                                    {{ $isian['label'] }}
-                                    @unless ($isian['wajib'])
-                                        <span class="text-xs text-stone-400">(opsional)</span>
-                                    @endunless
-                                </dt>
-                                <dd class="min-w-0">
-                                    @if ($profil[$kunci] !== null)
-                                        <p class="text-sm font-medium break-words text-stone-900">{{ $profil[$kunci] }}</p>
-                                    @else
-                                        <p @class(['flex items-center gap-1 text-sm font-medium', 'text-gold-700' => $isian['wajib'], 'text-stone-400' => ! $isian['wajib']])>
-                                            @if ($isian['wajib'])
-                                                <x-ui.icon name="alert" class="size-3.5 shrink-0" />
-                                            @endif
-                                            Belum diisi
-                                        </p>
-                                    @endif
-                                    <p class="mt-0.5 text-xs text-stone-500">{{ $isian['dipakai'] }}</p>
-                                </dd>
+
+                    @if ($ubahProfil)
+                        {{-- Formulir: isian dirapikan saat disimpan (tidak di tempat) agar ketikan tidak tertimpa. --}}
+                        <form wire:submit="simpanProfil" class="space-y-5 px-5 py-5 sm:px-6" data-testid="formulir-profil" wire:key="formulir-profil">
+                            <div class="grid gap-5 sm:grid-cols-2">
+                                <x-ui.field class="sm:col-span-2" label="Nama madrasah" for="profil-nama" error="isian.nama" required hint="Nama lengkap sesuai SK pendirian; tercetak kapital di kop dan cover.">
+                                    <input type="text" id="profil-nama" wire:model="isian.nama" maxlength="150" class="form-input" autocomplete="organization" @error('isian.nama') aria-invalid="true" aria-describedby="profil-nama-error" @enderror>
+                                </x-ui.field>
+                                <x-ui.field label="Nama singkat" for="profil-nama-singkat" error="isian.nama_singkat" required hint="Mis. MTsN 2 Kota Malang — untuk sebutan sumber dana di dokumen.">
+                                    <input type="text" id="profil-nama-singkat" wire:model="isian.nama_singkat" maxlength="60" class="form-input" @error('isian.nama_singkat') aria-invalid="true" aria-describedby="profil-nama-singkat-error" @enderror>
+                                </x-ui.field>
+                                <x-ui.field label="Kota" for="profil-kota" error="isian.kota" required hint="Tempat penandatanganan, mis. Malang.">
+                                    <input type="text" id="profil-kota" wire:model="isian.kota" maxlength="60" class="form-input" autocomplete="address-level2" @error('isian.kota') aria-invalid="true" aria-describedby="profil-kota-error" @enderror>
+                                </x-ui.field>
+                                <x-ui.field class="sm:col-span-2" label="Alamat" for="profil-alamat" error="isian.alamat" hint="Wajib untuk kop; jalan, nomor, kelurahan, kode pos.">
+                                    <input type="text" id="profil-alamat" wire:model="isian.alamat" maxlength="255" class="form-input" autocomplete="street-address" placeholder="Jl. … No. …, Kota Malang 65…">
+                                </x-ui.field>
+                                <x-ui.field label="Telepon" for="profil-telepon" error="isian.telepon" hint="Wajib untuk kop.">
+                                    <input type="tel" id="profil-telepon" wire:model="isian.telepon" maxlength="40" class="form-input" autocomplete="tel" inputmode="tel" placeholder="(0341) …" @error('isian.telepon') aria-invalid="true" aria-describedby="profil-telepon-error" @enderror>
+                                </x-ui.field>
+                                <x-ui.field class="sm:col-span-2" label="Visi" for="profil-visi" error="isian.visi" hint="Opsional; maksimal 1.000 karakter.">
+                                    <textarea id="profil-visi" wire:model="isian.visi" rows="3" maxlength="1000" class="form-input"></textarea>
+                                </x-ui.field>
                             </div>
-                        @endforeach
-                    </dl>
+                            <div class="flex flex-wrap items-center justify-end gap-2 border-t border-stone-100 pt-4">
+                                <button type="button" wire:click="batalUbahProfil" class="btn-ghost">Batal</button>
+                                <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanProfil">
+                                    <x-ui.icon name="save" class="size-4" /> Simpan profil
+                                </button>
+                            </div>
+                        </form>
+                    @else
+                        <dl class="divide-y divide-stone-100" wire:key="ringkasan-profil">
+                            @foreach (ProfilMadrasah::ISIAN_PROFIL as $kunci => $isianProfil)
+                                <div class="grid gap-1 px-5 py-3 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4 sm:px-6" data-isian="{{ $kunci }}" data-terisi="{{ $profil[$kunci] !== null ? 'ya' : 'tidak' }}">
+                                    <dt class="text-sm text-stone-500">
+                                        {{ $isianProfil['label'] }}
+                                        @unless ($isianProfil['wajib'])
+                                            <span class="text-xs text-stone-400">(opsional)</span>
+                                        @endunless
+                                    </dt>
+                                    <dd class="min-w-0">
+                                        @if ($profil[$kunci] !== null)
+                                            <p class="text-sm font-medium break-words whitespace-pre-line text-stone-900">{{ $profil[$kunci] }}</p>
+                                        @else
+                                            <p @class(['flex items-center gap-1 text-sm font-medium', 'text-gold-700' => $isianProfil['wajib'], 'text-stone-400' => ! $isianProfil['wajib']])>
+                                                @if ($isianProfil['wajib'])
+                                                    <x-ui.icon name="alert" class="size-3.5 shrink-0" />
+                                                @endif
+                                                Belum diisi
+                                            </p>
+                                        @endif
+                                        <p class="mt-0.5 text-xs text-stone-500">{{ $isianProfil['dipakai'] }}</p>
+                                    </dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    @endif
                 </section>
 
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-logo" data-testid="profil-logo">
-                    <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
-                        <div class="min-w-0">
-                            <h2 id="judul-logo" class="text-base font-semibold text-stone-900">Logo kop</h2>
-                            <p class="mt-0.5 text-sm text-stone-500">Tercetak di kiri kop KAK/TOR, RAB, dan cover buku.</p>
-                        </div>
-                        <button type="button" class="btn-secondary shrink-0 self-start" disabled title="Unggah logo sedang disiapkan"><x-ui.icon name="upload" class="size-4" /> Unggah <x-ui.segera /></button>
+                    <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
+                        <h2 id="judul-logo" class="text-base font-semibold text-stone-900">Logo kop</h2>
+                        <p class="mt-0.5 text-sm text-stone-500">Tercetak di kiri kop KAK/TOR, RAB, dan cover buku.</p>
                     </header>
-                    <div class="flex items-center gap-4 px-5 py-4 sm:px-6">
-                        <div class="flex size-20 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 text-stone-400" aria-hidden="true">
-                            <x-ui.icon name="building" class="size-8" />
+                    {{-- wire:key per keadaan: status Alpine unggah dibuat ulang, tidak terbawa morph. --}}
+                    <div class="px-5 py-4 sm:px-6" wire:key="logo-{{ $this->logoBisaDipratinjau() ? 'baru' : ($profil['logo_path'] ? 'ada' : 'kosong') }}"
+                         x-data="{ unggah: false, persen: 0 }"
+                         x-on:livewire-upload-start="unggah = true; persen = 0"
+                         x-on:livewire-upload-progress="persen = $event.detail.progress"
+                         x-on:livewire-upload-finish="unggah = false"
+                         x-on:livewire-upload-error="unggah = false">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-50 ring-1 ring-stone-200" data-testid="gambar-logo">
+                                @if ($this->logoBisaDipratinjau())
+                                    <img src="{{ $logo->temporaryUrl() }}" alt="Pratinjau logo baru" class="size-full object-contain p-1.5">
+                                @elseif ($this->urlLogo())
+                                    <img src="{{ $this->urlLogo() }}" alt="Logo madrasah" class="size-full object-contain p-1.5">
+                                @else
+                                    <x-ui.icon name="building" class="size-8 text-stone-300" />
+                                @endif
+                            </div>
+                            <div class="min-w-0 flex-1 text-sm">
+                                @if ($this->logoBisaDipratinjau())
+                                    <p class="font-medium text-stone-900">{{ $logo->getClientOriginalName() }}</p>
+                                    <p class="text-xs text-stone-500">Logo baru — belum disimpan. Periksa di pratinjau kop.</p>
+                                @elseif ($profil['logo_path'])
+                                    <p class="flex items-center gap-1 font-medium text-brand-700"><x-ui.icon name="check-circle" class="size-3.5" /> Logo tersimpan</p>
+                                    <p class="text-xs text-stone-500">Ganti untuk memakai logo lain.</p>
+                                @else
+                                    <p class="flex items-center gap-1 font-medium text-gold-700"><x-ui.icon name="alert" class="size-3.5" /> Belum diunggah</p>
+                                    <p class="text-xs text-stone-500">PNG atau JPG, persegi, minimal {{ ProfilMadrasah::MIN_SISI_LOGO }} × {{ ProfilMadrasah::MIN_SISI_LOGO }} piksel, maks. {{ ProfilMadrasah::MAKS_LOGO_KB / 1024 }} MB; latar transparan agar menyatu dengan kop.</p>
+                                @endif
+                            </div>
+                            <div class="flex shrink-0 flex-wrap gap-2">
+                                @if ($this->logoBisaDipratinjau())
+                                    <button type="button" wire:click="batalLogo" class="btn-ghost">Batal</button>
+                                    <button type="button" wire:click="simpanLogo" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanLogo"><x-ui.icon name="save" class="size-4" /> Simpan logo</button>
+                                @else
+                                    <label for="logo-madrasah" class="btn-secondary cursor-pointer has-focus-visible:outline-2 has-focus-visible:outline-brand-600">
+                                        <x-ui.icon name="upload" class="size-4" /> {{ $profil['logo_path'] ? 'Ganti logo' : 'Unggah logo' }}
+                                        <input type="file" id="logo-madrasah" wire:model="logo" accept="image/png,image/jpeg" class="sr-only" data-testid="input-logo">
+                                    </label>
+                                    @if ($profil['logo_path'] && ! $konfirmasiHapusLogo)
+                                        <button type="button" wire:click="$set('konfirmasiHapusLogo', true)" class="btn-ghost text-red-700 hover:bg-red-50">
+                                            <x-ui.icon name="trash" class="size-4" /> Hapus
+                                        </button>
+                                    @endif
+                                @endif
+                            </div>
                         </div>
-                        <div class="min-w-0 text-sm">
-                            @if ($profil['logo_path'])
-                                <p class="font-medium text-stone-900">Logo tersimpan</p>
-                            @else
-                                <p class="flex items-center gap-1 font-medium text-gold-700"><x-ui.icon name="alert" class="size-3.5" /> Belum diunggah</p>
-                            @endif
-                            <p class="mt-0.5 text-xs text-stone-500">PNG atau JPG, persegi, minimal 300 × 300 piksel; latar transparan agar menyatu dengan kop.</p>
+                        @if ($profil['logo_path'] && $konfirmasiHapusLogo && ! $this->logoBisaDipratinjau())
+                            <div class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 ring-1 ring-red-200" role="group" aria-label="Konfirmasi hapus logo">
+                                <span class="text-sm text-red-800">Hapus logo kop? Dokumen dicetak tanpa logo sampai diunggah lagi.</span>
+                                <span class="flex gap-1.5">
+                                    <button type="button" class="btn-ghost px-2 py-1 text-xs" wire:click="$set('konfirmasiHapusLogo', false)">Batal</button>
+                                    <button type="button" class="btn-danger px-2.5 py-1 text-xs" wire:click="hapusLogo">Hapus</button>
+                                </span>
+                            </div>
+                        @endif
+                        <div x-show="unggah" x-cloak class="mt-3">
+                            <div class="h-1.5 overflow-hidden rounded-full bg-stone-100"><div class="h-full rounded-full bg-brand-600 transition-all" x-bind:style="`width: ${persen}%`"></div></div>
+                            <p class="mt-1 text-xs text-stone-500">Mengunggah… <span x-text="persen"></span>%</p>
                         </div>
+                        @error('logo')
+                            <p class="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-logo">
+                                <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> {{ $message }}
+                            </p>
+                        @enderror
                     </div>
                 </section>
             </div>
 
             <aside class="min-w-0 space-y-6">
-                {{-- Pratinjau kop: susunan sama dengan variabel ${kop} (nama kapital, alamat, telepon) --}}
+                {{-- Pratinjau kop: susunan sama dengan variabel ${kop} (nama kapital, alamat, telepon); saat formulir terbuka mengikuti ketikan. --}}
                 <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pratinjau-kop" data-testid="pratinjau-kop">
                     <h2 id="judul-pratinjau-kop" class="text-sm font-semibold text-stone-900">Pratinjau kop</h2>
-                    <p class="mt-0.5 text-xs text-stone-500">Isian kosong ditandai sampai diisi.</p>
+                    <p class="mt-0.5 text-xs text-stone-500">{{ $ubahProfil ? 'Mengikuti isian formulir (belum disimpan).' : 'Isian kosong ditandai sampai diisi.' }}</p>
                     <div class="mt-4 rounded-lg bg-white p-3 shadow-xs ring-1 ring-stone-200">
                         <div class="flex items-center gap-3 border-b-[3px] border-double border-stone-800 pb-2">
-                            <div class="flex size-10 shrink-0 items-center justify-center rounded border border-dashed border-stone-300 text-[8px] text-stone-400" aria-hidden="true">LOGO</div>
-                            <div class="min-w-0 flex-1 text-center font-serif leading-tight">
-                                <p class="text-[11px] font-bold tracking-wide text-stone-900 uppercase">{{ $profil['nama'] ?? '[Nama madrasah]' }}</p>
-                                <p @class(['text-[9px]', 'text-stone-700' => $profil['alamat'], 'text-gold-700 italic' => ! $profil['alamat']])>{{ $profil['alamat'] ?? '[Alamat]' }}</p>
-                                <p @class(['text-[9px]', 'text-stone-700' => $profil['telepon'], 'text-gold-700 italic' => ! $profil['telepon']])>Telepon {{ $profil['telepon'] ?? '[telepon]' }}</p>
+                            @if ($this->logoBisaDipratinjau() || $this->urlLogo())
+                                <img src="{{ $this->logoBisaDipratinjau() ? $logo->temporaryUrl() : $this->urlLogo() }}" alt="" class="size-10 shrink-0 object-contain" data-testid="kop-logo">
+                            @else
+                                <div class="flex size-10 shrink-0 items-center justify-center rounded border border-dashed border-stone-300 text-[8px] text-stone-400" aria-hidden="true">LOGO</div>
+                            @endif
+                            <div class="min-w-0 flex-1 text-center font-serif leading-tight" @if ($ubahProfil) x-data @endif>
+                                @if ($ubahProfil)
+                                    <p class="text-[11px] font-bold tracking-wide text-stone-900 uppercase" x-text="$wire.isian.nama?.trim() || '[Nama madrasah]'" data-kop="nama"></p>
+                                    <p class="text-[9px]" x-bind:class="{ 'text-stone-700': $wire.isian.alamat?.trim(), 'text-gold-700 italic': ! $wire.isian.alamat?.trim() }" x-text="$wire.isian.alamat?.trim() || '[Alamat]'" data-kop="alamat"></p>
+                                    <p class="text-[9px]" x-bind:class="{ 'text-stone-700': $wire.isian.telepon?.trim(), 'text-gold-700 italic': ! $wire.isian.telepon?.trim() }" x-text="'Telepon ' + ($wire.isian.telepon?.trim() || '[telepon]')" data-kop="telepon"></p>
+                                @else
+                                    <p class="text-[11px] font-bold tracking-wide text-stone-900 uppercase" data-kop="nama">{{ $profil['nama'] ?? '[Nama madrasah]' }}</p>
+                                    <p @class(['text-[9px]', 'text-stone-700' => $profil['alamat'], 'text-gold-700 italic' => ! $profil['alamat']]) data-kop="alamat">{{ $profil['alamat'] ?? '[Alamat]' }}</p>
+                                    <p @class(['text-[9px]', 'text-stone-700' => $profil['telepon'], 'text-gold-700 italic' => ! $profil['telepon']]) data-kop="telepon">Telepon {{ $profil['telepon'] ?? '[telepon]' }}</p>
+                                @endif
                             </div>
                         </div>
                     </div>

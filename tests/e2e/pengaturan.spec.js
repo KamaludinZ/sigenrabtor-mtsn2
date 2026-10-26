@@ -406,4 +406,47 @@ test.describe('Pengaturan admin', () => {
         await page.reload();
         await expect(page.getByTestId('pejabat-pimpinan')).toBeVisible();
     });
+
+    test('profil madrasah: formulir dengan pratinjau kop langsung, simpan, unggah & hapus logo', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah');
+        const identitas = page.getByTestId('profil-identitas');
+        const kop = page.getByTestId('pratinjau-kop');
+
+        await identitas.getByRole('button', { name: 'Ubah' }).click();
+        const formulir = page.getByTestId('formulir-profil');
+        await expect(formulir.getByLabel('Nama madrasah')).toHaveValue('Madrasah Tsanawiyah Negeri 2 Kota Malang');
+        await formulir.getByLabel('Alamat').fill('Jl. Uji E2E No. 1, Kota Malang');
+        await formulir.getByLabel('Telepon').fill('(0341) 000 111');
+        // Pratinjau kop mengikuti ketikan sebelum disimpan.
+        await expect(kop.locator('[data-kop="alamat"]')).toHaveText('Jl. Uji E2E No. 1, Kota Malang');
+        await expect(kop.locator('[data-kop="telepon"]')).toHaveText('Telepon (0341) 000 111');
+        await expect(kop.locator('[data-kop="alamat"]')).not.toHaveClass(/italic/);
+        let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-profil-formulir-${testInfo.project.name}.png`, fullPage: true });
+
+        await formulir.getByRole('button', { name: 'Simpan profil' }).click();
+        await expect(identitas.locator('[data-isian="alamat"]')).toHaveAttribute('data-terisi', 'ya');
+        await expect(identitas.locator('[data-isian="alamat"]')).toContainText('Jl. Uji E2E No. 1, Kota Malang');
+        await expect(page.getByTestId('kesiapan-madrasah').locator('[data-kesiapan="profil"]')).toContainText('Logo kop belum diisi.');
+
+        const logo = page.getByTestId('profil-logo');
+        await logo.getByTestId('input-logo').setInputFiles('tests/fixtures/cover-contoh.png');
+        await expect(logo).toContainText('Logo baru — belum disimpan.');
+        await logo.getByRole('button', { name: 'Simpan logo' }).click();
+        await expect(logo).toContainText('Logo tersimpan');
+        await expect(kop.getByTestId('kop-logo')).toBeVisible();
+        expect((await page.request.get('/madrasah/logo')).status()).toBe(200);
+
+        // Pulihkan data (proyek mobile memakai data E2E yang sama).
+        await logo.getByRole('button', { name: 'Hapus' }).click();
+        await logo.getByRole('group', { name: 'Konfirmasi hapus logo' }).getByRole('button', { name: 'Hapus' }).click();
+        await expect(logo).toContainText('Belum diunggah');
+        await identitas.getByRole('button', { name: 'Ubah' }).click();
+        await formulir.getByLabel('Alamat').fill('');
+        await formulir.getByLabel('Telepon').fill('');
+        await formulir.getByRole('button', { name: 'Simpan profil' }).click();
+        await expect(identitas.locator('[data-isian="alamat"]')).toHaveAttribute('data-terisi', 'tidak');
+    });
 });

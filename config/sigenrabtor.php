@@ -52,6 +52,7 @@ return [
         'daftar_isi_file' => env('STUB_DAFTAR_ISI_FILE', 'stub/daftar-isi.json'),
         'nomor_halaman_file' => env('STUB_NOMOR_HALAMAN_FILE', 'stub/nomor-halaman.json'),
         'riwayat_file' => env('STUB_RIWAYAT_FILE', 'stub/riwayat-pengaturan.json'),
+        'profil_file' => env('STUB_PROFIL_FILE', 'stub/profil-madrasah.json'),
     ],
 
     /*

@@ -21,6 +21,9 @@ final class RiwayatPengaturan
         'ubah_daftar_isi' => ['Ubah daftar isi', 'template'],
         'hapus_daftar_isi_khusus' => ['Kembalikan daftar isi ke bawaan', 'template'],
         'ubah_nomor_halaman' => ['Ubah nomor halaman', 'template'],
+        'ubah_profil' => ['Ubah profil madrasah', 'madrasah'],
+        'unggah_logo' => ['Unggah logo madrasah', 'madrasah'],
+        'hapus_logo' => ['Hapus logo madrasah', 'madrasah'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */
