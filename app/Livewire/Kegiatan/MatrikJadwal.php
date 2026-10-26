@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\PenyusunUsulanJadwal;
 use App\Enums\StatusKegiatan;
+use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
@@ -79,6 +80,9 @@ class MatrikJadwal extends Component
     #[Locked]
     public ?array $jadwalSebelum = null;
 
+    /** Panel pratinjau KAK bagian 4 & 7; membukanya ikut mengirim tanda matrik lokal sehingga pratinjau memuat isian terbaru. */
+    public bool $pratinjauTerbuka = false;
+
     /** Panel "Usulkan dengan AI" (PRD F10 Usul Jadwal AI): permintaan → 2–3 versi usulan → pakai salah satu atau tolak. */
     public bool $usulTerbuka = false;
 
@@ -126,6 +130,13 @@ class MatrikJadwal extends Component
     public function konsistensi(): KonsistensiBulan
     {
         return new KonsistensiBulan($this->pelaksanaan->bulan, $this->bulanLaporan(), $this->susunanMatrik->butir, $this->susunanJadwal->baris);
+    }
+
+    /** KAK/TOR dari isian saat ini (termasuk yang belum disimpan) untuk pratinjau bagian Tahapan & Jadwal. */
+    #[Computed]
+    public function pratinjauKak(): SusunanKak
+    {
+        return SusunanKak::dari($this->dataKegiatan, null, $this->susunanMatrik, $this->susunanJadwal);
     }
 
     #[Computed]

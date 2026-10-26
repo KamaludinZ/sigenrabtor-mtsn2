@@ -40,20 +40,27 @@
             </div>
             <p class="mt-1 text-sm text-stone-500">{{ $dataKegiatan['nama_kegiatan'] }}</p>
         </div>
-        @if ($bisaUbah)
-            <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+            @if ($bisaUbah)
                 {{-- Ikut state lokal: sel matrik yang ditandai belum terkirim ke server sampai Simpan. --}}
                 <span x-show="dirty" @unless ($adaPerubahan) style="display: none" @endunless class="inline-flex items-center gap-1 text-sm font-medium text-gold-700" data-testid="belum-disimpan">
                     <span class="size-1.5 rounded-full bg-gold-500"></span> Belum disimpan
                 </span>
                 <button type="button" x-show="dirty" @unless ($adaPerubahan) style="display: none" @endunless class="btn-ghost" wire:click="batalkanPerubahan" wire:loading.attr="disabled">Batalkan</button>
+            @endif
+            <button type="button" class="btn-secondary" wire:click="$set('pratinjauTerbuka', true)" wire:loading.attr="disabled" wire:target="pratinjauTerbuka"
+                    title="Bagian 4. Tahapan Kegiatan dan 7. Jadwal Kegiatan seperti tercetak, dari isian saat ini">
+                <x-ui.icon name="eye" class="size-4" />
+                Pratinjau KAK
+            </button>
+            @if ($bisaUbah)
                 <button type="button" class="btn-primary" wire:click="simpan" wire:loading.attr="disabled" wire:target="simpan" title="Simpan (Ctrl+S)">
                     <x-ui.icon name="save" class="size-4" />
                     <span wire:loading.remove wire:target="simpan">Simpan</span>
                     <span wire:loading wire:target="simpan">Menyimpan…</span>
                 </button>
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 
     <div class="mt-5">
@@ -409,6 +416,50 @@
             </div>
         </aside>
     </div>
+
+    {{-- Panel pratinjau KAK bagian 4 & 7 (isian saat ini, termasuk tanda matrik lokal yang terkirim saat panel dibuka). --}}
+    @if ($pratinjauTerbuka)
+        @php
+            $kak = $this->pratinjauKak;
+            $kurangKak = array_values(array_filter([
+                $susunan->lengkap() ? null : 'Matrik tahapan: tandai minimal satu bulan di setiap tahapan.',
+                $susunanJadwal->lengkap() ? null : ($jadwal === [] ? 'Jadwal kegiatan belum punya baris.' : 'Jadwal kegiatan: lengkapi uraian & waktu setiap baris, atau hapus baris kosong.'),
+            ]));
+        @endphp
+        <div class="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="judul-pratinjau-matrik" data-testid="panel-pratinjau-matrik"
+             x-data="{ init() { document.documentElement.classList.add('overflow-hidden') }, destroy() { document.documentElement.classList.remove('overflow-hidden') } }"
+             x-on:keydown.escape.window="$wire.set('pratinjauTerbuka', false)">
+            <div class="absolute inset-0 bg-stone-900/40" wire:click="$set('pratinjauTerbuka', false)" aria-hidden="true"></div>
+            <div class="relative ml-auto flex h-full w-full max-w-4xl flex-col bg-stone-100 shadow-xl" x-trap="true">
+                <header class="flex flex-wrap items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
+                    <div class="min-w-0 flex-1">
+                        <h2 id="judul-pratinjau-matrik" class="text-sm font-semibold text-stone-900">Pratinjau KAK/TOR — Tahapan &amp; Jadwal</h2>
+                        <p class="text-xs text-stone-500">Bagian 4 dan 7 seperti tercetak, dari isian saat ini{{ $adaPerubahan ? ' (termasuk yang belum disimpan)' : '' }}.</p>
+                    </div>
+                    <button type="button" class="btn-ghost" wire:click="$set('pratinjauTerbuka', false)">
+                        <x-ui.icon name="x" class="size-4" />
+                        Tutup
+                    </button>
+                </header>
+
+                @if ($kurangKak !== [])
+                    <div class="space-y-1 border-b border-gold-200 bg-gold-50 px-4 py-2 text-xs text-stone-700 sm:px-6" data-testid="pratinjau-matrik-kurang">
+                        @foreach ($kurangKak as $apa)
+                            <p class="flex items-start gap-1.5"><x-ui.icon name="alert" class="mt-px size-3.5 shrink-0 text-gold-600" /> {{ $apa }}</p>
+                        @endforeach
+                    </div>
+                @endif
+
+                <div class="flex-1 overflow-y-auto p-3 sm:p-6">
+                    <x-dokumen.kak-tor :susunan="$kak" :bagian="[4, 7]" />
+                    <p class="mx-auto mt-3 max-w-[210mm] text-center text-xs text-stone-500">
+                        Seluruh dokumen (cover, sembilan bagian, pengesahan) bisa dipratinjau dari tombol <em>Pratinjau</em> di
+                        <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800">Data Kegiatan</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Panel usul jadwal AI: permintaan (acuan waktu, jenis kegiatan, instruksi) → 2–3 versi → pakai satu versi (bisa diurungkan) atau tolak. --}}
     @if ($usulTerbuka && $bisaUbah)

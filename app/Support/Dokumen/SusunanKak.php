@@ -2,10 +2,14 @@
 
 namespace App\Support\Dokumen;
 
+use App\Contracts\MatrikJadwalRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Format;
 use App\Support\Kegiatan\DataPelaksanaan;
+use App\Support\Kegiatan\JadwalKegiatan;
+use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -20,7 +24,11 @@ use Carbon\CarbonImmutable;
  *
  * Jenis blok isi: paragraf {teks}, subjudul {teks}, daftar {butir, bernomor}, kosong {pesan},
  * menunggu {pesan} (bagian yang datanya berasal dari fitur yang belum tersedia), pengesahan {kolom},
- * pagu (penanda batas pagu di bagian Pembiayaan; isinya dari $peringatanPagu, tidak ikut tercetak).
+ * matrik {tahun, tahapan: [{nomor, judul, butir: [{uraian, bulan}]}]} (bagian 4), jadwal {baris: [{nomor, uraian, waktu}]}
+ * (bagian 7), pagu (penanda batas pagu di bagian Pembiayaan; isinya dari $peringatanPagu, tidak ikut tercetak).
+ *
+ * Matrik & jadwal dibaca dari MatrikJadwalRepository (kegiatan tersimpan) kecuali diberikan langsung — halaman
+ * Matrik & Jadwal memberikan isian yang sedang disunting agar pratinjaunya ikut perubahan yang belum disimpan.
  */
 final readonly class SusunanKak
 {
@@ -46,9 +54,12 @@ final readonly class SusunanKak
     /**
      * @param  array<string, mixed>  $kegiatan  Data kegiatan (bentuk penyimpanan; boleh belum tersimpan).
      */
-    public static function dari(array $kegiatan, ?string $sumber = null): self
+    public static function dari(array $kegiatan, ?string $sumber = null, ?MatrikTahapan $matrik = null, ?JadwalKegiatan $jadwal = null): self
     {
         $tahun = StubData::tahunAktif()['tahun'];
+        $id = filter_var($kegiatan['id'] ?? null, FILTER_VALIDATE_INT) ?: null;
+        $matrik ??= $id ? app(MatrikJadwalRepository::class)->matrik($id) : MatrikTahapan::dari($kegiatan);
+        $jadwal ??= $id ? app(MatrikJadwalRepository::class)->jadwal($id) : JadwalKegiatan::dari($kegiatan);
         $madrasah = StubData::madrasah();
         $nama = trim((string) ($kegiatan['nama_kegiatan'] ?? '')) ?: '…';
         $kurang = [];
@@ -101,7 +112,7 @@ final readonly class SusunanKak
         if (! $batasLaporan) {
             $tahapan[] = $kosong('tanggal pelaporan');
         }
-        $tahapan[] = ['jenis' => 'menunggu', 'pesan' => 'Matrik tahapan (Persiapan, Pelaksanaan, Evaluasi & Pelaporan × bulan) diisi di tab Matrik & Jadwal.'];
+        $tahapan = [...$tahapan, ...self::blokMatrik($matrik, $tahun, $kosong)];
         $bagian[] = ['nomor' => 4, 'judul' => 'Tahapan Kegiatan', 'isi' => $tahapan];
 
         $bagian[] = ['nomor' => 5, 'judul' => 'Tempat Pelaksanaan', 'isi' => [
@@ -116,9 +127,7 @@ final readonly class SusunanKak
             ['jenis' => 'paragraf', 'teks' => KalimatKak::pengarah($nama, $madrasah['nama'])],
         ]];
 
-        $bagian[] = ['nomor' => 7, 'judul' => 'Jadwal Kegiatan', 'isi' => [
-            ['jenis' => 'menunggu', 'pesan' => 'Tabel jadwal (No, Uraian, Waktu Pelaksanaan) diisi di tab Matrik & Jadwal.'],
-        ]];
+        $bagian[] = ['nomor' => 7, 'judul' => 'Jadwal Kegiatan', 'isi' => self::blokJadwal($jadwal, $tahun, $kosong)];
 
         $angka = $sumber ? AngkaDokumen::dari($anggaran[$sumber]->hasil, $sumber, $tahun, $madrasah['nama_singkat']) : null;
         $peringatanPagu = $sumber ? PeringatanPagu::untuk($sumber, $anggaran[$sumber]->hasil) : null;
@@ -153,6 +162,55 @@ final readonly class SusunanKak
             $peringatanPagu,
             array_map(fn (AnggaranSumber $a) => $a->jumlahItem() > 0 ? $a->statusPagu() : null, $anggaran),
         );
+    }
+
+    /**
+     * Matrik Tahapan di akhir bagian 4: tabel tahapan × bulan 1–12 (tanda "v"), tampil bila ada tanda; penanda
+     * "Lengkapi" selama ada tahapan tanpa bulan (syarat kelengkapan cetak, PRD aturan 8).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function blokMatrik(MatrikTahapan $matrik, int $tahun, callable $kosong): array
+    {
+        $blok = [['jenis' => 'subjudul', 'teks' => 'Matrik Tahapan Kegiatan']];
+
+        if ($matrik->jumlahTanda() > 0) {
+            $blok[] = ['jenis' => 'matrik', 'tahun' => $tahun, 'tahapan' => array_values(array_map(
+                fn (string $kunci, string $judul, int $i) => ['nomor' => $i + 1, 'judul' => $judul, 'butir' => $matrik->butir[$kunci] ?? []],
+                array_keys(MatrikTahapan::TAHAPAN), MatrikTahapan::TAHAPAN, range(0, count(MatrikTahapan::TAHAPAN) - 1),
+            ))];
+        }
+
+        if (! $matrik->lengkap()) {
+            $blok[] = $kosong('matrik tahapan (tab Matrik & Jadwal)');
+        }
+
+        return $blok;
+    }
+
+    /**
+     * Tabel Jadwal Kegiatan (bagian 7): No, Uraian, Waktu Pelaksanaan — baris yang berisi saja, tahunnya tahun aktif
+     * (PRD aturan 3); penanda "Lengkapi" selama ada baris tanpa uraian/waktu atau jadwal kosong.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function blokJadwal(JadwalKegiatan $jadwal, int $tahun, callable $kosong): array
+    {
+        $blok = [];
+        $terisi = array_values(array_filter($jadwal->baris, fn (array $b) => $b['uraian'] !== '' || $b['bulan'] !== []));
+
+        if ($terisi !== []) {
+            $blok[] = ['jenis' => 'jadwal', 'baris' => array_map(
+                fn (array $b, int $i) => ['nomor' => $i + 1, 'uraian' => $b['uraian'], 'waktu' => JadwalPelaksanaan::teksBulan($b['bulan'], $tahun)],
+                $terisi, array_keys($terisi),
+            )];
+        }
+
+        if (! $jadwal->lengkap()) {
+            $blok[] = $kosong('jadwal kegiatan (tab Matrik & Jadwal)');
+        }
+
+        return $blok;
     }
 
     /**

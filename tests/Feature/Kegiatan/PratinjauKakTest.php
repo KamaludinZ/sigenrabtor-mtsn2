@@ -3,9 +3,12 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\RabRepository;
 use App\Livewire\Kegiatan\Form;
 use App\Support\Dokumen\SusunanKak;
+use App\Support\Kegiatan\JadwalKegiatan;
+use App\Support\Kegiatan\MatrikTahapan;
 use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -17,8 +20,25 @@ class PratinjauKakTest extends TestCase
         return app(KegiatanRepository::class)->temukan($id);
     }
 
+    /** Matrik (tiga tahapan bertanda) & jadwal lengkap, agar kelengkapan KAK hanya bergantung pada isian lain. */
+    private function lengkapiMatrikJadwal(int $id): void
+    {
+        app(MatrikJadwalRepository::class)->simpan(
+            $id,
+            MatrikTahapan::dari(['matrik' => [
+                'persiapan' => [['uraian' => 'Rapat dan pembagian job deskripsi', 'bulan' => [6]]],
+                'pelaksanaan' => [['uraian' => 'Persiapan pelaksanaan', 'bulan' => [7]]],
+                'evaluasi_pelaporan' => [['uraian' => 'Penyusunan laporan', 'bulan' => [7]]],
+            ]]),
+            JadwalKegiatan::dari(['jadwal' => [['uraian' => 'Pembentukan kepanitiaan', 'bulan' => [6]], ['uraian' => 'Pelaksanaan workshop', 'bulan' => [7]]]]),
+        );
+    }
+
     public function test_sembilan_bagian_baku_berurutan_dengan_kalimat_dari_data(): void
     {
+        $this->assertSame(['matrik tahapan (tab Matrik & Jadwal)', 'jadwal kegiatan (tab Matrik & Jadwal)'], SusunanKak::dari($this->kegiatan(1))->kurang);
+
+        $this->lengkapiMatrikJadwal(1);
         $kak = SusunanKak::dari($this->kegiatan(1));
 
         $this->assertSame(
@@ -61,8 +81,9 @@ class PratinjauKakTest extends TestCase
         $kak = SusunanKak::dari(['nama_kegiatan' => 'Rapat Kerja', 'status' => 'draf']);
 
         $this->assertSame([
-            'tujuan kegiatan', 'sasaran kegiatan', 'tanggal mulai & lama kegiatan', 'tanggal pelaporan', 'tempat pelaksanaan',
-            'leading penanggung jawab (Kode & Klasifikasi)', 'sumber dana (bagian Sumber Dana)', 'tanggal dokumen',
+            'tujuan kegiatan', 'sasaran kegiatan', 'tanggal mulai & lama kegiatan', 'tanggal pelaporan', 'matrik tahapan (tab Matrik & Jadwal)',
+            'tempat pelaksanaan', 'leading penanggung jawab (Kode & Klasifikasi)', 'jadwal kegiatan (tab Matrik & Jadwal)',
+            'sumber dana (bagian Sumber Dana)', 'tanggal dokumen',
         ], $kak->kurang);
         $this->assertNull($kak->sumber);
         $this->assertStringNotContainsString('bertempat di', $this->teks($kak));
@@ -70,6 +91,8 @@ class PratinjauKakTest extends TestCase
 
     public function test_disetujui_dan_lengkap_tanpa_cap_draf(): void
     {
+        $this->assertTrue(SusunanKak::dari(['status' => 'disetujui'] + $this->kegiatan(1))->draf, 'Matrik & jadwal belum lengkap.');
+        $this->lengkapiMatrikJadwal(1);
         $this->assertFalse(SusunanKak::dari(['status' => 'disetujui'] + $this->kegiatan(1))->draf);
         $this->assertTrue(SusunanKak::dari(['status' => 'disetujui', 'tempat' => ''] + $this->kegiatan(1))->draf);
     }
@@ -82,7 +105,8 @@ class PratinjauKakTest extends TestCase
         $this->assertStringContainsString('1. Latar Belakang', $html);
         $this->assertStringContainsString('9. Lembar Pengesahan', $html);
         $this->assertStringContainsString('Lengkapi tempat pelaksanaan.', $html);
-        $this->assertStringContainsString('diisi di tab Matrik &amp; Jadwal', $html);
+        $this->assertStringContainsString('Lengkapi matrik tahapan (tab Matrik &amp; Jadwal).', $html);
+        $this->assertStringContainsString('Lengkapi jadwal kegiatan (tab Matrik &amp; Jadwal).', $html);
         $this->assertSame(2, substr_count($html, 'DRAF'));
     }
 
@@ -114,6 +138,7 @@ class PratinjauKakTest extends TestCase
         $this->assertSame('tanpa_pagu', $dipa->peringatanPagu->status->status);
 
         // Tepat pagu: tanpa penanda; disetujui & lengkap tanpa DRAF — sampai RAB-nya melebihi pagu.
+        $this->lengkapiMatrikJadwal(1);
         $workshop = SusunanKak::dari(['status' => 'disetujui'] + $this->kegiatan(1));
         $this->assertNull($workshop->peringatanPagu);
         $this->assertNotContains('pagu', array_column($workshop->bagian[7]['isi'], 'jenis'));
@@ -123,6 +148,42 @@ class PratinjauKakTest extends TestCase
         $melebihi = SusunanKak::dari(['status' => 'disetujui'] + $this->kegiatan(1));
         $this->assertTrue($melebihi->draf, 'RAB melebihi pagu: dokumen tetap bercap DRAF.');
         $this->assertSame('RAB Komite melebihi pagu Rp150.000', $melebihi->peringatanPagu->judul());
+    }
+
+    public function test_matrik_dan_jadwal_tercetak_di_bagian_4_dan_7(): void
+    {
+        // Contoh kegiatan 3: matrik & jadwal tersimpan (sebagian tersalin, tetapi lengkap).
+        $kak = SusunanKak::dari($this->kegiatan(3), 'Komite');
+        $blok = fn (SusunanKak $s, int $nomor, string $jenis) => collect($s->bagian[$nomor - 1]['isi'])->firstWhere('jenis', $jenis);
+
+        $matrik = $blok($kak, 4, 'matrik');
+        $this->assertSame(2026, $matrik['tahun']);
+        $this->assertSame(['Persiapan', 'Pelaksanaan', 'Evaluasi dan Pelaporan'], array_column($matrik['tahapan'], 'judul'));
+        $this->assertSame([7], $matrik['tahapan'][1]['butir'][0]['bulan']);
+        $this->assertSame([
+            ['nomor' => 1, 'uraian' => 'Pembentukan kepanitiaan', 'waktu' => 'Oktober 2026'],
+            ['nomor' => 3, 'uraian' => 'Persiapan sarana dan bahan kegiatan', 'waktu' => 'Oktober – November 2026'],
+        ], [$blok($kak, 7, 'jadwal')['baris'][0], $blok($kak, 7, 'jadwal')['baris'][2]]);
+        $this->assertNotContains('matrik tahapan (tab Matrik & Jadwal)', $kak->kurang);
+        $this->assertNotContains('jadwal kegiatan (tab Matrik & Jadwal)', $kak->kurang);
+
+        // Isian yang sedang disunting (belum disimpan) bisa diberikan langsung; baris kosong tidak ikut tercetak.
+        $sunting = SusunanKak::dari($this->kegiatan(3), null, MatrikTahapan::dari([]), JadwalKegiatan::dari(['jadwal' => [
+            ['uraian' => '', 'bulan' => []], ['uraian' => 'Rapat panitia', 'bulan' => []],
+        ]]));
+        $this->assertNull($blok($sunting, 4, 'matrik'));
+        $this->assertSame([['nomor' => 1, 'uraian' => 'Rapat panitia', 'waktu' => null]], $blok($sunting, 7, 'jadwal')['baris']);
+        $this->assertContains('matrik tahapan (tab Matrik & Jadwal)', $sunting->kurang);
+        $this->assertContains('jadwal kegiatan (tab Matrik & Jadwal)', $sunting->kurang);
+
+        $html = Blade::render('<x-dokumen.kak-tor :susunan="$s" :bagian="[4, 7]" />', ['s' => $kak]);
+        $this->assertStringNotContainsString('data-testid="pratinjau-kak-cover"', $html);
+        $this->assertSame(2, substr_count($html, 'data-bagian='));
+        $this->assertStringContainsString('Bulan (2026)', $html);
+        $this->assertSame(6, substr_count($html, 'data-matrik-butir'));
+        $this->assertSame(6, preg_match_all('/<td class="border border-stone-400 text-center">v<\/td>/', $html), 'Satu "v" per butir × bulan bertanda.');
+        $this->assertSame(6, substr_count($html, 'data-jadwal-baris'));
+        $this->assertStringContainsString('Pelaksanaan workshop kurikulum', $html);
     }
 
     public function test_panel_pratinjau_menandai_pagu_per_dokumen(): void

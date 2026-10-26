@@ -267,6 +267,34 @@ test.describe('Matrik & Jadwal Kegiatan', () => {
         await expect(page).toHaveURL(/#baris-jadwal-6$/);
     });
 
+    test('pratinjau KAK: tanda matrik lokal & jadwal tampil di bagian 4 dan 7 seperti tercetak', async ({ page }, testInfo) => {
+        await bukaMatrikKegiatanBaru(page, `Kegiatan Pratinjau ${testInfo.project.name} ${Date.now()}`);
+        const sel = page.getByTestId('butir-pelaksanaan-1').locator('td[data-bulan="8"] button');
+        await sel.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' }));
+        await (testInfo.project.name === 'mobile' ? sel.tap() : sel.click());
+        await page.locator('#jadwal-0-uraian').fill('Rapat panitia');
+        await page.locator('#jadwal-0-mulai').selectOption('7');
+
+        await page.getByRole('button', { name: 'Pratinjau KAK' }).click();
+        const panel = page.getByTestId('panel-pratinjau-matrik');
+        await expect(panel).toBeVisible();
+        await expect(panel.locator('[data-bagian]')).toHaveCount(2);
+        const matrik = panel.getByTestId('kak-matrik');
+        await expect(matrik).toContainText('Bulan (2026)');
+        // Tanda lokal (belum disimpan) ikut: butir "Persiapan pelaksanaan" bertanda di kolom bulan 8.
+        await expect(matrik.locator('tr[data-matrik-butir]').filter({ hasText: 'Persiapan pelaksanaan' }).locator('td').nth(7)).toHaveText('v');
+        await expect(panel.getByTestId('kak-jadwal').locator('tr[data-jadwal-baris]').first()).toContainText('Rapat panitia');
+        await expect(panel.getByTestId('kak-jadwal').locator('tr[data-jadwal-baris]').first()).toContainText('Juli 2026');
+        await expect(panel.getByTestId('pratinjau-matrik-kurang')).toContainText('Matrik tahapan: tandai minimal satu bulan di setiap tahapan.');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await panel.screenshot({ path: `storage/playwright/shots/pratinjau-matrik-${testInfo.project.name}.png` });
+
+        await page.keyboard.press('Escape');
+        await expect(panel).toHaveCount(0);
+        await expect(sel).toHaveAttribute('aria-pressed', 'true');
+    });
+
     test('usul jadwal AI: permintaan, pilih versi, pakai lalu urungkan', async ({ page }, testInfo) => {
         await bukaMatrikKegiatanBaru(page, `Kegiatan Usul ${testInfo.project.name} ${Date.now()}`);
         const panel = page.getByTestId('panel-usul-jadwal');

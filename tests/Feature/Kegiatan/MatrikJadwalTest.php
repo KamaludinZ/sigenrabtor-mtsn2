@@ -4,6 +4,7 @@ namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
+use App\Livewire\Kegiatan\Form;
 use App\Livewire\Kegiatan\MatrikJadwal;
 use App\Livewire\Kegiatan\Rab;
 use App\Support\Kegiatan\JadwalKegiatan;
@@ -364,6 +365,42 @@ class MatrikJadwalTest extends TestCase
         foreach (['tambahBarisJadwal' => [], 'hapusBarisJadwal' => [0], 'geserBarisJadwal' => [0, 1]] as $aksi => $argumen) {
             Livewire::test(MatrikJadwal::class, ['kegiatan' => $id])->call($aksi, ...$argumen)->assertForbidden();
         }
+    }
+
+    public function test_pratinjau_kak_tahapan_dan_jadwal_dari_isian_belum_disimpan(): void
+    {
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
+            ->assertSee('Pratinjau KAK')
+            ->assertDontSeeHtml('data-testid="panel-pratinjau-matrik"')
+            ->set('matrik.persiapan.0.bulan', [6])
+            ->set('jadwal.0.uraian', 'Rapat panitia')
+            ->set('jadwal.0.mulai', '6')
+            ->set('pratinjauTerbuka', true)
+            ->assertSeeHtml('data-testid="panel-pratinjau-matrik"')
+            ->assertSee('(termasuk yang belum disimpan)')
+            ->assertSeeHtml('data-bagian="4"')
+            ->assertSeeHtml('data-bagian="7"')
+            ->assertDontSeeHtml('data-bagian="1"')
+            ->assertDontSeeHtml('data-testid="pratinjau-kak-cover"')
+            ->assertSeeHtmlInOrder(['data-testid="kak-matrik"', 'Rapat dan pembagian job deskripsi', '>v<', 'data-testid="kak-jadwal"', 'Rapat panitia', 'Juni 2026'])
+            ->assertSee('Matrik tahapan: tandai minimal satu bulan di setiap tahapan.')
+            ->assertSee('Jadwal kegiatan: lengkapi uraian & waktu setiap baris, atau hapus baris kosong.')
+            ->set('pratinjauTerbuka', false)
+            ->assertDontSeeHtml('data-testid="panel-pratinjau-matrik"');
+
+        // Pratinjau di Data Kegiatan memakai matrik & jadwal tersimpan (contoh kegiatan 3).
+        Livewire::test(Form::class, ['kegiatan' => 3])
+            ->set('pratinjauTerbuka', true)
+            ->assertSeeHtml('data-testid="kak-matrik"')
+            ->assertSeeHtmlInOrder(['7. Jadwal Kegiatan', 'Pelaksanaan workshop kurikulum', 'Juli 2026']);
+
+        // Terkunci: pratinjau tetap bisa dibuka.
+        $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Sudah final', 'status' => 'final', 'bulan_pelaksanaan' => [5]]);
+        Livewire::test(MatrikJadwal::class, ['kegiatan' => $id])
+            ->assertSee('Pratinjau KAK')
+            ->set('pratinjauTerbuka', true)
+            ->assertSeeHtml('data-testid="panel-pratinjau-matrik"')
+            ->assertSee('Jadwal kegiatan: lengkapi uraian & waktu setiap baris');
     }
 
     public function test_tab_matrik_jadwal_aktif_di_ruang_kerja_kegiatan(): void
