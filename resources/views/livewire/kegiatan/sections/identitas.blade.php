@@ -6,6 +6,26 @@
 @endphp
 
 <div class="grid gap-5 sm:grid-cols-2">
+    {{-- Ambil dari Data Pagu: nama kegiatan, leading, dan pagu DIPA/Komite terisi sekaligus (tetap bisa diubah). --}}
+    @php
+        $paguTertaut = $this->dataPaguTertaut();
+    @endphp
+    @if ($this->dapatDiedit() && ($this->opsiDataPagu !== [] || $paguTertaut))
+        <div class="rounded-xl bg-brand-50/60 p-4 ring-1 ring-brand-100 sm:col-span-2" data-testid="ambil-data-pagu">
+            @if ($paguTertaut)
+                <p class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-brand-900" data-testid="data-pagu-tertaut">
+                    <x-ui.icon name="check-circle" class="size-4 shrink-0 text-brand-600" />
+                    <span>Dari Data Pagu: <span class="font-semibold">{{ $paguTertaut['nama_kegiatan'] }}</span></span>
+                    <span class="text-xs text-brand-800/80">{{ \App\Support\Pagu\DataPagu::keterangan($paguTertaut) }}</span>
+                    <button type="button" wire:click="lepasDataPagu" class="text-xs font-semibold text-brand-700 hover:text-brand-800">Lepas tautan</button>
+                </p>
+            @endif
+            <label for="pilih-data-pagu" class="form-label">{{ $paguTertaut ? 'Ganti dari Data Pagu' : 'Ambil dari Data Pagu' }}</label>
+            <x-ui.pilih-cari id="pilih-data-pagu" model="pilihanPagu" :opsi="$this->opsiDataPagu" placeholder="Pilih nama kegiatan dari Data Pagu…" cari-placeholder="Ketik nama kegiatan…" />
+            <p class="form-hint">Nama kegiatan, leading, dan pagu DIPA/Komite terisi otomatis; masih bisa diubah. Hanya nama yang belum menjadi kegiatan.</p>
+        </div>
+    @endif
+
     <x-ui.field class="sm:col-span-2" label="Nama kegiatan" for="nama_kegiatan" error="form.nama_kegiatan" required
                 :warning="$peringatan['nama_kegiatan'] ?? null"
                 hint="Tulis tanpa awalan “Kegiatan”, mis. Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran.">

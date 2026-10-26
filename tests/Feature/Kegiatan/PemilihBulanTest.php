@@ -44,12 +44,12 @@ class PemilihBulanTest extends TestCase
     public function test_tombol_kosongkan_hanya_saat_ada_pilihan(): void
     {
         Livewire::test(Form::class)
-            ->assertDontSeeHtml('x-on:click="kosongkan()"')
+            ->assertDontSeeHtml('x-on:click="kosongkan()" class="text-xs font-semibold text-stone-500')
             ->set('form.bulan_pelaksanaan', [6])
-            ->assertSeeHtml('x-on:click="kosongkan()"')
+            ->assertSeeHtml('x-on:click="kosongkan()" class="text-xs font-semibold text-stone-500')
             ->assertSeeHtml('data-bulan="6"')
             ->set('form.bulan_pelaksanaan', [])
-            ->assertDontSeeHtml('x-on:click="kosongkan()"')
+            ->assertDontSeeHtml('x-on:click="kosongkan()" class="text-xs font-semibold text-stone-500')
             ->assertSee('Shift + klik untuk rentang');
     }
 

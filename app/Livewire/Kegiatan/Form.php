@@ -2,14 +2,17 @@
 
 namespace App\Livewire\Kegiatan;
 
+use App\Contracts\DataPaguRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
+use App\Support\Format;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\SaranPelaksanaan;
 use App\Support\MasterKode;
+use App\Support\Pagu\DataPagu;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
@@ -67,6 +70,9 @@ class Form extends Component
     #[Locked]
     public ?string $konteksTersimpanPada = null;
 
+    /** Pilihan "Ambil dari Data Pagu" (id); diproses lalu dikosongkan lagi. */
+    public string $pilihanPagu = '';
+
     /** @var array<string, string> Pagu sumber dana yang centangnya dilepas (kunci "dipa"/"komite"), dipakai lagi bila dicentang ulang. */
     #[Locked]
     public array $paguDilepas = [];
@@ -88,6 +94,11 @@ class Form extends Component
             // Akun leading dengan satu leading langsung terisi leading-nya.
             $pilihan = MasterKode::leadingsUntuk(StubData::currentUser());
             $this->form->leading = count($pilihan) === 1 ? $pilihan[0]['kode'] : '';
+            // Dari tombol "Buat kegiatan" di Data Pagu: nama & pagu langsung terisi.
+            if (is_string($pagu = request()->query('pagu'))) {
+                $this->pakaiDataPagu($pagu);
+                $this->adaPerubahan = false;
+            }
 
             return;
         }
@@ -542,6 +553,88 @@ class Form extends Component
         $this->form->syncNamaCover();
         $this->adaPerubahan = true;
         $this->form->validateOnly('nama_kegiatan');
+    }
+
+    /** Pilihan pada combobox "Ambil dari Data Pagu". */
+    public function updatedPilihanPagu(): void
+    {
+        if ($this->pilihanPagu !== '') {
+            $this->pakaiDataPagu($this->pilihanPagu);
+        }
+        $this->pilihanPagu = '';
+    }
+
+    /**
+     * Isi nama kegiatan, leading (bila boleh dipakai akun ini), dan sumber dana + pagu dari satu Data Pagu, lalu tautkan
+     * kegiatan ke data itu. Sumber dana mengikuti pagu yang terisi di Data Pagu; semuanya tetap bisa diubah.
+     */
+    public function pakaiDataPagu(string $id): void
+    {
+        $this->pastikanDapatDiedit();
+        $data = collect(DataPagu::untuk(StubData::currentUser()))->firstWhere('id', $id);
+        if ($data === null) {
+            return;
+        }
+        $dipakai = DataPagu::pemakaian([$data])[$data['id']];
+        if ($dipakai !== null && $dipakai['id'] !== $this->kegiatanId) {
+            $this->dispatch('notify', message: "\"{$data['nama_kegiatan']}\" sudah menjadi kegiatan; buka kegiatan itu dari Data Kegiatan.", type: 'error');
+
+            return;
+        }
+
+        $this->form->nama_kegiatan = KegiatanForm::tanpaAwalanKegiatan($data['nama_kegiatan']);
+        $this->form->syncNamaCover();
+        $bolehLeading = collect(MasterKode::leadingsUntuk(StubData::currentUser()))->contains('kode', $data['leading']);
+        if ($data['leading'] && $bolehLeading) {
+            $this->form->leading = $data['leading'];
+        }
+        foreach (SumberDana::cases() as $sumber) {
+            $pagu = $data['pagu'][$sumber->value] ?? null;
+            $this->form->{'dana_'.$sumber->kunci()} = $pagu !== null;
+            $this->form->{'pagu_'.$sumber->kunci()} = $pagu !== null ? Format::angka($pagu) : '';
+        }
+        $this->paguDilepas = [];
+        $this->form->data_pagu_id = $data['id'];
+        $this->adaPerubahan = true;
+        $this->resetErrorBag(['form.nama_kegiatan', 'form.nama_kegiatan_cover', 'form.pagu_dipa', 'form.pagu_komite']);
+        $this->dispatch('notify', message: 'Nama & pagu diisi dari Data Pagu: '.$data['nama_kegiatan'].'.', type: 'success');
+    }
+
+    /** Lepas tautan ke Data Pagu (isian nama & pagu tetap). */
+    public function lepasDataPagu(): void
+    {
+        $this->pastikanDapatDiedit();
+        $this->form->data_pagu_id = null;
+        $this->adaPerubahan = true;
+    }
+
+    /**
+     * Pilihan Data Pagu untuk combobox: yang terlihat akun ini dan belum menjadi kegiatan lain.
+     *
+     * @return list<array{nilai: string, label: string, keterangan: string, grup: string}>
+     */
+    #[Computed]
+    public function opsiDataPagu(): array
+    {
+        $data = DataPagu::untuk(StubData::currentUser());
+        $dipakai = DataPagu::pemakaian($data);
+
+        return array_values(array_map(fn (array $p) => [
+            'nilai' => $p['id'],
+            'label' => $p['nama_kegiatan'],
+            'keterangan' => DataPagu::keterangan($p),
+            'grup' => $p['leading'] ? 'Leading '.$p['leading'] : 'Tanpa leading',
+        ], array_filter($data, fn (array $p) => $dipakai[$p['id']] === null || $dipakai[$p['id']]['id'] === $this->kegiatanId)));
+    }
+
+    /**
+     * Data Pagu yang tertaut ke kegiatan ini (null bila tidak ada / sudah dihapus).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function dataPaguTertaut(): ?array
+    {
+        return $this->form->data_pagu_id ? app(DataPaguRepository::class)->temukan($this->form->data_pagu_id) : null;
     }
 
     /**

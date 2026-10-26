@@ -120,6 +120,9 @@ class KegiatanForm extends Form
 
     public string $pagu_komite = '';
 
+    /** Data Pagu asal nama & pagu kegiatan ini (dipilih di Identitas); null = diisi manual. */
+    public ?string $data_pagu_id = null;
+
     // Pelaksana & Panitia
     /** @var list<array{key: string, nama: string, jabatan: string, peran: string}> */
     public array $panitia = [];
@@ -553,6 +556,7 @@ class KegiatanForm extends Form
         $this->dana_komite = array_key_exists('Komite', $sumber);
         $this->pagu_dipa = $this->dana_dipa && $sumber['DIPA'] !== null ? Format::angka((int) $sumber['DIPA']) : '';
         $this->pagu_komite = $this->dana_komite && $sumber['Komite'] !== null ? Format::angka((int) $sumber['Komite']) : '';
+        $this->data_pagu_id = filled($data['data_pagu_id'] ?? null) ? (string) $data['data_pagu_id'] : null;
     }
 
     /**
@@ -591,6 +595,7 @@ class KegiatanForm extends Form
             'uraian_pelaksanaan' => $this->uraian_pelaksanaan,
             'konteks' => Teks::rapikan($this->konteks),
             'sumber_dana' => $this->sumberDana(),
+            'data_pagu_id' => $this->data_pagu_id,
         ];
     }
 

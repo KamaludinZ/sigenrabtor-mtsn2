@@ -232,7 +232,7 @@
                             @if ($dihentikan)
                                 Impor dihentikan: {{ $berhasil }} {{ $satuan }} berhasil sebelum dihentikan.
                             @elseif ($berhasil > 0)
-                                Impor selesai: {{ $berhasil }} {{ $satuan }} berhasil ditambahkan.
+                                Impor selesai: {{ $berhasil }} {{ $satuan }} berhasil {{ $kataBerhasil ?? 'ditambahkan' }}.
                             @else
                                 Tidak ada {{ $satuan }} yang ditambahkan.
                             @endif

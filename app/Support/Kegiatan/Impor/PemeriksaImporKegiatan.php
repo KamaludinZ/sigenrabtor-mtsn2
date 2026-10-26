@@ -123,9 +123,11 @@ final class PemeriksaImporKegiatan
     }
 
     /**
+     * Kolom Leading (kode, nama unit, atau label template) → leading yang boleh dipakai; juga dipakai impor Data Pagu.
+     *
      * @return array{0: array{kode: string, nama_unit: string}|null, 1: string|null}
      */
-    private static function leading(mixed $nilai, array $leadings, array $semuaLeading, ?string $bawaan): array
+    public static function leading(mixed $nilai, array $leadings, array $semuaLeading, ?string $bawaan): array
     {
         $teks = trim((string) $nilai);
 
@@ -154,9 +156,11 @@ final class PemeriksaImporKegiatan
     }
 
     /**
+     * Kolom pagu (angka atau teks rupiah) → rupiah bulat; juga dipakai impor Data Pagu.
+     *
      * @return array{0: int|null, 1: string|null}
      */
-    private static function pagu(mixed $nilai, SumberDana $sumber): array
+    public static function pagu(mixed $nilai, SumberDana $sumber): array
     {
         if ($nilai === null || $nilai === '') {
             return [null, null];

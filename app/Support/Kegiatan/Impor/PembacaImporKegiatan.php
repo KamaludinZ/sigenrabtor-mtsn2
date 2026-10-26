@@ -20,9 +20,9 @@ final class PembacaImporKegiatan
      *
      * @throws GagalBacaImpor
      */
-    public static function baca(string $path, ?string $namaAsli = null): array
+    public static function baca(string $path, ?string $namaAsli = null, string $namaLembar = TemplateImporKegiatan::LEMBAR): array
     {
-        $lembar = LembarExcel::buka($path, $namaAsli ?? $path, TemplateImporKegiatan::LEMBAR, 'Gunakan template .xlsx dari tombol "Unduh template".');
+        $lembar = LembarExcel::buka($path, $namaAsli ?? $path, $namaLembar, 'Gunakan template .xlsx dari tombol "Unduh template".');
         $judul = LembarExcel::cariJudul($lembar, array_map(fn ($j) => [$j], TemplateImporKegiatan::KOLOM), ['nama_kegiatan'], self::CARI_JUDUL_DI)
             ?? throw new GagalBacaImpor('Kolom "Nama Kegiatan" tidak ditemukan. Pakai template dari tombol "Unduh template" tanpa mengubah judul kolom.');
 
@@ -50,7 +50,7 @@ final class PembacaImporKegiatan
         }
 
         if ($hasil === []) {
-            throw new GagalBacaImpor('Berkas tidak berisi data kegiatan. Isi lembar "'.TemplateImporKegiatan::LEMBAR.'" mulai baris 2.');
+            throw new GagalBacaImpor('Berkas tidak berisi data kegiatan. Isi lembar "'.$namaLembar.'" mulai baris 2.');
         }
 
         return $hasil;
