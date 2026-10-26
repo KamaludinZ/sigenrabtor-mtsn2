@@ -80,7 +80,8 @@
     <x-monitoring.perbandingan-sumber :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" class="mt-6" />
 
     {{-- Total per leading --}}
-    <x-monitoring.tabel-leading :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" :leading="$leading === '' ? null : $leading" class="mt-6" />
+    <x-monitoring.tabel-leading :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" :leading="$leading === '' ? null : $leading"
+                              :urut="$urutLeading" :arah="$arahLeading" class="mt-6" />
 
     {{-- Bagian rekap (diisi bertahap) --}}
     <div class="mt-6 grid gap-6 lg:grid-cols-2">

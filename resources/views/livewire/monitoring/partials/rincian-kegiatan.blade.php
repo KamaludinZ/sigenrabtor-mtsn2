@@ -15,24 +15,6 @@
     $mulai = $semua === [] ? 0 : ($halaman - 1) * Anggaran::PER_HALAMAN + 1;
     $total = $this->ringkasan->total();
     $teksPersen = fn (?float $p) => $p === null ? '—' : Format::angka($p).'%';
-    $judulUrut = function (string $kolom, string $label, string $rata = 'left') {
-        $aktif = $this->urut === $kolom;
-
-        return [
-            'aktif' => $aktif,
-            'label' => $label,
-            'rata' => $rata,
-            'aria' => $aktif ? ($this->arah === 'asc' ? 'ascending' : 'descending') : 'none',
-            'ikon' => $aktif ? ($this->arah === 'asc' ? 'arrow-up' : 'arrow-down') : null,
-        ];
-    };
-    $kolomUrut = [
-        'nama' => $judulUrut('nama', 'Kegiatan'),
-        'status' => $judulUrut('status', 'Status'),
-        'pagu' => $judulUrut('pagu', 'Pagu', 'right'),
-        'total' => $judulUrut('total', 'Total RAB', 'right'),
-        'kelebihan' => $judulUrut('kelebihan', 'Kondisi pagu'),
-    ];
 @endphp
 
 <section id="monitoring-kegiatan" class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-monitoring-kegiatan" data-testid="bagian-monitoring-kegiatan">
@@ -66,15 +48,13 @@
                 <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                     <tr>
                         <th scope="col" class="w-12 py-2 pr-2 pl-5 text-right sm:pl-6">No</th>
-                        @foreach (['nama', 'status'] as $kolom)
-                            @include('livewire.monitoring.partials.judul-urut', ['kolom' => $kolom, 'judul' => $kolomUrut[$kolom]])
-                        @endforeach
+                        <x-monitoring.judul-urut kolom="nama" label="Kegiatan" :urut="$this->urut" :arah="$this->arah" />
+                        <x-monitoring.judul-urut kolom="status" label="Status" :urut="$this->urut" :arah="$this->arah" />
                         <th scope="col" class="px-3 py-2 text-left whitespace-nowrap">Sumber dana</th>
-                        @foreach (['pagu', 'total'] as $kolom)
-                            @include('livewire.monitoring.partials.judul-urut', ['kolom' => $kolom, 'judul' => $kolomUrut[$kolom]])
-                        @endforeach
-                        <th scope="col" class="w-36 px-3 py-2 text-left">Pemakaian</th>
-                        @include('livewire.monitoring.partials.judul-urut', ['kolom' => 'kelebihan', 'judul' => $kolomUrut['kelebihan']])
+                        <x-monitoring.judul-urut kolom="pagu" label="Pagu" rata="right" :urut="$this->urut" :arah="$this->arah" />
+                        <x-monitoring.judul-urut kolom="total" label="Total RAB" rata="right" :urut="$this->urut" :arah="$this->arah" />
+                        <x-monitoring.judul-urut kolom="pemakaian" label="Pemakaian" class="w-36" :urut="$this->urut" :arah="$this->arah" />
+                        <x-monitoring.judul-urut kolom="kelebihan" label="Kondisi pagu" :urut="$this->urut" :arah="$this->arah" />
                     </tr>
                 </thead>
                 @foreach ($baris as $i => $k)

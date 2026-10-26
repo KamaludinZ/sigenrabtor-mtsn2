@@ -31,6 +31,7 @@ final readonly class RingkasanAnggaran
         'total' => ['Total RAB terbesar', 'desc'],
         'pagu' => ['Pagu terbesar', 'desc'],
         'kelebihan' => ['Kelebihan pagu terbesar', 'desc'],
+        'pemakaian' => ['Pemakaian pagu tertinggi', 'desc'],
         'nama' => ['Nama kegiatan', 'asc'],
         'leading' => ['Leading', 'asc'],
         'status' => ['Status dokumen', 'asc'],
@@ -213,11 +214,12 @@ final readonly class RingkasanAnggaran
     /**
      * Rekap per leading (urutan master leading; kegiatan tanpa leading di baris terakhir bila ada): jumlah kegiatan per
      * status, lalu angka anggaran gabungan dan per sumber dana (sel(): pagu, total RAB, selisih, persen pemakaian, jumlah
-     * RAB, RAB melebihi pagunya sendiri, RAB tanpa pagu). $semua = tampilkan juga leading tanpa kegiatan.
+     * RAB, RAB melebihi pagunya sendiri, RAB tanpa pagu). $semua = tampilkan juga leading tanpa kegiatan. $urut = kunci
+     * urutLeading() (bawaan urutan master; nilai kosong — mis. selisih yang belum bisa dihitung — selalu di akhir).
      *
      * @return list<array{kode: string|null, nama_unit: string, jumlah: int, perStatus: array<string, int>, pagu: int, total: int, selisih: int|null, persen: float|null, rab: int, melebihi: int, tanpa_pagu: int, sumber: array<string, array{pagu: int, total: int, selisih: int|null, persen: float|null, rab: int, melebihi: int, tanpa_pagu: int}>}>
      */
-    public function perLeading(bool $semua = true): array
+    public function perLeading(bool $semua = true, string $urut = 'kode', ?string $arah = null): array
     {
         $nol = ['pagu' => 0, 'total' => 0, 'rab' => 0, 'melebihi' => 0, 'tanpa_pagu' => 0];
         $kosong = fn (?string $kode, string $nama) => ['kode' => $kode, 'nama_unit' => $nama, 'jumlah' => 0, 'perStatus' => array_fill_keys(array_column(StatusKegiatan::cases(), 'value'), 0)]
@@ -255,7 +257,77 @@ final readonly class RingkasanAnggaran
             }
         }
 
-        return $lengkap;
+        $pilihan = self::urutLeading();
+        $urut = isset($pilihan[$urut]) ? $urut : 'kode';
+        $arah = in_array($arah, ['asc', 'desc'], true) ? $arah : $pilihan[$urut][1];
+        $posisi = self::posisiLeading();
+        [$grup, $angka] = array_pad(explode('_', $urut, 2), 2, null);
+        $sumber = SumberDana::dariKunci((string) $grup)?->value;
+        $kunci = match (true) {
+            $urut === 'kode' => fn (array $b) => $posisi[$b['kode'] ?? ''] ?? null,
+            $urut === 'jumlah' => fn (array $b) => $b['jumlah'],
+            $sumber !== null => fn (array $b) => $b['sumber'][$sumber][$angka] ?? null,
+            default => fn (array $b) => $b[$angka],
+        };
+
+        return self::urutkan($lengkap, $kunci, $arah, fn (array $a, array $b) => ($posisi[$a['kode'] ?? ''] ?? PHP_INT_MAX) <=> ($posisi[$b['kode'] ?? ''] ?? PHP_INT_MAX));
+    }
+
+    /**
+     * Pilihan urutan tabel Total per leading → [label, arah bawaan]: kode leading, jumlah kegiatan, lalu pagu / total RAB /
+     * selisih tiap sumber dana (`dipa_total`, `komite_selisih`, …) dan gabungannya (`semua_…`). Selisih naik = melebihi dulu.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function urutLeading(): array
+    {
+        $hasil = ['kode' => ['Kode leading', 'asc'], 'jumlah' => ['Kegiatan terbanyak', 'desc']];
+        $grup = array_map(fn (SumberDana $s) => [$s->kunci(), $s->value], SumberDana::cases());
+        $grup[] = ['semua', 'gabungan'];
+        foreach ($grup as [$kunci, $nama]) {
+            $hasil["{$kunci}_pagu"] = ["Pagu {$nama} terbesar", 'desc'];
+            $hasil["{$kunci}_total"] = ["Total RAB {$nama} terbesar", 'desc'];
+            $hasil["{$kunci}_selisih"] = ["Selisih {$nama} terkecil (melebihi dulu)", 'asc'];
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Urutkan baris menurut $kunci; nilai null (belum bisa dihitung) selalu di akhir apa pun arahnya, seri menurut $seri.
+     *
+     * @template T
+     *
+     * @param  list<T>  $baris
+     * @param  \Closure(T): (int|float|string|null)  $kunci
+     * @param  \Closure(T, T): int  $seri
+     * @return list<T>
+     */
+    private static function urutkan(array $baris, \Closure $kunci, string $arah, \Closure $seri): array
+    {
+        $kali = $arah === 'asc' ? 1 : -1;
+        usort($baris, function ($a, $b) use ($kunci, $kali, $seri) {
+            [$ka, $kb] = [$kunci($a), $kunci($b)];
+
+            return match (true) {
+                $ka === null && $kb === null => 0,
+                $ka === null => 1,
+                $kb === null => -1,
+                default => ($ka <=> $kb) * $kali,
+            } ?: $seri($a, $b);
+        });
+
+        return $baris;
+    }
+
+    /**
+     * Posisi tiap kode leading di master (urutan baku; "1.10" sesudah "1.9", bukan sesudah "1.1").
+     *
+     * @return array<string, int>
+     */
+    private static function posisiLeading(): array
+    {
+        return array_flip(array_column(MasterKode::leadings(), 'kode'));
     }
 
     /**
@@ -284,7 +356,8 @@ final readonly class RingkasanAnggaran
      * Rincian per kegiatan (PRD §11 "Rincian per Kegiatan"): satu baris per kegiatan dengan RAB per sumber dana (pagu,
      * total, item, persen pemakaian, StatusPagu — tiap RAB dibandingkan dengan pagunya sendiri) dan angka gabungannya
      * (sel()), serta kelebihan = jumlah kelebihan RAB yang melampaui pagunya sendiri (tidak tertutup sisa RAB lain atau
-     * RAB tanpa pagu). Bawaan diurutkan dari total RAB terbesar; kunci lain di URUT_RINCIAN; seri menurut nama lalu id.
+     * RAB tanpa pagu). Bawaan diurutkan dari total RAB terbesar; kunci lain di URUT_RINCIAN (pemakaian = persen tertinggi
+     * di antara RAB-nya); nilai kosong selalu di akhir, seri menurut nama lalu id.
      *
      * @return list<array{id: int, nama: string, kode_rktm: string|null, leading: string|null, leading_nama: string|null, status: StatusKegiatan, rab: list<array{sumber: string, pagu: int|null, total: int, item: int, persen: float|null, status: StatusPagu}>, pagu: int, total: int, selisih: int|null, persen: float|null, kelebihan: int, rab_jumlah: int, melebihi: int, tanpa_pagu: int}>
      */
@@ -330,19 +403,18 @@ final readonly class RingkasanAnggaran
             ];
         }, $this->kegiatan);
 
+        $posisi = self::posisiLeading();
         $kunci = match ($urut) {
             'pagu' => fn (array $b) => $b['pagu'],
             'kelebihan' => fn (array $b) => $b['kelebihan'],
+            'pemakaian' => fn (array $b) => ($persen = array_filter(array_column($b['rab'], 'persen'), fn ($p) => $p !== null)) ? max($persen) : null,
             'nama' => fn (array $b) => mb_strtolower($b['nama']),
-            'leading' => fn (array $b) => $b['leading'] ?? '~',
+            'leading' => fn (array $b) => $posisi[$b['leading'] ?? ''] ?? null,
             'status' => fn (array $b) => $b['status']->langkah(),
             default => fn (array $b) => $b['total'],
         };
-        $kali = $arah === 'asc' ? 1 : -1;
-        usort($baris, fn (array $a, array $b) => ($kunci($a) <=> $kunci($b)) * $kali
-            ?: (mb_strtolower($a['nama']) <=> mb_strtolower($b['nama'])) ?: $a['id'] <=> $b['id']);
 
-        return $baris;
+        return self::urutkan($baris, $kunci, $arah, fn (array $a, array $b) => (mb_strtolower($a['nama']) <=> mb_strtolower($b['nama'])) ?: $a['id'] <=> $b['id']);
     }
 
     /**

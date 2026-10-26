@@ -242,4 +242,66 @@ class MonitoringAnggaranTest extends TestCase
         Livewire::withQueryParams(['urut' => 'acak', 'arah' => 'miring', 'hal' => 7])->test(Anggaran::class)
             ->assertSet('urut', 'total')->assertSet('arah', 'desc')->assertSet('halaman', 2);
     }
+
+    public function test_urutan_tabel_per_leading(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $lomba = $repo->simpan(['nama_kegiatan' => 'Lomba', 'leading' => '1.1', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000]]]);
+        $tanpaLeading = $repo->simpan(['nama_kegiatan' => 'Tanpa leading']);
+        $ringkasan = RingkasanAnggaran::dari($repo->semua());
+        $kode = fn (string $urut, ?string $arah = null) => array_column($ringkasan->perLeading(urut: $urut, arah: $arah), 'kode');
+
+        $master = ['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8'];
+        $this->assertSame([...$master, null], $kode('kode'));
+        $this->assertSame([...array_reverse($master), null], $kode('kode', 'desc'), 'Baris tanpa leading selalu di akhir.');
+        $this->assertSame([...$master, null], $kode('acak'));
+        $this->assertSame(['1.6', '1.1', null], array_slice($kode('jumlah'), 0, 3));
+        $this->assertSame(['1.6', '1.1'], array_slice($kode('semua_total'), 0, 2));
+        $this->assertSame(['1.6'], array_slice($kode('komite_selisih'), 0, 1), 'Selisih naik: melebihi pagu lebih dulu.');
+        $this->assertSame(['1.1', '1.2', '1.3'], array_slice($kode('dipa_selisih'), 0, 3), 'Selisih yang belum bisa dihitung (1.6: RAB tanpa pagu) di akhir, menurut kode.');
+        $this->assertSame(['1.6', '1.1', '1.2'], array_slice($kode('komite_selisih', 'desc'), 0, 3), 'Arah turun: nilai kosong tetap di akhir, menurut kode.');
+        $this->assertArrayHasKey('komite_pagu', RingkasanAnggaran::urutLeading());
+        $this->assertSame(['Selisih gabungan terkecil (melebihi dulu)', 'asc'], RingkasanAnggaran::urutLeading()['semua_selisih']);
+
+        $this->assertSame([3, 2, 1, $lomba, $tanpaLeading], array_column($ringkasan->rincianKegiatan('pemakaian'), 'id'), 'Pemakaian tertinggi (106%) dulu, seri (100%) menurut nama, 0% lalu tanpa RAB di akhir.');
+        $this->assertSame([$lomba, 3, 2, 1, $tanpaLeading], array_column($ringkasan->rincianKegiatan('leading'), 'id'), 'Urutan master leading; leading sama → nama; tanpa leading di akhir.');
+    }
+
+    public function test_judul_kolom_per_leading_mengurutkan(): void
+    {
+        app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Lomba', 'leading' => '1.1', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000]]]);
+
+        Livewire::test(Anggaran::class)
+            ->assertSeeHtml('data-testid="urut-leading"')
+            ->call('urutkanLeading', 'komite_selisih')
+            ->assertSet('urutLeading', 'komite_selisih')
+            ->assertSet('arahLeading', 'asc')
+            ->assertSeeHtmlInOrder(['data-leading="1.6"', 'data-leading="1.1"'])
+            ->assertSeeHtml("wire:click=\"urutkanLeading('komite_selisih')\"")
+            ->call('urutkanLeading', 'komite_selisih')
+            ->assertSet('arahLeading', 'desc')
+            ->set('urutLeading', 'semua_total')
+            ->assertSet('arahLeading', 'desc')
+            ->assertSeeHtmlInOrder(['data-leading="1.6"', 'data-leading="1.1"', 'data-leading="1.2"'])
+            ->set('urutLeading', 'kode')
+            ->assertSet('arahLeading', 'asc')
+            ->assertSeeHtmlInOrder(['data-leading="1.1"', 'data-leading="1.2"', 'data-leading="1.6"'])
+            ->set('urutLeading', 'dipa_total')
+            ->set('sumber', 'Komite')
+            ->assertSet('urutLeading', 'kode')
+            ->call('urutkanLeading', 'tidak_ada')
+            ->assertSet('urutLeading', 'kode')
+            ->call('urutkan', 'pemakaian')
+            ->assertSet('urut', 'pemakaian')
+            ->assertSet('arah', 'desc')
+            ->assertSeeHtml('aria-sort="descending"');
+
+        Livewire::withQueryParams(['urut_leading' => 'dipa_total', 'sumber' => 'Komite'])->test(Anggaran::class)
+            ->assertSet('urutLeading', 'kode')->assertSet('arahLeading', 'asc');
+        Livewire::withQueryParams(['urut_leading' => 'acak', 'arah_leading' => 'miring'])->test(Anggaran::class)
+            ->assertSet('urutLeading', 'kode')->assertSet('arahLeading', 'asc');
+        Livewire::withQueryParams(['urut_leading' => 'komite_total', 'arah_leading' => 'desc'])->test(Anggaran::class)
+            ->assertSet('urutLeading', 'komite_total')->assertSet('arahLeading', 'desc')
+            ->assertSeeHtml('aria-sort="descending"');
+    }
 }

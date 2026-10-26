@@ -1,4 +1,4 @@
-@props(['ringkasan', 'sumber' => null, 'leading' => null])
+@props(['ringkasan', 'sumber' => null, 'leading' => null, 'urut' => 'kode', 'arah' => null])
 
 @use('App\Enums\SumberDana')
 @use('App\Support\Format')
@@ -8,18 +8,21 @@
     Tabel "Total per leading" Monitoring Anggaran dari RingkasanAnggaran::perLeading(): jumlah kegiatan, lalu pagu, total RAB,
     dan selisih DIPA dan Komite terpisah (plus kelompok Jumlah bila keduanya tampil) dengan baris jumlah dari perSumber().
     Tanpa saringan leading semua leading master tampil (yang belum punya kegiatan ikut, bertanda —). Layar sempit: kartu
-    per leading. $sumber / $leading = saringan aktif halaman.
+    per leading. $sumber / $leading = saringan aktif halaman; $urut / $arah = urutan (RingkasanAnggaran::urutLeading(), lewat
+    judul kolom → urutkanLeading() atau pilihan Urutkan → urutLeading di komponen Monitoring).
 --}}
 @php
     $sumberTampil = $sumber === null ? SumberDana::urutan() : [$sumber];
     $ganda = count($sumberTampil) > 1;
-    $baris = array_values(array_filter($ringkasan->perLeading(), fn (array $b) => $leading === null || $b['kode'] === $leading));
+    $baris = array_values(array_filter($ringkasan->perLeading(urut: $urut, arah: $arah), fn (array $b) => $leading === null || $b['kode'] === $leading));
+    $pilihanUrut = array_filter(RingkasanAnggaran::urutLeading(), fn (string $k) => in_array(explode('_', $k)[0], ['kode', 'jumlah', ...array_map('mb_strtolower', $sumberTampil), ...($ganda ? ['semua'] : [])], true), ARRAY_FILTER_USE_KEY);
+    $arahAktif = $arah ?? (RingkasanAnggaran::urutLeading()[$urut][1] ?? 'asc');
     $perSumber = $ringkasan->perSumber();
     $jumlahSumber = array_map(fn (array $s) => RingkasanAnggaran::sel($s), $perSumber);
     $jumlahSemua = RingkasanAnggaran::sel($ringkasan->total());
-    $kelompok = array_map(fn (string $s) => ['label' => $s, 'jumlah' => fn (array $b) => $b['sumber'][$s]], $sumberTampil);
+    $kelompok = array_map(fn (string $s) => ['label' => $s, 'kunci' => mb_strtolower($s), 'jumlah' => fn (array $b) => $b['sumber'][$s]], $sumberTampil);
     if ($ganda) {
-        $kelompok[] = ['label' => null, 'jumlah' => fn (array $b) => $b];
+        $kelompok[] = ['label' => null, 'kunci' => 'semua', 'jumlah' => fn (array $b) => $b];
     }
     $berkegiatan = count(array_filter($baris, fn (array $b) => $b['jumlah'] > 0));
     $teksSelisih = function (array $sel): string {
@@ -39,7 +42,19 @@
             <h2 id="judul-monitoring-leading" class="text-base font-semibold text-stone-900">Total per leading</h2>
             <p class="mt-0.5 text-sm text-stone-500">Pagu, total RAB, dan selisih tiap leading — {{ $ganda ? 'DIPA dan Komite terpisah' : 'sumber dana '.$sumber }}. Selisih dihitung bila semua RAB sudah berpagu.</p>
         </div>
-        <p class="shrink-0 text-xs text-stone-500" data-testid="jumlah-leading">{{ $berkegiatan }} dari {{ count($baris) }} leading punya kegiatan</p>
+        <div class="flex shrink-0 flex-col gap-2 sm:items-end">
+            <p class="text-xs text-stone-500" data-testid="jumlah-leading">{{ $berkegiatan }} dari {{ count($baris) }} leading punya kegiatan</p>
+            @if (count($baris) > 1)
+                <label class="flex items-center gap-2 text-xs text-stone-500">
+                    Urutkan
+                    <select wire:model.live="urutLeading" class="form-input w-auto py-1 text-xs" data-testid="urut-leading">
+                        @foreach ($pilihanUrut as $kunci => [$label])
+                            <option value="{{ $kunci }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
+        </div>
     </header>
 
     {{-- Layar lebar: tabel --}}
@@ -48,8 +63,9 @@
             <caption class="sr-only">Total anggaran per leading{{ $ganda ? ', DIPA dan Komite terpisah' : ', sumber dana '.$sumber }}</caption>
             <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                 <tr>
-                    <th scope="col" rowspan="2" class="sticky left-0 z-10 min-w-52 border-r border-stone-100 bg-stone-50 px-5 py-2 text-left align-bottom sm:pl-6">Leading</th>
-                    <th scope="col" rowspan="2" class="px-3 py-2 text-right align-bottom">Kegiatan</th>
+                    <x-monitoring.judul-urut kolom="kode" label="Leading" aksi="urutkanLeading" :urut="$urut" :arah="$arahAktif" rowspan="2"
+                                             class="sticky left-0 z-10 min-w-52 border-r border-stone-100 bg-stone-50 pl-5 align-bottom sm:pl-6" />
+                    <x-monitoring.judul-urut kolom="jumlah" label="Kegiatan" aksi="urutkanLeading" rata="right" :urut="$urut" :arah="$arahAktif" rowspan="2" class="align-bottom" />
                     @foreach ($kelompok as $k)
                         <th scope="colgroup" colspan="3" class="border-l border-stone-200 px-3 pt-2 pb-1 text-center">
                             @if ($k['label'])
@@ -62,9 +78,9 @@
                 </tr>
                 <tr>
                     @foreach ($kelompok as $k)
-                        <th scope="col" class="border-l border-stone-100 px-3 pt-1 pb-2 text-right font-medium">Pagu</th>
-                        <th scope="col" class="px-3 pt-1 pb-2 text-right font-medium">Total RAB</th>
-                        <th scope="col" class="px-3 pt-1 pb-2 text-right font-medium">Selisih</th>
+                        <x-monitoring.judul-urut :kolom="$k['kunci'].'_pagu'" label="Pagu" aksi="urutkanLeading" rata="right" :urut="$urut" :arah="$arahAktif" class="border-l border-stone-100 pt-1 font-medium" />
+                        <x-monitoring.judul-urut :kolom="$k['kunci'].'_total'" label="Total RAB" aksi="urutkanLeading" rata="right" :urut="$urut" :arah="$arahAktif" class="pt-1 font-medium" />
+                        <x-monitoring.judul-urut :kolom="$k['kunci'].'_selisih'" label="Selisih" aksi="urutkanLeading" rata="right" :urut="$urut" :arah="$arahAktif" class="pt-1 font-medium" />
                     @endforeach
                 </tr>
             </thead>

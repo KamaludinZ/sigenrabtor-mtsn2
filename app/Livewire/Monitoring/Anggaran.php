@@ -40,6 +40,13 @@ class Anggaran extends Component
     #[Url(as: 'hal', except: 1)]
     public int $halaman = 1;
 
+    /** Urutan tabel Total per leading (kunci RingkasanAnggaran::urutLeading()). */
+    #[Url(as: 'urut_leading', except: 'kode')]
+    public string $urutLeading = 'kode';
+
+    #[Url(as: 'arah_leading', except: 'asc')]
+    public string $arahLeading = 'asc';
+
     public const PER_HALAMAN = 20;
 
     /** Saringan & urutan yang tidak dikenal (mis. dari URL lama) dilepas. */
@@ -53,6 +60,11 @@ class Anggaran extends Component
         }
         $this->arah = in_array($this->arah, ['asc', 'desc'], true) ? $this->arah : RingkasanAnggaran::URUT_RINCIAN[$this->urut][1];
         $this->halaman = max(1, $this->halaman);
+        $pilihan = RingkasanAnggaran::urutLeading();
+        if (! isset($pilihan[$this->urutLeading]) || ! $this->urutLeadingTampil()) {
+            $this->reset('urutLeading', 'arahLeading');
+        }
+        $this->arahLeading = in_array($this->arahLeading, ['asc', 'desc'], true) ? $this->arahLeading : $pilihan[$this->urutLeading][1];
     }
 
     /** Saringan berubah → rincian kembali ke halaman pertama; urutan dari pilihan memakai arah bawaannya. */
@@ -61,8 +73,14 @@ class Anggaran extends Component
         if (in_array($properti, ['leading', 'sumber', 'status'], true)) {
             $this->halaman = 1;
         }
+        if ($properti === 'sumber' && ! $this->urutLeadingTampil()) {
+            $this->reset('urutLeading', 'arahLeading');
+        }
         if ($properti === 'urut') {
             $this->urutkan($this->urut, ulang: false);
+        }
+        if ($properti === 'urutLeading') {
+            $this->urutkanLeading($this->urutLeading, ulang: false);
         }
     }
 
@@ -82,6 +100,26 @@ class Anggaran extends Component
         $this->arah = $ulang && $kolom === $this->urut ? ($this->arah === 'asc' ? 'desc' : 'asc') : RingkasanAnggaran::URUT_RINCIAN[$kolom][1];
         $this->urut = $kolom;
         $this->halaman = 1;
+    }
+
+    /** Judul kolom tabel Total per leading (perilaku sama dengan urutkan()). */
+    public function urutkanLeading(string $kolom, bool $ulang = true): void
+    {
+        $pilihan = RingkasanAnggaran::urutLeading();
+        if (! isset($pilihan[$kolom])) {
+            return;
+        }
+
+        $this->arahLeading = $ulang && $kolom === $this->urutLeading ? ($this->arahLeading === 'asc' ? 'desc' : 'asc') : $pilihan[$kolom][1];
+        $this->urutLeading = $kolom;
+    }
+
+    /** Urutan per leading memakai kolom yang tampil (saringan satu sumber dana menyembunyikan kolom sumber lain & Jumlah). */
+    private function urutLeadingTampil(): bool
+    {
+        $grup = explode('_', $this->urutLeading)[0];
+
+        return in_array($grup, ['kode', 'jumlah'], true) || $this->sumber === '' || $grup === mb_strtolower($this->sumber);
     }
 
     public function keHalaman(int $halaman): void

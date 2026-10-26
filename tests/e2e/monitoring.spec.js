@@ -117,4 +117,31 @@ test.describe('Monitoring Anggaran', () => {
         await page.reload();
         await expect(bagian.getByTestId('urut-rincian')).toHaveValue('nama');
     });
+
+    test('pengurutan tabel per leading: judul kolom & pilihan Urutkan, tersimpan di URL', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const bagian = page.getByTestId('bagian-monitoring-leading');
+        const lebar = testInfo.project.name === 'desktop';
+        if (lebar) {
+            const tabel = bagian.getByRole('table');
+            await expect(tabel.locator('th[aria-sort="ascending"]')).toHaveText(/Leading/);
+            await tabel.locator('thead th').filter({ hasText: 'Selisih' }).nth(1).getByRole('button').click();
+            await expect(page).toHaveURL(/urut_leading=komite_selisih/);
+            await expect(tabel.locator('th[aria-sort="ascending"]')).toHaveCount(1);
+            await expect(tabel.locator('tbody tr').first()).toHaveAttribute('data-leading', '1.6');
+            await bagian.screenshot({ path: `storage/playwright/shots/monitoring-leading-urut-${testInfo.project.name}.png` });
+            await tabel.locator('thead th').filter({ hasText: 'Kegiatan' }).getByRole('button').click();
+            await expect(page).toHaveURL(/urut_leading=jumlah/);
+            await expect(page).toHaveURL(/arah_leading=desc/);
+        }
+        await bagian.getByTestId('urut-leading').selectOption('semua_total');
+        await expect(page).toHaveURL(/urut_leading=semua_total/);
+        await expect(bagian.locator(lebar ? 'tbody tr' : 'li[data-leading-kartu]').first()).toHaveAttribute(lebar ? 'data-leading' : 'data-leading-kartu', '1.6');
+        await page.reload();
+        await expect(bagian.getByTestId('urut-leading')).toHaveValue('semua_total');
+        await page.getByTestId('saringan-monitoring').getByLabel('Sumber dana').selectOption('DIPA');
+        await expect(bagian.getByTestId('urut-leading')).toHaveValue('kode');
+        await expect(page).not.toHaveURL(/urut_leading=/);
+    });
 });
