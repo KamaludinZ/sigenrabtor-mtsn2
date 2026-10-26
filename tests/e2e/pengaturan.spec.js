@@ -351,11 +351,12 @@ test.describe('Pengaturan admin', () => {
             const tabel = page.getByTestId('tabel-riwayat');
             const baris = testInfo.project.name === 'mobile' ? tabel.locator('ul li') : tabel.locator('tbody tr');
             await expect(baris.first()).toContainText('Format: Halaman {x} dari {y} → {x}');
-            await expect(tabel).toContainText('Tahun Anggaran 2026 diaktifkan (sebelumnya 2025); 2025 dikunci.');
 
+            // Riwayat berhalaman 20 baris (putaran sebelumnya ikut mencatat); saringan bagian memuat entri contoh.
             await tabel.getByLabel('Bagian').selectOption({ label: 'Tahun Anggaran' });
             await expect(tabel).not.toContainText('Ubah nomor halaman');
             await expect(baris.first()).toContainText('Ganti tahun aktif');
+            await expect(tabel).toContainText('Tahun Anggaran 2026 diaktifkan (sebelumnya 2025); 2025 dikunci.');
             await tabel.getByLabel('Bagian').selectOption('');
             await tabel.getByLabel('Cari').fill('nomor halaman');
             await expect(page.getByTestId('jumlah-riwayat')).toContainText('cocok');
