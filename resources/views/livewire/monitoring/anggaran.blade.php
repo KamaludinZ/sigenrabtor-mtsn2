@@ -8,7 +8,6 @@
     $bagianBerikut = [
         ['kunci' => 'kelompok', 'judul' => 'Rekap per kelompok belanja', 'isi' => 'Total belanja bahan, jasa, dan lain-lain seluruh kegiatan.', 'lebar' => false],
         ['kunci' => 'operator', 'judul' => 'Rekap per operator', 'isi' => 'Jumlah kegiatan dan anggaran per pembuat kegiatan.', 'lebar' => false],
-        ['kunci' => 'kegiatan', 'judul' => 'Rincian per kegiatan', 'isi' => 'Tabel kegiatan dengan pagu, total RAB, selisih, dan status, diurutkan dari anggaran terbesar.', 'lebar' => true],
     ];
 @endphp
 
@@ -96,4 +95,7 @@
             </section>
         @endforeach
     </div>
+
+    {{-- Rincian per kegiatan --}}
+    @include('livewire.monitoring.partials.rincian-kegiatan')
 </div>

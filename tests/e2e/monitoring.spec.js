@@ -87,4 +87,34 @@ test.describe('Monitoring Anggaran', () => {
         await expect(page).toHaveURL(/leading=1\.6/);
         await expect(bagian.getByTestId('jumlah-leading')).toHaveText('1 dari 1 leading punya kegiatan');
     });
+
+    test('rincian per kegiatan: urut dari total terbesar, ganti urutan lewat judul & pilihan, kartu di layar sempit', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const bagian = page.getByTestId('bagian-monitoring-kegiatan');
+        await expect(bagian.getByRole('heading', { name: 'Rincian per kegiatan' })).toBeVisible();
+        await expect(bagian.getByTestId('posisi-rincian')).toContainText('Menampilkan 1–');
+        const lebar = testInfo.project.name === 'desktop';
+        if (lebar) {
+            const tabel = bagian.getByTestId('tabel-rincian');
+            await expect(tabel.locator('th[aria-sort="descending"]')).toHaveText(/Total RAB/);
+            await expect(tabel.locator('tbody[data-kegiatan="3"] td[data-rab]')).toHaveCount(2);
+            await tabel.getByRole('button', { name: 'Total RAB' }).click();
+            await expect(page).toHaveURL(/arah=asc/);
+            await expect(tabel.locator('th[aria-sort="ascending"]')).toHaveText(/Total RAB/);
+        } else {
+            await expect(bagian.getByTestId('tabel-rincian')).toBeHidden();
+            await expect(bagian.locator('li[data-kegiatan-kartu="3"] a[href*="/rab"]')).toHaveCount(2);
+        }
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await bagian.screenshot({ path: `storage/playwright/shots/monitoring-rincian-${testInfo.project.name}.png` });
+
+        await bagian.getByTestId('urut-rincian').selectOption('nama');
+        await expect(page).toHaveURL(/urut=nama/);
+        await expect(page).toHaveURL(/arah=asc/);
+        await page.reload();
+        await expect(bagian.getByTestId('urut-rincian')).toHaveValue('nama');
+    });
 });

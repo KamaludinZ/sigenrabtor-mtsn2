@@ -172,4 +172,74 @@ class MonitoringAnggaranTest extends TestCase
             ->assertDontSeeHtml('data-testid="jumlah-per-leading"')
             ->assertSee('1 dari 1 leading punya kegiatan');
     }
+
+    public function test_rincian_per_kegiatan_dan_urutannya(): void
+    {
+        $ringkasan = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua());
+        $urutan = fn (string $urut, ?string $arah = null) => array_column($ringkasan->rincianKegiatan($urut, $arah), 'id');
+
+        $rincian = $ringkasan->rincianKegiatan();
+        $this->assertSame([1, 3, 2], array_column($rincian, 'id'), 'Bawaan: total RAB terbesar lebih dulu.');
+        $review = $rincian[1];
+        $this->assertSame(['6.17.13', 'Tim Penjamin Mutu', 7_500_000, 8_850_000, null, 450_000, 2, 1, 1],
+            [$review['kode_rktm'], $review['leading_nama'], $review['pagu'], $review['total'], $review['selisih'], $review['kelebihan'], $review['rab_jumlah'], $review['melebihi'], $review['tanpa_pagu']]);
+        $this->assertSame([['DIPA', null, 900_000, 'tanpa_pagu'], ['Komite', 7_500_000, 7_950_000, 'melebihi']],
+            array_map(fn ($r) => [$r['sumber'], $r['pagu'], $r['total'], $r['status']->status], $review['rab']));
+        $this->assertSame(106.0, $review['rab'][1]['persen']);
+
+        $this->assertSame([2, 3, 1], $urutan('total', 'asc'));
+        $this->assertSame([1, 2, 3], $urutan('pagu'));
+        $this->assertSame([3, 2, 1], $urutan('kelebihan'), 'RAB yang melebihi pagunya sendiri tetap di atas walau ada RAB tanpa pagu; seri menurut nama.');
+        $this->assertSame([3, 2, 1], $urutan('nama'));
+        $this->assertSame([1, 3, 2], $urutan('acak'), 'Kunci tidak dikenal → urutan bawaan.');
+
+        $sumberKomite = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['sumber' => 'Komite'])->rincianKegiatan();
+        $this->assertSame([['Komite'], ['Komite'], ['Komite']], array_map(fn ($b) => array_column($b['rab'], 'sumber'), $sumberKomite));
+    }
+
+    public function test_tabel_rincian_urut_halaman_dan_saringan(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        for ($i = 1; $i <= 19; $i++) {
+            $repo->simpan(['nama_kegiatan' => sprintf('Kegiatan uji %02d', $i), 'leading' => '1.2', 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => $i * 100_000]]]);
+        }
+        $repo->simpan(['nama_kegiatan' => 'Tanpa sumber', 'leading' => '1.2']);
+
+        $halaman = Livewire::test(Anggaran::class)
+            ->assertSeeHtml('data-testid="tabel-rincian"')
+            ->assertSeeHtmlInOrder(['data-kegiatan="1"', 'data-kegiatan="3"', 'data-kegiatan="2"'])
+            ->assertSeeHtmlInOrder(['data-kegiatan="3"', 'Review RKJM dan Penyusunan RKTM', '6.17.13', 'Jumlah 2 RAB', 'Rp8.850.000', 'data-rab="DIPA"', 'Belum diisi', 'Rp900.000', 'Pagu belum diisi', 'data-rab="Komite"', 'Rp7.500.000', 'Rp7.950.000', '106%', 'Melebihi pagu Rp450.000'])
+            ->assertSeeHtml('aria-sort="descending"')
+            ->assertSee('Menampilkan 1–20 dari 23 kegiatan')
+            ->assertSeeHtmlInOrder(['data-testid="jumlah-rincian"', 'Jumlah 23 kegiatan', 'Rp45.000.000', 'Rp26.750.000', '1 RAB melebihi pagunya'])
+            ->call('keHalaman', 2)
+            ->assertSet('halaman', 2)
+            ->assertSee('Menampilkan 21–23 dari 23 kegiatan')
+            ->assertSeeHtml('Sumber dana belum dipilih')
+            ->call('keHalaman', 9)
+            ->assertSet('halaman', 2);
+
+        $halaman->call('urutkan', 'total')
+            ->assertSet('arah', 'asc')
+            ->assertSet('halaman', 1)
+            ->assertSeeHtml('aria-sort="ascending"')
+            ->set('urut', 'nama')
+            ->assertSet('arah', 'asc')
+            ->assertSeeHtmlInOrder(['Kegiatan uji 01', 'Kegiatan uji 19', 'Review RKJM'])
+            ->assertDontSee('Workshop Penyusunan')
+            ->call('urutkan', 'kelebihan')
+            ->assertSet('urut', 'kelebihan')
+            ->assertSet('arah', 'desc')
+            ->assertSeeHtmlInOrder(['data-kegiatan="3"', 'Kegiatan uji 01'])
+            ->call('keHalaman', 2)
+            ->set('leading', '1.6')
+            ->assertSet('halaman', 1)
+            ->assertSee('Menampilkan 1–3 dari 3 kegiatan')
+            ->set('status', 'final')
+            ->assertSeeHtml('data-testid="rincian-kosong"')
+            ->assertSee('Tidak ada kegiatan yang cocok dengan saringan.');
+
+        Livewire::withQueryParams(['urut' => 'acak', 'arah' => 'miring', 'hal' => 7])->test(Anggaran::class)
+            ->assertSet('urut', 'total')->assertSet('arah', 'desc')->assertSet('halaman', 2);
+    }
 }

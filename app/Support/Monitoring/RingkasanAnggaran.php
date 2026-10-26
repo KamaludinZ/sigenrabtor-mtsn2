@@ -7,6 +7,7 @@ use App\Enums\SumberDana;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\StatusPagu;
 use App\Support\Rab\TabelPagu;
 
 /**
@@ -25,8 +26,18 @@ final readonly class RingkasanAnggaran
         'rab_kosong' => 'RAB belum diisi',
     ];
 
+    /** Urutan tabel rincian per kegiatan → [label, arah bawaan]. Kelebihan = jumlah kelebihan RAB atas pagunya sendiri. */
+    public const URUT_RINCIAN = [
+        'total' => ['Total RAB terbesar', 'desc'],
+        'pagu' => ['Pagu terbesar', 'desc'],
+        'kelebihan' => ['Kelebihan pagu terbesar', 'desc'],
+        'nama' => ['Nama kegiatan', 'asc'],
+        'leading' => ['Leading', 'asc'],
+        'status' => ['Status dokumen', 'asc'],
+    ];
+
     /**
-     * @param  list<array{id: int, nama: string, leading: string|null, status: StatusKegiatan, anggaran: list<AnggaranSumber>}>  $kegiatan
+     * @param  list<array{id: int, nama: string, kode_rktm: string|null, leading: string|null, status: StatusKegiatan, anggaran: list<AnggaranSumber>}>  $kegiatan
      */
     public function __construct(
         public array $kegiatan,
@@ -60,6 +71,7 @@ final readonly class RingkasanAnggaran
             $baris[] = [
                 'id' => (int) $k['id'],
                 'nama' => trim((string) ($k['nama_kegiatan'] ?? '')) ?: 'Tanpa nama',
+                'kode_rktm' => ($k['kode_rktm'] ?? null) ?: null,
                 'leading' => $k['leading'] ?? null,
                 'status' => $statusKegiatan,
                 'anggaran' => $anggaran,
@@ -266,6 +278,71 @@ final readonly class RingkasanAnggaran
             'selisih' => $bisa ? $angka['pagu'] - $angka['total'] : null,
             'persen' => $bisa ? TabelPagu::persen($angka['total'], $angka['pagu'] ?: null) : null,
         ];
+    }
+
+    /**
+     * Rincian per kegiatan (PRD §11 "Rincian per Kegiatan"): satu baris per kegiatan dengan RAB per sumber dana (pagu,
+     * total, item, persen pemakaian, StatusPagu — tiap RAB dibandingkan dengan pagunya sendiri) dan angka gabungannya
+     * (sel()), serta kelebihan = jumlah kelebihan RAB yang melampaui pagunya sendiri (tidak tertutup sisa RAB lain atau
+     * RAB tanpa pagu). Bawaan diurutkan dari total RAB terbesar; kunci lain di URUT_RINCIAN; seri menurut nama lalu id.
+     *
+     * @return list<array{id: int, nama: string, kode_rktm: string|null, leading: string|null, leading_nama: string|null, status: StatusKegiatan, rab: list<array{sumber: string, pagu: int|null, total: int, item: int, persen: float|null, status: StatusPagu}>, pagu: int, total: int, selisih: int|null, persen: float|null, kelebihan: int, rab_jumlah: int, melebihi: int, tanpa_pagu: int}>
+     */
+    public function rincianKegiatan(string $urut = 'total', ?string $arah = null): array
+    {
+        $urut = isset(self::URUT_RINCIAN[$urut]) ? $urut : 'total';
+        $arah = in_array($arah, ['asc', 'desc'], true) ? $arah : self::URUT_RINCIAN[$urut][1];
+        $namaLeading = array_column(MasterKode::leadings(), 'nama_unit', 'kode');
+
+        $baris = array_map(function (array $k) use ($namaLeading) {
+            $rab = array_map(fn (AnggaranSumber $a) => [
+                'sumber' => $a->sumber,
+                'pagu' => $a->pagu(),
+                'total' => $a->total(),
+                'item' => $a->jumlahItem(),
+                'persen' => TabelPagu::persen($a->total(), $a->pagu()),
+                'status' => $a->keteranganPagu(),
+            ], $k['anggaran']);
+            $angka = self::sel([
+                'pagu' => array_sum(array_map(fn ($r) => (int) $r['pagu'], $rab)),
+                'total' => array_sum(array_column($rab, 'total')),
+                'rab' => count($rab),
+                'melebihi' => count(array_filter($rab, fn ($r) => $r['status']->melebihi())),
+                'tanpa_pagu' => count(array_filter($rab, fn ($r) => $r['pagu'] === null)),
+            ]);
+
+            return [
+                'id' => $k['id'],
+                'nama' => $k['nama'],
+                'kode_rktm' => $k['kode_rktm'],
+                'leading' => $k['leading'],
+                'leading_nama' => $namaLeading[$k['leading'] ?? ''] ?? null,
+                'status' => $k['status'],
+                'rab' => $rab,
+                'pagu' => $angka['pagu'],
+                'total' => $angka['total'],
+                'selisih' => $angka['selisih'],
+                'persen' => $angka['persen'],
+                'kelebihan' => array_sum(array_map(fn ($r) => $r['status']->melebihi() ? -$r['status']->selisih : 0, $rab)),
+                'rab_jumlah' => $angka['rab'],
+                'melebihi' => $angka['melebihi'],
+                'tanpa_pagu' => $angka['tanpa_pagu'],
+            ];
+        }, $this->kegiatan);
+
+        $kunci = match ($urut) {
+            'pagu' => fn (array $b) => $b['pagu'],
+            'kelebihan' => fn (array $b) => $b['kelebihan'],
+            'nama' => fn (array $b) => mb_strtolower($b['nama']),
+            'leading' => fn (array $b) => $b['leading'] ?? '~',
+            'status' => fn (array $b) => $b['status']->langkah(),
+            default => fn (array $b) => $b['total'],
+        };
+        $kali = $arah === 'asc' ? 1 : -1;
+        usort($baris, fn (array $a, array $b) => ($kunci($a) <=> $kunci($b)) * $kali
+            ?: (mb_strtolower($a['nama']) <=> mb_strtolower($b['nama'])) ?: $a['id'] <=> $b['id']);
+
+        return $baris;
     }
 
     /**
