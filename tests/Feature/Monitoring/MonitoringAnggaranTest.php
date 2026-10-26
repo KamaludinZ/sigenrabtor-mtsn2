@@ -70,4 +70,60 @@ class MonitoringAnggaranTest extends TestCase
         Livewire::withQueryParams(['leading' => '1.1'])->test(Anggaran::class)
             ->assertSet('leading', '1.1')->assertSee('Waka Kurikulum')->assertSeeHtmlInOrder(['Total pagu', 'Rp1.000.000']);
     }
+
+    public function test_perbandingan_pagu_dipa_dan_komite(): void
+    {
+        $ringkasan = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua());
+        $data = $ringkasan->perbandinganSumber();
+
+        $pilih = fn (array $d) => array_intersect_key($d, array_flip(['persen', 'porsi_pagu', 'porsi_total', 'total_tanpa_pagu', 'kelebihan', 'kondisi']));
+        $this->assertSame(['persen' => 105.0, 'porsi_pagu' => 23.1, 'porsi_total' => 23.6, 'total_tanpa_pagu' => 900_000, 'kelebihan' => 0,
+            'kondisi' => ['sesuai' => 0, 'sisa' => 1, 'melebihi' => 0, 'tanpa_pagu' => 1, 'rab_kosong' => 0]], $pilih($data['DIPA']));
+        $this->assertSame(['persen' => 102.3, 'porsi_pagu' => 76.9, 'porsi_total' => 76.4, 'total_tanpa_pagu' => 0, 'kelebihan' => 450_000,
+            'kondisi' => ['sesuai' => 2, 'sisa' => 0, 'melebihi' => 1, 'tanpa_pagu' => 0, 'rab_kosong' => 0]], $pilih($data['Komite']));
+        $this->assertSame($ringkasan->perSumber()['DIPA'], array_intersect_key($data['DIPA'], $ringkasan->perSumber()['DIPA']), 'Angka dasar sama dengan perSumber().');
+        foreach ($data as $d) {
+            $this->assertSame($d['rab'], array_sum($d['kondisi']), 'Satu kondisi per RAB.');
+        }
+        $this->assertSame(['DIPA' => 0, 'Komite' => 1, 'keduanya' => 2, 'belum' => 0], $ringkasan->kombinasiSumber());
+    }
+
+    public function test_porsi_sumber_dana_selalu_berjumlah_100(): void
+    {
+        $porsi = function (array $sumberDana) {
+            $repo = app(KegiatanRepository::class);
+            $id = $repo->simpan(['nama_kegiatan' => 'Porsi '.uniqid(), 'leading' => '1.2', 'sumber_dana' => $sumberDana]);
+            $ringkasan = RingkasanAnggaran::dari(array_values(array_filter($repo->semua(), fn ($k) => $k['id'] === $id)));
+
+            return [array_column($ringkasan->perbandinganSumber(), 'porsi_pagu'), $ringkasan->kombinasiSumber()];
+        };
+
+        $this->assertSame([33.3, 66.7], $porsi([['sumber' => 'DIPA', 'pagu' => 1_000_000], ['sumber' => 'Komite', 'pagu' => 2_000_000]])[0]);
+        [$hanyaKomite, $kombinasi] = $porsi([['sumber' => 'Komite', 'pagu' => 500_000]]);
+        $this->assertSame([0.0, 100.0], $hanyaKomite);
+        $this->assertSame(1, $kombinasi['Komite']);
+        [$kosong, $kombinasi] = $porsi([]);
+        $this->assertSame([null, null], $kosong);
+        $this->assertSame(1, $kombinasi['belum']);
+    }
+
+    public function test_kartu_perbandingan_di_halaman(): void
+    {
+        Livewire::test(Anggaran::class)
+            ->assertSeeHtml('data-testid="perbandingan-sumber"')
+            ->assertSeeHtml('aria-label="Porsi pagu: DIPA 23,1% (Rp6.000.000), Komite 76,9% (Rp20.000.000)"')
+            ->assertSeeHtml('data-testid="perbandingan-dipa" data-status="melebihi"')
+            ->assertSee('Total RAB termasuk Rp900.000 dari 1 RAB yang pagunya belum diisi.')
+            ->assertSee('(lebih Rp450.000)')
+            ->assertSeeHtmlInOrder(['data-testid="perbandingan-komite"', 'Pagu', 'Rp20.000.000', 'Total RAB', 'Rp20.450.000', 'Pemakaian', '102,3%'])
+            ->assertSeeHtml('href="'.route('kegiatan.index', ['sumber' => 'komite']).'"')
+            ->assertSeeHtmlInOrder(['data-testid="kombinasi-sumber"', 'hanya DIPA', '0', 'hanya Komite', '1', 'DIPA &amp; Komite', '2'])
+            ->set('sumber', 'Komite')
+            ->assertSeeHtml('data-testid="perbandingan-disaring"')
+            ->assertDontSeeHtml('data-testid="perbandingan-dipa"')
+            ->assertDontSeeHtml('data-testid="porsi-pagu"')
+            ->assertSeeHtml('data-testid="perbandingan-komite"')
+            ->call('hapusSaringan', 'sumber')
+            ->assertSeeHtml('data-testid="perbandingan-dipa"');
+    }
 }

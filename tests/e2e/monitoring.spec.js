@@ -28,4 +28,31 @@ test.describe('Monitoring Anggaran', () => {
         await page.getByRole('button', { name: 'Hapus semua' }).click();
         await expect(page.getByTestId('saringan-aktif')).toHaveCount(0);
     });
+
+    test('kartu perbandingan pagu DIPA & Komite: porsi, kartu per sumber, saringan sumber', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const kartu = page.getByTestId('perbandingan-sumber');
+        await expect(kartu.getByRole('heading', { name: 'Perbandingan pagu DIPA & Komite' })).toBeVisible();
+        await expect(kartu.getByRole('img', { name: /^Porsi pagu: DIPA [\d,]+% .*Komite [\d,]+%/ })).toBeVisible();
+        await expect(kartu.locator('article[data-testid^="perbandingan-"]')).toHaveCount(2);
+        await expect(kartu.getByTestId('perbandingan-dipa').getByRole('meter')).toBeVisible();
+        await expect(kartu.getByTestId('perbandingan-komite').locator('li[data-kondisi]')).toHaveCount(5);
+
+        // Porsi kedua sumber selalu berjumlah 100%.
+        const lebar = await kartu.getByTestId('porsi-pagu').locator('[data-porsi]').evaluateAll((el) => el.map((e) => parseFloat(e.style.width)));
+        expect(lebar.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 5);
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await kartu.screenshot({ path: `storage/playwright/shots/monitoring-perbandingan-${testInfo.project.name}.png` });
+
+        await page.getByTestId('saringan-monitoring').getByLabel('Sumber dana').selectOption('DIPA');
+        await expect(kartu.getByTestId('perbandingan-disaring')).toBeVisible();
+        await expect(kartu.locator('article[data-testid^="perbandingan-"]')).toHaveCount(1);
+        await expect(kartu.getByTestId('porsi-pagu')).toHaveCount(0);
+        await kartu.getByRole('button', { name: 'Bandingkan DIPA & Komite' }).click();
+        await expect(page).not.toHaveURL(/sumber=/);
+        await expect(kartu.locator('article[data-testid^="perbandingan-"]')).toHaveCount(2);
+    });
 });

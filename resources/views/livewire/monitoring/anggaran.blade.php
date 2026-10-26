@@ -78,6 +78,9 @@
     {{-- Ringkasan tahun aktif --}}
     <x-monitoring.ringkasan :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" class="mt-6" />
 
+    {{-- Perbandingan pagu DIPA & Komite --}}
+    <x-monitoring.perbandingan-sumber :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" class="mt-6" />
+
     {{-- Bagian rekap (diisi bertahap) --}}
     <div class="mt-6 grid gap-6 lg:grid-cols-2">
         @foreach ($bagianBerikut as $bagian)

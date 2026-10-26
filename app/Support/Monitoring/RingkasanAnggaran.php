@@ -7,6 +7,7 @@ use App\Enums\SumberDana;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\TabelPagu;
 
 /**
  * Agregat Monitoring Anggaran (PRD Fase 5 §11) untuk tahun aktif: kegiatan yang cocok dengan saringan (leading, sumber
@@ -15,6 +16,15 @@ use App\Support\Rab\AnggaranSumber;
  */
 final readonly class RingkasanAnggaran
 {
+    /** Kondisi satu RAB terhadap pagunya (label sama dengan saringan kondisi anggaran Data Kegiatan). */
+    public const KONDISI_RAB = [
+        'sesuai' => 'Sesuai pagu',
+        'sisa' => 'Di bawah pagu',
+        'melebihi' => 'Melebihi pagu',
+        'tanpa_pagu' => 'Pagu belum diisi',
+        'rab_kosong' => 'RAB belum diisi',
+    ];
+
     /**
      * @param  list<array{id: int, nama: string, leading: string|null, status: StatusKegiatan, anggaran: list<AnggaranSumber>}>  $kegiatan
      */
@@ -105,6 +115,87 @@ final readonly class RingkasanAnggaran
         }
 
         return $hasil;
+    }
+
+    /**
+     * Perbandingan pagu antar-sumber dana (DIPA vs Komite): angka perSumber() ditambah persen pemakaian pagu
+     * (TabelPagu::persen), porsi tiap sumber terhadap gabungan pagu & total RAB (persen satu desimal, jumlahnya 100),
+     * total RAB yang pagunya belum diisi, kelebihan RAB yang melampaui pagunya sendiri, dan jumlah RAB per kondisi
+     * (KONDISI_RAB, satu kondisi per RAB). Porsi null bila gabungannya 0.
+     *
+     * @return array<string, array{pagu: int, total: int, selisih: int, rab: int, melebihi: int, tanpa_pagu: int, persen: float|null, porsi_pagu: float|null, porsi_total: float|null, total_tanpa_pagu: int, kelebihan: int, kondisi: array<string, int>}>
+     */
+    public function perbandinganSumber(): array
+    {
+        $hasil = [];
+        foreach ($this->perSumber() as $sumber => $s) {
+            $hasil[$sumber] = $s + ['persen' => TabelPagu::persen($s['total'], $s['pagu'] ?: null), 'porsi_pagu' => null, 'porsi_total' => null, 'total_tanpa_pagu' => 0, 'kelebihan' => 0, 'kondisi' => array_fill_keys(array_keys(self::KONDISI_RAB), 0)];
+        }
+
+        foreach ($this->kegiatan as $k) {
+            foreach ($k['anggaran'] as $a) {
+                $baris = &$hasil[$a->sumber];
+                $status = $a->keteranganPagu();
+                $baris['total_tanpa_pagu'] += $a->pagu() === null ? $a->total() : 0;
+                $baris['kelebihan'] += $status->melebihi() ? -$status->selisih : 0;
+                $baris['kondisi'][match (true) {
+                    $a->pagu() === null => 'tanpa_pagu',
+                    $a->jumlahItem() === 0 => 'rab_kosong',
+                    default => $status->status,
+                }]++;
+                unset($baris);
+            }
+        }
+
+        foreach (['pagu' => 'porsi_pagu', 'total' => 'porsi_total'] as $nilai => $porsi) {
+            foreach (self::porsi(array_column($hasil, $nilai, null)) as $i => $persen) {
+                $hasil[array_keys($hasil)[$i]][$porsi] = $persen;
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Jumlah kegiatan menurut sumber dananya: hanya satu sumber (kunci nama sumber), keduanya, atau belum memilih.
+     *
+     * @return array<string, int>
+     */
+    public function kombinasiSumber(): array
+    {
+        $hasil = array_fill_keys(SumberDana::urutan(), 0) + ['keduanya' => 0, 'belum' => 0];
+
+        foreach ($this->kegiatan as $k) {
+            $sumber = array_unique(array_map(fn (AnggaranSumber $a) => $a->sumber, $k['anggaran']));
+            $hasil[match (count($sumber)) {
+                0 => 'belum',
+                1 => reset($sumber),
+                default => 'keduanya',
+            }]++;
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Porsi tiap nilai terhadap jumlahnya dalam persen satu desimal; sisa pembulatan masuk ke porsi terakhir yang tidak
+     * nol sehingga jumlahnya tepat 100. Jumlah 0 → semua null.
+     *
+     * @param  list<int>  $nilai
+     * @return list<float|null>
+     */
+    private static function porsi(array $nilai): array
+    {
+        $jumlah = array_sum($nilai);
+        if ($jumlah <= 0) {
+            return array_fill(0, count($nilai), null);
+        }
+
+        $perseribu = array_map(fn (int $n) => intdiv($n * 1000 + intdiv($jumlah, 2), $jumlah), $nilai);
+        $terakhir = array_key_last(array_filter($nilai));
+        $perseribu[$terakhir] += 1000 - array_sum($perseribu);
+
+        return array_map(fn (int $p) => $p / 10.0, $perseribu);
     }
 
     /**
