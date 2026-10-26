@@ -5,6 +5,7 @@ namespace Tests\Feature\Monitoring;
 use App\Contracts\KegiatanRepository;
 use App\Livewire\Monitoring\Anggaran;
 use App\Support\Monitoring\RingkasanAnggaran;
+use App\Support\Rab\RekapKelompok;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -303,5 +304,46 @@ class MonitoringAnggaranTest extends TestCase
         Livewire::withQueryParams(['urut_leading' => 'komite_total', 'arah_leading' => 'desc'])->test(Anggaran::class)
             ->assertSet('urutLeading', 'komite_total')->assertSet('arahLeading', 'desc')
             ->assertSeeHtml('aria-sort="descending"');
+    }
+
+    public function test_rekap_per_kelompok_belanja(): void
+    {
+        $ringkasan = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua());
+        $rekap = $ringkasan->perKelompok();
+
+        $this->assertSame(['DIPA', 'Komite'], $rekap['sumber']);
+        $this->assertSame([26_750_000, ['DIPA' => 6_300_000, 'Komite' => 20_450_000], 33], [$rekap['total'], $rekap['totalPerSumber'], $rekap['jumlahItem']]);
+        $this->assertSame($ringkasan->total()['total'], $rekap['total'], 'Sama dengan total RAB ringkasan.');
+        $kelompok = array_column($rekap['kelompok'], null, 'kunci');
+        $this->assertSame([['DIPA' => 2_100_000, 'Komite' => 9_380_000], 11_480_000, 42.9, 20, 3], [$kelompok['bahan']['perSumber'], $kelompok['bahan']['total'], $kelompok['bahan']['persen'], $kelompok['bahan']['jumlahItem'], $kelompok['bahan']['kegiatan']]);
+        $this->assertSame([13_620_000, 50.9], [$kelompok['jasa']['total'], $kelompok['jasa']['persen']]);
+        $this->assertSame([1_650_000, 6.2], [$kelompok['lain']['total'], $kelompok['lain']['persen']]);
+        $this->assertSame('Review RKJM dan Penyusunan RKTM', $kelompok['bahan']['item'][0]['kegiatan'], 'Item terbesar membawa nama kegiatannya.');
+        $this->assertSame(['521211', '521213', '521219', '524113'], array_column($rekap['kode'], 'kode'));
+        $this->assertSame($rekap['total'], array_sum(array_column($rekap['kode'], 'total')));
+
+        $this->assertSame([['DIPA', 6_300_000], ['Komite', 20_450_000], ['Gabungan', 26_750_000]], array_map(fn ($b) => [$b['label'], $b['total']], RekapKelompok::barisBatang($rekap)));
+        $this->assertSame(['bahan' => 9_380_000, 'jasa' => 10_020_000, 'lain' => 1_050_000], RekapKelompok::barisBatang($rekap)[1]['nilai']);
+
+        $komite = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['sumber' => 'Komite'])->perKelompok();
+        $this->assertSame([['Komite'], 20_450_000], [$komite['sumber'], $komite['total']]);
+        $this->assertCount(1, RekapKelompok::barisBatang($komite), 'Satu sumber dana → tanpa batang gabungan.');
+        $kosong = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['leading' => '1.1'])->perKelompok();
+        $this->assertSame([['DIPA', 'Komite'], 0, 0.0], [$kosong['sumber'], $kosong['total'], $kosong['kelompok'][0]['persen']]);
+    }
+
+    public function test_kartu_rekap_kelompok_di_halaman(): void
+    {
+        Livewire::test(Anggaran::class)
+            ->assertSeeHtml('data-testid="bagian-monitoring-kelompok"')
+            ->assertSeeHtmlInOrder(['data-kelompok-legenda="bahan"', '42,9%', 'data-kelompok-legenda="jasa"', '50,9%', 'data-kelompok-legenda="lain"', '6,2%'])
+            ->assertSeeHtml('data-testid="batang-gabungan"')
+            ->assertSeeHtmlInOrder(['data-kelompok="bahan"', '20 item · 3 kegiatan', 'Rp2.100.000', 'Rp9.380.000', 'Rp11.480.000'])
+            ->assertSeeHtmlInOrder(['data-kode-akun="521213"', 'Belanja Honor Output Kegiatan', 'Rp13.620.000'])
+            ->set('sumber', 'DIPA')
+            ->assertDontSeeHtml('data-testid="batang-gabungan"')
+            ->assertSeeHtmlInOrder(['data-kelompok="jasa"', 'Rp3.600.000'])
+            ->set('status', 'final')
+            ->assertSeeHtml('data-testid="kelompok-kosong"');
     }
 }

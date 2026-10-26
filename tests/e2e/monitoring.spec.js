@@ -144,4 +144,28 @@ test.describe('Monitoring Anggaran', () => {
         await expect(bagian.getByTestId('urut-leading')).toHaveValue('kode');
         await expect(page).not.toHaveURL(/urut_leading=/);
     });
+
+    test('rekap per kelompok belanja: legenda, batang per sumber dana dengan tooltip, tabel, kode akun', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/monitoring');
+        const bagian = page.getByTestId('bagian-monitoring-kelompok');
+        await expect(bagian.getByRole('heading', { name: 'Rekap per kelompok belanja' })).toBeVisible();
+        await expect(bagian.locator('li[data-kelompok-legenda]')).toHaveCount(3);
+        await expect(bagian.getByTestId('batang-gabungan')).toBeVisible();
+        await expect(bagian.getByTestId('tabel-monitoring-kelompok').locator('tbody tr')).toHaveCount(3);
+        await expect(bagian.getByTestId('kode-akun-monitoring').locator('[data-kode-akun]').first()).toBeVisible();
+
+        await bagian.getByTestId('batang-komite').getByLabel(/^Jasa Rp/).hover();
+        await expect(bagian.getByRole('tooltip')).toContainText('Komite · Jasa');
+        await page.mouse.move(0, 0);
+        await expect(bagian.getByRole('tooltip')).toBeHidden();
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await bagian.screenshot({ path: `storage/playwright/shots/monitoring-kelompok-${testInfo.project.name}.png` });
+
+        await page.getByTestId('saringan-monitoring').getByLabel('Sumber dana').selectOption('Komite');
+        await expect(bagian.getByTestId('batang-gabungan')).toHaveCount(0);
+        await expect(bagian.getByTestId('batang-komite')).toBeVisible();
+    });
 });

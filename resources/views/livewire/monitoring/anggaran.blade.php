@@ -6,7 +6,6 @@
     $ringkasan = $this->ringkasan;
     $aktif = $this->saringanAktif();
     $bagianBerikut = [
-        ['kunci' => 'kelompok', 'judul' => 'Rekap per kelompok belanja', 'isi' => 'Total belanja bahan, jasa, dan lain-lain seluruh kegiatan.', 'lebar' => false],
         ['kunci' => 'operator', 'judul' => 'Rekap per operator', 'isi' => 'Jumlah kegiatan dan anggaran per pembuat kegiatan.', 'lebar' => false],
     ];
 @endphp
@@ -83,10 +82,11 @@
     <x-monitoring.tabel-leading :ringkasan="$ringkasan" :sumber="$sumber === '' ? null : $sumber" :leading="$leading === '' ? null : $leading"
                               :urut="$urutLeading" :arah="$arahLeading" class="mt-6" />
 
-    {{-- Bagian rekap (diisi bertahap) --}}
-    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    {{-- Rekap per kelompok belanja & bagian rekap berikutnya (diisi bertahap) --}}
+    <div class="mt-6 grid items-start gap-6 lg:grid-cols-2">
+        <x-monitoring.rekap-kelompok :ringkasan="$ringkasan" />
         @foreach ($bagianBerikut as $bagian)
-            <section id="monitoring-{{ $bagian['kunci'] }}" class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200 {{ $bagian['lebar'] ? 'lg:col-span-2' : '' }}"
+            <section id="monitoring-{{ $bagian['kunci'] }}" class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200 {{ $bagian['lebar'] ? 'lg:col-span-2' : '' }}"
                      aria-labelledby="judul-monitoring-{{ $bagian['kunci'] }}" data-testid="bagian-monitoring-{{ $bagian['kunci'] }}">
                 <header class="flex items-center justify-between gap-2 border-b border-stone-100 px-5 py-4 sm:px-6">
                     <h2 id="judul-monitoring-{{ $bagian['kunci'] }}" class="text-base font-semibold text-stone-900">{{ $bagian['judul'] }}</h2>

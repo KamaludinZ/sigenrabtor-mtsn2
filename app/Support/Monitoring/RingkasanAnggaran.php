@@ -7,6 +7,8 @@ use App\Enums\SumberDana;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\HasilRab;
+use App\Support\Rab\RekapKelompok;
 use App\Support\Rab\StatusPagu;
 use App\Support\Rab\TabelPagu;
 
@@ -415,6 +417,52 @@ final readonly class RingkasanAnggaran
         };
 
         return self::urutkan($baris, $kunci, $arah, fn (array $a, array $b) => (mb_strtolower($a['nama']) <=> mb_strtolower($b['nama'])) ?: $a['id'] <=> $b['id']);
+    }
+
+    /**
+     * Rekap belanja per kelompok (bahan/jasa/lain) dan per kode akun seluruh kegiatan tersaring, per sumber dana: RAB
+     * tiap sumber dari semua kegiatan digabung lalu disusun lewat RekapKelompok (bentuk sama dengan rekap RAB satu
+     * kegiatan; item membawa `kegiatan_id`/`kegiatan`). Tiap kelompok ditambah `kegiatan` = jumlah kegiatan yang punya item
+     * di kelompok itu. Sumber dana = yang muncul pada kegiatan tersaring (urut baku; semua bila belum ada).
+     *
+     * @return array{sumber: list<string>, total: int, totalPerSumber: array<string, int>, jumlahItem: int, kelompok: list<array{kunci: string, label: string, perSumber: array<string, int>, total: int, persen: float, jumlahItem: int, kegiatan: int, item: list<array<string, mixed>>}>, kode: list<array{kode: string, label: string, perSumber: array<string, int>, total: int}>}
+     */
+    public function perKelompok(): array
+    {
+        $muncul = array_merge([], ...array_map(fn (array $k) => array_map(fn (AnggaranSumber $a) => $a->sumber, $k['anggaran']), $this->kegiatan));
+        $sumber = array_values(array_intersect(SumberDana::urutan(), $muncul)) ?: SumberDana::urutan();
+
+        $gabungan = [];
+        foreach ($sumber as $s) {
+            $rincian = [];
+            $perKategori = [];
+            $perKode = [];
+            foreach ($this->kegiatan as $k) {
+                foreach ($k['anggaran'] as $a) {
+                    if ($a->sumber !== $s) {
+                        continue;
+                    }
+                    foreach ($a->hasil->rincian as $item) {
+                        $rincian[] = $item + ['kegiatan_id' => $k['id'], 'kegiatan' => $k['nama']];
+                    }
+                    foreach ($a->hasil->perKategori as $kunci => $nilai) {
+                        $perKategori[$kunci] = ($perKategori[$kunci] ?? 0) + $nilai;
+                    }
+                    foreach ($a->hasil->perKode as $kunci => $nilai) {
+                        $perKode[$kunci] = ($perKode[$kunci] ?? 0) + $nilai;
+                    }
+                }
+            }
+            $gabungan[$s] = new HasilRab($rincian, array_sum(array_column($rincian, 'jumlah')), $perKategori, $perKode);
+        }
+
+        $rekap = RekapKelompok::susun($gabungan);
+        foreach ($rekap['kelompok'] as &$kelompok) {
+            $kelompok['kegiatan'] = count(array_unique(array_column($kelompok['item'], 'kegiatan_id')));
+        }
+        unset($kelompok);
+
+        return $rekap;
     }
 
     /**

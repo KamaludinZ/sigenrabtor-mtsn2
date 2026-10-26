@@ -81,4 +81,25 @@ class RekapKelompok
             'kode' => $kode,
         ];
     }
+
+    /**
+     * Baris batang komposisi (<x-rab.batang-kelompok>): satu per sumber dana, plus gabungan bila lebih dari satu sumber.
+     *
+     * @param  array{sumber: list<string>, total: int, totalPerSumber: array<string, int>, kelompok: list<array{kunci: string, perSumber: array<string, int>, total: int}>}  $rekap  Hasil susun().
+     * @return list<array{label: string, total: int, nilai: array<string, int>}>
+     */
+    public static function barisBatang(array $rekap): array
+    {
+        $baris = array_map(fn (string $sumber) => [
+            'label' => $sumber,
+            'total' => $rekap['totalPerSumber'][$sumber],
+            'nilai' => array_combine(array_column($rekap['kelompok'], 'kunci'), array_map(fn (array $k) => $k['perSumber'][$sumber], $rekap['kelompok'])),
+        ], $rekap['sumber']);
+
+        if (count($rekap['sumber']) > 1) {
+            $baris[] = ['label' => 'Gabungan', 'total' => $rekap['total'], 'nilai' => array_column($rekap['kelompok'], 'total', 'kunci')];
+        }
+
+        return $baris;
+    }
 }
