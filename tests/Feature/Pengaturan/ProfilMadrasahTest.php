@@ -215,7 +215,7 @@ class ProfilMadrasahTest extends TestCase
         $this->assertSame(['jabatan' => 'Kepala MTsN 2 Kota Malang', 'nama' => 'Dr. H. Ahmad Fauzi, M.Pd.', 'nip' => '197001011995031001'], StubData::pejabat()['kepala'], 'NIP disimpan tanpa pemisah.');
         $this->assertSame(['Kepala MTsN 2 Kota Malang', 'Dr. H. Ahmad Fauzi, M.Pd.', 'NIP. 19700101 199503 1 001'], NilaiVariabel::untuk([], null)['ttd_kepala']);
         $this->assertSame('Kepala Madrasah TA 2026 — Nama: — → Dr. H. Ahmad Fauzi, M.Pd.; NIP: — → 19700101 199503 1 001', app(RiwayatPengaturanRepository::class)->semua()[0]['keterangan']);
-        $this->assertNull(app(PejabatRepository::class)->untukTahun(2025)['kepala']['nama'], 'Tahun lain menyimpan pejabatnya sendiri.');
+        $this->assertSame('Drs. H. Mahmud Arifin, M.Pd.I.', app(PejabatRepository::class)->untukTahun(2025)['kepala']['nama'], 'Tahun lain menyimpan pejabatnya sendiri.');
     }
 
     public function test_pejabat_leading_menjadi_pembuat_dokumen(): void
@@ -264,5 +264,63 @@ class ProfilMadrasahTest extends TestCase
             ->assertDontSeeHtml("wire:click=\"bukaUbahPejabat('kepala')\"")
             ->call('bukaUbahPejabat', 'kepala')
             ->assertSet('ubahPejabat', null);
+    }
+
+    public function test_lihat_pejabat_tahun_lain_terkunci_dan_perbandingan(): void
+    {
+        session(['stub_role' => 'admin']);
+
+        $halaman = Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
+            ->assertSet('tahunPejabat', '')
+            ->assertSeeHtml('aria-pressed="true" data-tahun-pejabat="2026"')
+            ->assertSeeHtml('data-testid="saran-salin-pejabat"')
+            ->assertSee('Belum ada pejabat TA 2026. Salin dari TA 2025 lalu ubah yang berganti.')
+            ->set('tahunPejabat', '2025')
+            ->assertSeeHtml('aria-pressed="true" data-tahun-pejabat="2025"')
+            ->assertSeeHtml('data-testid="pejabat-terkunci"')
+            ->assertSee('Tahun Anggaran 2025 terkunci — pejabatnya hanya bisa dilihat.')
+            ->assertSee('Drs. H. Mahmud Arifin, M.Pd.I.')
+            ->assertSee('19680512 199403 1 002')
+            ->assertDontSeeHtml('data-testid="saran-salin-pejabat"')
+            ->assertSeeHtmlInOrder(['data-testid="pratinjau-ttd"', 'TA 2025', 'H. Sugeng Riyadi, S.E.', 'Drs. H. Mahmud Arifin, M.Pd.I.'])
+            ->call('bukaUbahPejabat', 'kepala')
+            ->assertSet('ubahPejabat', null);
+
+        $perbandingan = collect($halaman->instance()->perbandinganTahun())->keyBy('kunci');
+        $this->assertSame([2026, 2025], array_keys($perbandingan['kepala']['tahun']));
+        $this->assertSame([null, 'Drs. H. Mahmud Arifin, M.Pd.I.'], array_column($perbandingan['kepala']['tahun'], 'nama'));
+        $this->assertCount(10, $perbandingan, 'Kepala, komite, dan 8 leading.');
+
+        $halaman->set('tahunPejabat', '2026')->assertSet('tahunPejabat', '')
+            ->set('tahunPejabat', '1999')->assertSet('tahunPejabat', '');
+        Livewire::withQueryParams(['tab' => 'pejabat', 'ta' => '2025'])->test(ProfilMadrasah::class)->assertSet('tahunPejabat', '2025');
+    }
+
+    public function test_salin_pejabat_dari_tahun_lalu_tanpa_menimpa_dan_tanda_berganti(): void
+    {
+        session(['stub_role' => 'admin']);
+        app(PejabatRepository::class)->simpan(2026, 'leading', '1.1', ['jabatan' => 'Wakil Kepala Bidang Kurikulum', 'nama' => 'Ahmad Baru, S.Pd.', 'nip' => null]);
+
+        $halaman = Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
+            ->assertDontSeeHtml('data-testid="saran-salin-pejabat"')
+            ->call('salinPejabat', 2025)
+            ->assertDispatched('notify', message: '3 pejabat disalin dari TA 2025. Periksa lalu ubah yang berganti.', type: 'success');
+
+        $ta2026 = app(PejabatRepository::class)->untukTahun(2026);
+        $this->assertSame(['Drs. H. Mahmud Arifin, M.Pd.I.', '196805121994031002'], [$ta2026['kepala']['nama'], $ta2026['kepala']['nip']]);
+        $this->assertSame('H. Sugeng Riyadi, S.E.', $ta2026['komite']['nama']);
+        $this->assertSame('Ahmad Baru, S.Pd.', $ta2026['leading']['1.1']['nama'], 'Isian yang sudah ada tidak tertimpa.');
+        $this->assertSame('Muslimin, M.Pd.', $ta2026['leading']['1.6']['nama']);
+        $this->assertSame('salin_pejabat', app(RiwayatPengaturanRepository::class)->semua()[0]['aksi']);
+        $this->assertSame('Drs. H. Mahmud Arifin, M.Pd.I.', StubData::pejabat()['kepala']['nama'], 'Dokumen tahun aktif ikut memakai pejabat salinan.');
+
+        $perbandingan = collect($halaman->instance()->perbandinganTahun())->keyBy('kunci');
+        $this->assertTrue($perbandingan['leading:1.1']['tahun'][2026]['berganti'], 'Siti Rohmah (2025) → Ahmad Baru (2026).');
+        $this->assertFalse($perbandingan['kepala']['tahun'][2026]['berganti']);
+        $halaman->assertSeeHtml('data-berganti');
+
+        $halaman->call('salinPejabat', 2025)->assertDispatched('notify', message: 'Tidak ada yang disalin — pejabat TA 2025 kosong atau TA 2026 sudah terisi.', type: 'info');
+        $halaman->set('tahunPejabat', '2025')->call('salinPejabat', 2026);
+        $this->assertSame('Siti Rohmah, M.Pd.', app(PejabatRepository::class)->untukTahun(2025)['leading']['1.1']['nama'], 'Tahun terkunci tidak bisa diisi salinan.');
     }
 }

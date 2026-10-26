@@ -485,4 +485,31 @@ test.describe('Pengaturan admin', () => {
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow).toBeLessThanOrEqual(0);
     });
+
+    test('pejabat per tahun: pemilih tahun, tahun terkunci hanya dilihat, perbandingan antar-tahun', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah?tab=pejabat');
+        const pemilih = page.getByTestId('pemilih-tahun-pejabat');
+        await expect(pemilih.getByRole('button', { name: /TA 2026/ })).toHaveAttribute('aria-pressed', 'true');
+        // Saran "Salin dari TA 2025" hanya muncul selama TA 2026 belum punya pejabat (tes lain di berkas ini mengisi 1.8) — diuji di PHPUnit.
+
+        await pemilih.getByRole('button', { name: /TA 2025/ }).click();
+        await expect(page).toHaveURL(/ta=2025/);
+        await expect(page.getByTestId('pejabat-terkunci')).toBeVisible();
+        await expect(page.getByTestId('pejabat-pimpinan')).toContainText('Drs. H. Mahmud Arifin, M.Pd.I.');
+        await expect(page.getByTestId('pejabat-pimpinan').getByRole('button', { name: /^Ubah/ })).toHaveCount(0);
+        await expect(page.getByTestId('pratinjau-ttd')).toContainText('TA 2025');
+
+        const perbandingan = page.getByTestId('pejabat-per-tahun');
+        await expect(perbandingan.locator('tr[data-perbandingan]')).toHaveCount(10);
+        await expect(perbandingan.locator('tr[data-perbandingan="kepala"] td[data-tahun="2025"]')).toContainText('19680512 199403 1 002');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-pejabat-tahun-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.reload();
+        await expect(pemilih.getByRole('button', { name: /TA 2025/ })).toHaveAttribute('aria-pressed', 'true');
+        await pemilih.getByRole('button', { name: /TA 2026/ }).click();
+        await expect(page).not.toHaveURL(/ta=/);
+    });
 });

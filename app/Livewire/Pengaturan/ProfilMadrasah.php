@@ -4,6 +4,7 @@ namespace App\Livewire\Pengaturan;
 
 use App\Contracts\PejabatRepository;
 use App\Contracts\ProfilMadrasahRepository;
+use App\Contracts\TahunAnggaranRepository;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\Nip;
@@ -72,6 +73,10 @@ class ProfilMadrasah extends Component
     /** Konfirmasi hapus logo sedang ditampilkan. */
     public bool $konfirmasiHapusLogo = false;
 
+    /** Tahun anggaran pejabat yang dilihat di tab Pejabat; '' = tahun aktif. */
+    #[Url(as: 'ta', except: '')]
+    public string $tahunPejabat = '';
+
     /** Pejabat yang sedang disunting: "kepala", "komite", atau "leading:{kode}"; null = tidak ada. */
     public ?string $ubahPejabat = null;
 
@@ -85,11 +90,121 @@ class ProfilMadrasah extends Component
     public function mount(): void
     {
         $this->rapikanTab();
+        $this->rapikanTahunPejabat();
     }
 
     public function updatedTab(): void
     {
         $this->rapikanTab();
+    }
+
+    /** Ganti tahun yang dilihat: formulir yang terbuka ditutup (isiannya milik tahun lain). */
+    public function updatedTahunPejabat(): void
+    {
+        $this->rapikanTahunPejabat();
+        $this->batalUbahPejabat();
+        unset($this->pejabat);
+    }
+
+    /**
+     * Tahun anggaran terdaftar (terbaru lebih dulu).
+     *
+     * @return list<array{tahun: int, is_active: bool, is_locked: bool}>
+     */
+    public function daftarTahun(): array
+    {
+        return app(TahunAnggaranRepository::class)->semua();
+    }
+
+    /** Tahun pejabat yang sedang dilihat. */
+    public function tahunDilihat(): int
+    {
+        return $this->tahunPejabat !== '' ? (int) $this->tahunPejabat : StubData::tahunAktif()['tahun'];
+    }
+
+    /**
+     * Salin pejabat dari tahun $dari ke tahun yang dilihat — hanya peran yang di tahun ini belum bernama, sehingga isian
+     * yang sudah ada tidak tertimpa.
+     */
+    public function salinPejabat(int $dari, PejabatRepository $repo): void
+    {
+        $ke = $this->tahunDilihat();
+        if ($dari === $ke || $this->tahunTerkunci() || ! in_array($dari, array_column($this->daftarTahun(), 'tahun'), true)) {
+            return;
+        }
+
+        $sumber = $repo->untukTahun($dari);
+        $tujuan = $repo->untukTahun($ke);
+        $disalin = 0;
+        foreach (['kepala', 'komite'] as $peran) {
+            if ($sumber[$peran]['nama'] && ! $tujuan[$peran]['nama']) {
+                $repo->simpan($ke, $peran, null, $sumber[$peran]);
+                $disalin++;
+            }
+        }
+        foreach ($sumber['leading'] as $kode => $pejabat) {
+            if ($pejabat['nama'] && ! ($tujuan['leading'][$kode]['nama'] ?? null)) {
+                $repo->simpan($ke, 'leading', $kode, $pejabat);
+                $disalin++;
+            }
+        }
+
+        if ($disalin > 0) {
+            RiwayatPengaturan::catat('salin_pejabat', "{$disalin} pejabat TA {$dari} disalin ke TA {$ke} (yang sudah terisi tidak diubah).");
+        }
+        unset($this->pejabat);
+        $this->dispatch('notify', message: $disalin > 0 ? "{$disalin} pejabat disalin dari TA {$dari}. Periksa lalu ubah yang berganti." : "Tidak ada yang disalin — pejabat TA {$dari} kosong atau TA {$ke} sudah terisi.", type: $disalin > 0 ? 'success' : 'info');
+    }
+
+    /**
+     * Sumber saran "Salin dari TA …": bila tahun yang dilihat (belum terkunci) belum punya satu pun nama pejabat, tahun lain
+     * terbaru yang sudah punya; null bila tidak perlu/tidak ada.
+     */
+    public function sumberSalin(): ?int
+    {
+        $adaNama = fn (array $p) => filled($p['kepala']['nama']) || filled($p['komite']['nama']) || collect($p['leading'])->contains(fn (array $l) => filled($l['nama']));
+        $repo = app(PejabatRepository::class);
+        if ($this->tahunTerkunci() || $adaNama($repo->untukTahun($this->tahunDilihat()))) {
+            return null;
+        }
+
+        return collect($this->daftarTahun())->pluck('tahun')->first(fn (int $t) => $t !== $this->tahunDilihat() && $adaNama($repo->untukTahun($t)));
+    }
+
+    /**
+     * Pejabat semua tahun per peran untuk tabel perbandingan: baris kepala, komite, tiap leading; kolom tahun (terbaru
+     * dulu); `berganti` = nama berbeda dengan tahun sebelumnya yang juga terisi.
+     *
+     * @return list<array{kunci: string, judul: string, tahun: array<int, array{nama: string|null, nip: string|null, berganti: bool}>}>
+     */
+    public function perbandinganTahun(): array
+    {
+        $tahun = array_column($this->daftarTahun(), 'tahun');
+        $data = array_combine($tahun, array_map(fn (int $t) => app(PejabatRepository::class)->untukTahun($t), $tahun));
+        $baris = [['kunci' => 'kepala', 'judul' => 'Kepala Madrasah'], ['kunci' => 'komite', 'judul' => 'Ketua Komite']];
+        foreach (MasterKode::leadings() as $l) {
+            $baris[] = ['kunci' => 'leading:'.$l['kode'], 'judul' => $l['kode'].' '.$l['nama_unit']];
+        }
+
+        return array_map(function (array $b) use ($tahun, $data) {
+            $ambil = fn (int $t) => str_starts_with($b['kunci'], 'leading:') ? ($data[$t]['leading'][substr($b['kunci'], 8)] ?? null) : $data[$t][$b['kunci']];
+            $kolom = [];
+            foreach ($tahun as $i => $t) {
+                $p = $ambil($t);
+                $sebelum = isset($tahun[$i + 1]) ? $ambil($tahun[$i + 1]) : null;
+                $kolom[$t] = ['nama' => $p['nama'] ?? null, 'nip' => $p['nip'] ?? null, 'berganti' => ($p['nama'] ?? null) && ($sebelum['nama'] ?? null) && $p['nama'] !== $sebelum['nama']];
+            }
+
+            return $b + ['tahun' => $kolom];
+        }, $baris);
+    }
+
+    private function rapikanTahunPejabat(): void
+    {
+        $terdaftar = in_array((int) $this->tahunPejabat, array_column($this->daftarTahun(), 'tahun'), true);
+        if (! $terdaftar || (int) $this->tahunPejabat === StubData::tahunAktif()['tahun']) {
+            $this->tahunPejabat = '';
+        }
     }
 
     public function bukaUbahProfil(): void
@@ -212,7 +327,7 @@ class ProfilMadrasah extends Component
 
         [$peran, $leading] = array_pad(explode(':', $kunci, 2), 2, null);
         $baru = ['jabatan' => $this->isianPejabat['jabatan'], 'nama' => $this->isianPejabat['nama'], 'nip' => Nip::bersihkan($this->isianPejabat['nip']) ?: null];
-        $tahun = StubData::tahunAktif()['tahun'];
+        $tahun = $this->tahunDilihat();
         $repo->simpan($tahun, $peran, $leading, $baru);
 
         $tampil = fn (array $p) => ['nip' => $p['nip'] ? Nip::format($p['nip']) : null] + $p;
@@ -226,10 +341,10 @@ class ProfilMadrasah extends Component
         $this->dispatch('notify', message: $ringkasan === null ? 'Tidak ada yang berubah.' : $this->judulPejabat($kunci).' tersimpan untuk TA '.$tahun.'.', type: $ringkasan === null ? 'info' : 'success');
     }
 
-    /** Tahun aktif terkunci: pejabatnya hanya bisa dilihat. */
+    /** Tahun yang dilihat terkunci: pejabatnya hanya bisa dilihat. */
     public function tahunTerkunci(): bool
     {
-        return (bool) StubData::tahunAktif()['is_locked'];
+        return (bool) (collect($this->daftarTahun())->firstWhere('tahun', $this->tahunDilihat())['is_locked'] ?? false);
     }
 
     /** "Kepala Madrasah", "Ketua Komite", atau "Pejabat 1.6 Tim Penjamin Mutu". */
@@ -335,15 +450,16 @@ class ProfilMadrasah extends Component
     }
 
     /**
-     * Pejabat penanda tangan tahun aktif: pimpinan (kepala, komite) dan tiap leading beserta akun yang tertaut.
+     * Pejabat penanda tangan tahun yang dilihat: pimpinan (kepala, komite) dan tiap leading beserta akun yang tertaut.
      *
      * @return array{kepala: array{jabatan: string, nama: string|null, nip: string|null}, komite: array{jabatan: string, nama: string|null, nip: string|null}, leading: list<array{kode: string, nama_unit: string, jabatan: string, nama: string|null, nip: string|null, akun: list<string>}>}
      */
     #[Computed]
     public function pejabat(): array
     {
-        $pejabat = StubData::pejabat();
-        $perLeading = StubData::pejabatLeading();
+        $semua = app(PejabatRepository::class)->untukTahun($this->tahunDilihat());
+        $pejabat = ['kepala' => $semua['kepala'], 'komite' => $semua['komite']];
+        $perLeading = $semua['leading'];
         $akun = StubPengaturan::pengguna();
 
         return $pejabat + ['leading' => array_map(fn (array $l) => ['kode' => $l['kode'], 'nama_unit' => $l['nama_unit']] + ($perLeading[$l['kode']] ?? ['jabatan' => $l['jabatan_penanda_tangan'], 'nama' => null, 'nip' => null]) + [

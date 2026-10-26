@@ -25,6 +25,7 @@ final class RiwayatPengaturan
         'unggah_logo' => ['Unggah logo madrasah', 'madrasah'],
         'hapus_logo' => ['Hapus logo madrasah', 'madrasah'],
         'ubah_pejabat' => ['Ubah pejabat penanda tangan', 'madrasah'],
+        'salin_pejabat' => ['Salin pejabat dari tahun lain', 'madrasah'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

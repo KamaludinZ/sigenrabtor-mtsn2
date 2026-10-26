@@ -6,6 +6,7 @@
     $pejabat = $this->pejabat;
     $kurang = $this->kurang();
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
+    $taPejabat = $this->tahunDilihat();
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -45,17 +46,48 @@
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" wire:key="tab-{{ $tab }}">
         @if ($tab === 'pejabat')
             {{-- ===================== Pejabat penanda tangan ===================== --}}
+            @php
+                $sumberSalin = $this->sumberSalin();
+            @endphp
             <div class="min-w-0 space-y-6">
+                {{-- Pemilih tahun: tiap tahun anggaran menyimpan pejabatnya sendiri; dokumen memakai tahun aktif. --}}
+                <div class="flex flex-wrap items-center justify-between gap-3" data-testid="pemilih-tahun-pejabat">
+                    <div class="inline-flex rounded-lg bg-stone-100 p-1" role="group" aria-label="Tahun anggaran pejabat">
+                        @foreach ($this->daftarTahun() as $ta)
+                            @php
+                                $dipilih = $ta['tahun'] === $taPejabat;
+                            @endphp
+                            <button type="button" wire:click="$set('tahunPejabat', '{{ $ta['is_active'] ? '' : $ta['tahun'] }}')" aria-pressed="{{ $dipilih ? 'true' : 'false' }}" data-tahun-pejabat="{{ $ta['tahun'] }}"
+                                    @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium', 'bg-white text-stone-900 shadow-xs' => $dipilih, 'text-stone-500 hover:text-stone-800' => ! $dipilih])>
+                                TA {{ $ta['tahun'] }}
+                                @if ($ta['is_active'])
+                                    <span class="rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-800">aktif</span>
+                                @elseif ($ta['is_locked'])
+                                    <x-ui.icon name="lock" class="size-3.5 text-stone-400" />
+                                @endif
+                            </button>
+                        @endforeach
+                    </div>
+                    <p class="text-xs text-stone-500">Dokumen tahun aktif memakai pejabat TA {{ $tahun }}.</p>
+                </div>
+
                 @if ($this->tahunTerkunci())
                     <p class="flex items-start gap-2 rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-700 ring-1 ring-stone-200" data-testid="pejabat-terkunci">
-                        <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" /> Tahun Anggaran {{ $tahun }} terkunci — pejabatnya hanya bisa dilihat.
+                        <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" /> Tahun Anggaran {{ $taPejabat }} terkunci — pejabatnya hanya bisa dilihat.
                     </p>
+                @elseif ($sumberSalin)
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-50 px-4 py-3 ring-1 ring-brand-200" data-testid="saran-salin-pejabat">
+                        <p class="flex items-start gap-2 text-sm text-brand-900">
+                            <x-ui.icon name="info" class="mt-0.5 size-4 shrink-0" /> Belum ada pejabat TA {{ $taPejabat }}. Salin dari TA {{ $sumberSalin }} lalu ubah yang berganti.
+                        </p>
+                        <button type="button" wire:click="salinPejabat({{ $sumberSalin }})" class="btn-secondary shrink-0"><x-ui.icon name="copy" class="size-4" /> Salin dari TA {{ $sumberSalin }}</button>
+                    </div>
                 @endif
 
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pimpinan" data-testid="pejabat-pimpinan">
                     <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
                         <h2 id="judul-pimpinan" class="text-base font-semibold text-stone-900">Pimpinan madrasah &amp; komite</h2>
-                        <p class="mt-0.5 text-sm text-stone-500">Berlaku pada Tahun Anggaran {{ $tahun }}; tahun lain menyimpan pejabatnya sendiri.</p>
+                        <p class="mt-0.5 text-sm text-stone-500">Berlaku pada Tahun Anggaran {{ $taPejabat }}; tahun lain menyimpan pejabatnya sendiri.</p>
                     </header>
                     <div class="grid divide-y divide-stone-100 md:grid-cols-2 md:divide-x md:divide-y-0">
                         @foreach ([['kunci' => 'kepala', 'judul' => 'Kepala Madrasah', 'peran' => 'Pengarah kegiatan dan "Menyetujui" di lembar pengesahan', 'nip' => true],
@@ -98,7 +130,7 @@
                                         <div class="grid grid-cols-2 gap-3">
                                             <div class="min-w-0">
                                                 <dt class="text-xs text-stone-500">Nama</dt>
-                                                <dd @class(['truncate', 'font-medium text-stone-900' => $orang['nama'], 'text-gold-700' => ! $orang['nama']])>{{ $orang['nama'] ?? 'Belum diisi' }}</dd>
+                                                <dd @class(['break-words', 'font-medium text-stone-900' => $orang['nama'], 'text-gold-700' => ! $orang['nama']])>{{ $orang['nama'] ?? 'Belum diisi' }}</dd>
                                             </div>
                                             <div class="min-w-0">
                                                 <dt class="text-xs text-stone-500">NIP{{ $peran['nip'] ? '' : ' (opsional)' }}</dt>
@@ -122,7 +154,7 @@
                             <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                                 <tr>
                                     <th scope="col" class="min-w-44 px-5 py-2 text-left sm:pl-6">Leading</th>
-                                    <th scope="col" class="px-3 py-2 text-left">Jabatan tercetak</th>
+                                    <th scope="col" class="min-w-52 px-3 py-2 text-left">Jabatan tercetak</th>
                                     <th scope="col" class="px-3 py-2 text-left">Nama</th>
                                     <th scope="col" class="px-3 py-2 text-left">NIP</th>
                                     <th scope="col" class="px-3 py-2 text-left">Akun tertaut</th>
@@ -153,7 +185,7 @@
                                         <tr wire:key="formulir-pejabat-{{ $l['kode'] }}">
                                             <td colspan="6" class="bg-stone-50/70 px-5 py-4 sm:px-6">
                                                 <form wire:submit="simpanPejabat" class="space-y-4" data-testid="formulir-pejabat">
-                                                    <p class="text-sm font-semibold text-stone-900">Pejabat {{ $l['kode'] }} {{ $l['nama_unit'] }} · TA {{ $tahun }}</p>
+                                                    <p class="text-sm font-semibold text-stone-900">Pejabat {{ $l['kode'] }} {{ $l['nama_unit'] }} · TA {{ $taPejabat }}</p>
                                                     <x-pengaturan.input-pejabat :awalan="'pejabat-leading-'.str_replace('.', '-', $l['kode'])" :jabatan-bawaan="\App\Support\Stub\StubPejabatRepository::bawaan()['leading'][$l['kode']]['jabatan']" />
                                                     <div class="flex justify-end gap-2">
                                                         <button type="button" wire:click="batalUbahPejabat" class="btn-ghost">Batal</button>
@@ -203,13 +235,55 @@
                     </ul>
                     <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Selama nama pejabat leading belum diisi, kolom "Pembuat" memakai nama akun leading yang menyusun kegiatan.</p>
                 </section>
+
+                {{-- Perbandingan antar-tahun: siapa menjabat tiap tahun; "berganti" bila beda dari tahun sebelumnya. --}}
+                <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pejabat-per-tahun" data-testid="pejabat-per-tahun">
+                    <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
+                        <h2 id="judul-pejabat-per-tahun" class="text-base font-semibold text-stone-900">Pejabat per tahun</h2>
+                        <p class="mt-0.5 text-sm text-stone-500">Dokumen tiap tahun mencetak pejabat tahunnya sendiri, sehingga pergantian pejabat tidak mengubah dokumen tahun lalu.</p>
+                    </header>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
+                                <tr>
+                                    <th scope="col" class="px-5 py-2 text-left sm:pl-6">Peran</th>
+                                    @foreach ($this->daftarTahun() as $ta)
+                                        <th scope="col" class="px-3 py-2 text-left whitespace-nowrap last:pr-5 sm:last:pr-6">TA {{ $ta['tahun'] }}{{ $ta['is_active'] ? ' · aktif' : '' }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-100">
+                                @foreach ($this->perbandinganTahun() as $baris)
+                                    <tr class="align-top" data-perbandingan="{{ $baris['kunci'] }}">
+                                        <th scope="row" class="px-5 py-2.5 text-left font-medium whitespace-nowrap text-stone-800 sm:pl-6">{{ $baris['judul'] }}</th>
+                                        @foreach ($baris['tahun'] as $th => $sel)
+                                            <td class="min-w-44 px-3 py-2.5 last:pr-5 sm:last:pr-6" data-tahun="{{ $th }}">
+                                                @if ($sel['nama'])
+                                                    <span class="block text-stone-900">{{ $sel['nama'] }}</span>
+                                                    @if ($sel['nip'])
+                                                        <span class="block font-mono text-[11px] text-stone-500">{{ Nip::format($sel['nip']) }}</span>
+                                                    @endif
+                                                    @if ($sel['berganti'])
+                                                        <span class="mt-0.5 inline-flex items-center gap-1 rounded bg-sky-50 px-1.5 text-[11px] font-medium text-sky-800 ring-1 ring-sky-200" data-berganti>berganti</span>
+                                                    @endif
+                                                @else
+                                                    <span class="text-stone-300">—</span>
+                                                @endif
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <aside class="min-w-0 space-y-6">
                 {{-- Pratinjau blok tanda tangan lembar pengesahan --}}
                 <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-blok-ttd" data-testid="pratinjau-ttd">
                     <h2 id="judul-blok-ttd" class="text-sm font-semibold text-stone-900">Blok tanda tangan</h2>
-                    <p class="mt-0.5 text-xs text-stone-500">Lembar pengesahan setiap KAK/TOR &amp; RAB.</p>
+                    <p class="mt-0.5 text-xs text-stone-500">Lembar pengesahan setiap KAK/TOR &amp; RAB · TA {{ $taPejabat }}.</p>
                     <div class="mt-4 rounded-lg bg-stone-50 p-3 font-serif text-[11px] leading-snug text-stone-800 ring-1 ring-stone-200">
                         <div class="grid grid-cols-2 gap-3 text-center">
                             <div data-ttd="komite">

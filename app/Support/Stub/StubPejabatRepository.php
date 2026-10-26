@@ -11,7 +11,8 @@ use InvalidArgumentException;
 /**
  * Pejabat penanda tangan tiruan di berkas JSON (disk "local"), berkunci tahun → peran (→ kode leading). Jabatan bawaan
  * mengikuti nama singkat madrasah (Kepala/Ketua Komite) dan jabatan penanda tangan master leading; nama & NIP kosong
- * sampai diisi admin.
+ * sampai diisi admin. Saat berkas belum ada, contoh fiktif TA 2025 (tahun terkunci) disiapkan agar tampilan per tahun &
+ * salin dari tahun lalu bisa dicoba; TA 2026 sengaja kosong.
  */
 class StubPejabatRepository implements PejabatRepository
 {
@@ -66,11 +67,32 @@ class StubPejabatRepository implements PejabatRepository
     }
 
     /**
+     * Contoh fiktif pejabat TA 2025 (nama & NIP rekaan; NIP berformat sah).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function contoh(): array
+    {
+        return ['2025' => [
+            'kepala' => ['jabatan' => 'Kepala MTsN 2 Kota Malang', 'nama' => 'Drs. H. Mahmud Arifin, M.Pd.I.', 'nip' => '196805121994031002'],
+            'komite' => ['jabatan' => 'Ketua Komite MTsN 2 Kota Malang', 'nama' => 'H. Sugeng Riyadi, S.E.', 'nip' => null],
+            'leading' => [
+                '1.1' => ['jabatan' => 'Wakil Kepala Bidang Kurikulum', 'nama' => 'Siti Rohmah, M.Pd.', 'nip' => '197803152005012003'],
+                '1.6' => ['jabatan' => 'Ketua Tim Penjamin Mutu', 'nama' => 'Muslimin, M.Pd.', 'nip' => '198001102006041001'],
+            ],
+        ]];
+    }
+
+    /**
      * @return array<string, array<string, mixed>>
      */
     private function baca(): array
     {
-        $isi = $this->disk()->exists($this->berkas()) ? json_decode((string) $this->disk()->get($this->berkas()), true) : null;
+        if (! $this->disk()->exists($this->berkas())) {
+            return self::contoh();
+        }
+
+        $isi = json_decode((string) $this->disk()->get($this->berkas()), true);
 
         return is_array($isi) ? $isi : [];
     }
