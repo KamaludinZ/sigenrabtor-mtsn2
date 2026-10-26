@@ -28,7 +28,7 @@ use RuntimeException;
  * Pengaturan › Template Dokumen (PRD Fase 5): tab Cover — unggah desain cover JPG/PNG, lihat hasilnya dengan kotak teks
  * (TeksCover) berisi contoh kegiatan, atur tata letaknya, dan kelola cover tersimpan; tab KAK/TOR — unggah master .docx,
  * periksa variabel ${…} terhadap daftar terdaftar (VariabelTemplate) sebelum disimpan; tab Daftar Isi — komponen
- * TemplateDaftarIsi. Nomor Halaman menyusul.
+ * TemplateDaftarIsi; tab Nomor Halaman — komponen TemplateNomorHalaman.
  */
 #[Layout('layouts.app')]
 class TemplateDokumen extends Component
@@ -38,7 +38,7 @@ class TemplateDokumen extends Component
     public const TAB = ['cover' => 'Cover', 'kak' => 'KAK/TOR', 'daftar_isi' => 'Daftar Isi', 'nomor_halaman' => 'Nomor Halaman'];
 
     /** Tab yang sudah tersedia. */
-    public const TAB_TERSEDIA = ['cover', 'kak', 'daftar_isi'];
+    public const TAB_TERSEDIA = ['cover', 'kak', 'daftar_isi', 'nomor_halaman'];
 
     /** Batas ukuran gambar cover (KB). */
     public const MAKS_KB = 5120;

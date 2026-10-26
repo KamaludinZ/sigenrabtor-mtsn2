@@ -298,4 +298,44 @@ test.describe('Pengaturan admin', () => {
             }
         }
     });
+
+    test('nomor halaman: format preset & sendiri, halaman tanpa nomor, simulasi buku', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/template?tab=nomor_halaman');
+        const simulasi = page.getByTestId('simulasi-nomor');
+        const daftarIsi = simulasi.locator('[data-jenis="daftar_isi"]');
+        await expect(daftarIsi).toHaveAttribute('data-label', /^Halaman 2 dari \d+$/);
+        await expect(simulasi.locator('[data-jenis="cover_buku"]')).toHaveAttribute('data-label', '');
+
+        try {
+            await page.getByRole('radio', { name: /- \{x\} -/ }).check();
+            await expect(daftarIsi).toHaveAttribute('data-label', '- 2 -');
+            await page.getByTestId('hitung-tanpa-nomor').uncheck();
+            await expect(daftarIsi).toHaveAttribute('data-label', '- 1 -');
+            await expect(page.getByTestId('halaman-daftar-isi').locator('[data-mulai="0"]')).toHaveText('2');
+
+            await page.getByRole('radio', { name: 'Format lain…' }).check();
+            await page.locator('#format-lain').fill('Halaman');
+            await expect(page.getByText('Format harus memuat {x} (nomor halaman).')).toBeVisible();
+            await page.locator('#format-lain').fill('Lembar {x}');
+            await expect(daftarIsi).toHaveAttribute('data-label', 'Lembar 1');
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+            expect(overflow).toBeLessThanOrEqual(0);
+            await page.screenshot({ path: `storage/playwright/shots/nomor-halaman-${testInfo.project.name}.png`, fullPage: true });
+            await page.getByRole('button', { name: 'Simpan aturan' }).click();
+            await expect(page.getByText('Aturan nomor halaman tersimpan.')).toBeVisible({ timeout: 30_000 });
+
+            await page.reload();
+            await expect(page.locator('#format-lain')).toHaveValue('Lembar {x}');
+            await expect(page.getByTestId('simulasi-nomor').locator('[data-jenis="daftar_isi"]')).toHaveAttribute('data-label', 'Lembar 1');
+        } finally {
+            await page.goto('/pengaturan/template?tab=nomor_halaman');
+            await page.getByRole('button', { name: 'Pakai aturan aplikasi' }).click();
+            await expect(page.getByTestId('simulasi-nomor').locator('[data-jenis="daftar_isi"]')).toHaveAttribute('data-label', /^Halaman 2 dari/, { timeout: 30_000 });
+            if (await page.getByTestId('nomor-berubah').count()) {
+                await page.getByRole('button', { name: 'Simpan aturan' }).click();
+                await expect(page.getByRole('button', { name: 'Tersimpan' })).toBeDisabled({ timeout: 30_000 });
+            }
+        }
+    });
 });

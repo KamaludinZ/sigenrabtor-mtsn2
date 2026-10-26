@@ -35,6 +35,7 @@ return [
         'cover_file' => env('STUB_COVER_FILE', 'stub/cover-template.json'),
         'master_file' => env('STUB_MASTER_FILE', 'stub/master-template.json'),
         'daftar_isi_file' => env('STUB_DAFTAR_ISI_FILE', 'stub/daftar-isi.json'),
+        'nomor_halaman_file' => env('STUB_NOMOR_HALAMAN_FILE', 'stub/nomor-halaman.json'),
     ],
 
     /*

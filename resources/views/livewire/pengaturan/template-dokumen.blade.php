@@ -24,6 +24,8 @@
         @include('livewire.pengaturan.partials.template-kak')
     @elseif ($tab === 'daftar_isi')
         <livewire:pengaturan.template-daftar-isi />
+    @elseif ($tab === 'nomor_halaman')
+        <livewire:pengaturan.template-nomor-halaman />
     @else
         @include('livewire.pengaturan.partials.template-cover')
     @endif

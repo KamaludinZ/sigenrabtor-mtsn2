@@ -82,7 +82,7 @@ class MasterKakTest extends TestCase
             ->assertSeeHtmlInOrder(['Kegiatan &amp; tahun', '${tahun_anggaran}', 'RAB', '${rab}', 'tabel utuh', 'Penanda tangan', '${ttd_kepala}'])
             ->assertSet('namaMaster', 'Master KAK/TOR 2026');
 
-        Livewire::withQueryParams(['tab' => 'nomor_halaman'])->test(TemplateDokumen::class)->assertSet('tab', 'cover');
+        Livewire::withQueryParams(['tab' => 'tidak-ada'])->test(TemplateDokumen::class)->assertSet('tab', 'cover');
     }
 
     public function test_unggah_master_dengan_salah_tulis_ditolak_lalu_yang_benar_disimpan(): void
