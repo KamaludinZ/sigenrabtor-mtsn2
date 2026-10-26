@@ -2,12 +2,15 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\PenyusunUsulanJadwal;
+use App\Support\Kegiatan\PermintaanUsulanJadwal;
+
 /**
  * Usulan jadwal tiruan untuk panel "Usulkan dengan AI" di Matrik & Jadwal (PRD F10/F23) selama penyedia AI belum
  * tersambung. Tiga versi — lengkap 6 baris, persiapan lebih awal 5 baris, ringkas 4 baris — disusun dari langkah baku
- * per jenis kegiatan dan bulan acuan Data Kegiatan; backend nanti menggantinya dengan hasil AI dalam bentuk array yang sama.
+ * per jenis kegiatan dan bulan acuan Data Kegiatan; backend menggantinya dengan driver AI dalam bentuk array yang sama.
  */
-class StubUsulanJadwal
+class StubUsulanJadwal implements PenyusunUsulanJadwal
 {
     /**
      * Langkah per jenis kegiatan: [uraian, waktu, prioritas]. Waktu: persiapan (bulan sebelum pelaksanaan), menjelang
@@ -63,6 +66,11 @@ class StubUsulanJadwal
         ['Persiapan lebih awal', 'Persiapan dimulai sebulan lebih awal agar panitia lebih leluasa.', 5, 1],
         ['Ringkas', 'Empat tahap inti untuk kegiatan singkat.', 4, 0],
     ];
+
+    public function usulkan(PermintaanUsulanJadwal $permintaan): array
+    {
+        return self::versi($permintaan->jenis, $permintaan->acuan);
+    }
 
     /**
      * @param  array{persiapan: int, pelaksanaan: list<int>, laporan: int}|null  $acuan  Bulan acuan; null bila bulan pelaksanaan belum diisi.

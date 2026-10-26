@@ -3,6 +3,7 @@ import path from 'node:path';
 
 export const E2E_STUB_FILE = 'stub/kegiatan-e2e.json';
 export const E2E_RAB_FILE = 'stub/rab-e2e.json';
+export const E2E_MATRIK_FILE = 'stub/matrik-jadwal-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -39,6 +40,7 @@ export default defineConfig({
         env: {
             STUB_KEGIATAN_FILE: E2E_STUB_FILE,
             STUB_RAB_FILE: E2E_RAB_FILE,
+            STUB_MATRIK_FILE: E2E_MATRIK_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },

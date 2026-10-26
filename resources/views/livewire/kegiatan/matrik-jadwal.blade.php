@@ -461,6 +461,16 @@
                     @if ($usulan === [])
                         {{-- Langkah 1: permintaan --}}
                         <div class="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6" wire:key="usul-permintaan" data-testid="usul-permintaan">
+                            @if ($usulGagal)
+                                <div class="rounded-xl bg-red-50 p-3.5 text-red-800 ring-1 ring-red-200" role="alert" data-testid="usul-gagal">
+                                    <p class="flex items-center gap-2 text-sm font-semibold">
+                                        <x-ui.icon name="alert" class="size-4 shrink-0" />
+                                        Usulan AI belum bisa dibuat
+                                    </p>
+                                    <p class="mt-1 text-xs">{{ $usulGagal }}</p>
+                                    <p class="mt-1.5 text-xs text-red-700">Jadwal Anda tidak berubah. Coba lagi sebentar lagi, atau tutup panel lalu pakai <em>Isi jadwal baku</em>.</p>
+                                </div>
+                            @endif
                             <section class="rounded-xl bg-stone-50 p-4 ring-1 ring-stone-200" aria-labelledby="judul-acuan-usul" data-testid="acuan-usul-jadwal">
                                 <div class="flex items-center justify-between gap-2">
                                     <h3 id="judul-acuan-usul" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Acuan waktu</h3>
@@ -546,7 +556,7 @@
                             <button type="button" class="btn-ghost" wire:click="tutupUsulJadwal">Batal</button>
                             <button type="button" class="btn-primary" wire:click="buatUsulJadwal" wire:loading.attr="disabled" wire:target="buatUsulJadwal">
                                 <x-ui.icon name="sparkles" class="size-4" />
-                                Buat usulan
+                                {{ $usulGagal ? 'Coba lagi' : 'Buat usulan' }}
                             </button>
                         </footer>
                     @else
@@ -570,8 +580,10 @@
                                 <article class="rounded-xl bg-white ring-1 ring-stone-200" aria-labelledby="judul-versi-{{ $i }}" data-testid="versi-usulan-{{ $i + 1 }}" wire:key="versi-usulan-{{ $i }}">
                                     <header class="flex items-start justify-between gap-3 px-4 pt-3">
                                         <div class="min-w-0">
-                                            <h3 id="judul-versi-{{ $i }}" class="text-sm font-semibold text-stone-900">{{ $versi['judul'] }} · {{ $versi['ciri'] }}</h3>
-                                            <p class="text-xs text-stone-500">{{ $versi['keterangan'] }}</p>
+                                            <h3 id="judul-versi-{{ $i }}" class="text-sm font-semibold text-stone-900">{{ $versi['judul'] }}{{ $versi['ciri'] !== '' ? ' · '.$versi['ciri'] : '' }}</h3>
+                                            @if ($versi['keterangan'] !== '')
+                                                <p class="text-xs text-stone-500">{{ $versi['keterangan'] }}</p>
+                                            @endif
                                         </div>
                                         <span class="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-600">{{ count($versi['baris']) }} baris</span>
                                     </header>

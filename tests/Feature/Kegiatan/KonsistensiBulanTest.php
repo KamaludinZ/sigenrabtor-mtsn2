@@ -7,7 +7,7 @@ use App\Livewire\Kegiatan\MatrikJadwal;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\MatrikTahapan;
-use App\Support\Stub\StubKegiatanRepository;
+use App\Support\Stub\StubMatrikJadwalRepository;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -35,7 +35,7 @@ class KonsistensiBulanTest extends TestCase
         $kosong = new KonsistensiBulan([7], 7, MatrikTahapan::dari([])->butir, JadwalKegiatan::dari([])->baris);
         $this->assertSame([[], false, 0], [$kosong->temuan(), $kosong->adaIsian(), $kosong->jumlahPeringatan()]);
 
-        $contoh = StubKegiatanRepository::contohMelebihiPagu();
+        $contoh = StubMatrikJadwalRepository::contoh()[3];
         $tersalin = new KonsistensiBulan([11], 11, MatrikTahapan::dari($contoh)->butir, JadwalKegiatan::dari($contoh)->baris);
         $this->assertTrue($tersalin->adaIsian());
         $this->assertSame([6, 5], [count($tersalin->temuan()), $tersalin->jumlahPeringatan()]);

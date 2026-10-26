@@ -3,6 +3,7 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\MatrikJadwalRepository;
 use App\Livewire\Kegiatan\MatrikJadwal;
 use App\Livewire\Kegiatan\Rab;
 use App\Support\Kegiatan\JadwalKegiatan;
@@ -167,9 +168,9 @@ class MatrikJadwalTest extends TestCase
             ->assertSet('adaPerubahan', false)
             ->assertDontSeeHtml('data-testid="matrik-berubah"');
 
-        $tersimpan = $repo->temukan(1);
-        $this->assertSame([6], $tersimpan['matrik']['persiapan'][0]['bulan']);
-        $this->assertSame($namaSemula, $tersimpan['nama_kegiatan'], 'Isian kegiatan lain tidak tersentuh.');
+        $this->assertSame([6], app(MatrikJadwalRepository::class)->matrik(1)->butir['persiapan'][0]['bulan']);
+        $this->assertSame($namaSemula, $repo->temukan(1)['nama_kegiatan'], 'Isian kegiatan lain tidak tersentuh.');
+        $this->assertArrayNotHasKey('matrik', $repo->temukan(1), 'Matrik tersimpan terpisah dari data kegiatan.');
         Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])->assertSet('matrik.evaluasi_pelaporan.1.bulan', [7])->assertSee('6 tanda bulan');
 
         // Uraian butir wajib diisi.
@@ -271,7 +272,7 @@ class MatrikJadwalTest extends TestCase
             ->assertSet('jadwal.0.uraian', 'Rapat panitia')
             ->assertSet('adaPerubahan', false);
 
-        $tersimpan = app(KegiatanRepository::class)->temukan(1)['jadwal'];
+        $tersimpan = app(MatrikJadwalRepository::class)->jadwal(1)->baris;
         $this->assertSame(['uraian' => 'Rapat panitia', 'bulan' => [7, 8]], $tersimpan[0]);
         $this->assertCount(5, $tersimpan);
         $this->assertSame(['uraian' => '', 'bulan' => []], $tersimpan[4]);
@@ -337,7 +338,7 @@ class MatrikJadwalTest extends TestCase
             ->call('simpan')
             ->assertHasNoErrors();
 
-        $this->assertSame([], app(KegiatanRepository::class)->temukan(1)['jadwal']);
+        $this->assertSame([], app(MatrikJadwalRepository::class)->jadwal(1)->baris);
         Livewire::test(MatrikJadwal::class, ['kegiatan' => 1])
             ->assertSet('jadwal', [])
             ->assertSeeHtml('data-testid="ringkasan-jadwal">Belum ada baris');

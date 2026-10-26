@@ -156,21 +156,6 @@ class StubKegiatanRepository implements KegiatanRepository
                 ['nama' => 'Ahmad Fauzi, S.Pd.', 'jabatan' => 'Tim Penjamin Mutu', 'peran' => 'Ketua'],
                 ['nama' => 'Nur Hidayah, S.Pd.', 'jabatan' => 'Guru IPA', 'peran' => 'Sekretaris'],
             ],
-            // Contoh konsistensi bulan (PRD "isi tersalin dari kegiatan lain"): sebagian matrik & jadwal tersalin dari
-            // workshop bulan Juli, padahal kegiatan ini November dengan batas laporan 27 November.
-            'matrik' => [
-                'persiapan' => [['uraian' => 'Rapat dan pembagian job deskripsi', 'bulan' => [10]], ['uraian' => 'Penyerahan anggaran per seksi', 'bulan' => [10]]],
-                'pelaksanaan' => [['uraian' => 'Persiapan pelaksanaan', 'bulan' => [7]], ['uraian' => 'Pengawasan kegiatan', 'bulan' => [7]]],
-                'evaluasi_pelaporan' => [['uraian' => 'Penyusunan laporan', 'bulan' => [11]], ['uraian' => 'Penyerahan laporan', 'bulan' => [12]]],
-            ],
-            'jadwal' => [
-                ['uraian' => 'Pembentukan kepanitiaan', 'bulan' => [10]],
-                ['uraian' => 'Rapat koordinasi panitia', 'bulan' => [10]],
-                ['uraian' => 'Persiapan sarana dan bahan kegiatan', 'bulan' => [10, 11]],
-                ['uraian' => 'Pelaksanaan workshop kurikulum', 'bulan' => [7]],
-                ['uraian' => 'Evaluasi kegiatan', 'bulan' => [11]],
-                ['uraian' => 'Penyusunan dan penyerahan laporan', 'bulan' => [12]],
-            ],
         ];
     }
 

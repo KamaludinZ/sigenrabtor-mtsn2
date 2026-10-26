@@ -3,6 +3,7 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\MatrikJadwalRepository;
 use App\Livewire\Kegiatan\MatrikJadwal;
 use App\Support\Kegiatan\KonteksAi;
 use Livewire\Livewire;
@@ -95,7 +96,7 @@ class UsulJadwalAiTest extends TestCase
 
         $komponen->call('bukaUsulJadwal')->call('buatUsulJadwal')->call('pakaiUsulan', 0)->call('simpan')->assertHasNoErrors();
 
-        $tersimpan = app(KegiatanRepository::class)->temukan(2)['jadwal'];
+        $tersimpan = app(MatrikJadwalRepository::class)->jadwal(2)->baris;
         $this->assertCount(6, $tersimpan);
         $this->assertSame(['uraian' => 'Pelaksanaan supervisi dan observasi kelas', 'bulan' => [8, 9]], $tersimpan[3]);
 
