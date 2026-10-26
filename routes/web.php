@@ -10,6 +10,7 @@ use App\Livewire\Kegiatan\Form as KegiatanForm;
 use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
+use App\Livewire\Monitoring\Anggaran as MonitoringAnggaran;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
 use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
@@ -26,6 +27,9 @@ Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegia
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
+
+// Monitoring anggaran lintas kegiatan & leading (PRD Fase 5 §11), khusus admin.
+Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');
 
 // Pengaturan admin (PRD Fase 5–7): seluruh halaman khusus admin.
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {
