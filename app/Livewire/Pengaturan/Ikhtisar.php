@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pengaturan;
 
+use App\Contracts\RiwayatPengaturanRepository;
 use App\Support\Pengaturan\BagianPengaturan;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use Livewire\Attributes\Computed;
@@ -28,6 +29,17 @@ class Ikhtisar extends Component
     public function kelompok(): array
     {
         return collect(BagianPengaturan::semua())->groupBy('kelompok')->map->values()->all();
+    }
+
+    /**
+     * Lima perubahan pengaturan terbaru (PRD N7).
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function perubahanTerakhir(): array
+    {
+        return array_slice(app(RiwayatPengaturanRepository::class)->semua(), 0, 5);
     }
 
     public function render()

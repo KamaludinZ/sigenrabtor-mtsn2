@@ -7,6 +7,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\SumberDana;
 use App\Support\Dokumen\DaftarIsi;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -55,13 +56,18 @@ class TemplateDaftarIsi extends Component
     public function simpan(DaftarIsiRepository $repo): void
     {
         $konfigurasi = DaftarIsi::rapikan($this->konfigurasi);
+        $perubahan = RiwayatPengaturan::perubahan(self::tampilan($this->tersimpan()), self::tampilan($konfigurasi), [
+            'judul' => 'Judul', 'subjudul' => 'Subjudul', 'kolom' => 'Kolom', 'urutan' => 'Urutan', 'tampilkan_jumlah' => 'Baris jumlah', 'catatan' => 'Catatan',
+        ]);
 
         if ($this->leading === null) {
             $repo->simpanBawaan($this->tahun(), $konfigurasi);
             $pesan = 'Pengaturan bawaan daftar isi tersimpan.';
+            RiwayatPengaturan::catat('ubah_daftar_isi', 'Pengaturan bawaan daftar isi diubah'.($perubahan ? " — {$perubahan}" : '').'.');
         } else {
             $repo->simpanKhusus($this->tahun(), $this->leading, $this->sumber, $konfigurasi);
             $pesan = "Daftar isi {$this->namaBuku()} tersimpan.";
+            RiwayatPengaturan::catat('ubah_daftar_isi', "Pengaturan khusus daftar isi {$this->namaBuku()} disimpan".($perubahan ? " — {$perubahan}" : ' (sama dengan bawaan)').'.');
         }
 
         $this->konfigurasi = $konfigurasi;
@@ -77,6 +83,7 @@ class TemplateDaftarIsi extends Component
         }
 
         $repo->hapusKhusus($this->tahun(), $this->leading, $this->sumber);
+        RiwayatPengaturan::catat('hapus_daftar_isi_khusus', "Daftar isi {$this->namaBuku()} kembali memakai pengaturan bawaan.");
         unset($this->khusus);
         $this->konfigurasi = $this->tersimpan();
         $this->dispatch('notify', message: "Daftar isi {$this->namaBuku()} kembali memakai pengaturan bawaan.", type: 'info');
@@ -204,6 +211,17 @@ class TemplateDaftarIsi extends Component
     public function render()
     {
         return view('livewire.pengaturan.template-daftar-isi');
+    }
+
+    /**
+     * Konfigurasi dengan label terbaca (kolom & urutan) untuk ringkasan riwayat.
+     *
+     * @param  array<string, mixed>  $konfigurasi
+     * @return array<string, mixed>
+     */
+    private static function tampilan(array $konfigurasi): array
+    {
+        return ['kolom' => array_map(fn (string $k) => DaftarIsi::KOLOM[$k][0], $konfigurasi['kolom']), 'urutan' => DaftarIsi::URUTAN[$konfigurasi['urutan']]] + $konfigurasi;
     }
 
     /**

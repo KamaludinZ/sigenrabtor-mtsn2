@@ -1,4 +1,7 @@
+@use('App\Support\Format')
 @use('App\Support\Pengaturan\BagianPengaturan')
+@use('App\Support\Pengaturan\RiwayatPengaturan')
+@use('Illuminate\Support\Carbon')
 
 @php
     $kesiapan = $this->kesiapan;
@@ -114,6 +117,29 @@
                     </div>
                 </section>
             @endforeach
+
+            <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-perubahan-terakhir" data-testid="perubahan-terakhir">
+                <header class="flex items-center justify-between gap-2 border-b border-stone-100 px-5 py-3">
+                    <h2 id="judul-perubahan-terakhir" class="text-sm font-semibold text-stone-900">Perubahan terakhir</h2>
+                    <a href="{{ route('pengaturan.riwayat.index') }}" wire:navigate class="text-xs font-semibold text-brand-700 hover:text-brand-800">Lihat semua riwayat</a>
+                </header>
+                @if ($this->perubahanTerakhir === [])
+                    <p class="px-5 py-4 text-sm text-stone-500">Belum ada perubahan tercatat.</p>
+                @else
+                    <ul class="divide-y divide-stone-100">
+                        @foreach ($this->perubahanTerakhir as $r)
+                            @php
+                                $waktu = Carbon::parse($r['waktu'])->timezone(config('app.timezone'));
+                            @endphp
+                            <li class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-5 py-2.5 text-sm" wire:key="perubahan-{{ $r['id'] }}">
+                                <span class="w-full text-xs text-stone-400 tabular-nums sm:w-36">{{ Format::tanggal($waktu->toDateString()) }}, {{ $waktu->format('H.i') }}</span>
+                                <span class="min-w-0 flex-1 text-stone-700"><span class="font-medium text-stone-900">{{ RiwayatPengaturan::AKSI[$r['aksi']][0] ?? $r['aksi'] }}</span> — {{ $r['keterangan'] }}</span>
+                                <span class="text-xs text-stone-500">{{ $r['pengguna'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </section>
 
             <p class="flex items-start gap-2 rounded-xl bg-gold-50 px-4 py-3 text-xs text-gold-700 ring-1 ring-gold-200">
                 <x-ui.icon name="info" class="mt-px size-4 shrink-0" />

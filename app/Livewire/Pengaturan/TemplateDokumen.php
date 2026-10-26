@@ -10,6 +10,7 @@ use App\Support\Dokumen\NilaiVariabel;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\TeksCover;
+use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Arr;
@@ -134,6 +135,8 @@ class TemplateDokumen extends Component
         $this->validate(Arr::only($this->rules(), ['gambar', 'namaCover']));
 
         $id = $repo->tambah($this->tahun(), trim($this->namaCover), $this->gambar, TeksCover::bawaan());
+        $cover = $repo->temukan($id);
+        RiwayatPengaturan::catat('unggah_cover', "Cover “{$cover['nama']}” diunggah ({$cover['lebar']} × {$cover['tinggi']} piksel)".($cover['is_default'] ? ', menjadi cover default' : '').'.');
         $this->gambar->delete();
         $this->reset('gambar');
         $this->coverDipilih = $id;
@@ -198,6 +201,7 @@ class TemplateDokumen extends Component
         }
 
         $repo->ubahTeks($cover['id'], $kotak);
+        RiwayatPengaturan::catat('ubah_tata_letak_cover', "Tata letak “{$cover['nama']}” diubah — ".self::ringkasTataLetak(TeksCover::rapikan($cover['teks_items']), $kotak).'.');
         $this->batalAtur();
         unset($this->covers);
         $this->dispatch('notify', message: "Tata letak “{$cover['nama']}” tersimpan.", type: 'success');
@@ -222,6 +226,8 @@ class TemplateDokumen extends Component
         }
 
         $repo->hapus($cover['id']);
+        $pengganti = $cover['is_default'] ? collect($repo->semua($this->tahun()))->firstWhere('is_default', true) : null;
+        RiwayatPengaturan::catat('hapus_cover', "Cover “{$cover['nama']}” dihapus".($pengganti ? "; “{$pengganti['nama']}” menjadi cover default" : '').'.');
         $this->akanDihapus = null;
         if ($this->coverDiatur === $cover['id']) {
             $this->batalAtur();
@@ -258,7 +264,9 @@ class TemplateDokumen extends Component
             return;
         }
 
-        $repo->tambah($this->tahun(), trim($this->namaMaster), $this->jenisMaster, $this->berkasMaster, $analisis->namaTerdaftar());
+        $id = $repo->tambah($this->tahun(), trim($this->namaMaster), $this->jenisMaster, $this->berkasMaster, $analisis->namaTerdaftar());
+        $master = $repo->temukan($id);
+        RiwayatPengaturan::catat('unggah_master', "Master “{$master['nama']}” ({$master['jenis']}) diunggah — ".count($master['variabel']).' variabel'.($master['is_default'] ? ', menjadi default jenis ini' : '').'.');
         $this->batalUnggahMaster();
         unset($this->masters);
         $this->namaMaster = $this->namaMasterBaku();
@@ -326,6 +334,7 @@ class TemplateDokumen extends Component
         }
 
         $repo->hapus($template['id']);
+        RiwayatPengaturan::catat('hapus_master', "Master “{$template['nama']}” ({$template['jenis']}) dihapus.");
         $this->masterAkanDihapus = null;
         $this->pratinjauMaster = $this->pratinjauMaster === $template['id'] ? null : $this->pratinjauMaster;
         unset($this->masters);
@@ -482,6 +491,30 @@ class TemplateDokumen extends Component
     private function namaBaku(): string
     {
         return $this->covers === [] ? 'Cover default '.$this->tahun() : 'Cover '.(count($this->covers) + 1).' '.$this->tahun();
+    }
+
+    /**
+     * "3 kotak diubah, disembunyikan: “Disusun oleh”" — ringkasan perbedaan dua susunan kotak teks.
+     *
+     * @param  list<array<string, mixed>>  $lama
+     * @param  list<array<string, mixed>>  $baru
+     */
+    private static function ringkasTataLetak(array $lama, array $baru): string
+    {
+        $perKolom = fn (array $kotak) => array_column($kotak, null, 'field');
+        [$lama, $baru] = [$perKolom($lama), $perKolom($baru)];
+        $nama = fn (array $kolom) => implode(', ', array_map(fn ($f) => '“'.str_replace(['“', '”'], '', TeksCover::FIELD[$f]).'”', $kolom));
+        $diubah = count(array_filter(array_keys(array_intersect_key($baru, $lama)), fn ($f) => $baru[$f] !== $lama[$f]));
+        $bagian = [$diubah.' kotak diubah'];
+
+        if (($hilang = array_keys(array_diff_key($lama, $baru))) !== []) {
+            $bagian[] = 'disembunyikan: '.$nama($hilang);
+        }
+        if (($muncul = array_keys(array_diff_key($baru, $lama))) !== []) {
+            $bagian[] = 'ditampilkan: '.$nama($muncul);
+        }
+
+        return implode(', ', $bagian);
     }
 
     private function namaMasterBaku(): string

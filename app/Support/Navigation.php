@@ -47,6 +47,7 @@ class Navigation
                     ['label' => 'Leading & User', 'icon' => 'users', 'route' => 'pengaturan.leading.index', 'active' => 'pengaturan.leading.*'],
                     ['label' => 'Template Dokumen', 'icon' => 'file-text', 'route' => 'pengaturan.template.index', 'active' => 'pengaturan.template.*'],
                     ['label' => 'Pengaturan AI', 'icon' => 'sparkles', 'route' => 'pengaturan.ai.index', 'active' => 'pengaturan.ai.*'],
+                    ['label' => 'Riwayat Perubahan', 'icon' => 'history', 'route' => 'pengaturan.riwayat.index', 'active' => 'pengaturan.riwayat.*'],
                 ],
             ],
         ];

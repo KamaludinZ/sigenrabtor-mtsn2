@@ -5,6 +5,7 @@ namespace App\Livewire\Pengaturan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -88,7 +89,9 @@ class TahunAnggaran extends Component
             return;
         }
 
+        $sebelumnya = $this->aktif['tahun'] ?? null;
         $repo->aktifkan($calon['tahun'], StubData::currentUser()['name']);
+        RiwayatPengaturan::catat('ganti_tahun', "Tahun Anggaran {$calon['tahun']} diaktifkan".($sebelumnya ? " (sebelumnya {$sebelumnya})" : '').'.');
         session()->flash('notify', ['message' => "Tahun Anggaran {$calon['tahun']} aktif. Seluruh dokumen kini memakai tahun {$calon['tahun']}.", 'type' => 'success']);
 
         $this->redirectRoute('pengaturan.tahun.index', navigate: true);

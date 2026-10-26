@@ -11,6 +11,7 @@ use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
+use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,7 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {
     Route::get('/', PengaturanIkhtisar::class)->name('index');
     Route::get('/tahun', PengaturanTahunAnggaran::class)->name('tahun.index');
+    Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
     Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');
     Route::get('/template/master/{template}/unduh', UnduhMasterTemplate::class)->whereUuid('template')->name('template.master.unduh');

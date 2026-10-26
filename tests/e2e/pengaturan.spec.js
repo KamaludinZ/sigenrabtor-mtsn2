@@ -338,4 +338,44 @@ test.describe('Pengaturan admin', () => {
             }
         }
     });
+
+    test('riwayat perubahan: perubahan tercatat, saringan bagian & cari, ringkasan di ikhtisar', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        // Satu perubahan baru agar riwayat pasti berisi aksi Template Dokumen.
+        await page.goto('/pengaturan/template?tab=nomor_halaman');
+        await page.getByRole('radio', { name: '{x} mis. 3', exact: true }).check();
+        await page.getByRole('button', { name: 'Simpan aturan' }).click();
+        await expect(page.getByText('Aturan nomor halaman tersimpan.')).toBeVisible({ timeout: 30_000 });
+        try {
+            await page.goto('/pengaturan/riwayat');
+            const tabel = page.getByTestId('tabel-riwayat');
+            const baris = testInfo.project.name === 'mobile' ? tabel.locator('ul li') : tabel.locator('tbody tr');
+            await expect(baris.first()).toContainText('Format: Halaman {x} dari {y} → {x}');
+            await expect(tabel).toContainText('Tahun Anggaran 2026 diaktifkan (sebelumnya 2025); 2025 dikunci.');
+
+            await tabel.getByLabel('Bagian').selectOption({ label: 'Tahun Anggaran' });
+            await expect(tabel).not.toContainText('Ubah nomor halaman');
+            await expect(baris.first()).toContainText('Ganti tahun aktif');
+            await tabel.getByLabel('Bagian').selectOption('');
+            await tabel.getByLabel('Cari').fill('nomor halaman');
+            await expect(page.getByTestId('jumlah-riwayat')).toContainText('cocok');
+            await expect(baris.first()).toContainText('Ubah nomor halaman');
+            const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+            expect(overflow).toBeLessThanOrEqual(0);
+            await page.screenshot({ path: `storage/playwright/shots/riwayat-${testInfo.project.name}.png`, fullPage: true });
+
+            await page.goto('/pengaturan');
+            await expect(page.getByTestId('perubahan-terakhir')).toContainText('Ubah nomor halaman');
+            await page.getByTestId('perubahan-terakhir').getByRole('link', { name: 'Lihat semua riwayat' }).click();
+            await expect(page).toHaveURL(/\/pengaturan\/riwayat$/);
+        } finally {
+            await page.goto('/pengaturan/template?tab=nomor_halaman');
+            await page.getByRole('button', { name: 'Pakai aturan aplikasi' }).click();
+            await expect(page.getByTestId('simulasi-nomor').locator('[data-jenis="daftar_isi"]')).toHaveAttribute('data-label', /^Halaman 2 dari/, { timeout: 30_000 });
+            if (await page.getByTestId('nomor-berubah').count()) {
+                await page.getByRole('button', { name: 'Simpan aturan' }).click();
+                await expect(page.getByRole('button', { name: 'Tersimpan' })).toBeDisabled({ timeout: 30_000 });
+            }
+        }
+    });
 });
