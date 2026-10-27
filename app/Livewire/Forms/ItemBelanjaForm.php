@@ -4,8 +4,8 @@ namespace App\Livewire\Forms;
 
 use App\Support\Format;
 use App\Support\Rab\KalkulatorRab;
-use Closure;
-use Illuminate\Validation\Rule;
+use App\Support\Rab\SimpanRincianRab;
+use App\Support\Rab\ValidasiItemBelanja;
 use Livewire\Form;
 
 /**
@@ -57,37 +57,10 @@ class ItemBelanjaForm extends Form
     /** Harga satuan berformat ribuan ("600.000"). */
     public string $harga_satuan = '';
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** Aturan, label, dan pesan bersama ValidasiItemBelanja (juga dipakai SimpanRincianRab di server). */
     protected function rules(): array
     {
-        return [
-            'uraian' => ['required', 'string', 'min:3', 'max:255'],
-            'kategori' => ['required', Rule::in(self::KATEGORI)],
-            'kode' => ['nullable', 'string', 'max:20', 'regex:/^[0-9A-Za-z.\-]+$/'],
-            'volume' => ['required', function (string $attribute, mixed $value, Closure $fail) {
-                $angka = self::angkaVolume((string) $value);
-
-                if ($angka === null) {
-                    $fail('Volume harus berupa angka, mis. 6 atau 1,5.');
-                } elseif ($angka <= 0) {
-                    $fail('Volume harus lebih dari 0.');
-                } elseif ($angka > self::MAKS_VOLUME) {
-                    $fail('Volume terlalu besar (maksimal 100.000).');
-                }
-            }],
-            'satuan' => ['required', 'string', 'max:30'],
-            'harga_satuan' => ['required', function (string $attribute, mixed $value, Closure $fail) {
-                $harga = Format::parseRupiah($value);
-
-                if ($harga === null || $harga < 1) {
-                    $fail('Isi harga satuan dengan angka rupiah lebih dari 0.');
-                } elseif ($harga > self::MAKS_HARGA) {
-                    $fail('Harga satuan terlalu besar. Periksa jumlah digit.');
-                }
-            }],
-        ];
+        return ValidasiItemBelanja::aturan();
     }
 
     /**
@@ -95,7 +68,7 @@ class ItemBelanjaForm extends Form
      */
     protected function validationAttributes(): array
     {
-        return ['uraian' => 'uraian', 'kategori' => 'kelompok belanja', 'kode' => 'kode akun', 'satuan' => 'satuan', 'harga_satuan' => 'harga satuan'];
+        return ValidasiItemBelanja::atribut();
     }
 
     /**
@@ -103,13 +76,7 @@ class ItemBelanjaForm extends Form
      */
     protected function messages(): array
     {
-        return [
-            'required' => 'Kolom :attribute wajib diisi.',
-            'min' => 'Kolom :attribute minimal :min karakter.',
-            'max' => 'Kolom :attribute maksimal :max karakter.',
-            'in' => 'Pilih kelompok belanja: bahan, jasa, atau lain-lain.',
-            'kode.regex' => 'Kode akun hanya boleh berisi angka, huruf, titik, atau tanda hubung.',
-        ];
+        return ValidasiItemBelanja::pesan();
     }
 
     /**
@@ -180,16 +147,7 @@ class ItemBelanjaForm extends Form
      */
     public function dataItem(): array
     {
-        $volume = self::angkaVolume($this->volume) ?? 0;
-
-        return [
-            'kode' => trim($this->kode),
-            'uraian' => trim(preg_replace('/\s+/u', ' ', $this->uraian)),
-            'kategori' => $this->kategori,
-            'volume' => floor($volume) == $volume ? (int) $volume : round($volume, 2),
-            'satuan' => trim($this->satuan),
-            'harga_satuan' => (int) Format::parseRupiah($this->harga_satuan),
-        ];
+        return SimpanRincianRab::rapikan(['kode' => $this->kode, 'uraian' => $this->uraian, 'kategori' => $this->kategori, 'volume' => $this->volume, 'satuan' => $this->satuan, 'harga_satuan' => $this->harga_satuan]);
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
 use App\Support\Rab\RekapKelompok;
+use App\Support\Rab\SimpanRincianRab;
 use App\Support\Rab\TampilanRab;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Arr;
@@ -525,30 +526,29 @@ class Rab extends Component
         $this->item->sinkronKategori();
         $this->item->validate();
 
-        $data = $this->item->dataItem();
-        $jumlah = Format::rupiah(KalkulatorRab::jumlah($data['volume'], $data['harga_satuan']));
-        $repo = app(RabRepository::class);
+        // Server memeriksa ulang & menyimpan lewat SimpanRincianRab (status terkunci, sumber dana, aturan item).
+        $isian = $this->item->dataItem();
         $this->itemTerhapus = null;
 
         if ($this->itemDiedit !== null) {
-            $berhasil = $repo->ubahItem($this->kegiatanId, $this->sumber, $this->itemDiedit, $data);
+            $hasil = SimpanRincianRab::ubah($this->kegiatanId, $this->sumber, $this->itemDiedit, $isian);
             $this->tutupFormItem();
             $this->segarkanRincian();
-            $this->dispatch('notify', ...$berhasil
-                ? ['message' => "Item diperbarui: {$data['uraian']} ({$jumlah})."]
+            $this->dispatch('notify', ...$hasil !== null
+                ? ['message' => "Item diperbarui: {$hasil['item']['uraian']} (".Format::rupiah($hasil['jumlah']).').']
                 : ['message' => "Item yang diubah sudah tidak ada di RAB {$this->sumber} (dihapus atau dipindah); perubahan tidak disimpan.", 'type' => 'error']);
 
             return;
         }
 
-        $repo->tambahItem($this->kegiatanId, $this->sumber, $data);
+        $hasil = SimpanRincianRab::tambah($this->kegiatanId, $this->sumber, $isian);
         $this->segarkanRincian();
 
         $this->item->kosongkan();
         $this->formItemTerbuka = $lanjut;
         $this->sumberForm = $lanjut ? $this->sumber : null;
 
-        $this->dispatch('notify', message: "Item ditambahkan: {$data['uraian']} ({$jumlah}).");
+        $this->dispatch('notify', message: "Item ditambahkan: {$hasil['item']['uraian']} (".Format::rupiah($hasil['jumlah']).').');
 
         if ($lanjut) {
             $this->dispatch('form-item-dibuka');
