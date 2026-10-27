@@ -30,6 +30,7 @@ use App\Livewire\Pemeriksaan\Periksa as PemeriksaanPeriksa;
 use App\Livewire\Pengaturan\DasarHukum as PengaturanDasarHukum;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
 use App\Livewire\Pengaturan\LeadingUser as PengaturanLeadingUser;
+use App\Livewire\Pengaturan\PengaturanAi;
 use App\Livewire\Pengaturan\ProfilMadrasah as PengaturanProfilMadrasah;
 use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
@@ -85,6 +86,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
+    Route::get('/ai', PengaturanAi::class)->name('ai.index');
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
     Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');
     Route::get('/template/master/{template}/unduh', UnduhMasterTemplate::class)->whereUuid('template')->name('template.master.unduh');

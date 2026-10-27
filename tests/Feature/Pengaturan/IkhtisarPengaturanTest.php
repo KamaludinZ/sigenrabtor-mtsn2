@@ -34,14 +34,14 @@ class IkhtisarPengaturanTest extends TestCase
             ->assertSeeHtml('aria-current="page"');
     }
 
-    public function test_peta_bagian_dikelompokkan_dan_segera_bila_rute_belum_ada(): void
+    public function test_peta_bagian_dikelompokkan_dan_aktif_bila_rute_ada(): void
     {
         $this->assertSame(['tahun', 'template', 'madrasah', 'leading', 'master', 'ai'], array_column(BagianPengaturan::semua(), 'kunci'));
         $this->assertSame(['dokumen', 'dokumen', 'madrasah', 'madrasah', 'kode', 'kode'], array_column(BagianPengaturan::semua(), 'kelompok'));
         $this->assertTrue(BagianPengaturan::cari('tahun')['tersedia']);
         $this->assertTrue(BagianPengaturan::cari('madrasah')['tersedia']);
         $this->assertTrue(BagianPengaturan::cari('leading')['tersedia']);
-        $this->assertFalse(BagianPengaturan::cari('ai')['tersedia'], 'Halaman Pengaturan AI belum dibuat.');
+        $this->assertTrue(BagianPengaturan::cari('ai')['tersedia']);
         $this->assertNull(BagianPengaturan::cari('tidak-ada'));
 
         Livewire::test(Ikhtisar::class)
@@ -50,8 +50,8 @@ class IkhtisarPengaturanTest extends TestCase
             ->assertSeeHtml('href="'.route('pengaturan.tahun.index').'" wire:navigate class="btn-secondary')
             ->assertSeeHtml('data-testid="bagian-madrasah" data-tersedia="ya"')
             ->assertSeeHtml('data-testid="bagian-leading" data-tersedia="ya"')
-            ->assertSeeHtml('data-testid="bagian-ai" data-tersedia="tidak"')
-            ->assertSee('Segera disiapkan')
+            ->assertSeeHtml('data-testid="bagian-ai" data-tersedia="ya"')
+            ->assertDontSee('Segera disiapkan')
             ->assertSee('Desain cover + posisi teks')
             ->assertSee('NIP dan nama pejabat tidak pernah dikirim.');
     }
@@ -80,7 +80,7 @@ class IkhtisarPengaturanTest extends TestCase
             ->assertSeeHtml('data-testid="jumlah-wajib-siap">4/7 wajib siap')
             ->assertSeeHtml('data-kesiapan="sk_rktm" data-siap="tidak"')
             ->assertSeeHtml('data-kesiapan="master" data-siap="ya"')
-            ->assertSeeHtml('href="#bagian-ai"')
+            ->assertSeeHtml('href="'.route('pengaturan.ai.index').'" wire:navigate')
             ->assertSeeHtml('href="'.route('pengaturan.leading.index').'" wire:navigate')
             ->assertSeeHtml('href="'.route('master.index').'" wire:navigate')
             ->assertSeeHtml('data-status="perlu"')

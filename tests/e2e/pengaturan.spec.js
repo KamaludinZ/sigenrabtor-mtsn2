@@ -17,7 +17,7 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByTestId('jumlah-wajib-siap')).toHaveText('4/7 wajib siap');
         await expect(kesiapan.locator('li[data-siap="tidak"]')).toHaveCount(6);
         await expect(page.locator('article[data-testid^="bagian-"]')).toHaveCount(6);
-        await expect(page.getByTestId('bagian-ai')).toContainText('Segera disiapkan');
+        await expect(page.getByTestId('bagian-ai').getByRole('link', { name: 'Buka Pengaturan AI' })).toBeVisible();
         await expect(page.getByTestId('bagian-leading').getByRole('link', { name: 'Buka Leading & User' })).toBeVisible();
         await expect(page.getByTestId('bagian-madrasah').getByRole('link', { name: 'Buka Profil & Pejabat' })).toBeVisible();
         await expect(page.getByTestId('bagian-tahun').getByRole('link', { name: 'Buka Tahun Anggaran' })).toBeVisible();
@@ -35,10 +35,10 @@ test.describe('Pengaturan admin', () => {
             await expect(menu.getByRole('link', { name: 'Ikhtisar Pengaturan' })).toHaveAttribute('aria-current', 'page');
         }
 
-        // Butir kesiapan tanpa halaman menuju kartu bagiannya.
-        await kesiapan.getByRole('link', { name: 'Penyedia AI' }).click();
-        await expect(page).toHaveURL(/#bagian-ai$/);
         await page.screenshot({ path: `storage/playwright/shots/pengaturan-ikhtisar-${testInfo.project.name}.png`, fullPage: true });
+        // Butir kesiapan menuju halaman pengaturannya.
+        await kesiapan.getByRole('link', { name: 'Penyedia AI' }).click();
+        await expect(page).toHaveURL(/\/pengaturan\/ai$/);
     });
 
     test('tahun anggaran: status, pilih tahun aktif lewat konfirmasi, berlaku di seluruh aplikasi', async ({ page }, testInfo) => {
