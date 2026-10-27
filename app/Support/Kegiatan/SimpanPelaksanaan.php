@@ -37,7 +37,7 @@ final class SimpanPelaksanaan
             'tanggal_mulai' => filled($data['tanggal_mulai'] ?? null) ? (string) $data['tanggal_mulai'] : null,
             'lama_hari' => $angka($data['lama_hari'] ?? null),
             'hari_kerja' => (bool) ($data['hari_kerja'] ?? false),
-            'bulan_pelaksanaan' => self::bulan($data['bulan_pelaksanaan'] ?? []),
+            'bulan_pelaksanaan' => self::rapikanBulan($data['bulan_pelaksanaan'] ?? []),
             'tanggal_laporan' => filled($data['tanggal_laporan'] ?? null) ? (string) $data['tanggal_laporan'] : null,
             'laporan_otomatis' => (bool) ($data['laporan_otomatis'] ?? true),
             'tempat' => $teks($data['tempat'] ?? ''),
@@ -81,11 +81,11 @@ final class SimpanPelaksanaan
     }
 
     /**
-     * Bulan unik & urut; nilai bukan angka dibiarkan agar ditolak validasi (sama dengan KegiatanForm::rapikanBulan).
+     * Bulan unik & urut; nilai bukan angka dibiarkan agar ditolak validasi (dipakai juga KegiatanForm::rapikanBulan).
      *
      * @return list<int|mixed>
      */
-    private static function bulan(mixed $bulan): array
+    public static function rapikanBulan(mixed $bulan): array
     {
         $bulan = array_map(fn ($b) => is_numeric($b) ? (int) $b : $b, array_values((array) $bulan));
         $bulan = array_values(array_unique($bulan, SORT_REGULAR));

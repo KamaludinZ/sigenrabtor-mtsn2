@@ -7,6 +7,7 @@ use App\Support\Format;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\SimpanPelaksanaan;
 use App\Support\Kegiatan\SusunanPanitia;
 use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\Master\IkskPerSk;
@@ -212,19 +213,40 @@ class KegiatanForm extends Form
     }
 
     /**
-     * Turunkan bulan pelaksanaan (bila belum dipilih) dan tanggal pelaporan otomatis dari jadwal.
+     * Turunkan bulan pelaksanaan (bila belum dipilih) dan tanggal pelaporan otomatis dari jadwal — aturan yang sama
+     * dengan penerimaan data pelaksanaan di server (SimpanPelaksanaan::rapikan). Hanya kedua isian turunan itu yang diubah
+     * agar ketikan isian lain tidak tertimpa.
      */
     public function sinkronJadwal(): void
     {
-        $mulai = $this->tanggalMulai();
-        $selesai = $this->tanggalSelesai();
+        $rapi = SimpanPelaksanaan::rapikan($this->isianPelaksanaan());
 
-        if ($mulai && $selesai && $this->bulan_pelaksanaan === []) {
-            $this->bulan_pelaksanaan = JadwalPelaksanaan::bulanTercakup($mulai, $selesai);
+        if ($this->bulan_pelaksanaan === []) {
+            $this->bulan_pelaksanaan = $rapi['bulan_pelaksanaan'];
         }
 
-        if ($this->laporan_otomatis && $selesai) {
-            $this->tanggal_laporan = JadwalPelaksanaan::batasLaporan($selesai)->toDateString();
+        if ($this->laporan_otomatis) {
+            $this->tanggal_laporan = $rapi['tanggal_laporan'];
+        }
+    }
+
+    /**
+     * Isian pelaksanaan apa adanya (bahan SimpanPelaksanaan::rapikan).
+     *
+     * @return array<string, mixed>
+     */
+    public function isianPelaksanaan(): array
+    {
+        return array_combine(SimpanPelaksanaan::ISIAN, array_map(fn (string $isian) => $this->{$isian}, SimpanPelaksanaan::ISIAN));
+    }
+
+    /** Samakan teks pelaksanaan di layar dengan yang tersimpan (spasi dirapikan) setelah simpan. */
+    public function rapikanPelaksanaan(): void
+    {
+        $rapi = SimpanPelaksanaan::rapikan($this->isianPelaksanaan());
+
+        foreach (['tempat', 'peserta_jenis', 'uraian_pelaksanaan'] as $isian) {
+            $this->{$isian} = $rapi[$isian];
         }
     }
 
@@ -246,11 +268,7 @@ class KegiatanForm extends Form
      */
     public function rapikanBulan(): void
     {
-        $bulan = array_map(fn ($b) => is_numeric($b) ? (int) $b : $b, array_values((array) $this->bulan_pelaksanaan));
-        $bulan = array_values(array_unique($bulan, SORT_REGULAR));
-        sort($bulan);
-
-        $this->bulan_pelaksanaan = $bulan;
+        $this->bulan_pelaksanaan = SimpanPelaksanaan::rapikanBulan($this->bulan_pelaksanaan);
     }
 
     public function toggleBulan(int $bulan): void
@@ -404,7 +422,8 @@ class KegiatanForm extends Form
      */
     public function dataUntukDisimpan(): array
     {
-        $lama = filter_var($this->lama_hari, FILTER_VALIDATE_INT);
+        // Isian pelaksanaan dirapikan dengan aturan penerima server yang sama (SimpanPelaksanaan::rapikan).
+        $pelaksanaan = SimpanPelaksanaan::rapikan($this->isianPelaksanaan());
 
         return [
             'nama_kegiatan' => $this->nama_kegiatan,
@@ -414,12 +433,12 @@ class KegiatanForm extends Form
             'tujuan' => $this->tujuan,
             'sasaran' => $this->sasaran,
             'tanggal_dokumen' => $this->tanggal_dokumen ?: null,
-            'tanggal_laporan' => $this->tanggal_laporan ?: null,
-            'laporan_otomatis' => $this->laporan_otomatis,
-            'tanggal_mulai' => $this->tanggal_mulai ?: null,
-            'lama_hari' => $lama === false ? null : $lama,
-            'hari_kerja' => $this->hari_kerja,
-            'bulan_pelaksanaan' => $this->bulan_pelaksanaan,
+            'tanggal_laporan' => $pelaksanaan['tanggal_laporan'],
+            'laporan_otomatis' => $pelaksanaan['laporan_otomatis'],
+            'tanggal_mulai' => $pelaksanaan['tanggal_mulai'],
+            'lama_hari' => $pelaksanaan['lama_hari'],
+            'hari_kerja' => $pelaksanaan['hari_kerja'],
+            'bulan_pelaksanaan' => $pelaksanaan['bulan_pelaksanaan'],
             'panitia' => SusunanPanitia::rapikan($this->panitia),
             'leading' => $this->leading ?: null,
             'kode_rktm' => $this->kode_rktm ?: null,
@@ -427,10 +446,10 @@ class KegiatanForm extends Form
             'kode_iksk' => $this->kode_iksk ?: null,
             'kode_edm' => $this->kode_edm ?: null,
             'budaya_mutu' => filled($this->budaya_mutu) ? (int) $this->budaya_mutu : null,
-            'tempat' => $this->tempat,
-            'peserta_jumlah' => filter_var($this->peserta_jumlah, FILTER_VALIDATE_INT) ?: null,
-            'peserta_jenis' => $this->peserta_jenis,
-            'uraian_pelaksanaan' => $this->uraian_pelaksanaan,
+            'tempat' => $pelaksanaan['tempat'],
+            'peserta_jumlah' => $pelaksanaan['peserta_jumlah'],
+            'peserta_jenis' => $pelaksanaan['peserta_jenis'],
+            'uraian_pelaksanaan' => $pelaksanaan['uraian_pelaksanaan'],
             'konteks' => Teks::rapikan($this->konteks),
             'sumber_dana' => $this->sumberDana(),
             'data_pagu_id' => $this->data_pagu_id,

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Livewire\Kegiatan\Form;
 use App\Repositories\EloquentKegiatanRepository;
 use App\Support\Kegiatan\SimpanPelaksanaan;
 use App\Support\Stub\StubKegiatanRepository;
@@ -10,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
@@ -62,6 +64,28 @@ class SimpanPelaksanaanTest extends TestCase
         if ($database) {
             $this->assertSame('2026-08-04', DB::table('activities')->where('id', $id)->value('tanggal_selesai'));
         }
+    }
+
+    public function test_form_data_kegiatan_menyimpan_pelaksanaan_dengan_aturan_yang_sama(): void
+    {
+        $komponen = Livewire::test(Form::class)
+            ->set('form.nama_kegiatan', 'Workshop Kurikulum Madrasah')
+            ->set('form.tanggal_mulai', '2026-07-14')
+            ->set('form.lama_hari', '3')
+            ->set('form.hari_kerja', true)
+            ->assertSet('form.bulan_pelaksanaan', [7])
+            ->assertSet('form.tanggal_laporan', '2026-07-26')
+            ->set('form.tempat', '  Aula   Madrasah ')
+            ->set('form.peserta_jenis', 'Guru  dan  staf')
+            ->call('saveDraft')
+            ->assertHasNoErrors()
+            ->assertSet('form.tempat', 'Aula Madrasah')
+            ->assertSet('form.peserta_jenis', 'Guru dan staf');
+
+        $tersimpan = collect(app(KegiatanRepository::class)->semua())->firstWhere('nama_kegiatan', 'Workshop Kurikulum Madrasah');
+        $this->assertEquals(SimpanPelaksanaan::rapikan($tersimpan), Arr::only($tersimpan, SimpanPelaksanaan::ISIAN), 'Yang tersimpan sudah rapi menurut penerima server.');
+        $this->assertSame(['Aula Madrasah', 'Guru dan staf', [7], '2026-07-26', 3], [$tersimpan['tempat'], $tersimpan['peserta_jenis'], $tersimpan['bulan_pelaksanaan'], $tersimpan['tanggal_laporan'], $tersimpan['lama_hari']]);
+        $this->assertTrue($komponen->get('form.laporan_otomatis'));
     }
 
     public function test_isian_tidak_sah_ditolak_tanpa_menyimpan(): void

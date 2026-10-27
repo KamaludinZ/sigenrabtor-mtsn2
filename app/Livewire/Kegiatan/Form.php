@@ -562,6 +562,7 @@ class Form extends Component
 
         $this->adaPerubahan = false;
         $this->form->rapikanPanitia();
+        $this->form->rapikanPelaksanaan();
         $this->diperbaruiPada = $repo->temukan($id)['diperbarui_pada'] ?? now()->toIso8601String();
         // Draf lokal di browser (mis. catatan konteks) boleh dibuang: datanya sudah aman di server.
         $this->dispatch('kegiatan-tersimpan', id: $id);
