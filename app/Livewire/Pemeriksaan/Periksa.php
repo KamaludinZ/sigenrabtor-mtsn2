@@ -24,9 +24,10 @@ use Livewire\Component;
 /**
  * Detail dokumen satu kegiatan untuk pemeriksaan admin (PRD §16, F17): pratinjau KAK/TOR atau RAB per sumber dana
  * (`?dokumen=kak|rab`, `?sumber=`), kelengkapan tiap dokumen, ringkasan anggaran & termin, riwayat status, dan posisi di
- * antrean Perlu diperiksa. Keputusan admin (PRD F17): Setujui (catatan opsional) atau Kembalikan (catatan wajib) dengan
- * konfirmasi di tempat; tercatat di riwayat_status (RiwayatStatus::entri, siapa/kapan/catatan). Bila kegiatan berubah di
- * tempat lain sejak halaman dimuat (mis. pengajuan ditarik), keputusan ditolak dan tampilan dimuat ulang. Khusus admin.
+ * antrean Perlu diperiksa. Keputusan admin (PRD F17–F18): Setujui (catatan opsional), Kembalikan, atau Buka kunci kegiatan
+ * Final (catatan/alasan wajib, RiwayatStatus::CATATAN_WAJIB) dengan konfirmasi di tempat; tercatat di riwayat_status
+ * (RiwayatStatus::entri: siapa, kapan, catatan). Bila kegiatan berubah di tempat lain sejak halaman dimuat (mis. pengajuan
+ * ditarik), keputusan ditolak dan tampilan dimuat ulang. Khusus admin.
  */
 #[Layout('layouts.app')]
 class Periksa extends Component
@@ -34,7 +35,7 @@ class Periksa extends Component
     public const DOKUMEN = ['kak' => 'KAK/TOR', 'rab' => 'RAB'];
 
     /** Aksi alur status yang diputuskan di halaman ini. */
-    public const KEPUTUSAN = ['kembalikan', 'setujui'];
+    public const KEPUTUSAN = ['kembalikan', 'setujui', 'buka_kunci'];
 
     #[Locked]
     public int $kegiatanId;
@@ -242,7 +243,11 @@ class Periksa extends Component
 
         $this->catatan = '';
         unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan);
-        $this->dispatch('notify', message: $aksi === 'setujui' ? 'Kegiatan disetujui — leading dapat mencetak dan menandatangani dokumennya.' : 'Kegiatan dikembalikan ke leading beserta catatan perbaikannya.');
+        $this->dispatch('notify', message: match ($aksi) {
+            'setujui' => 'Kegiatan disetujui — leading dapat mencetak dan menandatangani dokumennya.',
+            'buka_kunci' => 'Kunci dibuka — leading dapat memperbaiki data lalu mengajukan ulang.',
+            default => 'Kegiatan dikembalikan ke leading beserta catatan perbaikannya.',
+        });
     }
 
     /** Pengajuan terlama yang masih menunggu diperiksa selain kegiatan ini (tautan setelah memutuskan). */
@@ -257,13 +262,7 @@ class Periksa extends Component
     private function validasiCatatan(string $aksi): void
     {
         $this->catatan = RiwayatStatus::rapikanCatatan($this->catatan);
-        $this->validate(
-            ['catatan' => [$aksi === 'kembalikan' ? 'required' : 'nullable', 'string', 'max:'.RiwayatStatus::MAKS_CATATAN]],
-            [
-                'catatan.required' => 'Tulis catatan perbaikan agar leading tahu apa yang harus diubah.',
-                'catatan.max' => 'Catatan paling banyak '.RiwayatStatus::MAKS_CATATAN.' karakter.',
-            ],
-        );
+        $this->validate(...RiwayatStatus::validasiCatatan($aksi, 'catatan'));
     }
 
     private function berubahDiTempatLain(): bool

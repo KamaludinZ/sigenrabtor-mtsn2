@@ -84,12 +84,12 @@ class PerbaikanDataTest extends TestCase
         $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Workshop Final', 'status' => 'final', 'riwayat_status' => []] + $data);
 
         session(['stub_role' => 'admin']);
-        Livewire::test(Form::class, ['kegiatan' => $id])->call('ubahStatus', 'buka_kunci')->assertSet('status', 'dikembalikan');
+        Livewire::test(Form::class, ['kegiatan' => $id])->set('catatanStatus', 'Tanggal dokumen salah.')->call('ubahStatus', 'buka_kunci')->assertSet('status', 'dikembalikan');
 
         session(['stub_role' => 'leading']);
         Livewire::test(Form::class, ['kegiatan' => $id])
             ->assertSee('Kunci dibuka untuk perbaikan')
-            ->assertDontSeeHtml('data-testid="catatan-perbaikan"')
+            ->assertSee('Tanggal dokumen salah.')
             ->assertSee('Belum ada perubahan tersimpan sejak dikembalikan.');
     }
 

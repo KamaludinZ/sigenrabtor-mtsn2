@@ -5,6 +5,7 @@ namespace Tests\Feature\Pemeriksaan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Kegiatan\Form;
+use App\Livewire\Notifikasi;
 use App\Livewire\Pemeriksaan\Periksa;
 use App\Support\Kegiatan\RiwayatStatus;
 use Livewire\Livewire;
@@ -131,6 +132,54 @@ class KeputusanPemeriksaanTest extends TestCase
             ->call('putuskan', 'setujui')
             ->assertDispatched('notify', type: 'error');
         $this->assertSame('diperiksa', app(KegiatanRepository::class)->temukan($lain)['status']);
+    }
+
+    public function test_buka_kunci_final_wajib_beralasan(): void
+    {
+        $id = $this->diajukan('Workshop Final');
+        $data = app(KegiatanRepository::class)->temukan($id);
+        $data['status'] = 'final';
+        $data['riwayat_status'][] = ['aksi' => 'finalkan', 'status' => 'final', 'oleh' => 'Muslimin, M.Pd.', 'peran' => 'leading', 'pada' => '2026-03-05T09:00:00+07:00'];
+        app(KegiatanRepository::class)->simpan($data, $id);
+
+        Livewire::test(Periksa::class, ['kegiatan' => $id])
+            ->assertSee('Perlu membuka kunci?')
+            ->assertSee('Alasan membuka kunci')
+            ->assertDontSee('Setujui kegiatan ini?')
+            ->call('minta', 'buka_kunci')
+            ->assertHasErrors(['catatan' => 'required'])
+            ->assertSee('Tulis alasan membuka kunci — tercatat di riwayat dan dibaca leading.')
+            ->set('catatan', 'Nama narasumber pada RAB Komite salah ketik.')
+            ->call('minta', 'buka_kunci')
+            ->assertSee('Buka kunci kegiatan ini?')
+            ->assertSee('Ya, buka kunci')
+            ->call('putuskan', 'buka_kunci')
+            ->assertDispatched('notify', message: 'Kunci dibuka — leading dapat memperbaiki data lalu mengajukan ulang.')
+            ->assertSee('Menunggu perbaikan')
+            ->assertSeeInOrder(['Riwayat status', 'Kunci dibuka', 'Koordinator PUSKOM', 'Nama narasumber pada RAB Komite salah ketik.']);
+
+        $terakhir = end(app(KegiatanRepository::class)->temukan($id)['riwayat_status']);
+        $this->assertSame(['buka_kunci', 'dikembalikan', 'Koordinator PUSKOM', 'Nama narasumber pada RAB Komite salah ketik.'], [$terakhir['aksi'], $terakhir['status'], $terakhir['oleh'], $terakhir['catatan']]);
+        $this->assertIsArray($terakhir['sidik'], 'Titik awal perbaikan tercatat.');
+
+        // Leading membaca alasannya di Data Kegiatan dan di notifikasi.
+        session(['stub_role' => 'leading']);
+        Livewire::test(Form::class, ['kegiatan' => $id])
+            ->assertSee('Kunci dibuka untuk perbaikan')
+            ->assertSee('Nama narasumber pada RAB Komite salah ketik.');
+        Livewire::test(Notifikasi::class)
+            ->assertSee('Kunci dibuka untuk perbaikan')
+            ->assertSee('Nama narasumber pada RAB Komite salah ketik.');
+
+        // Hanya admin yang bisa membuka kunci.
+        $data = app(KegiatanRepository::class)->temukan($id);
+        app(KegiatanRepository::class)->simpan(['status' => 'final'] + $data, $id);
+        Livewire::test(Periksa::class, ['kegiatan' => $id])
+            ->assertDontSee('Perlu membuka kunci?')
+            ->set('catatan', 'Coba buka.')
+            ->call('putuskan', 'buka_kunci')
+            ->assertDispatched('notify', type: 'error');
+        $this->assertSame('final', app(KegiatanRepository::class)->temukan($id)['status']);
     }
 
     public function test_catatan_dibatasi_dan_dirapikan(): void

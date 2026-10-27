@@ -64,6 +64,9 @@ class Form extends Component
     /** Sumber dana dokumen yang dipratinjau (KAK dibuat per sumber dana); kosong = sumber pertama. */
     public string $pratinjauSumber = '';
 
+    /** Catatan/alasan aksi status yang mewajibkannya (kembalikan, buka kunci — RiwayatStatus::CATATAN_WAJIB). */
+    public string $catatanStatus = '';
+
     /** @var array{index: int, anggota: array{key: string, nama: string, jabatan: string, peran: string}}|null Untuk "Urungkan" hapus anggota. */
     #[Locked]
     public ?array $panitiaTerhapus = null;
@@ -746,6 +749,13 @@ class Form extends Component
             return;
         }
 
+        $wajibCatatan = isset(RiwayatStatus::CATATAN_WAJIB[$aksi]);
+        if ($wajibCatatan) {
+            $this->resetErrorBag('catatanStatus');
+            $this->catatanStatus = RiwayatStatus::rapikanCatatan($this->catatanStatus);
+            $this->validate(...RiwayatStatus::validasiCatatan($aksi, 'catatanStatus'));
+        }
+
         if ($aksi === 'ajukan') {
             try {
                 $this->form->validate();
@@ -762,7 +772,8 @@ class Form extends Component
         }
 
         $this->status = $definisi['ke']->value;
-        $this->catatRiwayat($aksi, $definisi['ke']);
+        $this->catatRiwayat($aksi, $definisi['ke'], $wajibCatatan ? $this->catatanStatus : null);
+        $this->catatanStatus = '';
         if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {
             // Titik awal perbaikan di data (sama dengan keputusan di halaman Pemeriksaan).
             $this->riwayatStatus[array_key_last($this->riwayatStatus)]['sidik'] = PerbaikanKegiatan::sidik(['id' => $this->kegiatanId] + $this->dataUntukDisimpan());
@@ -833,9 +844,9 @@ class Form extends Component
         return $galat;
     }
 
-    private function catatRiwayat(string $aksi, StatusKegiatan $ke): void
+    private function catatRiwayat(string $aksi, StatusKegiatan $ke, ?string $catatan = null): void
     {
-        $this->riwayatStatus[] = RiwayatStatus::entri($aksi, $ke, StubData::currentUser());
+        $this->riwayatStatus[] = RiwayatStatus::entri($aksi, $ke, StubData::currentUser(), $catatan);
     }
 
     /**

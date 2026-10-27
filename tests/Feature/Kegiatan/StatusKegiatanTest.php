@@ -79,12 +79,19 @@ class StatusKegiatanTest extends TestCase
             ->call('ubahStatus', 'finalkan')
             ->assertSet('status', 'final')
             ->assertSee('Buka kunci')
+            // Buka kunci wajib beralasan; alasannya tercatat di riwayat.
+            ->call('ubahStatus', 'buka_kunci')
+            ->assertHasErrors(['catatanStatus' => 'required'])
+            ->assertSet('status', 'final')
+            ->set('catatanStatus', '  Nama narasumber salah ketik.  ')
             ->call('ubahStatus', 'buka_kunci')
             ->assertSet('status', 'dikembalikan')
+            ->assertSet('catatanStatus', '')
             ->assertDontSee('Isian terkunci');
 
         $riwayat = array_column(app(KegiatanRepository::class)->temukan(1)['riwayat_status'], 'aksi');
         $this->assertSame(['ajukan', 'setujui', 'finalkan', 'buka_kunci'], $riwayat);
+        $this->assertSame('Nama narasumber salah ketik.', end(app(KegiatanRepository::class)->temukan(1)['riwayat_status'])['catatan']);
     }
 
     public function test_leading_tidak_bisa_menyetujui_sendiri(): void

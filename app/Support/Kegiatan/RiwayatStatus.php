@@ -13,6 +13,28 @@ final class RiwayatStatus
 {
     public const MAKS_CATATAN = 2000;
 
+    /** Aksi yang wajib disertai catatan → pesan bila kosong (keputusan yang harus dipahami leading). */
+    public const CATATAN_WAJIB = [
+        'kembalikan' => 'Tulis catatan perbaikan agar leading tahu apa yang harus diubah.',
+        'buka_kunci' => 'Tulis alasan membuka kunci — tercatat di riwayat dan dibaca leading.',
+    ];
+
+    /**
+     * Aturan validasi catatan untuk aksi $aksi pada kolom $kolom (wajib bila aksi di CATATAN_WAJIB).
+     *
+     * @return array{0: array<string, list<string>>, 1: array<string, string>}
+     */
+    public static function validasiCatatan(string $aksi, string $kolom): array
+    {
+        return [
+            [$kolom => [isset(self::CATATAN_WAJIB[$aksi]) ? 'required' : 'nullable', 'string', 'max:'.self::MAKS_CATATAN]],
+            [
+                "{$kolom}.required" => self::CATATAN_WAJIB[$aksi] ?? '',
+                "{$kolom}.max" => 'Catatan paling banyak '.self::MAKS_CATATAN.' karakter.',
+            ],
+        ];
+    }
+
     /**
      * @param  array{name: string, role: string}  $pengguna
      * @return array{aksi: string, status: string, oleh: string, peran: string, pada: string, catatan?: string}

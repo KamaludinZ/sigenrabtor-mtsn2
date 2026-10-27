@@ -39,6 +39,8 @@
                     $label = $kunci === 'ajukan' && $status === \App\Enums\StatusKegiatan::Dikembalikan->value ? 'Ajukan ulang' : $aksi['label'];
                     // Tandai final menunggu arsip final semua sumber dana (PRD F18).
                     $arsipKurang = $kunci === 'finalkan' ? $this->arsipKurang() : [];
+                    // Kembalikan & buka kunci wajib disertai catatan/alasan (RiwayatStatus::CATATAN_WAJIB).
+                    $wajibCatatan = isset(\App\Support\Kegiatan\RiwayatStatus::CATATAN_WAJIB[$kunci]);
                 @endphp
                 @if ($arsipKurang !== [])
                     <div wire:key="aksi-{{ $kunci }}-{{ $status }}-terhalang" data-testid="final-terhalang">
@@ -57,9 +59,20 @@
                     </button>
                     <div x-cloak x-show="yakin" class="rounded-lg bg-stone-50 p-2.5 ring-1 ring-stone-200">
                         <p class="text-xs text-stone-600">{{ $aksi['konfirmasi'] }}</p>
+                        @if ($wajibCatatan)
+                            <label class="mt-2 block">
+                                <span class="text-xs font-medium text-stone-600">{{ $kunci === 'buka_kunci' ? 'Alasan membuka kunci' : 'Catatan untuk leading' }} <span class="font-normal text-stone-400">— wajib</span></span>
+                                {{-- Bukan isian formulir kegiatan: jangan menandai "belum disimpan". --}}
+                                <textarea wire:model="catatanStatus" x-on:input.stop rows="3" maxlength="{{ \App\Support\Kegiatan\RiwayatStatus::MAKS_CATATAN }}"
+                                          class="form-input mt-1 text-xs" data-testid="catatan-status-{{ $kunci }}"></textarea>
+                            </label>
+                            @error('catatanStatus')
+                                <p class="mt-1 text-xs text-red-600" data-testid="galat-catatan-status">{{ $message }}</p>
+                            @enderror
+                        @endif
                         <div class="mt-2 flex gap-2">
-                            {{-- Konfirmasi ditutup saat dikirim: bila aksi ditolak validasi, tombol aksi kembali tersedia. --}}
-                            <button type="button" wire:click="ubahStatus('{{ $kunci }}')" x-on:click="yakin = false" wire:loading.attr="disabled"
+                            {{-- Konfirmasi ditutup saat dikirim: bila aksi ditolak validasi, tombol aksi kembali tersedia. Aksi bercatatan tetap terbuka agar galatnya terlihat. --}}
+                            <button type="button" wire:click="ubahStatus('{{ $kunci }}')"@unless ($wajibCatatan) x-on:click="yakin = false"@endunless wire:loading.attr="disabled"
                                     class="{{ $gayaTombol[$aksi['gaya']] }} flex-1 px-2.5 py-1.5 text-xs">
                                 Ya, {{ mb_strtolower($label) }}
                             </button>

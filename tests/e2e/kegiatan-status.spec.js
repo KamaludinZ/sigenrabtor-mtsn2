@@ -59,8 +59,15 @@ test.describe.serial('Status kegiatan (Draf → Final)', () => {
         await expect(panelStatus(page)).toContainText('Ditandai final');
         await page.screenshot({ path: `storage/playwright/shots/status-final-${testInfo.project.name}.png` });
 
-        await jalankanAksi(page, 'Buka kunci');
+        // Buka kunci wajib beralasan: tanpa alasan ditolak, konfirmasi tetap terbuka.
+        await panelStatus(page).getByRole('button', { name: 'Buka kunci', exact: true }).click();
+        await panelStatus(page).getByRole('button', { name: 'Ya, buka kunci' }).click();
+        await expect(panelStatus(page).getByTestId('galat-catatan-status')).toContainText('Tulis alasan membuka kunci');
+        await panelStatus(page).getByTestId('catatan-status-buka_kunci').fill('Tanggal dokumen salah.');
+        await panelStatus(page).getByRole('button', { name: 'Ya, buka kunci' }).click();
         await expect(page.getByTestId('banner-terkunci')).toHaveCount(0);
+        await expect(page.getByTestId('banner-perbaikan')).toContainText('Tanggal dokumen salah.');
+        await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
         await expect(page.locator('#nama_kegiatan')).toBeEnabled();
         await expect(panelStatus(page)).toContainText('Kunci dibuka');
 

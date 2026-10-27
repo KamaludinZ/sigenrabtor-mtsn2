@@ -202,11 +202,22 @@ test.describe('Pemeriksaan', () => {
         await expect(page.getByTestId('pratinjau-kak').getByTestId('cap-final')).toBeVisible();
         await expect(page.getByTestId('arsip-pemeriksaan').locator('[data-arsip="DIPA"]')).toContainText('Lihat PDF');
 
-        // Pulihkan: buka kunci agar data E2E bersama tidak menyisakan kegiatan Final (tes Monitoring menyaring status final).
+        // Admin membuka kunci dari halaman Pemeriksaan (alasan wajib) — sekaligus memulihkan data E2E bersama agar tidak
+        // menyisakan kegiatan Final (tes Monitoring menyaring status final).
+        await expect(panel.getByTestId('buka-kunci')).toBeVisible();
+        await panel.getByRole('button', { name: 'Buka kunci', exact: true }).click();
+        await expect(panel).toContainText('Tulis alasan membuka kunci — tercatat di riwayat dan dibaca leading.');
+        await panel.getByLabel(/Alasan membuka kunci/).fill('Nama kegiatan di cover salah ketik.');
+        await panel.getByRole('button', { name: 'Buka kunci', exact: true }).click();
+        await expect(page.getByTestId('konfirmasi-keputusan')).toContainText('Buka kunci kegiatan ini?');
+        await panel.getByRole('button', { name: 'Ya, buka kunci' }).click();
+        await expect(panel).toHaveAttribute('data-status', 'dikembalikan');
+        await expect(page.getByTestId('riwayat-pemeriksaan')).toContainText('Nama kegiatan di cover salah ketik.');
+
+        await page.goto('/demo/peran/leading');
         await page.goto(urlKegiatan);
-        await panelStatus(page).getByRole('button', { name: 'Buka kunci', exact: true }).click();
-        await panelStatus(page).getByRole('button', { name: 'Ya, buka kunci' }).click();
         await expect(page.getByTestId('banner-perbaikan')).toContainText('Kunci dibuka untuk perbaikan');
+        await expect(page.getByTestId('banner-perbaikan').getByTestId('catatan-perbaikan')).toContainText('Nama kegiatan di cover salah ketik.');
         await expect(page.getByTestId('panel-arsip-final')).toHaveCount(0);
 
         await page.goto('/demo/peran/leading');

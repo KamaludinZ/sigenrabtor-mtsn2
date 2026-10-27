@@ -18,7 +18,9 @@
     $teksKonfirmasi = [
         'kembalikan' => ['Kembalikan ke leading?', 'Leading dapat memperbaiki data sesuai catatan lalu mengajukan ulang.'],
         'setujui' => ['Setujui kegiatan ini?', 'Dokumen siap dicetak untuk ditandatangani; leading lalu mengunggah arsip final.'],
+        'buka_kunci' => ['Buka kunci kegiatan ini?', 'Status kembali ke Dikembalikan agar leading dapat memperbaiki data. Arsip final lama tetap tersimpan dan bisa diganti setelah disetujui ulang. Tercatat siapa & kapan.'],
     ];
+    $bukaKunci = isset($pilihan['buka_kunci']);
 @endphp
 
 <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:col-start-2 lg:row-start-1" aria-labelledby="judul-keputusan" data-testid="panel-keputusan" data-status="{{ $status->value }}">
@@ -98,16 +100,21 @@
 
         @if ($status === StatusKegiatan::Disetujui)
             <p class="mt-3 border-t border-stone-100 pt-3 text-xs font-semibold text-stone-700">Perlu perbaikan lagi?</p>
+        @elseif ($bukaKunci)
+            <div class="mt-3 border-t border-stone-100 pt-3" data-testid="buka-kunci">
+                <p class="text-xs font-semibold text-stone-700">Perlu membuka kunci?</p>
+                <p class="mt-0.5 text-xs text-stone-500">Hanya bila data final harus diperbaiki — misalnya salah ketik pada dokumen bertanda tangan. Alasannya dibaca leading dan tercatat di riwayat.</p>
+            </div>
         @endif
 
         <label class="mt-3 block">
             <span class="text-xs font-medium text-stone-600">
-                Catatan untuk leading
+                {{ $bukaKunci ? 'Alasan membuka kunci' : 'Catatan untuk leading' }}
                 <span class="font-normal text-stone-400">{{ isset($pilihan['setujui']) ? '— wajib bila dikembalikan' : '— wajib' }}</span>
             </span>
             <textarea wire:model="catatan" rows="4" maxlength="{{ RiwayatStatus::MAKS_CATATAN }}" id="catatan-pemeriksaan"
                       @class(['form-input mt-1 text-sm', 'ring-red-300' => $errors->has('catatan')])
-                      placeholder="Mis. Sasaran belum terukur; sesuaikan honor narasumber dengan SBM."
+                      placeholder="{{ $bukaKunci ? 'Mis. Nama narasumber pada RAB Komite salah ketik; dokumen perlu dicetak ulang.' : 'Mis. Sasaran belum terukur; sesuaikan honor narasumber dengan SBM.' }}"
                       @error('catatan') aria-invalid="true" aria-describedby="catatan-pemeriksaan-error" @enderror></textarea>
         </label>
         @error('catatan')
@@ -121,8 +128,8 @@
                 <div class="mt-3 flex gap-2">
                     <button type="button" wire:click="batalKonfirmasi" class="btn-ghost flex-1 justify-center px-2.5 py-1.5 text-xs">Batal</button>
                     <button type="button" wire:click="putuskan('{{ $konfirmasi }}')" wire:loading.attr="disabled" wire:target="putuskan"
-                            @class(['flex-1 justify-center px-2.5 py-1.5 text-xs', 'btn-primary' => $konfirmasi === 'setujui', 'btn-secondary' => $konfirmasi === 'kembalikan'])>
-                        Ya, {{ $konfirmasi === 'setujui' ? 'setujui' : 'kembalikan' }}
+                            @class(['flex-1 justify-center px-2.5 py-1.5 text-xs', 'btn-primary' => $konfirmasi === 'setujui', 'btn-secondary' => $konfirmasi === 'kembalikan', 'btn-danger' => $konfirmasi === 'buka_kunci'])>
+                        Ya, {{ ['setujui' => 'setujui', 'kembalikan' => 'kembalikan', 'buka_kunci' => 'buka kunci'][$konfirmasi] }}
                     </button>
                 </div>
             </div>
@@ -138,6 +145,11 @@
                         <x-ui.icon name="check" class="size-4" /> Setujui
                     </button>
                 @endisset
+                @if ($bukaKunci)
+                    <button type="button" wire:click="minta('buka_kunci')" wire:loading.attr="disabled" wire:target="minta" class="btn-danger justify-center text-sm">
+                        <x-ui.icon name="lock" class="size-4" /> Buka kunci
+                    </button>
+                @endif
             </div>
         @endif
     @endif
