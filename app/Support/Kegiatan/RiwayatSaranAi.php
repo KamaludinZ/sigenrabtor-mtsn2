@@ -4,6 +4,7 @@ namespace App\Support\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatSaranAiRepository;
+use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubPengaturan;
 
 /**
@@ -35,6 +36,10 @@ final class RiwayatSaranAi
             ...array_map(fn (string $label, string $nilai) => "- {$label}: {$nilai}", array_keys($permintaan->bahanBagian), $permintaan->bahanBagian),
             'Bahan kegiatan:',
             $permintaan->bahan,
+            // Template yang berlaku saat permintaan dikirim (Pengaturan AI › Prompt per bagian).
+            'Tugas: '.PromptAi::isiPenanda(PromptAi::untuk($permintaan->bagian)['instruksi'], ['nama_kegiatan' => $permintaan->namaKegiatan]),
+            'Gaya bahasa: '.(PromptAi::untuk($permintaan->bagian)['gaya_bahasa'] ?? PromptAi::gayaBahasa()),
+            'Aturan: '.PromptAi::BATAS_AMAN,
         ];
 
         return implode("\n", $baris);

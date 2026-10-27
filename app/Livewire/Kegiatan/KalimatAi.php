@@ -19,6 +19,7 @@ use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\TombolAi;
 use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PenyediaAi;
+use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use App\Support\Teks;
@@ -264,6 +265,11 @@ class KalimatAi extends Component
         $kegiatan = $this->kegiatanSekarang();
         unset($this->galatAi[$bagian]);
 
+        if (! PromptAi::aktif($bagian)) {
+            $this->galatAi[$bagian] = 'Bagian ini dinonaktifkan admin di Pengaturan AI.';
+
+            return false;
+        }
         if (blank(trim((string) ($kegiatan['nama_kegiatan'] ?? '')))) {
             $this->galatAi[$bagian] = 'Isi nama kegiatan dulu di Data Kegiatan.';
 

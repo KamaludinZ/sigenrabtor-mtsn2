@@ -3,7 +3,10 @@
 namespace App\Livewire\Pengaturan;
 
 use App\Contracts\DaftarModelAi;
+use App\Contracts\KegiatanRepository;
 use App\Contracts\PengaturanAiRepository;
+use App\Contracts\PromptAiRepository;
+use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
@@ -28,7 +31,8 @@ use RuntimeException;
  * (AturanPenyediaAi, PengaturanAiRepository, riwayat `ubah_penyedia_ai`); pemilihan penyedia aktif & cadangan lewat
  * bukaPilihan() → simpanPilihan() (hanya penyedia yang siap); penyedia cloud lewat bukaCloud() → simpanCloud() (kunci API
  * terenkripsi, tidak pernah ditampilkan lagi); tab `model` — daftar model per penyedia (DaftarModelAi) & parameter jawaban
- * (ParameterAi, riwayat `ubah_model_ai`); prompt & batas menyusul.
+ * (ParameterAi, riwayat `ubah_model_ai`); tab `prompt` — gaya bahasa baku & template per bagian (PromptAi,
+ * PromptAiRepository, riwayat `ubah_prompt_ai`, pratinjau prompt contoh kegiatan); batas pemakaian menyusul.
  */
 #[Layout('layouts.app')]
 class PengaturanAi extends Component
@@ -65,6 +69,22 @@ class PengaturanAi extends Component
     /** @var array<string, array{model: list<array<string, mixed>>, galat: string|null}> Daftar model yang sudah dimuat per penyedia. */
     #[Locked]
     public array $daftarModel = [];
+
+    /** Penyunting gaya bahasa baku terbuka. */
+    public bool $gayaTerbuka = false;
+
+    public string $isianGaya = '';
+
+    /** Bagian yang template prompt-nya sedang disunting. */
+    #[Locked]
+    public ?string $promptTerbuka = null;
+
+    /** @var array{instruksi: string, gaya_khusus: bool, gaya_bahasa: string, aktif: bool} */
+    public array $isianPrompt = ['instruksi' => '', 'gaya_khusus' => false, 'gaya_bahasa' => '', 'aktif' => true];
+
+    /** `diperbarui_pada` template prompt saat penyunting dibuka. */
+    #[Locked]
+    public ?string $versiPrompt = null;
 
     /** Pemilihan penyedia aktif & cadangan terbuka. */
     public bool $pilihTerbuka = false;
@@ -153,6 +173,136 @@ class PengaturanAi extends Component
         $this->lokalTerbuka = false;
         $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === 'ollama';
         $this->dispatch('notify', message: $naik ? 'Konfigurasi server sekolah tersimpan — belum ada penyedia aktif, jadi server sekolah dipakai sebagai penyedia aktif.' : 'Konfigurasi server sekolah tersimpan.', type: 'success');
+    }
+
+    public function ubahGaya(): void
+    {
+        $this->isianGaya = PromptAi::gayaBahasa();
+        $this->versiPrompt = app(PromptAiRepository::class)->ambil()['diperbarui_pada'];
+        $this->promptTerbuka = null;
+        $this->resetErrorBag();
+        $this->gayaTerbuka = true;
+    }
+
+    public function batalGaya(): void
+    {
+        $this->gayaTerbuka = false;
+        $this->resetErrorBag();
+    }
+
+    public function pakaiGayaBawaan(): void
+    {
+        $this->isianGaya = PromptAi::GAYA_BAHASA;
+    }
+
+    /** Simpan gaya bahasa baku semua bagian (kosong = bawaan). */
+    public function simpanGaya(): void
+    {
+        $this->resetErrorBag();
+        $gaya = trim(preg_replace('/\s+/u', ' ', $this->isianGaya));
+        if ($gaya === '' || mb_strlen($gaya) > PromptAi::MAKS_GAYA) {
+            $this->addError('isianGaya', 'Gaya bahasa 1–'.PromptAi::MAKS_GAYA.' karakter.');
+
+            return;
+        }
+
+        $lama = PromptAi::gayaBahasa();
+        if (! $this->simpanPrompt(fn (array $d) => ['gaya_bahasa' => $gaya === PromptAi::GAYA_BAHASA ? null : $gaya] + $d, $lama !== $gaya ? 'Gaya bahasa baku diubah' : null)) {
+            return;
+        }
+        $this->gayaTerbuka = false;
+        $this->dispatch('notify', message: 'Gaya bahasa baku tersimpan.', type: 'success');
+    }
+
+    /** Buka penyunting template prompt satu bagian. */
+    public function ubahPrompt(string $bagian): void
+    {
+        abort_unless(isset(BagianAi::BAGIAN[$bagian]), 404);
+        $t = PromptAi::untuk($bagian);
+        $this->isianPrompt = ['instruksi' => $t['instruksi'], 'gaya_khusus' => $t['gaya_bahasa'] !== null, 'gaya_bahasa' => (string) $t['gaya_bahasa'], 'aktif' => $t['aktif']];
+        $this->versiPrompt = app(PromptAiRepository::class)->ambil()['diperbarui_pada'];
+        $this->gayaTerbuka = false;
+        $this->resetErrorBag();
+        $this->promptTerbuka = $bagian;
+    }
+
+    public function batalPrompt(): void
+    {
+        $this->promptTerbuka = null;
+        $this->resetErrorBag();
+    }
+
+    /** Isi penyunting dengan prompt bawaan bagian ini (tersimpan setelah Simpan). */
+    public function pakaiPromptBawaan(): void
+    {
+        abort_unless($this->promptTerbuka !== null, 404);
+        $this->isianPrompt = ['instruksi' => PromptAi::BAWAAN[$this->promptTerbuka], 'gaya_khusus' => false, 'gaya_bahasa' => '', 'aktif' => true];
+        $this->resetErrorBag();
+    }
+
+    /** Simpan template prompt bagian yang disunting (PromptAi::galat). */
+    public function simpanPromptBagian(): void
+    {
+        $bagian = $this->promptTerbuka;
+        abort_unless($bagian !== null, 404);
+        $this->resetErrorBag();
+
+        $instruksi = trim(preg_replace('/[ \t]+/u', ' ', $this->isianPrompt['instruksi'] ?? ''));
+        $gaya = ($this->isianPrompt['gaya_khusus'] ?? false) ? trim(preg_replace('/\s+/u', ' ', $this->isianPrompt['gaya_bahasa'] ?? '')) : null;
+        $galat = PromptAi::galat($instruksi, $gaya);
+        if ($gaya === '') {
+            $galat['gaya_bahasa'] = 'Tulis gaya bahasa khusus, atau matikan pilihan gaya khusus.';
+        }
+        if ($galat !== []) {
+            foreach ($galat as $kolom => $pesan) {
+                $this->addError("isianPrompt.{$kolom}", $pesan);
+            }
+
+            return;
+        }
+
+        $lama = PromptAi::untuk($bagian);
+        $aktif = (bool) ($this->isianPrompt['aktif'] ?? true);
+        $baru = ['instruksi' => $instruksi, 'gaya_bahasa' => $gaya, 'aktif' => $aktif];
+        $ringkas = fn (array $t) => ['instruksi' => $t['instruksi'] === PromptAi::BAWAAN[$bagian] ? 'bawaan' : 'diubah', 'gaya' => $t['gaya_bahasa'] ?? 'gaya baku', 'aktif' => $t['aktif'] ? 'aktif' : 'nonaktif'];
+        $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), ['instruksi' => 'Instruksi', 'gaya' => 'Gaya bahasa', 'aktif' => 'Status']);
+        if ($perubahan === null && $lama['instruksi'] !== $instruksi) {
+            $perubahan = 'Instruksi diubah';
+        }
+
+        $bawaan = $instruksi === PromptAi::BAWAAN[$bagian] && $gaya === null && $aktif;
+        $simpan = function (array $d) use ($bagian, $baru, $bawaan) {
+            if ($bawaan) {
+                unset($d['bagian'][$bagian]);
+            } else {
+                $d['bagian'][$bagian] = $baru;
+            }
+
+            return $d;
+        };
+        if (! $this->simpanPrompt($simpan, $perubahan !== null ? BagianAi::BAGIAN[$bagian]['judul'].' — '.$perubahan : null)) {
+            return;
+        }
+        $this->promptTerbuka = null;
+        $this->dispatch('notify', message: 'Prompt '.mb_strtolower(BagianAi::BAGIAN[$bagian]['judul']).' tersimpan'.($aktif ? '.' : ' — tombol “Buat dengan AI” bagian ini dinonaktifkan.'), type: 'success');
+    }
+
+    /**
+     * Pratinjau prompt lengkap bagian yang disunting untuk contoh kegiatan (kegiatan bernama dengan data terlengkap).
+     */
+    public function pratinjauPrompt(): string
+    {
+        if ($this->promptTerbuka === null) {
+            return '';
+        }
+        $contoh = collect(app(KegiatanRepository::class)->semua())->filter(fn (array $k) => filled($k['nama_kegiatan'] ?? null))
+            ->sortByDesc(fn (array $k) => count(array_filter(BagianAi::bahan($this->promptTerbuka, $k), fn ($b) => $b['nilai'] !== null)))->first()
+            ?? ['nama_kegiatan' => 'Workshop Penyusunan Kurikulum Madrasah'];
+
+        return PromptAi::susun($this->promptTerbuka, $contoh, [
+            'instruksi' => (string) ($this->isianPrompt['instruksi'] ?? ''),
+            'gaya_bahasa' => ($this->isianPrompt['gaya_khusus'] ?? false) ? (string) ($this->isianPrompt['gaya_bahasa'] ?? '') : null,
+        ]);
     }
 
     /** Muat daftar model penyedia (DaftarModelAi); kegagalan tampil di kartu modelnya. */
@@ -446,6 +596,38 @@ class PengaturanAi extends Component
     public function ringkasanSaran(): array
     {
         return RiwayatSaranAi::ringkasan(RiwayatSaranAi::untuk(StubData::currentUser()));
+    }
+
+    /**
+     * Simpan template prompt bila tidak berubah di tempat lain sejak penyunting dibuka; riwayat `ubah_prompt_ai` bila ada
+     * $keterangan.
+     *
+     * @param  \Closure(array<string, mixed>): array<string, mixed>  $ubah
+     */
+    private function simpanPrompt(\Closure $ubah, ?string $keterangan): bool
+    {
+        $repo = app(PromptAiRepository::class);
+        $lama = $repo->ambil();
+        if ($lama['diperbarui_pada'] !== $this->versiPrompt) {
+            $this->versiPrompt = $lama['diperbarui_pada'];
+            $this->dispatch('notify', message: 'Prompt AI baru diubah di tempat lain — tampilan dimuat ulang, isian Anda tetap. Periksa lalu simpan lagi.', type: 'error');
+
+            return false;
+        }
+
+        try {
+            $repo->simpan(array_diff_key($ubah($lama), ['diperbarui_pada' => 1]));
+        } catch (RuntimeException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return false;
+        }
+        if ($keterangan !== null) {
+            RiwayatPengaturan::catat('ubah_prompt_ai', $keterangan);
+        }
+        $this->versiPrompt = $repo->ambil()['diperbarui_pada'];
+
+        return true;
     }
 
     private function muatParameter(): void

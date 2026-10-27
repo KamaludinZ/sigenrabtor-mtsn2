@@ -144,4 +144,30 @@ test.describe('Pengaturan AI', () => {
         await page.reload();
         await expect(page.getByTestId('parameter-ai').locator('input[name="jumlah-versi"][value="3"]')).toBeChecked();
     });
+
+    test('prompt per bagian: sunting instruksi dengan penanda, pratinjau prompt, simpan, lalu kembalikan bawaan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai?tab=prompt');
+        const tujuan = page.locator('[data-prompt="tujuan"]');
+        await expect(tujuan.getByTestId('status-prompt-tujuan')).toHaveText('Bawaan');
+
+        await tujuan.getByTestId('ubah-prompt-tujuan').click();
+        const formulir = tujuan.getByTestId('formulir-prompt');
+        const instruksi = formulir.locator('#isian-instruksi');
+        await instruksi.fill('Tulis satu frasa tujuan untuk  diawali kata kerja.');
+        await instruksi.evaluate((el) => el.setSelectionRange(30, 30));
+        await formulir.getByRole('button', { name: '{nama_kegiatan}' }).click();
+        await expect(instruksi).toHaveValue('Tulis satu frasa tujuan untuk {nama_kegiatan} diawali kata kerja.');
+        await formulir.getByTestId('pratinjau-prompt').locator('summary').click();
+        await expect(formulir.getByTestId('pratinjau-prompt')).toContainText('Tugas: Tulis satu frasa tujuan untuk ');
+        await expect(formulir.getByTestId('pratinjau-prompt')).not.toContainText('{nama_kegiatan}');
+        await formulir.getByTestId('simpan-prompt').click();
+        await expect(tujuan.getByTestId('status-prompt-tujuan')).toHaveText('Diubah');
+
+        // Pulihkan bawaan (prompt dipakai bersama proyek lain).
+        await tujuan.getByTestId('ubah-prompt-tujuan').click();
+        await tujuan.getByTestId('formulir-prompt').getByRole('button', { name: 'Kembalikan bawaan' }).click();
+        await tujuan.getByTestId('formulir-prompt').getByTestId('simpan-prompt').click();
+        await expect(tujuan.getByTestId('status-prompt-tujuan')).toHaveText('Bawaan');
+    });
 });

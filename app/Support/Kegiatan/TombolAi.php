@@ -2,10 +2,13 @@
 
 namespace App\Support\Kegiatan;
 
+use App\Support\Pengaturan\PromptAi;
+
 /**
  * Keadaan tombol "Buat dengan AI" satu bagian BagianAi (komponen <x-ai.tombol-buat>): siap, menunggu (di klien lewat
  * wire:loading), ada saran, gagal (Coba lagi), nonaktif beserta alasannya, atau tautan (jadwal diusulkan di Matrik &
- * Jadwal). Urutan aturan: terkunci → nama kegiatan kosong → saran sudah ada → batas harian habis → gagal → siap.
+ * Jadwal). Urutan aturan: prompt bagian dinonaktifkan admin → tautan → terkunci → nama kegiatan kosong → saran sudah ada →
+ * batas harian habis → gagal → siap.
  */
 final class TombolAi
 {
@@ -19,6 +22,7 @@ final class TombolAi
         $hasil = fn (string $status, string $label, ?string $keterangan = null) => ['status' => $status, 'label' => $label, 'keterangan' => $keterangan, 'jumlah' => count($saran)];
 
         return match (true) {
+            ! PromptAi::aktif($bagian) => $hasil('nonaktif', 'Buat dengan AI', 'Bagian ini dinonaktifkan admin di Pengaturan AI.'),
             BagianAi::BAGIAN[$bagian]['kolom'] === null => $hasil('tautan', 'Usulkan di Matrik & Jadwal', 'Usulan jadwal AI disusun dan dipakai di tab Matrik & Jadwal.'),
             ! $bisaUbah => $hasil('nonaktif', 'Buat dengan AI', 'Kegiatan terkunci — kalimatnya tidak bisa diubah.'),
             blank(trim((string) ($kegiatan['nama_kegiatan'] ?? ''))) => $hasil('nonaktif', 'Buat dengan AI', 'Isi nama kegiatan dulu di Data Kegiatan.'),

@@ -17,6 +17,7 @@ use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\PermintaanUsulanJadwal;
 use App\Support\Kegiatan\RiwayatSaranAi;
+use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
@@ -311,6 +312,12 @@ class MatrikJadwal extends Component
 
         $this->usulGagal = null;
         $pengguna = StubData::currentUser();
+        if (! PromptAi::aktif('jadwal')) {
+            $this->usulan = [];
+            $this->usulGagal = 'Usulan jadwal AI dinonaktifkan admin di Pengaturan AI.';
+
+            return;
+        }
         if (BatasAi::sisa($pengguna) <= 0) {
             $this->usulan = [];
             $this->usulGagal = BatasAi::pesanHabis();
