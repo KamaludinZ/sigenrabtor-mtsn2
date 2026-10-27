@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\ArsipFinalRepository;
+use App\Contracts\BukuDokumenRepository;
 use App\Contracts\DaftarIsiRepository;
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\DataPaguRepository;
@@ -24,6 +25,7 @@ use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Stub\StubArsipFinalRepository;
+use App\Support\Stub\StubBukuDokumenRepository;
 use App\Support\Stub\StubDaftarIsiRepository;
 use App\Support\Stub\StubDasarHukumRepository;
 use App\Support\Stub\StubDataPaguRepository;
@@ -68,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProfilMadrasahRepository::class, StubProfilMadrasahRepository::class);
         $this->app->singleton(ArsipFinalRepository::class, StubArsipFinalRepository::class);
         $this->app->singleton(NotifikasiRepository::class, StubNotifikasiRepository::class);
+        $this->app->singleton(BukuDokumenRepository::class, StubBukuDokumenRepository::class);
         $this->app->singleton(PejabatRepository::class, StubPejabatRepository::class);
         $this->app->singleton(DataPaguRepository::class, StubDataPaguRepository::class);
         $this->app->singleton(DasarHukumRepository::class, StubDasarHukumRepository::class);

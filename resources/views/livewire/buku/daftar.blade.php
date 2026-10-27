@@ -55,8 +55,12 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" class="btn-secondary" disabled><x-ui.icon name="eye" class="size-4" /> Pratinjau buku <x-ui.segera /></button>
-                    <button type="button" class="btn-primary" disabled><x-ui.icon name="download" class="size-4" /> Gabung PDF <x-ui.segera /></button>
+                    <button type="button" class="btn-secondary" disabled><x-ui.icon name="download" class="size-4" /> Gabung PDF <x-ui.segera /></button>
+                    @if ($isi['baris'] === [] || ($proses['tahap'] ?? null) === 'ambil')
+                        <button type="button" class="btn-primary" disabled wire:key="susun-nonaktif"><x-ui.icon name="layers" class="size-4" /> Susun buku</button>
+                    @else
+                        <button type="button" wire:click="susun" class="btn-primary" wire:key="susun-aktif" data-testid="susun-buku"><x-ui.icon name="layers" class="size-4" /> Susun buku</button>
+                    @endif
                 </div>
             </div>
             <p class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500" data-testid="nama-berkas-buku">
@@ -65,6 +69,10 @@
                 <span>· {{ $bukuIni['jumlah'] }} kegiatan · Total RAB {{ Format::rupiah($isi['total']) }} · ± {{ $isi['simulasi']['terakhir'] }} halaman</span>
             </p>
         </section>
+
+        @if ($proses)
+            @include('livewire.buku.partials.proses-susun')
+        @endif
 
         <div class="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
             {{-- Susunan buku --}}
@@ -132,6 +140,31 @@
                             <p class="font-semibold">{{ $cover['tahun'] }}</p>
                         </div>
                     </div>
+                </section>
+
+                {{-- Riwayat penyusunan buku ini (BukuDokumenRepository). --}}
+                <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-riwayat-buku" data-testid="riwayat-buku">
+                    <h2 id="judul-riwayat-buku" class="text-sm font-semibold text-stone-900">Riwayat susun</h2>
+                    @if ($this->riwayat === [])
+                        <p class="mt-1 text-xs text-stone-500">Buku ini belum pernah disusun.</p>
+                    @else
+                        <ol class="mt-2 space-y-2 text-xs">
+                            @foreach (array_slice($this->riwayat, 0, 5) as $r)
+                                <li class="rounded-lg bg-stone-50 px-2.5 py-2 ring-1 ring-stone-100" data-riwayat-buku="{{ $r['id'] }}" wire:key="riwayat-{{ $r['id'] }}">
+                                    <p class="flex items-center justify-between gap-2">
+                                        <span class="font-semibold text-stone-800">{{ \Illuminate\Support\Carbon::parse($r['dibuat_pada'])->locale('id')->translatedFormat('j M Y, H.i') }}</span>
+                                        @if ($r['ada_draf'])
+                                            <span class="rounded-full bg-red-50 px-1.5 py-px text-[10px] font-semibold text-red-700 ring-1 ring-red-200">Ada DRAF</span>
+                                        @else
+                                            <span class="rounded-full bg-brand-50 px-1.5 py-px text-[10px] font-semibold text-brand-800 ring-1 ring-brand-200">Siap</span>
+                                        @endif
+                                    </p>
+                                    <p class="mt-0.5 text-stone-500">{{ $r['dibuat_oleh'] }} · {{ $r['jumlah_kegiatan'] }} kegiatan · ± {{ $r['halaman'] }} halaman</p>
+                                    <p class="mt-0.5 text-stone-400">{{ $r['file_pdf_path'] ? 'PDF tersedia' : 'PDF belum digabung' }}</p>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
                 </section>
 
                 @if ($admin)

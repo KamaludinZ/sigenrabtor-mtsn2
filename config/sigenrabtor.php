@@ -60,6 +60,7 @@ return [
         'pengguna_file' => env('STUB_PENGGUNA_FILE', 'stub/pengguna.json'),
         'arsip_file' => env('STUB_ARSIP_FILE', 'stub/arsip-final.json'),
         'notifikasi_file' => env('STUB_NOTIFIKASI_FILE', 'stub/notifikasi.json'),
+        'buku_file' => env('STUB_BUKU_FILE', 'stub/buku-dokumen.json'),
     ],
 
     /*

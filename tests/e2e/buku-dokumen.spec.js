@@ -34,6 +34,18 @@ test.describe('Buku dokumen', () => {
         expect(lebar).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/buku-dokumen-${testInfo.project.name}.png`, fullPage: true });
 
+        // Susun buku: kegiatan diambil bertahap, hasilnya tercatat di riwayat buku ini.
+        const riwayat = page.getByTestId('riwayat-buku').locator('[data-riwayat-buku]');
+        const sebelum = await riwayat.count();
+        await page.getByTestId('susun-buku').click();
+        const proses = page.getByTestId('proses-buku');
+        await expect(proses).toHaveAttribute('data-tahap', 'selesai', { timeout: 30_000 });
+        await expect(proses.getByTestId('ringkasan-susun')).toContainText(/\d+ dari \d+ kegiatan diambil/);
+        await expect(proses.getByTestId('log-susun').locator('[data-hasil]')).not.toHaveCount(0);
+        await expect(riwayat).toHaveCount(Math.min(sebelum + 1, 5));
+        await proses.getByRole('button', { name: 'Tutup' }).click();
+        await expect(proses).toHaveCount(0);
+
         // Kegiatan di buku membuka pratinjau dokumennya untuk sumber dana buku itu.
         await susunan.locator('li[data-kegiatan] a').first().click();
         await expect(page).toHaveURL(/\/kegiatan\/\d+\/pratinjau\?sumber=DIPA$/);
