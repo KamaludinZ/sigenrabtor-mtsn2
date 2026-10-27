@@ -3,6 +3,8 @@
 namespace Tests\Feature\Pengaturan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\LeadingRepository;
+use App\Contracts\PejabatRepository;
 use App\Contracts\PenggunaRepository;
 use App\Livewire\Pengaturan\LeadingUser;
 use App\Support\Navigation;
@@ -65,5 +67,56 @@ class LeadingUserTest extends TestCase
 
         $ringkas = Livewire::test(LeadingUser::class)->instance()->ringkasan();
         $this->assertSame(['leading_aktif' => 8, 'leading_nonaktif' => 1, 'tanpa_akun' => ['1.5', '1.7', '1.8'], 'akun_aktif' => 6, 'akun_nonaktif' => 1, 'per_peran' => ['admin' => 2, 'leading' => 4]], $ringkas);
+    }
+
+    public function test_tabel_leading_cari_saring_dan_urut(): void
+    {
+        session(['stub_role' => 'admin']);
+        app(LeadingRepository::class)->simpan(['kode' => '1.10', 'nama_unit' => 'Literasi', 'jabatan_penanda_tangan' => 'Koordinator Literasi', 'urutan' => 0]);
+        $kode = fn ($komponen) => array_column($komponen->instance()->leadingTampil(), 'kode');
+
+        $komponen = Livewire::test(LeadingUser::class);
+        $this->assertSame(['1.10', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9'], $kode($komponen), 'Bawaan: urutan tampil.');
+
+        $komponen->call('urutkanLeading', 'kode')->assertSet('urutLeading', 'kode')->assertSet('arahLeading', '');
+        $this->assertSame(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9', '1.10'], $kode($komponen), 'Kode urut natural.');
+        $komponen->call('urutkanLeading', 'kode')->assertSet('arahLeading', 'desc');
+        $this->assertSame(['1.10', '1.9', '1.8'], array_slice($kode($komponen), 0, 3));
+        $komponen->call('urutkanLeading', 'kegiatan')->assertSet('urutLeading', 'kegiatan')->assertSet('arahLeading', '');
+        $this->assertSame('1.6', $kode($komponen)[0], 'Kegiatan terbanyak lebih dulu.');
+        $komponen->call('urutkanLeading', 'nama');
+        $this->assertSame(['1.5', '1.9', '1.10', '1.7', '1.8'], array_slice($kode($komponen), 0, 5), 'Ka. TU, Laboratorium, Literasi, Mahad, PMM.');
+        $komponen->call('urutkanLeading', 'ngawur')->assertSet('urutLeading', 'nama');
+
+        $komponen->set('statusLeading', 'nonaktif');
+        $this->assertSame(['1.9'], $kode($komponen));
+        $komponen->set('statusLeading', 'aktif')->set('cariLeading', 'wakil kepala');
+        $this->assertSame(['1.4', '1.2', '1.1', '1.3'], $kode($komponen), 'Cari di jabatan, tetap terurut nama (Humas, Kesiswaan, Kurikulum, Sarpras).');
+        $komponen->assertSee('Menampilkan 4 dari 10 leading.');
+        $komponen->set('cariLeading', 'tidak ada')
+            ->assertSeeHtml('data-testid="leading-kosong"')
+            ->call('hapusSaringanLeading')
+            ->assertSet('cariLeading', '')
+            ->assertSet('statusLeading', '');
+        $komponen->set('statusLeading', 'ngawur')->assertSet('statusLeading', '');
+
+        Livewire::withQueryParams(['urut_leading' => 'kode', 'arah_leading' => 'desc', 'status_leading' => 'aktif'])->test(LeadingUser::class)
+            ->assertSet('urutLeading', 'kode')
+            ->assertSet('arahLeading', 'desc')
+            ->assertSeeHtml('aria-sort="descending"');
+    }
+
+    public function test_kolom_pejabat_tahun_aktif_dan_aksi_segera(): void
+    {
+        session(['stub_role' => 'admin']);
+        app(PejabatRepository::class)->simpan(2026, 'leading', '1.1', ['jabatan' => 'Wakil Kepala Bidang Kurikulum', 'nama' => 'Siti Rohmah, M.Pd.', 'nip' => null]);
+
+        Livewire::test(LeadingUser::class)
+            ->assertSee('Pejabat TA 2026')
+            ->assertSeeHtmlInOrder(['data-leading="1.1"', 'data-kolom="pejabat"', 'Siti Rohmah, M.Pd.'])
+            ->assertSeeHtmlInOrder(['data-leading="1.2"', 'data-kolom="pejabat"', 'Pejabat belum diisi'])
+            ->assertSeeHtml('href="'.route('pengaturan.madrasah.index', ['tab' => 'pejabat']).'"')
+            ->assertSeeHtml('aria-label="Ubah leading 1.1 (sedang disiapkan)"')
+            ->assertSeeHtml('aria-label="Aktifkan leading 1.9 (sedang disiapkan)"');
     }
 }

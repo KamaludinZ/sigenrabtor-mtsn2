@@ -911,6 +911,21 @@ test.describe('Pengaturan admin', () => {
         await expect(leading.locator('[data-leading="1.1"]').filter({ visible: true })).toContainText('Siti Rohmah, M.Pd.');
         await expect(leading.locator('[data-leading="1.9"]').filter({ visible: true })).toContainText('Nonaktif');
         await expect(page.getByTestId('leading-tanpa-akun')).toContainText('1.3 Waka Sarpras');
+
+        // Cari, saring status, dan urutkan (tersimpan di URL).
+        await leading.getByPlaceholder('Cari kode, unit, atau jabatan…').fill('mahad');
+        await expect(leading.locator('[data-leading]').filter({ visible: true })).toHaveCount(1);
+        await expect(page).toHaveURL(/cari_leading=mahad/);
+        await leading.getByPlaceholder('Cari kode, unit, atau jabatan…').fill('');
+        await leading.getByLabel('Status leading').selectOption('nonaktif');
+        await expect(leading.locator('[data-leading]').filter({ visible: true })).toHaveCount(1);
+        await expect(leading.locator('[data-leading="1.9"]').filter({ visible: true })).toBeVisible();
+        await leading.getByLabel('Status leading').selectOption('');
+        if (testInfo.project.name === 'desktop') {
+            await leading.getByRole('button', { name: 'Kegiatan' }).click();
+            await expect(leading.locator('tbody tr').first()).toHaveAttribute('data-leading', '1.6');
+            await expect(page).toHaveURL(/urut_leading=kegiatan/);
+        }
         let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/leading-user-${testInfo.project.name}.png`, fullPage: true });

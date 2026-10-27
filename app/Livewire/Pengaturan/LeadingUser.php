@@ -15,7 +15,8 @@ use Livewire\Component;
 /**
  * Pengaturan › Leading & User (PRD Fase 6 §15, F29–F30): tab Leading (kode, nama unit, jabatan penanda tangan, status,
  * akun tertaut, kegiatan tahun aktif) dan tab Akun (peran admin/leading, tautan leading, status, terakhir masuk). Tab di
- * `?tab=`. Tambah/ubah/nonaktifkan menyusul (tombolnya "Segera").
+ * `?tab=`. Tabel leading bisa dicari, disaring status, dan diurutkan (URL `cari_leading`/`status_leading`/`urut_leading`/`arah_leading`) serta
+ * menampilkan pejabat penanda tangan tahun aktif. Tambah/ubah/nonaktifkan menyusul (tombolnya "Segera").
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -28,12 +29,97 @@ class LeadingUser extends Component
         'leading' => ['label' => 'Leading', 'hak' => 'Mengisi KAK/TOR, RAB, matrik, jadwal, dan konteks kegiatan leading-nya; memakai bantuan AI; mencetak; mengunggah arsip final.'],
     ];
 
+    /** Kunci urut tabel leading → arah bawaan. */
+    public const URUT_LEADING = ['urutan' => 'asc', 'kode' => 'asc', 'nama' => 'asc', 'kegiatan' => 'desc'];
+
     #[Url(except: 'leading')]
     public string $tab = 'leading';
+
+    #[Url(as: 'cari_leading', except: '')]
+    public string $cariLeading = '';
+
+    /** '' = semua, 'aktif', 'nonaktif'. */
+    #[Url(as: 'status_leading', except: '')]
+    public string $statusLeading = '';
+
+    #[Url(as: 'urut_leading', except: 'urutan')]
+    public string $urutLeading = 'urutan';
+
+    #[Url(as: 'arah_leading', except: '')]
+    public string $arahLeading = '';
 
     public function mount(): void
     {
         $this->updatedTab();
+        $this->rapikanSaringanLeading();
+    }
+
+    public function updatedStatusLeading(): void
+    {
+        $this->rapikanSaringanLeading();
+    }
+
+    /** Judul kolom: kolom sama membalik arah, kolom lain memakai arah bawaannya. */
+    public function urutkanLeading(string $kolom): void
+    {
+        if (! array_key_exists($kolom, self::URUT_LEADING)) {
+            return;
+        }
+
+        $this->arahLeading = $this->urutLeading === $kolom
+            ? ($this->arahLeadingEfektif() === 'asc' ? 'desc' : 'asc')
+            : '';
+        $this->urutLeading = $kolom;
+        if ($this->arahLeading === self::URUT_LEADING[$kolom]) {
+            $this->arahLeading = '';
+        }
+    }
+
+    public function arahLeadingEfektif(): string
+    {
+        return in_array($this->arahLeading, ['asc', 'desc'], true) ? $this->arahLeading : self::URUT_LEADING[$this->urutLeading];
+    }
+
+    public function hapusSaringanLeading(): void
+    {
+        $this->reset('cariLeading', 'statusLeading');
+    }
+
+    /**
+     * Leading setelah cari (kode, nama unit, jabatan) & saringan status, terurut (kode urut natural: 1.10 sesudah 1.9).
+     *
+     * @return list<array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, urutan: int, is_active: bool}>
+     */
+    public function leadingTampil(): array
+    {
+        $cari = mb_strtolower(trim($this->cariLeading));
+        $kegiatan = $this->kegiatanPerLeading();
+        $baris = array_filter($this->leading, fn (array $l) => match ($this->statusLeading) {
+            'aktif' => $l['is_active'],
+            'nonaktif' => ! $l['is_active'],
+            default => true,
+        } && ($cari === '' || str_contains(mb_strtolower($l['kode'].' '.$l['nama_unit'].' '.$l['jabatan_penanda_tangan']), $cari)));
+
+        $banding = match ($this->urutLeading) {
+            'kode' => fn (array $a, array $b) => version_compare($a['kode'], $b['kode']),
+            'nama' => fn (array $a, array $b) => strnatcasecmp($a['nama_unit'], $b['nama_unit']),
+            'kegiatan' => fn (array $a, array $b) => ($kegiatan[$a['kode']] ?? 0) <=> ($kegiatan[$b['kode']] ?? 0),
+            default => fn (array $a, array $b) => $a['urutan'] <=> $b['urutan'],
+        };
+        $arah = $this->arahLeadingEfektif() === 'asc' ? 1 : -1;
+        usort($baris, fn (array $a, array $b) => ($banding($a, $b) * $arah) ?: version_compare($a['kode'], $b['kode']));
+
+        return $baris;
+    }
+
+    /**
+     * Pejabat penanda tangan tiap leading tahun aktif (Profil & Pejabat); nama null = belum diisi.
+     *
+     * @return array<string, array{jabatan: string, nama: string|null, nip: string|null}>
+     */
+    public function pejabatLeading(): array
+    {
+        return StubData::pejabatLeading();
     }
 
     public function updatedTab(): void
@@ -110,6 +196,19 @@ class LeadingUser extends Component
             'akun_nonaktif' => count($this->akun) - count($akunAktif),
             'per_peran' => array_merge(['admin' => 0, 'leading' => 0], array_count_values(array_column($akunAktif, 'role'))),
         ];
+    }
+
+    private function rapikanSaringanLeading(): void
+    {
+        if (! in_array($this->statusLeading, ['', 'aktif', 'nonaktif'], true)) {
+            $this->statusLeading = '';
+        }
+        if (! array_key_exists($this->urutLeading, self::URUT_LEADING)) {
+            $this->urutLeading = 'urutan';
+        }
+        if (! in_array($this->arahLeading, ['', 'asc', 'desc'], true)) {
+            $this->arahLeading = '';
+        }
     }
 
     public function render()
