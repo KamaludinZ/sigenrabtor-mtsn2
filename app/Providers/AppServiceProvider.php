@@ -16,6 +16,7 @@ use App\Contracts\NotifikasiRepository;
 use App\Contracts\PejabatRepository;
 use App\Contracts\PemakaianAiRepository;
 use App\Contracts\PembuatPdfBuku;
+use App\Contracts\PengaturanAiRepository;
 use App\Contracts\PenggunaRepository;
 use App\Contracts\PengubahPdf;
 use App\Contracts\PenyusunSaranKalimat;
@@ -42,6 +43,7 @@ use App\Support\Stub\StubNotifikasiRepository;
 use App\Support\Stub\StubPejabatRepository;
 use App\Support\Stub\StubPemakaianAiRepository;
 use App\Support\Stub\StubPembuatPdfBuku;
+use App\Support\Stub\StubPengaturanAiRepository;
 use App\Support\Stub\StubPenggunaRepository;
 use App\Support\Stub\StubProfilMadrasahRepository;
 use App\Support\Stub\StubRabRepository;
@@ -90,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PenyusunSaranKalimat::class, StubSaranKalimat::class);
         $this->app->singleton(PemakaianAiRepository::class, StubPemakaianAiRepository::class);
         $this->app->singleton(RiwayatSaranAiRepository::class, StubRiwayatSaranAiRepository::class);
+        $this->app->singleton(PengaturanAiRepository::class, StubPengaturanAiRepository::class);
 
         // Konversi PDF (ekspor Monitoring; kelak cetak KAK/RAB & buku) lewat LibreOffice headless.
         $this->app->singleton(PengubahPdf::class, PengubahPdfLibreOffice::class);

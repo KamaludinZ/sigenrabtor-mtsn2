@@ -27,4 +27,36 @@ test.describe('Pengaturan AI', () => {
         await tab.locator('[data-tab="penyedia"]').click();
         await page.screenshot({ path: `storage/playwright/shots/pengaturan-ai-penyedia-${testInfo.project.name}.png`, fullPage: true });
     });
+
+    test('server sekolah: atur alamat & model, pakai sebagai penyedia aktif, lalu pulihkan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai');
+        const lokal = page.getByTestId('penyedia-lokal');
+        await expect(lokal.getByTestId('peran-lokal')).toHaveText('Tidak dipakai');
+
+        await lokal.getByTestId('atur-lokal').click();
+        const formulir = lokal.getByTestId('formulir-lokal');
+        await formulir.getByLabel('Alamat server').fill('ftp://server-sekolah');
+        await formulir.getByLabel('Model').fill('qwen2.5:7b');
+        await formulir.getByText('Penyedia aktif', { exact: true }).click();
+        await formulir.getByTestId('simpan-lokal').click();
+        await expect(formulir).toContainText('Alamat server harus berbentuk http(s)://alamat[:port]');
+
+        await formulir.getByLabel('Alamat server').fill('http://192.168.1.10:11434/');
+        await formulir.getByTestId('simpan-lokal').click();
+        await expect(page.getByText('Konfigurasi server sekolah tersimpan.')).toBeVisible();
+        await expect(lokal.getByTestId('peran-lokal')).toHaveText('Penyedia aktif');
+        await expect(page.getByTestId('penyedia-aktif')).toContainText('Ollama (server sekolah)');
+        await expect(page.getByTestId('penyedia-aktif')).toContainText('qwen2.5:7b');
+        await expect(page.getByTestId('ai-belum-dipilih')).toHaveCount(0);
+
+        // Pulihkan: data dipakai bersama proyek lain.
+        await lokal.getByTestId('atur-lokal').click();
+        await formulir.getByLabel('Alamat server').fill('http://localhost:11434');
+        await formulir.getByLabel('Model').fill('');
+        await formulir.getByText('Tidak dipakai', { exact: true }).click();
+        await formulir.getByTestId('simpan-lokal').click();
+        await expect(lokal.getByTestId('peran-lokal')).toHaveText('Tidak dipakai');
+        await expect(page.getByTestId('ai-belum-dipilih')).toBeVisible();
+    });
 });

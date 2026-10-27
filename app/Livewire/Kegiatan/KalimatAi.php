@@ -17,6 +17,7 @@ use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\PermintaanSaranKalimat;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\TombolAi;
+use App\Support\Pengaturan\PenyediaAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use App\Support\Teks;
@@ -511,7 +512,7 @@ class KalimatAi extends Component
             'terisi' => array_map(fn (string $b) => BagianAi::terisi($b, $kegiatan, $this->jadwal), array_combine(array_keys(BagianAi::BAGIAN), array_keys(BagianAi::BAGIAN))),
             'aspek' => KonteksAi::aspekTerisi($konteks),
             'konteks' => $konteks !== '',
-            'penyedia' => StubPengaturan::pengaturanAi()['provider_aktif'],
+            'penyedia' => PenyediaAi::nama(StubPengaturan::pengaturanAi()['provider_aktif']),
             'batas' => StubPengaturan::pengaturanAi()['batas_per_user_per_hari'],
         ];
     }

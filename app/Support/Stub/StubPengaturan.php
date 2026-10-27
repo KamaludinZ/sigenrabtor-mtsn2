@@ -2,6 +2,7 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\PengaturanAiRepository;
 use App\Contracts\PenggunaRepository;
 
 /**
@@ -32,12 +33,20 @@ class StubPengaturan
     }
 
     /**
-     * Pengaturan AI (satu baris): penyedia belum dipilih, sehingga "Buat dengan AI" memakai usulan tiruan.
+     * Pengaturan AI (satu baris) dari PengaturanAiRepository; `model`, `base_url`, `ada_kunci` = konfigurasi penyedia aktif
+     * (null bila belum dipilih — "Buat dengan AI" memakai usulan tiruan).
      *
-     * @return array{provider_aktif: string|null, provider_cadangan: string|null, model: string|null, batas_per_user_per_hari: int}
+     * @return array{provider_aktif: string|null, provider_cadangan: string|null, model: string|null, base_url: string|null, ada_kunci: bool, penyedia: array<string, array<string, mixed>>, batas_per_user_per_hari: int, diperbarui_pada: string|null}
      */
     public static function pengaturanAi(): array
     {
-        return ['provider_aktif' => null, 'provider_cadangan' => null, 'model' => null, 'batas_per_user_per_hari' => 20];
+        $ai = app(PengaturanAiRepository::class)->ambil();
+        $aktif = $ai['provider_aktif'] !== null ? ($ai['penyedia'][$ai['provider_aktif']] ?? []) : [];
+
+        return [
+            'model' => filled($aktif['model'] ?? null) ? $aktif['model'] : null,
+            'base_url' => filled($aktif['base_url'] ?? null) ? $aktif['base_url'] : null,
+            'ada_kunci' => (bool) ($aktif['ada_kunci'] ?? false),
+        ] + $ai;
     }
 }

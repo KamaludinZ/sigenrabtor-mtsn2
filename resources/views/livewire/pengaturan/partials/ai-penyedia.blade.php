@@ -1,4 +1,5 @@
 @use('App\Support\Pengaturan\PenyediaAi')
+@use('App\Support\Pengaturan\AturanPenyediaAi')
 
 @php
     $ai = $this->pengaturan();
@@ -50,6 +51,8 @@
                 </section>
             @endforeach
         </div>
+
+        @include('livewire.pengaturan.partials.ai-lokal', ['ai' => $ai])
 
         <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pilihan-penyedia" data-testid="pilihan-penyedia-ai">
             <header class="border-b border-stone-100 px-5 py-4">

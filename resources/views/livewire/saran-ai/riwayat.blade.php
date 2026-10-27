@@ -97,7 +97,7 @@
                             <span class="text-stone-300" aria-hidden="true">·</span>
                             <time datetime="{{ $p['pada'] }}">{{ Carbon::parse($p['pada'])->locale('id')->translatedFormat('j M Y, H.i') }}</time>
                             <span class="text-stone-300" aria-hidden="true">·</span>
-                            <span>{{ $p['penyedia'] ?? 'AI tiruan' }}</span>
+                            <span>{{ \App\Support\Pengaturan\PenyediaAi::nama($p['penyedia']) ?? 'AI tiruan' }}</span>
                             @if ($p['instruksi'] !== '')
                                 <span class="rounded bg-stone-100 px-1.5 py-px text-stone-600">Instruksi: {{ $p['instruksi'] }}</span>
                             @endif
