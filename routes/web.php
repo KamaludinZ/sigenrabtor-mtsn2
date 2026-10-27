@@ -5,6 +5,7 @@ use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\LogoMadrasah;
+use App\Http\Controllers\TotalAnggaranKegiatan;
 use App\Http\Controllers\UnduhArsipFinal;
 use App\Http\Controllers\UnduhBuku;
 use App\Http\Controllers\UnduhFormatRincianRab;
@@ -60,6 +61,7 @@ Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiata
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
 Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');
+Route::get('/kegiatan/{kegiatan}/total-anggaran', TotalAnggaranKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.total_anggaran');
 // Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).
 Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('dokumen.cover.gambar');
 
