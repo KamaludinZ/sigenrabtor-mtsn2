@@ -22,7 +22,8 @@ use RuntimeException;
  * aktif & cadangan, model, alamat, kunci API, perbandingan server sekolah vs API cloud, data yang dikirim), `prompt`
  * (prompt per bagian & gaya bahasa baku — PromptAi), dan `pemakaian` (batas harian BatasAi, pemakaian hari ini per akun,
  * ringkasan riwayat saran AI). Konfigurasi server sekolah (Ollama) lewat formulir bukaLokal() → simpanLokal()
- * (AturanPenyediaAi, PengaturanAiRepository, riwayat `ubah_penyedia_ai`); penyedia cloud & prompt menyusul.
+ * (AturanPenyediaAi, PengaturanAiRepository, riwayat `ubah_penyedia_ai`); pemilihan penyedia aktif & cadangan lewat
+ * bukaPilihan() → simpanPilihan() (hanya penyedia yang siap); penyedia cloud & prompt menyusul.
  */
 #[Layout('layouts.app')]
 class PengaturanAi extends Component
@@ -37,6 +38,12 @@ class PengaturanAi extends Component
 
     /** @var array{base_url: string, model: string, batas_waktu: int|string|null, peran: string} */
     public array $isianLokal = ['base_url' => '', 'model' => '', 'batas_waktu' => 60, 'peran' => 'tidak'];
+
+    /** Pemilihan penyedia aktif & cadangan terbuka. */
+    public bool $pilihTerbuka = false;
+
+    /** @var array{aktif: string, cadangan: string} Kunci PenyediaAi ('' = tanpa). */
+    public array $pilihan = ['aktif' => '', 'cadangan' => ''];
 
     /** `diperbarui_pada` pengaturan saat formulir dibuka; pembanding perubahan dari tab/admin lain. */
     #[Locked]
@@ -77,6 +84,7 @@ class PengaturanAi extends Component
         ];
         $this->versi = $ai['diperbarui_pada'];
         $this->resetErrorBag();
+        $this->pilihTerbuka = false;
         $this->lokalTerbuka = true;
     }
 
@@ -102,39 +110,122 @@ class PengaturanAi extends Component
             return;
         }
 
-        $repo = app(PengaturanAiRepository::class);
-        $lama = $repo->ambil();
+        $lama = app(PengaturanAiRepository::class)->ambil();
+        $baru = AturanPenyediaAi::terapkanPeran($lama, 'ollama', $data['peran']);
+        $baru['penyedia']['ollama'] = ['base_url' => $data['base_url'], 'model' => $data['model'], 'batas_waktu' => $data['batas_waktu']] + ($lama['penyedia']['ollama'] ?? []);
+
+        $ringkas = fn (array $p) => [
+            'base_url' => $p['penyedia']['ollama']['base_url'] ?? '', 'model' => $p['penyedia']['ollama']['model'] ?? '', 'batas_waktu' => $p['penyedia']['ollama']['batas_waktu'] ?? null,
+        ] + self::ringkasPeran($p);
+        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['base_url' => 'Alamat server', 'model' => 'Model', 'batas_waktu' => 'Batas waktu (detik)'], 'Server sekolah (Ollama) — ')) {
+            return;
+        }
+
+        $this->lokalTerbuka = false;
+        $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === 'ollama';
+        $this->dispatch('notify', message: $naik ? 'Konfigurasi server sekolah tersimpan — belum ada penyedia aktif, jadi server sekolah dipakai sebagai penyedia aktif.' : 'Konfigurasi server sekolah tersimpan.', type: 'success');
+    }
+
+    /** Buka pemilihan penyedia aktif & cadangan berisi pilihan tersimpan. */
+    public function bukaPilihan(): void
+    {
+        $ai = app(PengaturanAiRepository::class)->ambil();
+        $this->pilihan = ['aktif' => (string) $ai['provider_aktif'], 'cadangan' => (string) $ai['provider_cadangan']];
+        $this->versi = $ai['diperbarui_pada'];
+        $this->resetErrorBag();
+        $this->lokalTerbuka = false;
+        $this->pilihTerbuka = true;
+    }
+
+    public function batalPilihan(): void
+    {
+        $this->pilihTerbuka = false;
+        $this->resetErrorBag();
+    }
+
+    /** Tukar pilihan aktif ↔ cadangan (belum tersimpan). */
+    public function tukarPilihan(): void
+    {
+        $this->pilihan = ['aktif' => $this->pilihan['cadangan'] ?? '', 'cadangan' => $this->pilihan['aktif'] ?? ''];
+        $this->resetErrorBag();
+    }
+
+    /** Simpan penyedia aktif & cadangan (AturanPenyediaAi::pilih — keduanya harus siap). */
+    public function simpanPilihan(): void
+    {
+        $this->resetErrorBag();
+        $lama = app(PengaturanAiRepository::class)->ambil();
+        ['pengaturan' => $baru, 'galat' => $galat] = AturanPenyediaAi::pilih($lama, $this->pilihan['aktif'] ?? null, $this->pilihan['cadangan'] ?? null);
+        if ($galat !== []) {
+            foreach ($galat as $peran => $pesan) {
+                $this->addError("pilihan.{$peran}", $pesan);
+            }
+
+            return;
+        }
+
+        if (! $this->simpanPengaturan($lama, $baru, fn (array $p) => self::ringkasPeran($p), [], '')) {
+            return;
+        }
+
+        $this->pilihTerbuka = false;
+        $this->dispatch('notify', message: $baru['provider_aktif'] === null
+            ? 'Tanpa penyedia AI — tombol “Buat dengan AI” memakai saran contoh (tiruan).'
+            : 'Penyedia AI tersimpan: '.PenyediaAi::nama($baru['provider_aktif']).($baru['provider_cadangan'] ? ', cadangan '.PenyediaAi::nama($baru['provider_cadangan']) : ', tanpa cadangan').'.', type: 'success');
+    }
+
+    /**
+     * Kesiapan tiap penyedia (pemilihan penyedia).
+     *
+     * @return array<string, array{siap: bool, kurang: list<string>}>
+     */
+    public function kesiapanPenyedia(): array
+    {
+        $ai = app(PengaturanAiRepository::class)->ambil();
+
+        return array_map(fn (string $p) => AturanPenyediaAi::siap($ai, $p), array_combine(array_keys(PenyediaAi::DAFTAR), array_keys(PenyediaAi::DAFTAR)));
+    }
+
+    /**
+     * Simpan pengaturan bila tidak berubah di tempat lain sejak formulir dibuka; riwayat `ubah_penyedia_ai` hanya bila ada
+     * perubahan. Mengembalikan false bila bentrok atau gagal (isian tetap, pesan lewat notify).
+     *
+     * @param  array<string, mixed>  $lama
+     * @param  array<string, mixed>  $baru
+     * @param  \Closure(array<string, mixed>): array<string, mixed>  $ringkas
+     * @param  array<string, string>  $label
+     */
+    private function simpanPengaturan(array $lama, array $baru, \Closure $ringkas, array $label, string $awalan): bool
+    {
         if ($lama['diperbarui_pada'] !== $this->versi) {
             $this->versi = $lama['diperbarui_pada'];
             $this->dispatch('notify', message: 'Pengaturan AI baru diubah di tempat lain — tampilan dimuat ulang, isian Anda tetap. Periksa lalu simpan lagi.', type: 'error');
 
-            return;
+            return false;
         }
 
-        $baru = AturanPenyediaAi::terapkanPeran($lama, 'ollama', $data['peran']);
-        $baru['penyedia']['ollama'] = ['base_url' => $data['base_url'], 'model' => $data['model'], 'batas_waktu' => $data['batas_waktu']] + ($lama['penyedia']['ollama'] ?? []);
         unset($baru['diperbarui_pada']);
-
-        $ringkas = fn (array $p) => [
-            'base_url' => $p['penyedia']['ollama']['base_url'] ?? '', 'model' => $p['penyedia']['ollama']['model'] ?? '', 'batas_waktu' => $p['penyedia']['ollama']['batas_waktu'] ?? null,
-            'aktif' => PenyediaAi::nama($p['provider_aktif']) ?? 'belum dipilih', 'cadangan' => PenyediaAi::nama($p['provider_cadangan']) ?? 'belum dipilih',
-        ];
-        $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), ['base_url' => 'Alamat server', 'model' => 'Model', 'batas_waktu' => 'Batas waktu (detik)', 'aktif' => 'Penyedia aktif', 'cadangan' => 'Penyedia cadangan']);
-
+        $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), $label + ['aktif' => 'Penyedia aktif', 'cadangan' => 'Penyedia cadangan']);
         try {
-            $repo->simpan($baru);
+            app(PengaturanAiRepository::class)->simpan($baru);
         } catch (RuntimeException $e) {
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
-            return;
+            return false;
         }
 
         if ($perubahan !== null) {
-            RiwayatPengaturan::catat('ubah_penyedia_ai', 'Server sekolah (Ollama) — '.$perubahan);
+            RiwayatPengaturan::catat('ubah_penyedia_ai', $awalan.$perubahan);
         }
-        $this->lokalTerbuka = false;
-        $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === 'ollama';
-        $this->dispatch('notify', message: $naik ? 'Konfigurasi server sekolah tersimpan — belum ada penyedia aktif, jadi server sekolah dipakai sebagai penyedia aktif.' : 'Konfigurasi server sekolah tersimpan.', type: 'success');
+        $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
+
+        return true;
+    }
+
+    /** @return array{aktif: string, cadangan: string} */
+    private static function ringkasPeran(array $pengaturan): array
+    {
+        return ['aktif' => PenyediaAi::nama($pengaturan['provider_aktif']) ?? 'belum dipilih', 'cadangan' => PenyediaAi::nama($pengaturan['provider_cadangan']) ?? 'belum dipilih'];
     }
 
     /**

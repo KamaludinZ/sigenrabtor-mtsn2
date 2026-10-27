@@ -56,6 +56,59 @@ final class AturanPenyediaAi
         return ['data' => $data, 'galat' => $galat];
     }
 
+    /**
+     * Kesiapan satu penyedia untuk dipakai: Ollama perlu alamat server & model; API cloud perlu model & kunci API.
+     *
+     * @param  array<string, mixed>  $pengaturan
+     * @return array{siap: bool, kurang: list<string>}
+     */
+    public static function siap(array $pengaturan, string $penyedia): array
+    {
+        $info = PenyediaAi::DAFTAR[$penyedia] ?? null;
+        if ($info === null) {
+            return ['siap' => false, 'kurang' => ['penyedia tidak dikenal']];
+        }
+        $konfigurasi = $pengaturan['penyedia'][$penyedia] ?? [];
+        $kurang = array_values(array_filter([
+            ! $info['butuh_kunci'] && blank($konfigurasi['base_url'] ?? null) ? 'alamat server' : null,
+            blank($konfigurasi['model'] ?? null) ? 'model' : null,
+            $info['butuh_kunci'] && ! ($konfigurasi['ada_kunci'] ?? false) ? 'kunci API' : null,
+        ]));
+
+        return ['siap' => $kurang === [], 'kurang' => $kurang];
+    }
+
+    /**
+     * Pilih penyedia aktif & cadangan sekaligus: aktif null = tanpa AI (saran tiruan); cadangan butuh penyedia aktif,
+     * berbeda dari aktif, dan keduanya harus siap (siap()).
+     *
+     * @param  array<string, mixed>  $pengaturan
+     * @return array{pengaturan: array<string, mixed>, galat: array<string, string>}
+     */
+    public static function pilih(array $pengaturan, ?string $aktif, ?string $cadangan): array
+    {
+        $aktif = $aktif ?: null;
+        $cadangan = $cadangan ?: null;
+        $galat = [];
+
+        foreach (['aktif' => $aktif, 'cadangan' => $cadangan] as $peran => $penyedia) {
+            if ($penyedia === null) {
+                continue;
+            }
+            $kesiapan = self::siap($pengaturan, $penyedia);
+            if (! $kesiapan['siap']) {
+                $galat[$peran] = PenyediaAi::nama($penyedia).' belum siap — lengkapi '.implode(', ', $kesiapan['kurang']).' dulu.';
+            }
+        }
+        if ($cadangan !== null && $aktif === null) {
+            $galat['cadangan'] = 'Pilih penyedia aktif dulu; cadangan hanya dipakai bila penyedia aktif gagal.';
+        } elseif ($cadangan !== null && $cadangan === $aktif) {
+            $galat['cadangan'] = 'Penyedia cadangan harus berbeda dari penyedia aktif.';
+        }
+
+        return ['pengaturan' => ['provider_aktif' => $aktif, 'provider_cadangan' => $cadangan] + $pengaturan, 'galat' => $galat];
+    }
+
     /** Peran $penyedia dalam pengaturan: aktif, cadangan, atau tidak. */
     public static function peranDari(array $pengaturan, string $penyedia): string
     {

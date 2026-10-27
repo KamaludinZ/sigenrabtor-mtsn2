@@ -43,7 +43,9 @@
                         @endif
                     </dl>
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <button type="button" class="btn-secondary px-2.5 py-1.5 text-xs" disabled title="Sedang disiapkan"><x-ui.icon name="pencil" class="size-3.5" /> {{ $penyedia ? 'Ubah' : 'Pilih penyedia' }} <x-ui.segera /></button>
+                        @unless ($pilihTerbuka)
+                            <button type="button" wire:click="bukaPilihan" class="btn-secondary px-2.5 py-1.5 text-xs" data-testid="pilih-{{ $kunci }}"><x-ui.icon name="pencil" class="size-3.5" /> {{ $penyedia ? 'Ganti' : 'Pilih penyedia' }}</button>
+                        @endunless
                         @if ($kunci === 'aktif')
                             <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" disabled title="Sedang disiapkan">Uji koneksi <x-ui.segera /></button>
                         @endif
@@ -51,6 +53,10 @@
                 </section>
             @endforeach
         </div>
+
+        @if ($pilihTerbuka)
+            @include('livewire.pengaturan.partials.ai-pilih-penyedia')
+        @endif
 
         @include('livewire.pengaturan.partials.ai-lokal', ['ai' => $ai])
 

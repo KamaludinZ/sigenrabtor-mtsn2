@@ -59,4 +59,38 @@ test.describe('Pengaturan AI', () => {
         await expect(lokal.getByTestId('peran-lokal')).toHaveText('Tidak dipakai');
         await expect(page.getByTestId('ai-belum-dipilih')).toBeVisible();
     });
+
+    test('pemilihan penyedia: hanya yang siap bisa dipilih, alur cadangan, lalu pulihkan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai');
+        const lokal = page.getByTestId('penyedia-lokal');
+
+        // Siapkan server sekolah (model diisi) tanpa dipakai.
+        await lokal.getByTestId('atur-lokal').click();
+        await lokal.getByLabel('Model').fill('qwen2.5:7b');
+        await lokal.getByTestId('simpan-lokal').click();
+        await expect(page.getByText('Konfigurasi server sekolah tersimpan.')).toBeVisible();
+
+        await page.getByTestId('pilih-aktif').click();
+        const pilih = page.getByTestId('pilih-penyedia');
+        const aktif = pilih.getByTestId('pilihan-aktif');
+        await expect(aktif.locator('[data-pilih-penyedia="claude"]')).toHaveAttribute('data-siap', 'tidak');
+        await expect(aktif.locator('[data-pilih-penyedia="claude"] input')).toBeDisabled();
+        await aktif.locator('[data-pilih-penyedia="ollama"]').click();
+        await expect(pilih.getByTestId('alur-penyedia')).toContainText('Ollama (server sekolah)');
+        await pilih.screenshot({ path: `storage/playwright/shots/pilih-penyedia-ai-${test.info().project.name}.png` });
+        await pilih.getByTestId('simpan-pilihan').click();
+        await expect(page.getByText('Penyedia AI tersimpan: Ollama (server sekolah), tanpa cadangan.')).toBeVisible();
+        await expect(page.getByTestId('penyedia-aktif')).toContainText('Ollama (server sekolah)');
+
+        // Pulihkan: tanpa penyedia, model server sekolah dikosongkan lagi.
+        await page.getByTestId('pilih-aktif').click();
+        await page.getByTestId('pilihan-aktif').getByText('Tanpa penyedia').click();
+        await page.getByTestId('simpan-pilihan').click();
+        await expect(page.getByTestId('ai-belum-dipilih')).toBeVisible();
+        await lokal.getByTestId('atur-lokal').click();
+        await lokal.getByLabel('Model').fill('');
+        await lokal.getByTestId('simpan-lokal').click();
+        await expect(lokal.getByTestId('ringkasan-lokal')).toContainText('Belum diisi');
+    });
 });
