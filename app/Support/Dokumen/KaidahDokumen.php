@@ -1,0 +1,137 @@
+<?php
+
+namespace App\Support\Dokumen;
+
+use App\Support\Kegiatan\TahunKegiatan;
+use App\Support\MasterKode;
+use App\Support\Rab\AnggaranKegiatan;
+use App\Support\Rab\MekanismePembayaran;
+use App\Support\Stub\StubData;
+
+/**
+ * Kaidah dokumen otomatis (PRD §17 & §8 "Aturan Otomatis & Validasi") untuk satu kegiatan × sumber dana: tiap aturan
+ * diperiksa dari sumber yang sama dengan dokumen (AngkaDokumen, SusunanKak/SusunanRab, MasterKode, StatusPagu,
+ * MekanismePembayaran, PenandaTangan) sehingga panel di layar dan isi dokumen tidak pernah berbeda.
+ *
+ * Status: `lulus`, `peringatan` (dokumen tetap bisa dicetak dengan cap DRAF), `gagal` (angka/kode salah — harus
+ * diperbaiki), `info` (dijamin sistem).
+ */
+final class KaidahDokumen
+{
+    /** Kunci aturan → [nomor aturan PRD §8, judul]. */
+    public const ATURAN = [
+        'total' => [1, 'Total dihitung, tidak diketik'],
+        'terbilang' => [2, 'Terbilang otomatis'],
+        'tahun' => [3, 'Satu tahun untuk semua'],
+        'penanda_tangan' => [4, 'Penanda tangan terikat'],
+        'pagu' => [5, 'Batas pagu'],
+        'termin' => [6, 'Termin harus pas'],
+        'kode' => [7, 'Kode wajib valid'],
+        'kelengkapan' => [8, 'Cek kelengkapan saat cetak'],
+        'format' => [10, 'Format angka & tanggal Indonesia'],
+    ];
+
+    /** Kolom kode kegiatan → [label, daftar master, kunci pencarian]. */
+    private const KODE = [
+        'kode_rktm' => 'Kode RKTM',
+        'kode_sk' => 'Kode SK',
+        'kode_iksk' => 'IKSK',
+        'kode_edm' => 'Kode EDM',
+        'budaya_mutu' => '5 Budaya Mutu',
+    ];
+
+    /**
+     * @param  array<string, mixed>  $kegiatan
+     * @return list<array{kunci: string, nomor: int, judul: string, status: string, pesan: string}>
+     */
+    public static function periksa(array $kegiatan, SusunanKak $kak, SusunanRab $rab): array
+    {
+        $tahun = StubData::tahunAktif()['tahun'];
+        $anggaran = $rab->anggaran ?? (AnggaranKegiatan::perSumber($kegiatan)[$kak->sumber] ?? null);
+        $angka = $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, $tahun, StubData::madrasah()['nama_singkat']) : null;
+        $temuan = $angka ? array_merge(...array_column($angka->tempatCetak(), 'temuan')) : [];
+        $hasil = [];
+
+        $tambah = function (string $kunci, string $status, string $pesan) use (&$hasil): void {
+            [$nomor, $judul] = self::ATURAN[$kunci];
+            $hasil[] = compact('kunci', 'nomor', 'judul', 'status', 'pesan');
+        };
+
+        // 1–2. Nominal & terbilang di KAK Pembiayaan, header RAB, dan baris Total dari total RAB yang sama.
+        if (! $angka?->adaRincian()) {
+            $tambah('total', 'peringatan', $anggaran ? "Belum ada rincian RAB {$anggaran->sumber} — total & terbilang muncul setelah item ditambahkan." : 'Pilih sumber dana agar RAB dapat disusun.');
+            $tambah('terbilang', 'peringatan', 'Menunggu total RAB.');
+        } else {
+            $salahNominal = array_filter($temuan, fn (array $t) => ! str_contains(mb_strtolower($t['masalah']), 'terbilang'));
+            $salahEja = array_filter($temuan, fn (array $t) => str_contains(mb_strtolower($t['masalah']), 'terbilang'));
+            $tambah('total', $salahNominal === [] ? 'lulus' : 'gagal', $salahNominal === [] ? 'Total KAK = total RAB = jumlah yang diajukan: '.$angka->nominal().'.' : count($salahNominal).' tempat cetak berbeda dengan total RAB.');
+            $tambah('terbilang', $salahEja === [] ? 'lulus' : 'gagal', $salahEja === [] ? '“'.$angka->terbilang().'”.' : count($salahEja).' terbilang tidak sesuai nominalnya.');
+        }
+
+        // 3. Tahun dokumen = tahun anggaran aktif; kegiatan milik tahun lain diberi peringatan.
+        $tahunKegiatan = TahunKegiatan::dari($kegiatan);
+        $tambah('tahun', $tahunKegiatan === $tahun ? 'lulus' : 'peringatan', $tahunKegiatan === $tahun
+            ? "Cover, judul, dasar hukum, jadwal, dan RAB memakai TA {$tahun}."
+            : "Kegiatan tercatat di TA {$tahunKegiatan}, tetapi dokumen dicetak dengan TA aktif {$tahun}.");
+
+        // 4. Nama penanda tangan dari pejabat tahun aktif.
+        $kosong = array_values(array_map(fn (array $k) => rtrim($k['peran'], ','), array_filter($rab->pengesahan, fn (array $k) => blank($k['nama']))));
+        $tambah('penanda_tangan', $kosong === [] ? 'lulus' : 'peringatan', $kosong === []
+            ? 'Nama & NIP dari pejabat leading dan pimpinan TA '.$tahun.'.'
+            : 'Nama penanda tangan belum diisi: '.implode(', ', $kosong).' (Pengaturan › Profil & Pejabat).');
+
+        // 5. Batas pagu.
+        if ($anggaran) {
+            $pagu = $anggaran->keteranganPagu();
+            $tambah('pagu', match ($pagu->status) {
+                'melebihi' => 'gagal',
+                'tanpa_pagu' => 'peringatan',
+                default => 'lulus',
+            }, $pagu->teks().'.');
+
+            // 6. Termin = total RAB.
+            $mekanisme = MekanismePembayaran::dari($anggaran);
+            $tambah('termin', in_array($mekanisme->status(), ['kurang', 'lebih'], true) ? 'gagal' : 'lulus', $mekanisme->teksStatus().'.');
+        }
+
+        // 7. Kode dipilih dari master tahun aktif.
+        $daftar = ['kode_rktm' => MasterKode::kodeRktm(), 'kode_sk' => MasterKode::kodeSk(), 'kode_iksk' => MasterKode::kodeIksk(), 'kode_edm' => MasterKode::kodeEdm(), 'budaya_mutu' => MasterKode::budayaMutu()];
+        $belum = [];
+        $asing = [];
+        foreach (self::KODE as $kolom => $label) {
+            $nilai = $kegiatan[$kolom] ?? null;
+            if (blank($nilai)) {
+                $belum[] = $label;
+            } elseif (MasterKode::cari($daftar[$kolom], $nilai, $kolom === 'budaya_mutu' ? 'nomor' : 'kode') === null) {
+                $asing[] = "{$label} {$nilai}";
+            }
+        }
+        $tambah('kode', $asing !== [] ? 'gagal' : ($belum !== [] ? 'peringatan' : 'lulus'), match (true) {
+            $asing !== [] => 'Tidak ada di master TA '.$tahun.': '.implode(', ', $asing).'.',
+            $belum !== [] => 'Belum dipilih: '.implode(', ', $belum).'.',
+            default => 'Semua kode dipilih dari master TA '.$tahun.'.',
+        });
+
+        // 8. Kelengkapan KAK/TOR & RAB (dokumen tetap bisa dicetak dengan cap DRAF).
+        $kurang = array_values(array_unique([...$kak->kurang, ...$rab->kurang]));
+        $tambah('kelengkapan', $kurang === [] ? 'lulus' : 'peringatan', $kurang === []
+            ? 'Semua isian KAK/TOR & RAB lengkap.'
+            : count($kurang).' isian belum lengkap — dokumen dicetak dengan cap DRAF.');
+
+        // 10. Format Indonesia dijamin Format/Terbilang.
+        $tambah('format', 'info', 'Rupiah dengan titik ribuan (Rp10.000.000,-) dan tanggal seperti “23 Desember 2026”.');
+
+        return $hasil;
+    }
+
+    /**
+     * Jumlah aturan per status.
+     *
+     * @param  list<array{status: string}>  $kaidah
+     * @return array{lulus: int, peringatan: int, gagal: int, info: int}
+     */
+    public static function ringkasan(array $kaidah): array
+    {
+        return array_merge(['lulus' => 0, 'peringatan' => 0, 'gagal' => 0, 'info' => 0], array_count_values(array_column($kaidah, 'status')));
+    }
+}

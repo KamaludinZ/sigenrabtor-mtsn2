@@ -16,6 +16,7 @@ use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
 use App\Livewire\Kegiatan\Form as KegiatanForm;
 use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
+use App\Livewire\Kegiatan\PratinjauDokumen as KegiatanPratinjauDokumen;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Master\Daftar as MasterKodeDaftar;
 use App\Livewire\Monitoring\Anggaran as MonitoringAnggaran;
@@ -46,7 +47,10 @@ Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegia
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
+Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
 Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');
+// Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).
+Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('dokumen.cover.gambar');
 
 // Monitoring anggaran lintas kegiatan & leading (PRD Fase 5 §11), khusus admin.
 Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');
