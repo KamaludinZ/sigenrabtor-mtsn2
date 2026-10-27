@@ -57,7 +57,7 @@ class LeadingUserTest extends TestCase
             ->assertSeeHtmlInOrder(['data-akun="2"', 'Koordinator PUSKOM', 'Anda', 'puskom@example.com', 'Admin', 'Semua leading', '6 Januari 2026', 'Aktif'])
             ->assertSeeHtmlInOrder(['data-akun="4"', 'Ahmad Fauzan, S.Pd.', 'Leading', '1.2 Waka Kesiswaan', '1.4 Waka Humas', 'Belum pernah'])
             ->assertSeeHtmlInOrder(['data-akun="6"', 'Dewi Kartika, S.E.', '20 November 2025', 'Nonaktif'])
-            ->assertSeeHtml('aria-label="Ubah akun Muslimin, M.Pd. (sedang disiapkan)"')
+            ->assertSeeHtml('aria-label="Ubah akun Muslimin, M.Pd."')
             ->assertSee('Tambah akun')
             ->set('tab', 'ngawur')
             ->assertSet('tab', 'leading');

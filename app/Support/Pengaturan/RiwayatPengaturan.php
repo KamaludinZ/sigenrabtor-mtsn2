@@ -33,6 +33,8 @@ final class RiwayatPengaturan
         'tambah_leading' => ['Tambah leading', 'leading'],
         'ubah_leading' => ['Ubah leading', 'leading'],
         'ubah_status_leading' => ['Ubah status leading', 'leading'],
+        'tambah_akun' => ['Tambah akun', 'leading'],
+        'ubah_akun' => ['Ubah akun', 'leading'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

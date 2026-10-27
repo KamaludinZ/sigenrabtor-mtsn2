@@ -6,7 +6,9 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\LeadingRepository;
 use App\Contracts\PenggunaRepository;
 use App\Support\Kegiatan\TahunKegiatan;
+use App\Support\Pengaturan\AturanAkun;
 use App\Support\Pengaturan\AturanLeading;
+use App\Support\Pengaturan\Nip;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -21,7 +23,8 @@ use RuntimeException;
  * `?tab=`. Tabel leading bisa dicari, disaring status, dan diurutkan (URL `cari_leading`/`status_leading`/`urut_leading`/`arah_leading`) serta
  * menampilkan pejabat penanda tangan tahun aktif. Leading ditambah/diubah lewat formulir inline (aturan AturanLeading,
  * kode yang dipakai kegiatan/akun terkunci, riwayat tambah_leading/ubah_leading) dan dinonaktifkan/diaktifkan
- * (`ubahStatusLeading`, konfirmasi beserta dampaknya, minimal satu tetap aktif). Kelola akun menyusul.
+ * (`ubahStatusLeading`, konfirmasi beserta dampaknya, minimal satu tetap aktif). Akun ditambah/diubah lewat formulir
+ * inline (aturan AturanAkun: surel unik, peran, tautan leading, NIP; riwayat tambah_akun/ubah_akun).
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -82,6 +85,12 @@ class LeadingUser extends Component
     #[Url(as: 'arah_akun', except: '')]
     public string $arahAkun = '';
 
+    /** Akun yang disunting: 'baru' (tambah), id akun (ubah, sebagai teks), atau null. */
+    public ?string $suntingAkun = null;
+
+    /** @var array{name: string, email: string, role: string, jabatan: string, nip: string, leadings: list<string>} */
+    public array $isianAkun = ['name' => '', 'email' => '', 'role' => 'leading', 'jabatan' => '', 'nip' => '', 'leadings' => []];
+
     public function mount(): void
     {
         $this->updatedTab();
@@ -115,6 +124,91 @@ class LeadingUser extends Component
     public function arahAkunEfektif(): string
     {
         return in_array($this->arahAkun, ['asc', 'desc'], true) ? $this->arahAkun : self::URUT_AKUN[$this->urutAkun];
+    }
+
+    public function tambahAkun(): void
+    {
+        $this->batalAkun();
+        $this->tab = 'akun';
+        $this->suntingAkun = 'baru';
+    }
+
+    public function ubahAkun(int $id): void
+    {
+        $akun = collect($this->akun)->firstWhere('id', $id);
+        if ($akun === null) {
+            return;
+        }
+
+        $this->batalAkun();
+        $this->tab = 'akun';
+        $this->suntingAkun = (string) $id;
+        $this->isianAkun = ['name' => $akun['name'], 'email' => $akun['email'], 'role' => $akun['role'], 'jabatan' => (string) $akun['jabatan'], 'nip' => (string) $akun['nip'], 'leadings' => $akun['leadings']];
+    }
+
+    public function batalAkun(): void
+    {
+        $this->reset('suntingAkun', 'isianAkun');
+        $this->resetErrorBag(array_map(fn (string $k) => "isianAkun.{$k}", array_keys($this->isianAkun)));
+    }
+
+    public function simpanAkun(PenggunaRepository $repo): void
+    {
+        $id = $this->suntingAkun === 'baru' ? null : (int) $this->suntingAkun;
+        $lama = $id === null ? null : collect($this->akun)->firstWhere('id', $id);
+        if ($this->suntingAkun === null || ($id !== null && $lama === null)) {
+            return;
+        }
+
+        $this->resetErrorBag(array_map(fn (string $k) => "isianAkun.{$k}", array_keys($this->isianAkun)));
+        $urutanLeading = array_column($this->leading, 'kode');
+        $isian = [
+            'name' => AturanAkun::rapikan((string) $this->isianAkun['name']),
+            'email' => mb_strtolower(AturanAkun::rapikan((string) $this->isianAkun['email'])),
+            'role' => (string) $this->isianAkun['role'],
+            'jabatan' => AturanAkun::rapikan((string) $this->isianAkun['jabatan']),
+            'nip' => Nip::bersihkan((string) $this->isianAkun['nip']),
+            // Urut seperti daftar leading, tanpa dobel.
+            'leadings' => array_values(array_intersect($urutanLeading, array_map('strval', (array) $this->isianAkun['leadings']))),
+        ];
+        $this->isianAkun = $isian;
+        $aktif = array_column(array_filter($this->leading, fn (array $l) => $l['is_active']), 'kode');
+        $galat = AturanAkun::galat($isian, $this->akun, $aktif, $id, StubData::currentUser()['id']);
+        foreach ($galat as $kolom => $pesan) {
+            $this->addError("isianAkun.{$kolom}", $pesan);
+        }
+        if ($galat !== []) {
+            return;
+        }
+
+        $baru = ['name' => $isian['name'], 'email' => $isian['email'], 'role' => $isian['role'], 'jabatan' => $isian['jabatan'] ?: null, 'nip' => $isian['nip'] ?: null, 'leadings' => $isian['role'] === 'admin' ? [] : $isian['leadings']];
+        $tampil = fn (array $a) => ['role' => self::PERAN[$a['role']]['label'], 'nip' => $a['nip'] ? Nip::format($a['nip']) : null] + $a;
+        if ($lama !== null) {
+            $ringkasan = RiwayatPengaturan::perubahan($tampil($lama), $tampil($baru), ['name' => 'Nama', 'email' => 'Surel', 'role' => 'Peran', 'jabatan' => 'Jabatan', 'nip' => 'NIP', 'leadings' => 'Leading']);
+            if ($ringkasan === null) {
+                $this->batalAkun();
+                $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+                return;
+            }
+        }
+
+        try {
+            $idBaru = $repo->simpan($baru, $id);
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: 'Akun gagal disimpan. Isian masih ada di layar — coba simpan lagi.', type: 'error');
+
+            return;
+        }
+
+        RiwayatPengaturan::catat($lama === null ? 'tambah_akun' : 'ubah_akun', $lama === null
+            ? "Akun {$baru['name']} ({$baru['email']}) — ".self::PERAN[$baru['role']]['label'].($baru['leadings'] ? ' '.implode(', ', $baru['leadings']) : '')
+            : "Akun {$lama['name']} — {$ringkasan}");
+        unset($this->akun);
+        $this->batalAkun();
+        $this->dispatch('notify', message: 'Akun '.$baru['name'].($lama === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
+        $this->dispatch('akun-disimpan', id: $idBaru);
     }
 
     public function hapusSaringanAkun(): void
@@ -244,6 +338,7 @@ class LeadingUser extends Component
             $this->tab = 'leading';
         }
         $this->batalLeading();
+        $this->batalAkun();
     }
 
     public function tambahLeading(): void

@@ -1010,4 +1010,39 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByRole('button', { name: 'Nonaktifkan leading 1.7', exact: true }).filter({ visible: true })).toBeVisible();
         await expect(baris).toBeVisible();
     });
+
+    test('akun: formulir tambah (galat), pratinjau NIP & tautan leading, ubah lalu pulihkan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading?tab=akun');
+        await page.getByRole('button', { name: 'Tambah akun' }).click();
+        const form = page.getByTestId('formulir-akun');
+        await expect(form.getByLabel('Nama & gelar')).toBeFocused();
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(form).toContainText('Nama wajib diisi.');
+        await expect(form).toContainText('Akun leading wajib ditautkan ke minimal satu leading.');
+        await form.getByLabel('Surel').fill('muslimin@example.com');
+        await form.getByLabel('NIP').fill('197001011995031001');
+        await expect(form.locator('#akun-nip-pratinjau')).toHaveText('Tercetak: 19700101 199503 1 001');
+        await form.getByLabel('Admin').check();
+        await expect(form.getByTestId('tautan-leading')).toHaveCount(0);
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(form).toContainText('Surel sudah dipakai akun Muslimin, M.Pd.');
+        await form.screenshot({ path: `storage/playwright/shots/akun-form-${testInfo.project.name}.png` });
+        await form.getByRole('button', { name: 'Batal' }).click();
+        await expect(form).toHaveCount(0);
+
+        // Ubah jabatan Siti Rohmah lalu pulihkan (proyek mobile memakai data yang sama).
+        const jabatan = `Waka Kurikulum ${testInfo.project.name}`;
+        await page.getByRole('button', { name: 'Ubah akun Siti Rohmah, M.Pd.' }).filter({ visible: true }).click();
+        await expect(form.getByTestId('tautan-leading').getByLabel(/1\.1/)).toBeChecked();
+        await form.getByLabel('Jabatan').fill(jabatan);
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('Akun Siti Rohmah, M.Pd. diperbarui.')).toBeVisible();
+        await expect(page.getByTestId('daftar-akun').locator('[data-akun="3"]').filter({ visible: true })).toContainText(jabatan);
+        await page.getByRole('button', { name: 'Ubah akun Siti Rohmah, M.Pd.' }).filter({ visible: true }).click();
+        await form.getByLabel('Jabatan').fill('Wakil Kepala Bidang Kurikulum');
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(form).toHaveCount(0);
+        await expect(page.getByTestId('daftar-akun').locator('[data-akun="3"]').filter({ visible: true })).not.toContainText(jabatan);
+    });
 });

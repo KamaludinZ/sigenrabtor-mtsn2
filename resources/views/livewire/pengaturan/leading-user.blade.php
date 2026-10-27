@@ -20,7 +20,7 @@
             @if ($tab === 'leading')
                 <button type="button" wire:click="tambahLeading" class="btn-primary" @disabled($suntingLeading === 'baru')><x-ui.icon name="plus" class="size-4" /> Tambah leading</button>
             @else
-                <button type="button" class="btn-primary" disabled title="Sedang disiapkan"><x-ui.icon name="plus" class="size-4" /> Tambah akun <x-ui.segera /></button>
+                <button type="button" wire:click="tambahAkun" class="btn-primary" @disabled($suntingAkun === 'baru')><x-ui.icon name="plus" class="size-4" /> Tambah akun</button>
             @endif
         </x-slot:aksi>
         <x-slot:tab>
@@ -208,6 +208,10 @@
                     @endif
                 </section>
             @else
+                @if ($suntingAkun !== null)
+                    @include('livewire.pengaturan.partials.formulir-akun')
+                @endif
+
                 @php
                     $barisAkun = $this->akunTampil();
                     $kegiatanAkun = $this->kegiatanPerAkun();
@@ -310,7 +314,7 @@
                                             <td class="py-3 pr-5 pl-3 text-right sm:pr-6">
                                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
                                                 <span class="mt-1.5 flex justify-end gap-0.5">
-                                                    <button type="button" class="rounded-md p-1 text-stone-400" disabled title="Ubah — sedang disiapkan" aria-label="Ubah akun {{ $a['name'] }} (sedang disiapkan)"><x-ui.icon name="pencil" class="size-4" /></button>
+                                                    <button type="button" wire:click="ubahAkun({{ $a['id'] }})" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="Ubah" aria-label="Ubah akun {{ $a['name'] }}"><x-ui.icon name="pencil" class="size-4" /></button>
                                                     <button type="button" class="rounded-md p-1 text-stone-400" disabled title="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} — sedang disiapkan" aria-label="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} akun {{ $a['name'] }} (sedang disiapkan)"><x-ui.icon :name="$a['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
                                                 </span>
                                             </td>
@@ -342,6 +346,7 @@
                                         {{ $a['role'] === 'admin' ? 'Semua leading' : ($a['leadings'] === [] ? 'Belum ditautkan ke leading' : implode(', ', array_map(fn ($k) => $k.' '.($namaLeading[$k] ?? '').($chipLeading($k)[0] ? '' : ' (nonaktif)'), $a['leadings']))) }}
                                     </p>
                                     <p class="text-[11px] text-stone-500">{{ $kegiatanAkun[$a['id']] ?? 0 }} kegiatan · {{ $a['terakhir_masuk'] ? 'masuk '.Format::tanggal($a['terakhir_masuk']) : 'belum pernah masuk' }}</p>
+                                    <button type="button" wire:click="ubahAkun({{ $a['id'] }})" class="btn-ghost mt-1.5 px-2 py-1 text-xs" aria-label="Ubah akun {{ $a['name'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
                                 </li>
                             @endforeach
                         </ul>
