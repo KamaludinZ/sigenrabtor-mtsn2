@@ -56,8 +56,19 @@ test.describe('Pratinjau dokumen', () => {
         await expect(page.locator('#cetak-rab-judul')).toBeInViewport();
         await expect(page.locator('#cetak-rab-judul')).toContainText('Tahun 2026');
 
+        // Checklist isian wajib per tempat mengisinya; grup yang kurang terbuka dan menautkan tempat melengkapinya.
+        const checklist = page.getByTestId('checklist-isian');
+        await expect(checklist.locator('[data-grup]')).toHaveCount(6);
+        await expect(checklist.getByTestId('ringkasan-checklist')).toHaveText(/^\d+\/\d+ lengkap$/);
+        await expect(checklist.locator('[data-grup="kode"]')).toHaveAttribute('data-kurang', '0');
+
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);
+        const matrik = checklist.locator('[data-grup="matrik"]');
+        if ((await matrik.getAttribute('data-kurang')) !== '0') {
+            await matrik.getByRole('link', { name: 'Lengkapi' }).click();
+            await expect(page).toHaveURL(/\/kegiatan\/2\/matrik$/);
+        }
         await page.goto('/kegiatan/2/pratinjau?sumber=Komite');
         await page.screenshot({ path: `storage/playwright/shots/pratinjau-dokumen-${testInfo.project.name}.png`, fullPage: true });
     });

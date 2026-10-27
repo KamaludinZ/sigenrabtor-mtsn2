@@ -111,22 +111,7 @@
                 <x-dokumen.tahun-cetak :tempat="$this->tahunCetak" :tahun="$tahunDokumen" />
             </section>
 
-            @php
-                $kurang = array_values(array_unique([...$kak->kurang, ...$rab->kurang]));
-            @endphp
-            @if ($kurang !== [])
-                <section class="rounded-2xl bg-gold-50 p-4 ring-1 ring-gold-200" data-testid="daftar-kurang">
-                    <h3 class="text-xs font-semibold text-stone-800">{{ count($kurang) }} isian belum lengkap</h3>
-                    <div class="mt-2 flex flex-wrap gap-1.5">
-                        @foreach ($kurang as $apa)
-                            <span class="rounded-full bg-white px-2 py-0.5 text-[11px] text-stone-700 ring-1 ring-gold-200">{{ $apa }}</span>
-                        @endforeach
-                    </div>
-                    <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800">
-                        Lengkapi di Data Kegiatan <x-ui.icon name="chevron-right" class="size-3.5" />
-                    </a>
-                </section>
-            @endif
+            <x-dokumen.checklist-isian :grup="$this->checklist" />
         </aside>
 
         {{-- Dokumen berurutan seperti dicetak. --}}

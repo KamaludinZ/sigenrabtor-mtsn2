@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\AngkaDokumen;
+use App\Support\Dokumen\ChecklistIsian;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
@@ -80,6 +81,13 @@ class PratinjauDokumen extends Component
         $anggaran = $this->rab->anggaran;
 
         return $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
+    }
+
+    /** @return list<array<string, mixed>> Checklist isian wajib per tempat mengisinya (ChecklistIsian). */
+    #[Computed]
+    public function checklist(): array
+    {
+        return ChecklistIsian::untuk($this->dataKegiatan);
     }
 
     /** @return list<array<string, mixed>> Tempat tahun tercetak/terketik (TahunDokumen) dokumen sumber dana yang ditampilkan. */
