@@ -55,6 +55,11 @@ class StubDasarHukumRepository implements DasarHukumRepository
         $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 
+    public function teksBawaan(): array
+    {
+        return self::bawaan();
+    }
+
     /**
      * Paragraf latar belakang baku (visi madrasah) & kalimat penutup bawaan template KAK madrasah.
      *

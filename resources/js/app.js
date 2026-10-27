@@ -6,11 +6,12 @@ import gridMatrik, { ringkasanMatrik } from './matrik';
 import paguKegiatan from './pagu-kegiatan';
 import pemilihBulan from './pemilih-bulan';
 import pasangSiaranAnggaran from './siaran';
+import editorTeksBaku, { isiTeksBaku, penandaAsing } from './teks-baku';
 import jumlahTermin, { persenTermin, statusTermin } from './termin';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu), $ringkasanMatrik(matrik), $nip(teks), $galatNip(teks).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing };
 
 pasangSiaranAnggaran();
 
@@ -28,6 +29,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.magic('ringkasanMatrik', () => ringkasanMatrik);
 
     window.Alpine.data('pemilihBulan', pemilihBulan);
+    window.Alpine.data('editorTeksBaku', editorTeksBaku);
     window.Alpine.data('catatanKonteks', catatanKonteks);
     window.Alpine.data('jumlahTermin', jumlahTermin);
     window.Alpine.data('paguKegiatan', paguKegiatan);

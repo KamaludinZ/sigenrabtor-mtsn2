@@ -48,8 +48,7 @@ final class DaftarDasarHukum
             return 'Terlalu panjang (maksimal '.self::MAKS_KARAKTER.' karakter).';
         }
 
-        preg_match_all('/\{[^{}]*\}/u', $teks, $temuan);
-        $asing = array_values(array_diff(array_unique($temuan[0]), [TeksBaku::TAHUN]));
+        $asing = TeksBaku::penandaAsing($teks, [TeksBaku::TAHUN]);
         if ($asing !== []) {
             return 'Penanda '.implode(', ', $asing).' tidak dikenal — di dasar hukum hanya '.TeksBaku::TAHUN.' (tahun anggaran) yang bisa dipakai.';
         }

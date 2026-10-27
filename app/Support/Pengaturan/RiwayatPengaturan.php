@@ -28,6 +28,7 @@ final class RiwayatPengaturan
         'salin_pejabat' => ['Salin pejabat dari tahun lain', 'madrasah'],
         'ubah_mengetahui' => ['Ubah blok Mengetahui', 'madrasah'],
         'ubah_dasar_hukum' => ['Ubah dasar hukum', 'madrasah'],
+        'ubah_latar_belakang' => ['Ubah latar belakang baku', 'madrasah'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

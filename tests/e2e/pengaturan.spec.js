@@ -637,4 +637,53 @@ test.describe('Pengaturan admin', () => {
         await expect(butir(1)).toContainText('Undang-Undang Republik Indonesia Nomor 20 Tahun 2003');
         await expect(daftar.getByRole('button', { name: 'Turunkan butir 4' })).toBeDisabled();
     });
+
+    test('latar belakang baku: editor dengan sisip penanda, pratinjau saat mengetik, simpan, dan teks bawaan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        const bagian = page.getByTestId('latar-belakang-baku');
+        await bagian.getByRole('button', { name: 'Ubah' }).click();
+        const editor = bagian.getByTestId('editor-latar');
+        const paragraf = editor.getByLabel('Paragraf baku');
+        const penutup = editor.getByLabel('Kalimat penutup tiap kegiatan');
+        const pratinjau = editor.getByTestId('pratinjau-latar');
+        await expect(paragraf).toBeFocused();
+        await expect(paragraf).toHaveValue(/Tahun Anggaran \{tahun\} memerlukan/);
+
+        await paragraf.fill('Visi madrasah untuk Tahun Anggaran ');
+        await editor.getByRole('button', { name: 'Sisipkan {tahun}' }).first().click();
+        await paragraf.press('End');
+        await paragraf.pressSequentially('. Salah {thn}');
+        await expect(paragraf).toHaveValue('Visi madrasah untuk Tahun Anggaran {tahun}. Salah {thn}');
+        await expect(pratinjau.locator('[data-pratinjau="paragraf"]')).toHaveText('Visi madrasah untuk Tahun Anggaran 2026. Salah {thn}');
+        await expect(pratinjau.locator('[data-pratinjau="paragraf"] span.bg-brand-100')).toHaveText('2026');
+        await expect(editor.getByText('Penanda tidak dikenal: {thn}')).toBeVisible();
+
+        await penutup.fill('Kegiatan  mendukung Perkin.');
+        await penutup.evaluate((el) => el.setSelectionRange(9, 9));
+        await editor.getByRole('button', { name: 'Sisipkan {nama_kegiatan}' }).click();
+        await expect(penutup).toHaveValue('Kegiatan {nama_kegiatan} mendukung Perkin.');
+        await expect(pratinjau.locator('[data-pratinjau="penutup"]')).toContainText(/^Kegiatan \S.+ mendukung Perkin\.$/);
+
+        await editor.getByRole('button', { name: 'Simpan' }).click();
+        await expect(editor.getByRole('alert')).toContainText('Penanda {thn} tidak dikenal');
+        await paragraf.fill('Visi madrasah untuk Tahun Anggaran {tahun}.');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await bagian.screenshot({ path: `storage/playwright/shots/latar-belakang-editor-${testInfo.project.name}.png` });
+        await editor.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('Latar belakang baku TA 2026 tersimpan.')).toBeVisible();
+        await expect(bagian.getByTestId('paragraf-baku')).toHaveText('Visi madrasah untuk Tahun Anggaran 2026.');
+        await expect(bagian.getByTestId('kalimat-sisip')).toHaveText(/^\s*Kegiatan nama kegiatan mendukung Perkin\.\s*$/);
+        await expect(page.getByTestId('pratinjau-dasar-hukum')).toContainText('Visi madrasah untuk Tahun Anggaran 2026.');
+
+        // Pulihkan teks bawaan (proyek mobile & tes dokumen memakai data yang sama).
+        await bagian.getByRole('button', { name: 'Ubah' }).click();
+        await editor.getByRole('button', { name: 'Pakai teks bawaan' }).click();
+        await expect(paragraf).toHaveValue(/^Madrasah Tsanawiyah Negeri 2 Kota Malang/);
+        await editor.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('Latar belakang baku TA 2026 tersimpan.').last()).toBeVisible();
+        await expect(bagian.getByTestId('paragraf-baku')).toContainText('Madrasah Tsanawiyah Negeri 2 Kota Malang');
+        await expect(bagian.getByTestId('kalimat-sisip')).toContainText('Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan');
+    });
 });

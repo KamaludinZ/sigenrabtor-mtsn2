@@ -13,6 +13,8 @@ const KASUS_RINGKASAN_MATRIK = JSON.parse(readFileSync(new URL('../fixtures/ring
 const KASUS_KONSISTENSI = JSON.parse(readFileSync(new URL('../fixtures/konsistensi-bulan.json', import.meta.url), 'utf-8'));
 // NIP bersama: juga diuji di tests/Feature/Pengaturan/NipTest.php terhadap App\Support\Pengaturan\Nip.
 const KASUS_NIP = JSON.parse(readFileSync(new URL('../fixtures/nip.json', import.meta.url), 'utf-8'));
+// Penanda teks baku bersama: juga diuji di tests/Feature/Pengaturan/LatarBelakangBakuTest.php terhadap TeksBaku.
+const KASUS_TEKS_BAKU = JSON.parse(readFileSync(new URL('../fixtures/teks-baku.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -108,5 +110,16 @@ test.describe('NIP di klien', () => {
         await page.goto('/kegiatan/1/rab');
         const hasil = await page.evaluate((kasus) => kasus.map((k) => ({ format: window.SIRABTOR.nip(k.masukan), galat: window.SIRABTOR.galatNip(k.masukan) })), KASUS_NIP);
         expect(hasil).toEqual(KASUS_NIP.map(({ format, galat }) => ({ format, galat })));
+    });
+});
+
+test.describe('Teks baku di klien', () => {
+    test('penanda teks baku klien sama dengan TeksBaku server', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => ({
+            isi: window.SIRABTOR.isiTeksBaku(k.teks, k.tahun, k.nama),
+            asing: window.SIRABTOR.penandaAsing(k.teks, ['{tahun}', '{nama_kegiatan}']),
+        })), KASUS_TEKS_BAKU);
+        expect(hasil).toEqual(KASUS_TEKS_BAKU.map(({ isi, asing }) => ({ isi, asing })));
     });
 });

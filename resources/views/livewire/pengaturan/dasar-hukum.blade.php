@@ -146,8 +146,13 @@
                         <h2 id="judul-latar-baku" class="text-base font-semibold text-stone-900">Latar belakang baku</h2>
                         <p class="mt-0.5 text-sm text-stone-500">Paragraf pembuka bagian 1 KAK/TOR semua kegiatan (visi madrasah).</p>
                     </div>
-                    <button type="button" class="btn-secondary shrink-0 self-start" disabled title="Sedang disiapkan"><x-ui.icon name="pencil" class="size-4" /> Ubah <x-ui.segera /></button>
+                    @if ($bolehUbah && ! $suntingLatar)
+                        <button type="button" wire:click="ubahLatar" class="btn-secondary shrink-0 self-start"><x-ui.icon name="pencil" class="size-4" /> Ubah</button>
+                    @endif
                 </header>
+                @if ($suntingLatar)
+                    @include('livewire.pengaturan.partials.editor-latar-belakang')
+                @else
                 <div class="space-y-4 px-5 py-4 sm:px-6">
                     <div>
                         <h3 class="text-xs font-semibold text-stone-500">Paragraf baku</h3>
@@ -162,6 +167,7 @@
                         <p class="mt-1 text-xs text-stone-500">Nama kegiatan disisipkan otomatis (tanpa awalan "Kegiatan"). Di antara paragraf baku dan kalimat ini, leading dapat menambah paragraf khusus kegiatannya.</p>
                     </div>
                 </div>
+                @endif
             </section>
         </div>
 

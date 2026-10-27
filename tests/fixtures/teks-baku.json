@@ -1,0 +1,7 @@
+[
+    { "teks": "Tahun Anggaran {tahun} — kegiatan {nama_kegiatan}.", "tahun": 2026, "nama": "Kegiatan Workshop Guru", "isi": "Tahun Anggaran 2026 — kegiatan Workshop Guru.", "asing": [] },
+    { "teks": "Tanpa penanda sama sekali.", "tahun": 2026, "nama": null, "isi": "Tanpa penanda sama sekali.", "asing": [] },
+    { "teks": "{nama_kegiatan} tetap bila nama kosong; {tahun}{tahun}", "tahun": 2027, "nama": null, "isi": "{nama_kegiatan} tetap bila nama kosong; 20272027", "asing": [] },
+    { "teks": "Nama  {nama_kegiatan}", "tahun": 2026, "nama": "  kegiatan   Rapat Koordinasi ", "isi": "Nama  Rapat Koordinasi", "asing": [] },
+    { "teks": "Salah {thn} dan {Tahun}, lagi {thn} {} {nama kegiatan}", "tahun": 2026, "nama": "Rapat", "isi": "Salah {thn} dan {Tahun}, lagi {thn} {} {nama kegiatan}", "asing": ["{thn}", "{Tahun}", "{}", "{nama kegiatan}"] }
+]

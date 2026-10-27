@@ -25,4 +25,11 @@ interface DasarHukumRepository
      * @param  array{dasar_hukum: list<array{id?: string|null, teks: string}>, latar_belakang: string, kalimat_penutup: string}  $data
      */
     public function simpan(int $tahun, array $data): void;
+
+    /**
+     * Paragraf latar belakang baku & kalimat penutup bawaan (dipakai tahun yang belum diatur dan "Pakai teks bawaan").
+     *
+     * @return array{latar_belakang: string, kalimat_penutup: string}
+     */
+    public function teksBawaan(): array;
 }

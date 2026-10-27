@@ -7,6 +7,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\KesiapanPengaturan;
+use App\Support\Pengaturan\LatarBelakangBaku;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Stub\StubData;
@@ -22,7 +23,8 @@ use Livewire\Component;
  * menyisipkan nama kegiatan, tersimpan lewat DasarHukumRepository (teks mentah, penanda diisi TeksBaku). Tahun yang dilihat
  * di `?ta=` ('' = tahun aktif); pratinjau memakai susunan yang sama dengan dokumen (SusunanKak, KalimatKak). Butir dasar
  * hukum ditambah/diubah/dihapus (bisa diurungkan) dan diurutkan (seret atau naik/turun) satu per satu dan langsung
- * tersimpan (aturan & tanda baca cetak di DaftarDasarHukum); tahun terkunci hanya dilihat.
+ * tersimpan (aturan & tanda baca cetak di DaftarDasarHukum); paragraf baku & kalimat penutup disunting bersama di editor
+ * berpratinjau (aturan LatarBelakangBaku). Tahun terkunci hanya dilihat.
  */
 #[Layout('layouts.app')]
 class DasarHukum extends Component
@@ -41,6 +43,12 @@ class DasarHukum extends Component
     /** Pengumuman pembaca layar setelah butir dipindah. */
     public string $pengumuman = '';
 
+    /** Editor latar belakang baku terbuka. */
+    public bool $suntingLatar = false;
+
+    /** @var array{latar_belakang: string, kalimat_penutup: string} Teks mentah (berpenanda) yang sedang disunting. */
+    public array $isianLatar = ['latar_belakang' => '', 'kalimat_penutup' => ''];
+
     public function mount(): void
     {
         $this->rapikanTahun();
@@ -50,6 +58,7 @@ class DasarHukum extends Component
     {
         $this->rapikanTahun();
         $this->batalButir();
+        $this->batalLatar();
         $this->butirTerhapus = null;
         unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
     }
@@ -158,6 +167,81 @@ class DasarHukum extends Component
         array_splice($daftar, $posisi, 0, [$terhapus['butir']]);
         $this->simpanDaftar($repo, $daftar, 'kembalikan butir '.($posisi + 1).': '.Str::limit(DaftarDasarHukum::rapikan($terhapus['butir']['teks']), 120));
         $this->dispatch('notify', message: 'Butir '.($posisi + 1).' dikembalikan.', type: 'success');
+    }
+
+    public function ubahLatar(): void
+    {
+        if ($this->tahunTerkunci()) {
+            return;
+        }
+
+        $this->batalLatar();
+        $this->isianLatar = ['latar_belakang' => $this->pengaturan['latar_belakang'], 'kalimat_penutup' => $this->pengaturan['kalimat_penutup']];
+        $this->suntingLatar = true;
+    }
+
+    public function batalLatar(): void
+    {
+        $this->reset('suntingLatar', 'isianLatar');
+        $this->resetErrorBag(['isianLatar.latar_belakang', 'isianLatar.kalimat_penutup']);
+    }
+
+    /** Isi editor dengan teks bawaan (belum tersimpan sampai Simpan). */
+    public function pakaiBawaanLatar(DasarHukumRepository $repo): void
+    {
+        if (! $this->suntingLatar) {
+            return;
+        }
+
+        $this->isianLatar = $repo->teksBawaan();
+        $this->resetErrorBag(['isianLatar.latar_belakang', 'isianLatar.kalimat_penutup']);
+    }
+
+    public function simpanLatar(DasarHukumRepository $repo): void
+    {
+        if (! $this->suntingLatar || $this->tahunTerkunci()) {
+            return;
+        }
+
+        $this->resetErrorBag(['isianLatar.latar_belakang', 'isianLatar.kalimat_penutup']);
+        $this->isianLatar = [
+            'latar_belakang' => LatarBelakangBaku::rapikan((string) ($this->isianLatar['latar_belakang'] ?? '')),
+            'kalimat_penutup' => LatarBelakangBaku::rapikan((string) ($this->isianLatar['kalimat_penutup'] ?? '')),
+        ];
+        $galat = array_filter([
+            'isianLatar.latar_belakang' => LatarBelakangBaku::galatParagraf($this->isianLatar['latar_belakang']),
+            'isianLatar.kalimat_penutup' => LatarBelakangBaku::galatPenutup($this->isianLatar['kalimat_penutup']),
+        ]);
+        foreach ($galat as $kolom => $pesan) {
+            $this->addError($kolom, $pesan);
+        }
+        if ($galat !== []) {
+            return;
+        }
+
+        $lama = $this->pengaturan;
+        $berubah = array_keys(array_filter([
+            'paragraf baku' => $this->isianLatar['latar_belakang'] !== $lama['latar_belakang'],
+            'kalimat penutup' => $this->isianLatar['kalimat_penutup'] !== $lama['kalimat_penutup'],
+        ]));
+        if ($berubah === []) {
+            $this->batalLatar();
+            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+            return;
+        }
+
+        $tahun = $this->tahunDilihat();
+        $repo->simpan($tahun, $this->isianLatar + ['dasar_hukum' => $lama['dasar_hukum']]);
+        $keterangan = "Latar belakang TA {$tahun} — ubah ".implode(' & ', $berubah);
+        if (in_array('kalimat penutup', $berubah, true)) {
+            $keterangan .= ': '.Str::limit($this->isianLatar['kalimat_penutup'], 120);
+        }
+        RiwayatPengaturan::catat('ubah_latar_belakang', $keterangan);
+
+        unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
+        $this->batalLatar();
+        $this->dispatch('notify', message: "Latar belakang baku TA {$tahun} tersimpan.", type: 'success');
     }
 
     /** Tombol naik/turun: geser satu posisi ($arah -1/1), fokus tetap di tombol yang sama. */
