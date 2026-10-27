@@ -1,0 +1,11 @@
+[
+    { "nama": "KAK RAB DIPA ttd.pdf", "ukuran": 245760, "kepala": "%PDF-", "galat": null },
+    { "nama": "pindaian.PDF", "ukuran": 10485760, "kepala": "%PDF-", "galat": null },
+    { "nama": "pindaian.pdf", "ukuran": 10485761, "kepala": "%PDF-", "galat": "Ukuran arsip maksimal 10 MB — perkecil resolusi pindaian." },
+    { "nama": "kosong.pdf", "ukuran": 0, "kepala": "", "galat": "Berkas kosong — pilih ulang hasil pindaian." },
+    { "nama": "foto-ttd.jpg", "ukuran": 120000, "kepala": "ÿØÿà\u0000", "galat": "Arsip final harus berupa berkas PDF." },
+    { "nama": "arsip.pdf.docx", "ukuran": 52000, "kepala": "PK\u0003\u0004\u0014", "galat": "Arsip final harus berupa berkas PDF." },
+    { "nama": "tanpa-ekstensi", "ukuran": 52000, "kepala": "%PDF-", "galat": "Arsip final harus berupa berkas PDF." },
+    { "nama": "foto-diganti-nama.pdf", "ukuran": 120000, "kepala": "ÿØÿà\u0000", "galat": "Berkas ini bukan PDF yang sah — simpan ulang hasil pindaian sebagai PDF." },
+    { "nama": "besar-dan-palsu.pdf", "ukuran": 20971520, "kepala": "GIF89", "galat": "Ukuran arsip maksimal 10 MB — perkecil resolusi pindaian." }
+]

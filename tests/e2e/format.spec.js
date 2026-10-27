@@ -15,6 +15,8 @@ const KASUS_KONSISTENSI = JSON.parse(readFileSync(new URL('../fixtures/konsisten
 const KASUS_NIP = JSON.parse(readFileSync(new URL('../fixtures/nip.json', import.meta.url), 'utf-8'));
 // Penanda teks baku bersama: juga diuji di tests/Feature/Pengaturan/LatarBelakangBakuTest.php terhadap TeksBaku.
 const KASUS_TEKS_BAKU = JSON.parse(readFileSync(new URL('../fixtures/teks-baku.json', import.meta.url), 'utf-8'));
+// Pemeriksaan berkas arsip final bersama: juga diuji di tests/Feature/Kegiatan/ArsipFinalTest.php terhadap ArsipFinal.
+const KASUS_ARSIP = JSON.parse(readFileSync(new URL('../fixtures/arsip-final.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -121,5 +123,13 @@ test.describe('Teks baku di klien', () => {
             asing: window.SIRABTOR.penandaAsing(k.teks, ['{tahun}', '{nama_kegiatan}', '{leading}', '{uraian_rktm}', '{uraian_sk}', '{uraian_iksk}']),
         })), KASUS_TEKS_BAKU);
         expect(hasil).toEqual(KASUS_TEKS_BAKU.map(({ isi, asing }) => ({ isi, asing })));
+    });
+});
+
+test.describe('Berkas arsip final di klien', () => {
+    test('pemeriksaan berkas klien sama dengan ArsipFinal::galatBerkas server', async ({ page }) => {
+        await page.goto('/kegiatan/1/rab');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.galatArsip(k)), KASUS_ARSIP);
+        expect(hasil).toEqual(KASUS_ARSIP.map((k) => k.galat));
     });
 });

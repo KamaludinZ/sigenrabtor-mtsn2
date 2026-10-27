@@ -43,14 +43,10 @@
                     $idInput = 'arsip-'.mb_strtolower($s);
                 @endphp
                 <li class="rounded-xl p-3 ring-1 ring-stone-200" data-arsip="{{ $s }}" wire:key="arsip-{{ $s }}"
-                    x-data="{ unggah: false, persen: 0 }"
+                    {{-- Berkas diperiksa di klien (jenis, ukuran, isi PDF) sebelum diunggah: resources/js/arsip-final.js. --}}
+                    x-data="unggahArsip({ sumber: @js($s) })"
                     {{-- Memilih berkas bukan perubahan isian formulir: jangan sampai ke penanda "belum disimpan" Data Kegiatan. --}}
-                    x-on:input.stop
-                    x-on:livewire-upload-start="unggah = true; persen = 0"
-                    x-on:livewire-upload-progress="persen = $event.detail.progress"
-                    x-on:livewire-upload-finish="unggah = false"
-                    x-on:livewire-upload-error="unggah = false"
-                    x-on:livewire-upload-cancel="unggah = false">
+                    x-on:input.stop>
                     <div class="flex flex-wrap items-center gap-3">
                         <x-rab.lencana-sumber :sumber="$s" awalan="RAB" class="text-xs" />
                         <div class="min-w-0 flex-1 text-sm">
@@ -75,7 +71,7 @@
                             @if ($boleh && $konfirmasiHapus !== $s)
                                 <label for="{{ $idInput }}" class="btn-secondary cursor-pointer px-2.5 py-1.5 text-sm has-focus-visible:outline-2 has-focus-visible:outline-brand-600" x-bind:class="{ 'pointer-events-none opacity-60': unggah }">
                                     <x-ui.icon name="upload" class="size-4" /> {{ $a ? 'Ganti' : 'Unggah PDF' }}
-                                    <input type="file" id="{{ $idInput }}" wire:model="berkas.{{ $s }}" accept="application/pdf,.pdf" class="sr-only" data-testid="input-arsip-{{ mb_strtolower($s) }}">
+                                    <input type="file" id="{{ $idInput }}" x-on:change="pilih($event)" accept="application/pdf,.pdf" class="sr-only" data-testid="input-arsip-{{ mb_strtolower($s) }}">
                                 </label>
                                 @if ($a)
                                     <button type="button" wire:click="$set('konfirmasiHapus', '{{ $s }}')" class="btn-ghost px-2 py-1.5 text-sm text-red-700 hover:bg-red-50" aria-label="Hapus arsip RAB {{ $s }}">
@@ -100,8 +96,11 @@
                         <div class="h-1.5 overflow-hidden rounded-full bg-stone-100"><div class="h-full rounded-full bg-brand-600 transition-all" x-bind:style="`width: ${persen}%`"></div></div>
                         <p class="mt-1 text-xs text-stone-500">Mengunggah… <span x-text="persen"></span>%</p>
                     </div>
+                    <p x-cloak x-show="galat" class="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-arsip-klien-{{ mb_strtolower($s) }}">
+                        <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> <span x-text="galat"></span>
+                    </p>
                     @error('berkas.'.$s)
-                        <p class="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-arsip-{{ mb_strtolower($s) }}">
+                        <p x-show="! galat" class="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-arsip-{{ mb_strtolower($s) }}">
                             <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> {{ $message }}
                         </p>
                     @enderror

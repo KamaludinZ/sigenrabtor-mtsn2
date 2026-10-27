@@ -89,17 +89,28 @@ class ArsipFinalTest extends TestCase
     {
         $id = $this->kegiatan();
 
+        // Pemeriksaan server sama dengan klien (galatArsip): berlaku juga bila klien dilewati.
         Livewire::test(PanelArsipFinal::class, ['kegiatanId' => $id])
             ->set('berkas.DIPA', UploadedFile::fake()->image('foto.jpg'))
-            ->assertHasErrors(['berkas.DIPA' => 'mimes'])
+            ->assertHasErrors('berkas.DIPA')
             ->assertSee('Arsip final harus berupa berkas PDF.')
             ->set('berkas.DIPA', UploadedFile::fake()->createWithContent('palsu.pdf', 'bukan pdf'))
             ->assertSee('Berkas ini bukan PDF yang sah')
             ->set('berkas.DIPA', $this->pdf('besar.pdf', ArsipFinal::MAKS_KB + 1))
-            ->assertHasErrors(['berkas.DIPA' => 'max'])
-            ->assertSee('Ukuran arsip maksimal 10 MB');
+            ->assertSee('Ukuran arsip maksimal 10 MB')
+            ->set('berkas.DIPA', $this->pdf('benar.pdf'))
+            ->assertHasNoErrors();
 
-        $this->assertSame([], app(ArsipFinalRepository::class)->untukKegiatan($id));
+        $this->assertSame(['DIPA'], array_keys(app(ArsipFinalRepository::class)->untukKegiatan($id)));
+    }
+
+    public function test_aturan_berkas_sama_dengan_klien(): void
+    {
+        $kasus = json_decode((string) file_get_contents(base_path('tests/fixtures/arsip-final.json')), true);
+
+        foreach ($kasus as $k) {
+            $this->assertSame($k['galat'], ArsipFinal::galatBerkas($k['nama'], $k['ukuran'], $k['kepala']), $k['nama']);
+        }
     }
 
     public function test_arsip_terkunci_selama_final_dan_bisa_dibuka(): void

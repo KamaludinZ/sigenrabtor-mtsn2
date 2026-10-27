@@ -175,7 +175,20 @@ test.describe('Pemeriksaan', () => {
         await expect(panelStatus(page).getByTestId('final-terhalang')).toContainText('Unggah arsip final bertanda tangan untuk RAB DIPA sebelum menandai final.');
         const arsip = page.getByTestId('panel-arsip-final');
         await expect(arsip.getByTestId('jumlah-arsip')).toHaveText('0 dari 1 diunggah');
-        await arsip.getByTestId('input-arsip-dipa').setInputFiles('tests/fixtures/arsip-contoh.pdf');
+        // Berkas yang salah ditolak di peramban sebelum diunggah (tanpa request unggah).
+        const unggahan = [];
+        page.on('request', (r) => { if (r.url().includes('/upload-file')) unggahan.push(r.url()); });
+        const inputDipa = arsip.getByTestId('input-arsip-dipa');
+        await inputDipa.setInputFiles({ name: 'foto-ttd.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00]) });
+        await expect(arsip.getByTestId('galat-arsip-klien-dipa')).toHaveText('Arsip final harus berupa berkas PDF.');
+        await inputDipa.setInputFiles({ name: 'foto-diganti-nama.pdf', mimeType: 'application/pdf', buffer: Buffer.from('bukan pdf') });
+        await expect(arsip.getByTestId('galat-arsip-klien-dipa')).toHaveText('Berkas ini bukan PDF yang sah — simpan ulang hasil pindaian sebagai PDF.');
+        expect(unggahan).toHaveLength(0);
+        await expect(arsip.getByTestId('jumlah-arsip')).toHaveText('0 dari 1 diunggah');
+
+        await inputDipa.setInputFiles('tests/fixtures/arsip-contoh.pdf');
+        await expect(arsip.getByTestId('galat-arsip-klien-dipa')).toBeHidden();
+        await expect.poll(() => unggahan.length).toBe(1);
         await expect(arsip.locator('[data-arsip="DIPA"] [data-nama-arsip]')).toHaveText('arsip-contoh.pdf');
         await expect(arsip.getByTestId('arsip-lengkap')).toBeVisible();
         await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);

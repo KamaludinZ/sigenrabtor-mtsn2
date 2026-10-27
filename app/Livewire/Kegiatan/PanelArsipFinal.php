@@ -7,7 +7,6 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Stub\StubData;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -15,8 +14,9 @@ use Livewire\WithFileUploads;
 
 /**
  * Panel arsip final di Data Kegiatan (PRD F18): selama Disetujui, PDF bertanda tangan/pindaian diunggah per sumber dana
- * (langsung tersimpan begitu selesai terunggah; bisa diganti atau dihapus); selama Final hanya bisa dilihat. Setiap
- * perubahan men-dispatch `arsip-final-berubah` agar panel status menghitung ulang syarat "Tandai final".
+ * (diperiksa dulu di klien oleh Alpine `unggahArsip`, lalu langsung tersimpan begitu selesai terunggah; bisa diganti atau
+ * dihapus); selama Final hanya bisa dilihat. Setiap perubahan men-dispatch `arsip-final-berubah` agar panel status
+ * menghitung ulang syarat "Tandai final".
  */
 class PanelArsipFinal extends Component
 {
@@ -69,21 +69,13 @@ class PanelArsipFinal extends Component
             return;
         }
 
-        try {
-            $this->validate(
-                ["berkas.{$sumber}" => ['required', 'file', 'mimes:pdf', 'max:'.ArsipFinal::MAKS_KB]],
-                [
-                    "berkas.{$sumber}.mimes" => 'Arsip final harus berupa berkas PDF.',
-                    "berkas.{$sumber}.max" => 'Ukuran arsip maksimal '.(ArsipFinal::MAKS_KB / 1024).' MB — perkecil resolusi pindaian.',
-                ],
-            );
-            if (! ArsipFinal::pdfSah($this->berkas[$sumber])) {
-                throw ValidationException::withMessages(["berkas.{$sumber}" => 'Berkas ini bukan PDF yang sah — simpan ulang hasil pindaian sebagai PDF.']);
-            }
-        } catch (ValidationException $e) {
+        // Aturan sama dengan pemeriksaan klien (galatArsip) agar pesannya sama walau klien dilewati.
+        $galat = is_object($this->berkas[$sumber] ?? null) ? ArsipFinal::galatUnggahan($this->berkas[$sumber]) : 'Pilih berkas PDF hasil pindaian.';
+        if ($galat !== null) {
             $this->buangBerkas($sumber);
+            $this->addError("berkas.{$sumber}", $galat);
 
-            throw $e;
+            return;
         }
 
         $ganti = isset($this->arsip[$sumber]);

@@ -54,12 +54,30 @@ final class ArsipFinal
         return "Unggah arsip final bertanda tangan untuk {$teks} sebelum menandai final.";
     }
 
-    /** Berkas benar-benar PDF (diawali penanda %PDF-), bukan sekadar berekstensi .pdf. */
-    public static function pdfSah(UploadedFile $berkas): bool
+    /**
+     * Pesan galat berkas arsip, urut pemeriksaan: kosong, bukan .pdf, terlalu besar, isinya bukan PDF (penanda %PDF-);
+     * null bila boleh diunggah. Kembaran klien `galatArsip()` (resources/js/arsip-final.js) memeriksa hal yang sama sebelum
+     * berkas dikirim — kasus bersama tests/fixtures/arsip-final.json.
+     *
+     * @param  string  $kepala  Beberapa bait pertama isi berkas.
+     */
+    public static function galatBerkas(string $nama, int $ukuran, string $kepala): ?string
     {
-        $isi = @file_get_contents($berkas->getRealPath(), false, null, 0, 5);
+        return match (true) {
+            $ukuran <= 0 => 'Berkas kosong — pilih ulang hasil pindaian.',
+            strtolower(pathinfo($nama, PATHINFO_EXTENSION)) !== 'pdf' => 'Arsip final harus berupa berkas PDF.',
+            $ukuran > self::MAKS_KB * 1024 => 'Ukuran arsip maksimal '.(self::MAKS_KB / 1024).' MB — perkecil resolusi pindaian.',
+            ! str_starts_with($kepala, '%PDF-') => 'Berkas ini bukan PDF yang sah — simpan ulang hasil pindaian sebagai PDF.',
+            default => null,
+        };
+    }
 
-        return $isi === '%PDF-';
+    /** galatBerkas() untuk berkas unggahan (nama asli, ukuran, 5 bait pertama). */
+    public static function galatUnggahan(UploadedFile $berkas): ?string
+    {
+        $kepala = @file_get_contents($berkas->getRealPath(), false, null, 0, 5);
+
+        return self::galatBerkas($berkas->getClientOriginalName(), (int) $berkas->getSize(), $kepala === false ? '' : $kepala);
     }
 
     /** "245 KB", "1,2 MB". */
