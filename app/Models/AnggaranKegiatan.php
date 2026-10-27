@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Attributes\Unguarded;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * RAB satu kegiatan × sumber dana (tabel anggaran_kegiatan): pagu (null = belum diisi) dan induk rincian & termin.
@@ -24,5 +25,17 @@ class AnggaranKegiatan extends Model
     public function kegiatan(): BelongsTo
     {
         return $this->belongsTo(Kegiatan::class, 'activity_id');
+    }
+
+    /** @return HasMany<ItemBelanja, $this> */
+    public function rincian(): HasMany
+    {
+        return $this->hasMany(ItemBelanja::class)->orderBy('urutan');
+    }
+
+    /** @return HasMany<Termin, $this> */
+    public function termin(): HasMany
+    {
+        return $this->hasMany(Termin::class)->orderBy('nomor_termin');
     }
 }
