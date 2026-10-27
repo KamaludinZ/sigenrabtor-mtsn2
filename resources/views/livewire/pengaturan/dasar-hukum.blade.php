@@ -6,7 +6,9 @@
     $sisip = $this->kalimatSisip();
     $ta = $this->tahunDilihat();
     $tahunAktif = \App\Support\Stub\StubData::tahunAktif()['tahun'];
-    $contoh = \App\Support\Kegiatan\KalimatKak::tanpaAwalanKegiatan($this->contohKegiatan());
+    $kegiatanContoh = $this->contohKegiatan();
+    $nilaiContoh = \App\Support\Pengaturan\TeksBaku::nilaiKegiatan($kegiatanContoh);
+    $contoh = $nilaiContoh[\App\Support\Pengaturan\TeksBaku::NAMA_KEGIATAN];
     $kesiapan = $this->kesiapan();
     $pengaturan = $this->pengaturan;
     $bolehUbah = ! $this->tahunTerkunci();
@@ -162,9 +164,9 @@
                     <div>
                         <h3 class="text-xs font-semibold text-stone-500">Kalimat penutup tiap kegiatan</h3>
                         <p class="mt-1 rounded-lg bg-stone-50 px-3 py-2 text-sm leading-relaxed text-stone-800 ring-1 ring-stone-200" data-testid="kalimat-sisip">
-                            {{ $sisip['sebelum'] }}@if ($sisip['sesudah'] !== null)<mark class="rounded bg-brand-100 px-1 font-medium text-brand-900">nama kegiatan</mark>{{ $sisip['sesudah'] }}@endif
+                            @foreach ($sisip as $potong)@if ($potong['penanda'])<mark class="rounded bg-brand-100 px-1 font-medium text-brand-900" data-variabel="{{ $potong['penanda'] }}">{{ mb_strtolower(\App\Support\Pengaturan\TeksBaku::VARIABEL_KEGIATAN[$potong['penanda']]) }}</mark>@else{{ $potong['teks'] }}@endif@endforeach
                         </p>
-                        <p class="mt-1 text-xs text-stone-500">Nama kegiatan disisipkan otomatis (tanpa awalan "Kegiatan"). Di antara paragraf baku dan kalimat ini, leading dapat menambah paragraf khusus kegiatannya.</p>
+                        <p class="mt-1 text-xs text-stone-500">Bagian bertanda diisi data tiap kegiatan (nama tanpa awalan "Kegiatan"); variabel yang belum diisi kegiatan ditandai di pratinjau KAK. Di antara paragraf baku dan kalimat ini, leading dapat menambah paragraf khusus kegiatannya.</p>
                     </div>
                 </div>
                 @endif
@@ -181,7 +183,7 @@
                         <p class="font-bold">1. Latar Belakang</p>
                         <p class="mt-1 text-justify indent-4">{{ $latar }}</p>
                         <p class="mt-1 text-justify indent-4 text-stone-400 italic">[Paragraf khusus kegiatan, bila diisi leading]</p>
-                        <p class="mt-1 text-justify indent-4">{{ \App\Support\Kegiatan\KalimatKak::latarBelakangKegiatan($contoh, $ta) }}</p>
+                        <p class="mt-1 text-justify indent-4">{{ \App\Support\Kegiatan\KalimatKak::latarBelakangKegiatan($kegiatanContoh, $ta) }}</p>
                     </div>
                     <div>
                         <p class="font-bold">2. Dasar Hukum</p>

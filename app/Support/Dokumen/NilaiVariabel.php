@@ -83,7 +83,7 @@ final class NilaiVariabel
             'tempat' => $teks('tempat'),
             'lama_hari' => $lama ? (string) $lama : null,
             'peserta' => $jumlahPeserta ? $jumlahPeserta.' orang'.($jenisPeserta ? " ({$jenisPeserta})" : '') : $jenisPeserta,
-            'latar_belakang' => StubData::latarBelakangBaku($tahun).($nama ? ' '.KalimatKak::latarBelakangKegiatan($nama, $tahun) : ''),
+            'latar_belakang' => StubData::latarBelakangBaku($tahun).($nama ? ' '.KalimatKak::latarBelakangKegiatan($kegiatan, $tahun) : ''),
             'dasar_hukum' => StubData::dasarHukum($tahun),
             'kode_rktm' => $rktm['kode'] ?? null,
             'uraian_rktm' => $rktm ? ($rktm['sub_kegiatan'] ?? $rktm['kegiatan'] ?? null) : null,

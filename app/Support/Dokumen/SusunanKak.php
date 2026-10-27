@@ -12,6 +12,7 @@ use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PenandaTangan;
+use App\Support\Pengaturan\TeksBaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\PeringatanPagu;
@@ -83,7 +84,14 @@ final readonly class SusunanKak
         if (filled($kegiatan['latar_belakang'] ?? null)) {
             $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang'])];
         }
-        $latar[] = $nama === '…' ? $kosong('nama kegiatan') : ['jenis' => 'paragraf', 'teks' => KalimatKak::latarBelakangKegiatan($nama, $tahun)];
+        if ($nama === '…') {
+            $latar[] = $kosong('nama kegiatan');
+        } else {
+            foreach (TeksBaku::kosong(StubData::kalimatPenutupLatar($tahun), TeksBaku::nilaiKegiatan($kegiatan)) as $label) {
+                $kurang[] = mb_strtolower($label).' (kalimat penutup latar belakang)';
+            }
+            $latar[] = ['jenis' => 'paragraf', 'teks' => KalimatKak::latarBelakangKegiatan($kegiatan, $tahun)];
+        }
         $bagian[] = ['nomor' => 1, 'judul' => 'Latar Belakang', 'isi' => $latar];
 
         $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [['jenis' => 'daftar', 'bernomor' => true, 'butir' => StubData::dasarHukum($tahun)]]];

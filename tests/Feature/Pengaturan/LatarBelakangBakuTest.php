@@ -28,9 +28,10 @@ class LatarBelakangBakuTest extends TestCase
         $kasus = json_decode(file_get_contents(base_path('tests/fixtures/teks-baku.json')), true);
 
         foreach ($kasus as $k) {
-            $this->assertSame($k['isi'], TeksBaku::isi($k['teks'], $k['tahun'], $k['nama']), $k['teks']);
-            $this->assertSame($k['asing'], TeksBaku::penandaAsing($k['teks'], [TeksBaku::TAHUN, TeksBaku::NAMA_KEGIATAN]), $k['teks']);
+            $this->assertSame($k['isi'], TeksBaku::isiNilai($k['teks'], $k['tahun'], $k['nilai']), $k['teks']);
+            $this->assertSame($k['asing'], TeksBaku::penandaAsing($k['teks'], TeksBaku::bolehPenutup()), $k['teks']);
         }
+        $this->assertSame('Kegiatan Rapat Koordinasi TA 2026', TeksBaku::isi('Kegiatan {nama_kegiatan} TA {tahun}', 2026, '  kegiatan   Rapat Koordinasi '));
     }
 
     public function test_aturan_paragraf_dan_kalimat_penutup(): void
@@ -39,12 +40,12 @@ class LatarBelakangBakuTest extends TestCase
 
         $this->assertSame('Paragraf latar belakang baku wajib diisi.', LatarBelakangBaku::galatParagraf(''));
         $this->assertSame('Terlalu panjang (maksimal 3000 karakter).', LatarBelakangBaku::galatParagraf(str_repeat('a', 3001)));
-        $this->assertSame('Penanda {nama_kegiatan} tidak dikenal — di paragraf baku hanya {tahun} yang bisa dipakai; nama kegiatan ada di kalimat penutup.', LatarBelakangBaku::galatParagraf('Visi {tahun} untuk {nama_kegiatan}'));
+        $this->assertSame('Penanda {nama_kegiatan} tidak dikenal — di paragraf baku hanya {tahun} yang bisa dipakai; variabel kegiatan disisipkan di kalimat penutup.', LatarBelakangBaku::galatParagraf('Visi {tahun} untuk {nama_kegiatan}'));
         $this->assertNull(LatarBelakangBaku::galatParagraf('Visi madrasah Tahun Anggaran {tahun}.'));
 
         $this->assertSame('Kalimat penutup wajib diisi.', LatarBelakangBaku::galatPenutup(''));
         $this->assertSame('Terlalu panjang (maksimal 500 karakter).', LatarBelakangBaku::galatPenutup(str_repeat('a', 501).'{nama_kegiatan}'));
-        $this->assertSame('Penanda {nama} tidak dikenal — gunakan {nama_kegiatan} atau {tahun}.', LatarBelakangBaku::galatPenutup('Kegiatan {nama}.'));
+        $this->assertSame('Penanda {nama} tidak dikenal — pakai tombol variabel kegiatan atau {tahun}.', LatarBelakangBaku::galatPenutup('Kegiatan {nama}.'));
         $this->assertSame('Sisipkan {nama_kegiatan} di tempat nama kegiatan tercetak.', LatarBelakangBaku::galatPenutup('Kegiatan ini mendukung Perkin.'));
         $this->assertSame('{nama_kegiatan} hanya boleh dipakai sekali.', LatarBelakangBaku::galatPenutup('{nama_kegiatan} dan {nama_kegiatan}.'));
         $this->assertNull(LatarBelakangBaku::galatPenutup('Kegiatan {nama_kegiatan} mendukung Perkin TA {tahun}.'));
@@ -140,5 +141,70 @@ class LatarBelakangBakuTest extends TestCase
             ->call('simpanLatar');
         $this->assertSame(StubDasarHukumRepository::bawaan()['latar_belakang'], app(DasarHukumRepository::class)->untukTahun(2025)['latar_belakang'], 'Tahun terkunci tidak berubah.');
         $this->assertSame(StubDasarHukumRepository::bawaan()['kalimat_penutup'], app(DasarHukumRepository::class)->untukTahun(2026)['kalimat_penutup'], 'Isian yang belum disimpan dibuang.');
+    }
+
+    public function test_variabel_kegiatan_nilai_kosong_dan_potongan(): void
+    {
+        $kegiatan = app(KegiatanRepository::class)->temukan(1);
+        $nilai = TeksBaku::nilaiKegiatan($kegiatan);
+        $this->assertSame(array_keys(TeksBaku::VARIABEL_KEGIATAN), array_keys($nilai));
+        $this->assertSame(KalimatKak::tanpaAwalanKegiatan($kegiatan['nama_kegiatan']), $nilai['{nama_kegiatan}']);
+        $this->assertSame('Tim Penjamin Mutu', $nilai['{leading}']);
+        $this->assertNotNull($nilai['{uraian_rktm}']);
+        $this->assertNotNull($nilai['{uraian_sk}']);
+        $this->assertNotNull($nilai['{uraian_iksk}']);
+        $this->assertSame([null, null, null, null, null], array_values(TeksBaku::nilaiKegiatan([])));
+
+        $teks = 'Kegiatan {nama_kegiatan} oleh {leading} untuk {uraian_iksk} dan {uraian_iksk} TA {tahun}.';
+        $this->assertSame(['Unit leading', 'Indikator (IKSK)'], TeksBaku::kosong($teks, ['{nama_kegiatan}' => 'Rapat']));
+        $this->assertSame([], TeksBaku::kosong($teks, $nilai));
+        $this->assertSame([
+            ['teks' => 'Kegiatan ', 'penanda' => null],
+            ['teks' => '{nama_kegiatan}', 'penanda' => '{nama_kegiatan}'],
+            ['teks' => ' oleh ', 'penanda' => null],
+            ['teks' => '{leading}', 'penanda' => '{leading}'],
+            ['teks' => ' TA {tahun}.', 'penanda' => null],
+        ], TeksBaku::potong('Kegiatan {nama_kegiatan} oleh {leading} TA {tahun}.'));
+        $this->assertNull(LatarBelakangBaku::galatPenutup($teks));
+    }
+
+    public function test_pemilih_variabel_kegiatan_dan_dokumen_mengikuti(): void
+    {
+        $kegiatan = app(KegiatanRepository::class)->temukan(1);
+        $nilai = TeksBaku::nilaiKegiatan($kegiatan);
+
+        $komponen = Livewire::test(DasarHukum::class)
+            ->call('ubahLatar')
+            ->assertSeeHtml('data-testid="pilih-variabel-kegiatan"')
+            ->assertSeeHtmlInOrder(['data-variabel="{nama_kegiatan}"', 'data-variabel="{leading}"', 'data-variabel="{uraian_rktm}"', 'data-variabel="{uraian_sk}"', 'data-variabel="{uraian_iksk}"', 'Tahun anggaran'])
+            ->assertSeeHtml('title="Contoh: Tim Penjamin Mutu"');
+
+        $komponen->set('isianLatar.kalimat_penutup', 'Kegiatan {nama_kegiatan} dilaksanakan {leading} untuk mendukung indikator {uraian_iksk}.')
+            ->call('simpanLatar')
+            ->assertHasNoErrors()
+            ->assertSeeHtmlInOrder(['data-testid="kalimat-sisip"', 'Kegiatan ', 'data-variabel="{nama_kegiatan}">nama kegiatan</mark>', ' dilaksanakan ', 'data-variabel="{leading}">unit leading</mark>', ' untuk mendukung indikator ', 'data-variabel="{uraian_iksk}">indikator (iksk)</mark>', '.']);
+
+        $nama = $nilai['{nama_kegiatan}'];
+        $this->assertSame("Kegiatan {$nama} dilaksanakan Tim Penjamin Mutu untuk mendukung indikator {$nilai['{uraian_iksk}']}.", KalimatKak::latarBelakangKegiatan($kegiatan, 2026));
+        $kak = SusunanKak::dari($kegiatan);
+        $this->assertSame("Kegiatan {$nama} dilaksanakan Tim Penjamin Mutu untuk mendukung indikator {$nilai['{uraian_iksk}']}.", collect(collect($kak->bagian)->firstWhere('nomor', 1)['isi'])->last()['teks']);
+        $this->assertNotContains('indikator (iksk) (kalimat penutup latar belakang)', $kak->kurang);
+
+        // Kegiatan yang belum memilih IKSK/leading: "…" di kalimat & tercatat sebagai kekurangan dokumen.
+        $tanpaKode = ['nama_kegiatan' => 'Rapat Evaluasi', 'leading' => null, 'kode_iksk' => null];
+        $this->assertSame('Kegiatan Rapat Evaluasi dilaksanakan … untuk mendukung indikator ….', KalimatKak::latarBelakangKegiatan($tanpaKode, 2026));
+        $kurang = SusunanKak::dari($tanpaKode)->kurang;
+        $this->assertContains('unit leading (kalimat penutup latar belakang)', $kurang);
+        $this->assertContains('indikator (iksk) (kalimat penutup latar belakang)', $kurang);
+    }
+
+    public function test_contoh_pratinjau_memakai_kegiatan_dengan_variabel_terlengkap(): void
+    {
+        $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Kegiatan Tanpa Kode Apa Pun']);
+        $this->assertNotNull(app(KegiatanRepository::class)->temukan($id));
+
+        $contoh = Livewire::test(DasarHukum::class)->instance()->contohKegiatan();
+        $this->assertNotSame('Kegiatan Tanpa Kode Apa Pun', $contoh['nama_kegiatan']);
+        $this->assertCount(5, array_filter(TeksBaku::nilaiKegiatan($contoh)));
     }
 }

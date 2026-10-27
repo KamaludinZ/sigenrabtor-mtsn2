@@ -24,13 +24,17 @@ class KalimatKak
 
     /**
      * Bagian 1: kalimat penutup latar belakang yang menghubungkan kegiatan dengan Perjanjian Kinerja kepala madrasah —
-     * template per tahun dari Pengaturan › Dasar hukum & latar belakang ($tahun null = tahun aktif).
+     * template per tahun dari Pengaturan › Dasar hukum & latar belakang ($tahun null = tahun aktif), variabel kegiatan diisi
+     * data $kegiatan (yang belum diisi tercetak "…"; daftarnya lewat TeksBaku::kosong()).
+     *
+     * @param  array<string, mixed>  $kegiatan
      */
-    public static function latarBelakangKegiatan(string $nama, ?int $tahun = null): string
+    public static function latarBelakangKegiatan(array $kegiatan, ?int $tahun = null): string
     {
         $tahun ??= StubData::tahunAktif()['tahun'];
+        $nilai = array_map(fn (?string $v) => $v ?? '…', TeksBaku::nilaiKegiatan($kegiatan));
 
-        return TeksBaku::isi(StubData::kalimatPenutupLatar($tahun), $tahun, $nama);
+        return TeksBaku::isiNilai(StubData::kalimatPenutupLatar($tahun), $tahun, $nilai);
     }
 
     /** Bagian 3A "Tujuan": "Kegiatan {nama} bertujuan {tujuan}". */

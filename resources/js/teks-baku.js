@@ -1,40 +1,38 @@
 // Kembaran klien App\Support\Pengaturan\TeksBaku (kasus bersama tests/fixtures/teks-baku.json): penanda {tahun} dan
-// {nama_kegiatan} diisi untuk pratinjau saat mengetik di editor latar belakang baku.
+// variabel kegiatan diisi untuk pratinjau saat mengetik di editor latar belakang baku.
 
-const PENANDA = /\{tahun\}|\{nama_kegiatan\}/g;
-
-/** "Kegiatan Workshop …" → "Workshop …" (KalimatKak::tanpaAwalanKegiatan). */
-function tanpaAwalanKegiatan(nama) {
-    return String(nama).trim().replace(/^kegiatan\s+/iu, '').trim();
-}
+const PENANDA = /\{[a-z_]+\}/g;
 
 /**
- * Teks dipecah menjadi potongan biasa & nilai penanda: [{ teks, penanda: bool }]. Nama null = {nama_kegiatan} dibiarkan.
+ * Teks dipecah menjadi potongan biasa & penanda terisi: [{ teks, penanda: bool, kosong: bool }]. $nilai = { penanda: nilai }
+ * (TeksBaku::nilaiKegiatan); penanda bernilai null tetap tertulis dengan kosong = true, penanda lain dibiarkan sebagai teks.
  */
-export function bagianTeksBaku(teks, tahun, nama = null) {
+export function bagianTeksBaku(teks, tahun, nilai = {}) {
     const sumber = String(teks ?? '');
     const bagian = [];
     let awal = 0;
     for (const cocok of sumber.matchAll(PENANDA)) {
-        if (cocok[0] === '{nama_kegiatan}' && nama === null) {
+        const penanda = cocok[0];
+        if (penanda !== '{tahun}' && !Object.hasOwn(nilai, penanda)) {
             continue;
         }
         if (cocok.index > awal) {
-            bagian.push({ teks: sumber.slice(awal, cocok.index), penanda: false });
+            bagian.push({ teks: sumber.slice(awal, cocok.index), penanda: false, kosong: false });
         }
-        bagian.push({ teks: cocok[0] === '{tahun}' ? String(tahun) : tanpaAwalanKegiatan(nama), penanda: true });
-        awal = cocok.index + cocok[0].length;
+        const isi = penanda === '{tahun}' ? String(tahun) : nilai[penanda];
+        bagian.push({ teks: isi ?? penanda, penanda: true, kosong: isi === null || isi === undefined });
+        awal = cocok.index + penanda.length;
     }
     if (awal < sumber.length) {
-        bagian.push({ teks: sumber.slice(awal), penanda: false });
+        bagian.push({ teks: sumber.slice(awal), penanda: false, kosong: false });
     }
 
     return bagian;
 }
 
-/** TeksBaku::isi(). */
-export function isiTeksBaku(teks, tahun, nama = null) {
-    return bagianTeksBaku(teks, tahun, nama).map((b) => b.teks).join('');
+/** TeksBaku::isiNilai(): penanda bernilai null dibiarkan. */
+export function isiTeksBaku(teks, tahun, nilai = {}) {
+    return bagianTeksBaku(teks, tahun, nilai).map((b) => b.teks).join('');
 }
 
 /** TeksBaku::penandaAsing(): penanda {…} di luar daftar boleh, urut kemunculan tanpa dobel. */
@@ -43,16 +41,19 @@ export function penandaAsing(teks, boleh) {
 }
 
 /**
- * Alpine.data('editorTeksBaku', { tahun, contoh }): pratinjau, peringatan penanda, dan sisip penanda di posisi kursor
- * (event input agar wire:model ikut berubah).
+ * Alpine.data('editorTeksBaku', { tahun, nilai }): pratinjau dengan nilai contoh kegiatan, peringatan penanda, dan sisip
+ * penanda di posisi kursor (event input agar wire:model ikut berubah).
  */
-export default function editorTeksBaku({ tahun, contoh }) {
+export default function editorTeksBaku({ tahun, nilai }) {
     return {
-        bagian(teks, pakaiNama = false) {
-            return bagianTeksBaku(teks, tahun, pakaiNama ? contoh : null);
+        bagian(teks, pakaiNilai = false) {
+            return bagianTeksBaku(teks, tahun, pakaiNilai ? nilai : {});
         },
         asing(teks, boleh) {
             return penandaAsing(teks, boleh);
+        },
+        memuat(teks, penanda) {
+            return String(teks ?? '').includes(penanda);
         },
         sisip(ref, penanda) {
             const el = this.$refs[ref];

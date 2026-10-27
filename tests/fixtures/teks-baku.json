@@ -1,7 +1,7 @@
 [
-    { "teks": "Tahun Anggaran {tahun} — kegiatan {nama_kegiatan}.", "tahun": 2026, "nama": "Kegiatan Workshop Guru", "isi": "Tahun Anggaran 2026 — kegiatan Workshop Guru.", "asing": [] },
-    { "teks": "Tanpa penanda sama sekali.", "tahun": 2026, "nama": null, "isi": "Tanpa penanda sama sekali.", "asing": [] },
-    { "teks": "{nama_kegiatan} tetap bila nama kosong; {tahun}{tahun}", "tahun": 2027, "nama": null, "isi": "{nama_kegiatan} tetap bila nama kosong; 20272027", "asing": [] },
-    { "teks": "Nama  {nama_kegiatan}", "tahun": 2026, "nama": "  kegiatan   Rapat Koordinasi ", "isi": "Nama  Rapat Koordinasi", "asing": [] },
-    { "teks": "Salah {thn} dan {Tahun}, lagi {thn} {} {nama kegiatan}", "tahun": 2026, "nama": "Rapat", "isi": "Salah {thn} dan {Tahun}, lagi {thn} {} {nama kegiatan}", "asing": ["{thn}", "{Tahun}", "{}", "{nama kegiatan}"] }
+    { "teks": "Tahun Anggaran {tahun} — kegiatan {nama_kegiatan}.", "tahun": 2026, "nilai": { "{nama_kegiatan}": "Workshop Guru" }, "isi": "Tahun Anggaran 2026 — kegiatan Workshop Guru.", "asing": [] },
+    { "teks": "Tanpa penanda sama sekali.", "tahun": 2026, "nilai": {}, "isi": "Tanpa penanda sama sekali.", "asing": [] },
+    { "teks": "{nama_kegiatan} tetap bila nilainya kosong; {tahun}{tahun}", "tahun": 2027, "nilai": { "{nama_kegiatan}": null }, "isi": "{nama_kegiatan} tetap bila nilainya kosong; 20272027", "asing": [] },
+    { "teks": "Kegiatan {nama_kegiatan} oleh {leading} mendukung {uraian_iksk}; {uraian_sk} {uraian_rktm}", "tahun": 2026, "nilai": { "{nama_kegiatan}": "Rapat", "{leading}": "Tim Penjamin Mutu", "{uraian_iksk}": "Persentase guru {tahun}", "{uraian_sk}": null }, "isi": "Kegiatan Rapat oleh Tim Penjamin Mutu mendukung Persentase guru {tahun}; {uraian_sk} {uraian_rktm}", "asing": [] },
+    { "teks": "Salah {thn} dan {Tahun}, lagi {thn} {} {nama kegiatan} {leading}", "tahun": 2026, "nilai": { "{leading}": "Waka Kurikulum" }, "isi": "Salah {thn} dan {Tahun}, lagi {thn} {} {nama kegiatan} Waka Kurikulum", "asing": ["{thn}", "{Tahun}", "{}", "{nama kegiatan}"] }
 ]

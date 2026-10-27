@@ -659,11 +659,17 @@ test.describe('Pengaturan admin', () => {
         await expect(pratinjau.locator('[data-pratinjau="paragraf"] span.bg-brand-100')).toHaveText('2026');
         await expect(editor.getByText('Penanda tidak dikenal: {thn}')).toBeVisible();
 
-        await penutup.fill('Kegiatan  mendukung Perkin.');
+        // Tempat sisip variabel kegiatan: kursor di antara kata, lalu pilih variabelnya.
+        const variabel = editor.getByTestId('pilih-variabel-kegiatan');
+        await penutup.fill('Kegiatan  oleh  mendukung Perkin.');
         await penutup.evaluate((el) => el.setSelectionRange(9, 9));
-        await editor.getByRole('button', { name: 'Sisipkan {nama_kegiatan}' }).click();
-        await expect(penutup).toHaveValue('Kegiatan {nama_kegiatan} mendukung Perkin.');
-        await expect(pratinjau.locator('[data-pratinjau="penutup"]')).toContainText(/^Kegiatan \S.+ mendukung Perkin\.$/);
+        await variabel.getByRole('button', { name: 'Nama kegiatan' }).click();
+        await penutup.evaluate((el) => el.setSelectionRange(30, 30));
+        await variabel.getByRole('button', { name: 'Unit leading' }).click();
+        await expect(penutup).toHaveValue('Kegiatan {nama_kegiatan} oleh {leading} mendukung Perkin.');
+        await expect(variabel.getByRole('button', { name: /Unit leading.*sudah dipakai/ })).toBeVisible();
+        await expect(pratinjau.locator('[data-pratinjau="penutup"]')).toContainText(/^Kegiatan \S.+ oleh Tim Penjamin Mutu mendukung Perkin\.$/);
+        await expect(pratinjau.locator('[data-pratinjau="penutup"] span.bg-brand-100').nth(1)).toHaveText('Tim Penjamin Mutu');
 
         await editor.getByRole('button', { name: 'Simpan' }).click();
         await expect(editor.getByRole('alert')).toContainText('Penanda {thn} tidak dikenal');
@@ -674,7 +680,9 @@ test.describe('Pengaturan admin', () => {
         await editor.getByRole('button', { name: 'Simpan' }).click();
         await expect(page.getByText('Latar belakang baku TA 2026 tersimpan.')).toBeVisible();
         await expect(bagian.getByTestId('paragraf-baku')).toHaveText('Visi madrasah untuk Tahun Anggaran 2026.');
-        await expect(bagian.getByTestId('kalimat-sisip')).toHaveText(/^\s*Kegiatan nama kegiatan mendukung Perkin\.\s*$/);
+        await expect(bagian.getByTestId('kalimat-sisip')).toHaveText(/^\s*Kegiatan nama kegiatan oleh unit leading mendukung Perkin\.\s*$/);
+        await expect(bagian.getByTestId('kalimat-sisip').locator('mark[data-variabel="{leading}"]')).toHaveText('unit leading');
+        await expect(page.getByTestId('pratinjau-dasar-hukum')).toContainText('oleh Tim Penjamin Mutu mendukung Perkin.');
         await expect(page.getByTestId('pratinjau-dasar-hukum')).toContainText('Visi madrasah untuk Tahun Anggaran 2026.');
 
         // Pulihkan teks bawaan (proyek mobile & tes dokumen memakai data yang sama).

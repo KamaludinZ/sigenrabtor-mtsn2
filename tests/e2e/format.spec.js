@@ -117,8 +117,8 @@ test.describe('Teks baku di klien', () => {
     test('penanda teks baku klien sama dengan TeksBaku server', async ({ page }) => {
         await page.goto('/kegiatan/1/rab');
         const hasil = await page.evaluate((kasus) => kasus.map((k) => ({
-            isi: window.SIRABTOR.isiTeksBaku(k.teks, k.tahun, k.nama),
-            asing: window.SIRABTOR.penandaAsing(k.teks, ['{tahun}', '{nama_kegiatan}']),
+            isi: window.SIRABTOR.isiTeksBaku(k.teks, k.tahun, k.nilai),
+            asing: window.SIRABTOR.penandaAsing(k.teks, ['{tahun}', '{nama_kegiatan}', '{leading}', '{uraian_rktm}', '{uraian_sk}', '{uraian_iksk}']),
         })), KASUS_TEKS_BAKU);
         expect(hasil).toEqual(KASUS_TEKS_BAKU.map(({ isi, asing }) => ({ isi, asing })));
     });

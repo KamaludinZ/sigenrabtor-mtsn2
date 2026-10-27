@@ -4,7 +4,8 @@ namespace App\Support\Pengaturan;
 
 /**
  * Aturan isian latar belakang baku (PRD §13): paragraf baku satu paragraf dengan penanda `{tahun}` saja, kalimat penutup
- * wajib memuat `{nama_kegiatan}` tepat sekali (tempat sisip nama kegiatan) dan boleh `{tahun}`.
+ * wajib memuat `{nama_kegiatan}` tepat sekali (tempat sisip nama kegiatan) dan boleh `{tahun}` serta variabel kegiatan lain
+ * (TeksBaku::VARIABEL_KEGIATAN).
  */
 final class LatarBelakangBaku
 {
@@ -28,7 +29,7 @@ final class LatarBelakangBaku
         }
         $asing = TeksBaku::penandaAsing($teks, [TeksBaku::TAHUN]);
         if ($asing !== []) {
-            return 'Penanda '.implode(', ', $asing).' tidak dikenal — di paragraf baku hanya '.TeksBaku::TAHUN.' yang bisa dipakai; nama kegiatan ada di kalimat penutup.';
+            return 'Penanda '.implode(', ', $asing).' tidak dikenal — di paragraf baku hanya '.TeksBaku::TAHUN.' yang bisa dipakai; variabel kegiatan disisipkan di kalimat penutup.';
         }
 
         return null;
@@ -42,9 +43,9 @@ final class LatarBelakangBaku
         if (mb_strlen($teks) > self::MAKS_PENUTUP) {
             return 'Terlalu panjang (maksimal '.self::MAKS_PENUTUP.' karakter).';
         }
-        $asing = TeksBaku::penandaAsing($teks, [TeksBaku::TAHUN, TeksBaku::NAMA_KEGIATAN]);
+        $asing = TeksBaku::penandaAsing($teks, TeksBaku::bolehPenutup());
         if ($asing !== []) {
-            return 'Penanda '.implode(', ', $asing).' tidak dikenal — gunakan '.TeksBaku::NAMA_KEGIATAN.' atau '.TeksBaku::TAHUN.'.';
+            return 'Penanda '.implode(', ', $asing).' tidak dikenal — pakai tombol variabel kegiatan atau '.TeksBaku::TAHUN.'.';
         }
 
         return match (substr_count($teks, TeksBaku::NAMA_KEGIATAN)) {

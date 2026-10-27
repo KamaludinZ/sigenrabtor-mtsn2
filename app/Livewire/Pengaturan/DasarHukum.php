@@ -315,24 +315,26 @@ class DasarHukum extends Component
     }
 
     /**
-     * Kalimat penutup latar belakang per kegiatan tahun yang dilihat, dipecah di tempat sisip nama kegiatan (`sesudah`
-     * null bila templatenya tanpa penanda).
+     * Kalimat penutup latar belakang tahun yang dilihat (tahun terisi), dipotong di tempat sisip variabel kegiatan.
      *
-     * @return array{sebelum: string, sesudah: string|null}
+     * @return list<array{teks: string, penanda: string|null}>
      */
     public function kalimatSisip(): array
     {
-        $bagian = explode(TeksBaku::NAMA_KEGIATAN, TeksBaku::isi($this->pengaturan['kalimat_penutup'], $this->tahunDilihat()), 2);
-
-        return ['sebelum' => $bagian[0], 'sesudah' => $bagian[1] ?? null];
+        return TeksBaku::potong(TeksBaku::isi($this->pengaturan['kalimat_penutup'], $this->tahunDilihat()));
     }
 
-    /** Nama contoh kegiatan untuk pratinjau (kegiatan terbaru), atau contoh baku bila belum ada. */
-    public function contohKegiatan(): string
+    /**
+     * Contoh kegiatan untuk pratinjau: kegiatan bernama dengan variabel kegiatan terlengkap, atau contoh baku bila belum ada.
+     *
+     * @return array<string, mixed>
+     */
+    public function contohKegiatan(): array
     {
-        $kegiatan = collect(app(KegiatanRepository::class)->semua())->first(fn (array $k) => filled($k['nama_kegiatan'] ?? null));
-
-        return $kegiatan['nama_kegiatan'] ?? 'Workshop Penyusunan Kurikulum Madrasah';
+        return collect(app(KegiatanRepository::class)->semua())
+            ->filter(fn (array $k) => filled($k['nama_kegiatan'] ?? null))
+            ->sortByDesc(fn (array $k) => count(array_filter(TeksBaku::nilaiKegiatan($k))))
+            ->first() ?? ['nama_kegiatan' => 'Workshop Penyusunan Kurikulum Madrasah'];
     }
 
     /**

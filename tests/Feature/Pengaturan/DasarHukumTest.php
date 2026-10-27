@@ -45,7 +45,7 @@ class DasarHukumTest extends TestCase
             ->assertSee('4 butir · tercetak bernomor di bagian 2 KAK/TOR sesuai urutan ini — seret nomor untuk memindahkan.')
             ->assertSeeHtmlInOrder(['data-butir="1"', 'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003', 'data-butir="4"', 'Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun 2026.'])
             ->assertSeeHtmlInOrder(['data-testid="paragraf-baku"', 'Madrasah Tsanawiyah Negeri 2 Kota Malang, sebagai lembaga pendidikan Islam', 'Tahun Anggaran 2026'])
-            ->assertSeeHtmlInOrder(['data-testid="kalimat-sisip"', 'Salah satu kegiatan yang relevan dan mendukung program Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan ', '<mark', 'nama kegiatan', '</mark>.'])
+            ->assertSeeHtmlInOrder(['data-testid="kalimat-sisip"', 'Salah satu kegiatan yang relevan dan mendukung program Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan ', '<mark', 'data-variabel="{nama_kegiatan}">nama kegiatan</mark>', '.'])
             ->assertSeeHtmlInOrder(['data-testid="pratinjau-dasar-hukum"', '1. Latar Belakang', 'adalah kegiatan', '2. Dasar Hukum', 'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003'])
             ->assertSee('${latar_belakang}', false)
             ->assertSeeHtml('data-testid="kesiapan-dasar-hukum"');
@@ -92,7 +92,7 @@ class DasarHukumTest extends TestCase
         $this->assertSame([], StubData::dasarHukum(2027));
         $this->assertSame(
             'Salah satu kegiatan yang relevan dan mendukung program Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan Workshop Kurikulum.',
-            KalimatKak::latarBelakangKegiatan('Kegiatan Workshop Kurikulum', 2026),
+            KalimatKak::latarBelakangKegiatan(['nama_kegiatan' => 'Kegiatan Workshop Kurikulum'], 2026),
         );
     }
 
