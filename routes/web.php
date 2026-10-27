@@ -15,6 +15,7 @@ use App\Livewire\Kegiatan\Form as KegiatanForm;
 use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
+use App\Livewire\Master\Daftar as MasterKodeDaftar;
 use App\Livewire\Monitoring\Anggaran as MonitoringAnggaran;
 use App\Livewire\Pagu\Daftar as DataPaguDaftar;
 use App\Livewire\Pengaturan\DasarHukum as PengaturanDasarHukum;
@@ -44,6 +45,9 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');
 Route::get('/monitoring/ekspor/excel', EksporMonitoringExcel::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.excel');
 Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.pdf');
+
+// Master kode tahunan (PRD Fase 6 §14), khusus admin.
+Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');
 
 // Logo kop madrasah: tampil di kop & pratinjau dokumen semua pengguna.
 Route::get('/madrasah/logo', LogoMadrasah::class)->name('madrasah.logo');

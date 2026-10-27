@@ -78,7 +78,8 @@ class IkhtisarPengaturanTest extends TestCase
             ->assertSeeHtml('data-testid="jumlah-wajib-siap">4/7 wajib siap')
             ->assertSeeHtml('data-kesiapan="sk_rktm" data-siap="tidak"')
             ->assertSeeHtml('data-kesiapan="master" data-siap="ya"')
-            ->assertSeeHtml('href="#bagian-master"')
+            ->assertSeeHtml('href="#bagian-leading"')
+            ->assertSeeHtml('href="'.route('master.index').'" wire:navigate')
             ->assertSeeHtml('data-status="perlu"')
             ->assertSee('Opsional · belum diatur');
     }

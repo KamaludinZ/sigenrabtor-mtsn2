@@ -34,8 +34,8 @@ test.describe('Pengaturan admin', () => {
         }
 
         // Butir kesiapan tanpa halaman menuju kartu bagiannya.
-        await kesiapan.getByRole('link', { name: 'Master kode 2026' }).click();
-        await expect(page).toHaveURL(/#bagian-master$/);
+        await kesiapan.getByRole('link', { name: 'Leading & akun' }).click();
+        await expect(page).toHaveURL(/#bagian-leading$/);
         await page.screenshot({ path: `storage/playwright/shots/pengaturan-ikhtisar-${testInfo.project.name}.png`, fullPage: true });
     });
 
@@ -789,5 +789,28 @@ test.describe('Pengaturan admin', () => {
         await susunan.locator('summary').click();
         await expect(susunan.locator('[data-latar="baku"]')).toContainText('Madrasah Tsanawiyah Negeri 2 Kota Malang');
         await expect(susunan.locator('[data-latar="penutup"]')).toContainText('Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan');
+    });
+
+    test('master kode: menu aktif, tab per jenis dengan jumlah & pemakaian, tahun lain terkunci', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan');
+        await page.getByTestId('kesiapan-pengaturan').getByRole('link', { name: 'Master kode 2026' }).click();
+        await expect(page).toHaveURL(/\/master$/);
+        const master = page.getByTestId('master-kode');
+        await expect(master.getByRole('tab', { name: /^SK/ })).toHaveAttribute('aria-selected', 'true');
+        await expect(master.locator('[data-kode="SK.10"]').filter({ visible: true })).toContainText('2 kegiatan');
+
+        await master.getByRole('tab', { name: /RKTM/ }).click();
+        await expect(page).toHaveURL(/jenis=rktm/);
+        await expect(master.getByRole('heading', { name: 'Rencana Kerja Tahunan Madrasah (RKTM)' })).toBeVisible();
+        await expect(master.locator('[data-kode="6.17.12"]').filter({ visible: true })).toContainText('1 kegiatan');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/master-kode-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByTestId('pemilih-tahun-master').getByRole('button', { name: /TA 2025/ }).click();
+        await expect(page).toHaveURL(/ta=2025/);
+        await expect(page.getByTestId('master-terkunci')).toBeVisible();
+        await expect(master.getByTestId('ringkasan-jenis')).toContainText('0 dipakai kegiatan TA 2025');
     });
 });
