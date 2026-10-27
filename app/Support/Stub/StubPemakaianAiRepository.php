@@ -16,6 +16,11 @@ class StubPemakaianAiRepository implements PemakaianAiRepository
         return array_sum($this->baca()[$tanggal][$userId] ?? []);
     }
 
+    public function rincian(int $userId, string $tanggal): array
+    {
+        return array_map('intval', $this->baca()[$tanggal][$userId] ?? []);
+    }
+
     public function catat(int $userId, string $fitur): void
     {
         $semua = $this->baca();

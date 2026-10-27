@@ -24,7 +24,7 @@
                 <x-ui.icon name="sparkles" class="size-4" />
             </span>
             <div class="min-w-0 flex-1">
-                <h2 id="judul-modal-saran" class="text-sm font-semibold text-stone-900">Saran AI · {{ $b['judul'] }}</h2>
+                <h2 id="judul-modal-saran" class="flex flex-wrap items-center gap-2 text-sm font-semibold text-stone-900">Saran AI · {{ $b['judul'] }} <x-ai.status-kuota :status="$this->statusKuota()" ringkas /></h2>
                 <p class="text-xs text-stone-500">Tercetak di {{ $b['tercetak'] }}. Hanya saran — pilih, sunting, lalu pakai atau tolak.</p>
             </div>
             <button type="button" class="btn-ghost px-2.5 py-1.5" wire:click="tutupSaran">

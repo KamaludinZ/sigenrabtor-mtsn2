@@ -16,6 +16,7 @@ use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\PermintaanSaranKalimat;
 use App\Support\Kegiatan\RiwayatSaranAi;
+use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Kegiatan\TombolAi;
 use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PenyediaAi;
@@ -452,6 +453,12 @@ class KalimatAi extends Component
     public function keadaanTombol(string $bagian): array
     {
         return TombolAi::keadaan($bagian, $this->kegiatanSekarang(), $this->dapatDiedit(), $this->sisaAi(), $this->saran[$bagian] ?? [], $this->galatAi[$bagian] ?? null);
+    }
+
+    /** Status kuota AI harian akun yang sedang masuk (<x-ai.status-kuota>). */
+    public function statusKuota(): array
+    {
+        return StatusKuotaAi::untuk(StubData::currentUser());
     }
 
     public function sisaAi(): int

@@ -14,6 +14,7 @@ test.describe('Kalimat KAK (bantuan AI)', () => {
         await expect(page.getByTestId('buat-ai-latar_belakang')).toBeEnabled();
         await expect(page.getByTestId('buat-ai-jadwal')).toHaveAttribute('href', /\/kegiatan\/1\/matrik#jadwal$/);
         await expect(page.getByTestId('bahan-tujuan').locator('li')).toHaveCount(4);
+        await page.getByTestId('batas-aman-ai').screenshot({ path: `storage/playwright/shots/kuota-ai-${testInfo.project.name}.png` });
 
         // Pratinjau bagian KAK mengikuti teks di layar.
         const tujuan = page.locator('[data-bagian-ai="tujuan"]');
@@ -37,6 +38,8 @@ test.describe('Kalimat KAK (bantuan AI)', () => {
         await expect(modal.locator('[data-versi]')).toHaveCount(3);
         await expect(page.getByTestId('buat-ai-tujuan')).toHaveText(/Lihat saran \(3\)/);
         await expect(page.getByTestId('sisa-ai')).toContainText(/Sisa \d+ dari 20 permintaan AI hari ini/);
+        await expect(page.getByTestId('kuota-ai')).toHaveAttribute('data-tingkat', /aman|menipis/);
+        await expect(modal.getByTestId('kuota-ringkas')).toContainText(/Sisa \d+\/20/);
         await modal.locator('[data-versi="2"]').click();
         await expect(modal.locator('[data-versi="2"]')).toHaveAttribute('aria-checked', 'true');
         const sunting = modal.getByTestId('sunting-saran');

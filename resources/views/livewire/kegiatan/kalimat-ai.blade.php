@@ -222,8 +222,8 @@
                     <li class="flex items-start gap-2"><x-ui.icon name="info" class="mt-px size-3.5 shrink-0 text-stone-400" />
                         {{ $ringkasan['penyedia'] ? 'Penyedia: '.$ringkasan['penyedia'].'.' : 'Penyedia AI belum dipilih admin — saran memakai contoh tiruan.' }}
                     </li>
-                    <li class="flex items-start gap-2" data-testid="sisa-ai"><x-ui.icon name="sparkles" class="mt-px size-3.5 shrink-0 text-stone-400" />
-                        Sisa {{ $this->sisaAi() }} dari {{ $ringkasan['batas'] }} permintaan AI hari ini.
+                    <li class="border-t border-stone-100 pt-2">
+                        <x-ai.status-kuota :status="$this->statusKuota()" />
                     </li>
                 </ul>
             </section>

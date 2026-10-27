@@ -18,7 +18,10 @@
 --}}
 <div class="mx-auto max-w-5xl">
     <div class="min-w-0">
-        <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Riwayat Saran AI</h1>
+        <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Riwayat Saran AI</h1>
+            <span class="flex items-center gap-1.5 text-xs text-stone-500">Kuota Anda hari ini <x-ai.status-kuota :status="\App\Support\Kegiatan\StatusKuotaAi::untuk(\App\Support\Stub\StubData::currentUser())" ringkas /></span>
+        </div>
         <p class="mt-1 max-w-3xl text-sm text-stone-500">Setiap saran AI tercatat: bagian, bahan yang dikirim, teks saran, keputusan, pengguna, dan waktu. NIP dan nama pejabat tidak pernah ikut terkirim.</p>
     </div>
 

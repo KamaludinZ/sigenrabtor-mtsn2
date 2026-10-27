@@ -17,6 +17,7 @@ use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\PermintaanUsulanJadwal;
 use App\Support\Kegiatan\RiwayatSaranAi;
+use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
@@ -355,6 +356,12 @@ class MatrikJadwal extends Component
         if ($this->usulan === []) {
             $this->usulGagal = 'AI tidak memberi usulan yang bisa dipakai. Coba lagi atau ubah instruksi.';
         }
+    }
+
+    /** Status kuota AI harian akun yang sedang masuk (panel usulan jadwal). */
+    public function statusKuota(): array
+    {
+        return StatusKuotaAi::untuk(StubData::currentUser());
     }
 
     /** Ganti seluruh baris jadwal dengan satu versi usulan; bisa diurungkan dan baru tersimpan saat "Simpan". */

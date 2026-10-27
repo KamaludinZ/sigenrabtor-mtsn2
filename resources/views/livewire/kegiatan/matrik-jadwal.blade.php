@@ -599,6 +599,7 @@
                         </div>
 
                         <footer class="flex items-center justify-end gap-2 border-t border-stone-200 px-4 py-3 sm:px-6">
+                            <x-ai.status-kuota :status="$this->statusKuota()" ringkas class="mr-auto" />
                             <button type="button" class="btn-ghost" wire:click="tutupUsulJadwal">Batal</button>
                             <button type="button" class="btn-primary" wire:click="buatUsulJadwal" wire:loading.attr="disabled" wire:target="buatUsulJadwal">
                                 <x-ui.icon name="sparkles" class="size-4" />
