@@ -4,9 +4,11 @@ namespace App\Livewire\Buku;
 
 use App\Contracts\BukuDokumenRepository;
 use App\Contracts\KegiatanRepository;
+use App\Contracts\PembuatPdfBuku;
 use App\Enums\SumberDana;
 use App\Support\Dokumen\BukuDokumen;
 use App\Support\Dokumen\PengambilanBuku;
+use App\Support\Dokumen\ProsesPdfBuku;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -19,8 +21,8 @@ use Livewire\Component;
  * kegiatan) lalu lihat susunan bukunya — cover buku, daftar kegiatan urut kode RKTM dengan halaman awal, status & cap
  * DRAF tiap kegiatan — serta peta semua buku tahun aktif. Akun leading hanya melihat buku leading-nya. "Susun buku"
  * mengambil kegiatan bertahap (PengambilanBuku, dipanggil berulang dari klien) lalu mencatatnya di riwayat
- * (BukuDokumenRepository); dokumen satu kegiatan bisa dilihat di dalam buku (`?kegiatan=`, <x-dokumen.kegiatan-buku>);
- * gabung PDF menyusul.
+ * (BukuDokumenRepository); dokumen satu kegiatan bisa dilihat di dalam buku (`?kegiatan=`, <x-dokumen.kegiatan-buku>).
+ * "Gabung PDF" memulai pembuatan PDF (PembuatPdfBuku) yang dipantau berkala sampai selesai (unduh) atau gagal (coba lagi).
  */
 #[Layout('layouts.app')]
 class Daftar extends Component
@@ -68,6 +70,55 @@ class Daftar extends Component
         $this->leading = $leading;
         $this->sumber = $sumber;
         $this->rapikan();
+    }
+
+    /** Mulai membuat PDF buku yang dipilih (PembuatPdfBuku); statusnya dipantau lewat pantauPdf(). */
+    public function gabungPdf(): void
+    {
+        if ($this->isi === null || $this->isi['baris'] === [] || ProsesPdfBuku::berjalan($this->pekerjaanPdf['pdf'] ?? null)) {
+            return;
+        }
+
+        app(PembuatPdfBuku::class)->mulai([
+            'tahun' => StubData::tahunAktif()['tahun'],
+            'leading' => $this->terpilih['leading'],
+            'sumber' => $this->terpilih['sumber'],
+            'jumlah_kegiatan' => count($this->isi['baris']),
+            'halaman' => $this->isi['simulasi']['terakhir'],
+            'ada_draf' => collect($this->isi['baris'])->contains('draf', true),
+            'kegiatan' => array_map(fn (array $b) => ['id' => $b['id'], 'nama' => $b['nama_kegiatan'], 'halaman' => $b['halaman'], 'hasil' => $b['draf'] ? 'draf' : 'siap'], $this->isi['baris']),
+            'dibuat_oleh' => StubData::currentUser()['name'],
+        ]);
+        unset($this->riwayat, $this->pekerjaanPdf);
+    }
+
+    /** Pantau pembuatan PDF yang sedang berjalan (dipanggil berkala selama berjalan). */
+    public function pantauPdf(): void
+    {
+        $pekerjaan = $this->pekerjaanPdf;
+        if (! ProsesPdfBuku::berjalan($pekerjaan['pdf'] ?? null)) {
+            return;
+        }
+
+        $hasil = app(PembuatPdfBuku::class)->pantau($pekerjaan['id']);
+        unset($this->riwayat, $this->pekerjaanPdf);
+
+        match ($hasil['pdf']['status']) {
+            'selesai' => $this->dispatch('notify', message: 'PDF buku siap diunduh.', type: 'success'),
+            'gagal' => $this->dispatch('notify', message: 'Pembuatan PDF gagal: '.$hasil['pdf']['pesan'], type: 'error'),
+            default => null,
+        };
+    }
+
+    /**
+     * Pembuatan PDF terakhir buku yang ditampilkan (catatan riwayat yang punya status `pdf`), null bila belum pernah.
+     *
+     * @return array<string, mixed>|null
+     */
+    #[Computed]
+    public function pekerjaanPdf(): ?array
+    {
+        return collect($this->riwayat)->first(fn (array $b) => isset($b['pdf']));
     }
 
     /** Lihat dokumen satu kegiatan di dalam buku ini (urutan & halaman buku). */
@@ -253,7 +304,7 @@ class Daftar extends Component
         if ($this->sumber !== '' && SumberDana::tryFrom($this->sumber) === null) {
             $this->sumber = '';
         }
-        unset($this->terpilih, $this->isi, $this->riwayat, $this->dilihat);
+        unset($this->terpilih, $this->isi, $this->riwayat, $this->dilihat, $this->pekerjaanPdf);
         if ($this->lihat !== 0 && $this->dilihat === null) {
             $this->lihat = 0;
         }

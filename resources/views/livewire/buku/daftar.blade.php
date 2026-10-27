@@ -54,7 +54,11 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <button type="button" class="btn-secondary" disabled><x-ui.icon name="download" class="size-4" /> Gabung PDF <x-ui.segera /></button>
+                    @if ($isi['baris'] === [] || \App\Support\Dokumen\ProsesPdfBuku::berjalan($this->pekerjaanPdf['pdf'] ?? null))
+                        <button type="button" class="btn-secondary" disabled wire:key="gabung-nonaktif"><x-ui.icon name="download" class="size-4" /> Gabung PDF</button>
+                    @else
+                        <button type="button" wire:click="gabungPdf" class="btn-secondary" wire:key="gabung-aktif" data-testid="gabung-pdf"><x-ui.icon name="download" class="size-4" /> Gabung PDF</button>
+                    @endif
                     @if ($isi['baris'] === [] || ($proses['tahap'] ?? null) === 'ambil')
                         <button type="button" class="btn-primary" disabled wire:key="susun-nonaktif"><x-ui.icon name="layers" class="size-4" /> Susun buku</button>
                     @else
@@ -68,6 +72,10 @@
                 <span>· {{ $bukuIni['jumlah'] }} kegiatan · Total RAB {{ Format::rupiah($isi['total']) }} · ± {{ $isi['simulasi']['terakhir'] }} halaman</span>
             </p>
         </section>
+
+        @if ($this->pekerjaanPdf)
+            @include('livewire.buku.partials.status-pdf', ['pekerjaan' => $this->pekerjaanPdf])
+        @endif
 
         @if ($proses)
             @include('livewire.buku.partials.proses-susun')
@@ -180,7 +188,17 @@
                                         @endif
                                     </p>
                                     <p class="mt-0.5 text-stone-500">{{ $r['dibuat_oleh'] }} · {{ $r['jumlah_kegiatan'] }} kegiatan · ± {{ $r['halaman'] }} halaman</p>
-                                    <p class="mt-0.5 text-stone-400">{{ $r['file_pdf_path'] ? 'PDF tersedia' : 'PDF belum digabung' }}</p>
+                                    <p class="mt-0.5 text-stone-400" data-pdf-riwayat="{{ $r['pdf']['status'] ?? 'tanpa' }}">
+                                        @if ($r['file_pdf_path'])
+                                            <a href="{{ route('buku.unduh', ['buku' => $r['id']]) }}" class="font-semibold text-brand-700 hover:text-brand-800">Unduh PDF</a>
+                                        @elseif (($r['pdf']['status'] ?? null) === 'gagal')
+                                            <span class="text-red-600">PDF gagal dibuat</span>
+                                        @elseif (\App\Support\Dokumen\ProsesPdfBuku::berjalan($r['pdf'] ?? null))
+                                            PDF diproses {{ $r['pdf']['persen'] }}%
+                                        @else
+                                            PDF belum digabung
+                                        @endif
+                                    </p>
                                 </li>
                             @endforeach
                         </ol>

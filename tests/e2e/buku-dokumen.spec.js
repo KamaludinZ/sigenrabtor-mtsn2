@@ -60,6 +60,22 @@ test.describe('Buku dokumen', () => {
         await proses.getByRole('button', { name: 'Tutup' }).click();
         await expect(proses).toHaveCount(0);
 
+        // Gabung PDF: status dipantau berkala sampai selesai (unduh) atau gagal (data E2E bersama bisa berisi kegiatan
+        // tanpa rincian RAB dari tes lain → pesan & Coba lagi).
+        await page.getByTestId('gabung-pdf').click();
+        const statusPdf = page.getByTestId('status-pdf');
+        // Tunggu pekerjaan baru berjalan dulu (kartu pekerjaan sebelumnya dari proyek lain bisa masih tampil).
+        await expect(statusPdf).toHaveAttribute('data-status', /^(antre|proses)$/);
+        await expect(statusPdf.getByTestId('tahap-pdf').locator('[data-tahap]')).toHaveCount(5);
+        await expect(statusPdf).toHaveAttribute('data-status', /^(selesai|gagal)$/, { timeout: 30_000 });
+        if ((await statusPdf.getAttribute('data-status')) === 'selesai') {
+            const [unduhan] = await Promise.all([page.waitForEvent('download'), statusPdf.getByTestId('unduh-pdf-buku').click()]);
+            expect(unduhan.suggestedFilename()).toBe('TOR_RAB_Tim_Penjamin_Mutu_DIPA_2026.pdf');
+        } else {
+            await expect(statusPdf.getByTestId('pesan-pdf')).toContainText('belum berisi rincian');
+            await expect(statusPdf.getByTestId('ulangi-pdf-buku')).toBeVisible();
+        }
+
         // Dokumen satu kegiatan di dalam buku: cover, KAK/TOR, RAB dengan rentang halaman buku; pindah ke kegiatan berikutnya.
         const pertama = await susunan.locator('li[data-kegiatan]').first().getAttribute('data-kegiatan');
         await susunan.locator(`[data-lihat-kegiatan="${pertama}"]`).click();

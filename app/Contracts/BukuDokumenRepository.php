@@ -22,4 +22,15 @@ interface BukuDokumenRepository
      * @return array<string, mixed> Buku tersimpan (dengan id & dibuat_pada).
      */
     public function catat(array $buku): array;
+
+    /** @return array<string, mixed>|null */
+    public function temukan(string $id): ?array;
+
+    /**
+     * Timpa sebagian kolom satu buku (mis. status pembuatan PDF, berkasnya).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function perbarui(string $id, array $data): array;
 }

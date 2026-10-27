@@ -22,10 +22,30 @@ class StubBukuDokumenRepository implements BukuDokumenRepository
 
     public function catat(array $buku): array
     {
-        $tersimpan = ['id' => (string) Str::uuid(), 'file_pdf_path' => null, 'dibuat_pada' => now()->toIso8601String()] + $buku;
-        Storage::disk('local')->put($this->berkas(), json_encode([...$this->baca(), $tersimpan], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        // Bermikrodetik agar urutan "terbaru dulu" tetap pasti untuk catatan dalam detik yang sama.
+        $tersimpan = ['id' => (string) Str::uuid(), 'file_pdf_path' => null, 'dibuat_pada' => now()->format('Y-m-d\TH:i:s.uP')] + $buku;
+        $this->tulis([...$this->baca(), $tersimpan]);
 
         return $tersimpan;
+    }
+
+    public function temukan(string $id): ?array
+    {
+        return collect($this->baca())->firstWhere('id', $id);
+    }
+
+    public function perbarui(string $id, array $data): array
+    {
+        $semua = $this->baca();
+        $indeks = collect($semua)->search(fn (array $b) => $b['id'] === $id);
+        if ($indeks === false) {
+            throw new \InvalidArgumentException("Buku {$id} tidak ditemukan.");
+        }
+
+        $semua[$indeks] = $data + $semua[$indeks];
+        $this->tulis($semua);
+
+        return $semua[$indeks];
     }
 
     /** @return list<array<string, mixed>> */
@@ -63,6 +83,12 @@ class StubBukuDokumenRepository implements BukuDokumenRepository
         $isi = json_decode((string) Storage::disk('local')->get($this->berkas()), true);
 
         return is_array($isi) ? $isi : self::contoh();
+    }
+
+    /** @param  list<array<string, mixed>>  $semua */
+    private function tulis(array $semua): void
+    {
+        Storage::disk('local')->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     private function berkas(): string

@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Buku Dokumen: tombol **Gabung PDF** kini aktif — prosesnya tampil bertahap (menunggu antrean, menyusun dokumen kegiatan, mengubah ke PDF, menggabungkan buku, menomori halaman) dengan bilah kemajuan yang diperbarui otomatis. Setelah selesai PDF bisa diunduh dari kartu status maupun riwayat; bila gagal (mis. ada kegiatan yang RAB-nya belum berisi rincian) alasannya ditampilkan dengan tombol *Coba lagi*. Untuk sementara PDF berisi halaman pengganti — dokumen lengkapnya dibuat setelah mesin dokumen tersedia.
 - Buku Dokumen: tombol **Lihat di buku** pada tiap kegiatan menampilkan bagian kegiatan itu persis seperti di dalam buku — cover kegiatan, KAK/TOR, dan RAB sumber dana buku — lengkap dengan rentang halamannya (mis. "hal. 4–8") dan cap DRAF bila masih draf, dengan tombol *Sebelumnya*/*Berikutnya* mengikuti urutan buku.
 - Buku Dokumen: **halaman daftar kegiatan** tampil seperti tercetak — judul, subjudul, kolom, dan urutan sesuai pengaturan daftar isi buku itu, kolom Halaman berisi perkiraan halaman awal tiap kegiatan, baris jumlah anggaran, serta nomor halaman di posisi yang diatur. Pratinjau di Pengaturan › Template Dokumen › Daftar isi memakai tampilan yang sama.
 - Buku Dokumen: **halaman cover buku** kini memakai desain cover yang sama dengan cover kegiatan (desain default tahun aktif dari Pengaturan › Template Dokumen) berisi "KEGIATAN", nama unit leading, sumber dana, pejabat penyusun, kota, dan tahun anggaran — bercap DRAF selama masih ada kegiatan DRAF — dan bisa diperbesar.

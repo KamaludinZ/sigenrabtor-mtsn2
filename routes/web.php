@@ -6,6 +6,7 @@ use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\UnduhArsipFinal;
+use App\Http\Controllers\UnduhBuku;
 use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateDataPagu;
@@ -44,6 +45,7 @@ Route::get('/kegiatan/format-rincian-rab', UnduhFormatRincianRab::class)->name('
 Route::get('/kegiatan/buat', KegiatanForm::class)->name('kegiatan.create');
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
 Route::get('/buku', BukuDaftar::class)->name('buku.index');
+Route::get('/buku/{buku}/unduh', UnduhBuku::class)->whereUuid('buku')->name('buku.unduh');
 Route::get('/data-pagu/template', UnduhTemplateDataPagu::class)->middleware(HanyaAdmin::class)->name('pagu.template');
 Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegiatan')->name('kegiatan.edit');
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
