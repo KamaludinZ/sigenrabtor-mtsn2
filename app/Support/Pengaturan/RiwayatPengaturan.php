@@ -38,6 +38,7 @@ final class RiwayatPengaturan
         'ubah_tautan_leading' => ['Ubah tautan akun–leading', 'leading'],
         'ubah_status_akun' => ['Ubah status akun', 'leading'],
         'ubah_penyedia_ai' => ['Ubah penyedia AI', 'ai'],
+        'ubah_model_ai' => ['Ubah model & parameter AI', 'ai'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

@@ -121,4 +121,27 @@ test.describe('Pengaturan AI', () => {
         await formulir.getByTestId('simpan-cloud').click();
         await expect(claude.getByTestId('status-kunci-claude')).toContainText('belum ada');
     });
+
+    test('model & parameter: tanpa penyedia, preset kreativitas & jumlah versi disimpan, lalu dikembalikan bawaan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai?tab=model');
+        await expect(page.getByTestId('model-tanpa-penyedia')).toBeVisible();
+
+        const parameter = page.getByTestId('parameter-ai');
+        await parameter.locator('[data-preset="kreatif"]').click();
+        await expect(parameter.locator('[data-preset="kreatif"]')).toHaveAttribute('aria-checked', 'true');
+        await expect(parameter.getByTestId('keterangan-suhu')).toContainText('Versi lebih beragam');
+        await parameter.getByText('2 versi').click();
+        await parameter.getByTestId('simpan-parameter').click();
+        await expect(page.getByText('Parameter jawaban AI tersimpan.')).toBeVisible();
+        await page.screenshot({ path: `storage/playwright/shots/pengaturan-ai-model-${testInfo.project.name}.png`, fullPage: true });
+
+        // Pulihkan bawaan (jumlah versi dipakai tes Kalimat KAK).
+        await parameter.getByRole('button', { name: 'Kembalikan bawaan' }).click();
+        await expect(parameter.locator('[data-preset="seimbang"]')).toHaveAttribute('aria-checked', 'true');
+        await parameter.getByTestId('simpan-parameter').click();
+        await page.waitForLoadState('networkidle');
+        await page.reload();
+        await expect(page.getByTestId('parameter-ai').locator('input[name="jumlah-versi"][value="3"]')).toBeChecked();
+    });
 });

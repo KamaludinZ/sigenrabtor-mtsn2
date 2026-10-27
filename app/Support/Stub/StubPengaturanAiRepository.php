@@ -3,6 +3,7 @@
 namespace App\Support\Stub;
 
 use App\Contracts\PengaturanAiRepository;
+use App\Support\Pengaturan\ParameterAi;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -36,13 +37,14 @@ class StubPengaturanAiRepository implements PengaturanAiRepository
         }
     }
 
-    /** @return array{provider_aktif: null, provider_cadangan: null, penyedia: array<string, array<string, mixed>>, batas_per_user_per_hari: int, diperbarui_pada: null} */
+    /** @return array{provider_aktif: null, provider_cadangan: null, penyedia: array<string, array<string, mixed>>, parameter: array{suhu: float, maks_token: int, jumlah_versi: int}, batas_per_user_per_hari: int, diperbarui_pada: null} */
     public static function bawaan(): array
     {
         return [
             'provider_aktif' => null,
             'provider_cadangan' => null,
             'penyedia' => ['ollama' => ['base_url' => 'http://localhost:11434', 'model' => '', 'batas_waktu' => 60, 'ada_kunci' => false]],
+            'parameter' => ParameterAi::BAWAAN,
             'batas_per_user_per_hari' => 20,
             'diperbarui_pada' => null,
         ];

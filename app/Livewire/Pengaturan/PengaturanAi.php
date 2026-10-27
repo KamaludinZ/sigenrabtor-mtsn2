@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Pengaturan;
 
+use App\Contracts\DaftarModelAi;
 use App\Contracts\PengaturanAiRepository;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
+use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PenyediaAi;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Pengaturan\RiwayatPengaturan;
@@ -25,12 +27,13 @@ use RuntimeException;
  * ringkasan riwayat saran AI). Konfigurasi server sekolah (Ollama) lewat formulir bukaLokal() → simpanLokal()
  * (AturanPenyediaAi, PengaturanAiRepository, riwayat `ubah_penyedia_ai`); pemilihan penyedia aktif & cadangan lewat
  * bukaPilihan() → simpanPilihan() (hanya penyedia yang siap); penyedia cloud lewat bukaCloud() → simpanCloud() (kunci API
- * terenkripsi, tidak pernah ditampilkan lagi); prompt & batas menyusul.
+ * terenkripsi, tidak pernah ditampilkan lagi); tab `model` — daftar model per penyedia (DaftarModelAi) & parameter jawaban
+ * (ParameterAi, riwayat `ubah_model_ai`); prompt & batas menyusul.
  */
 #[Layout('layouts.app')]
 class PengaturanAi extends Component
 {
-    public const TAB = ['penyedia' => 'Penyedia', 'prompt' => 'Prompt per bagian', 'pemakaian' => 'Batas pemakaian'];
+    public const TAB = ['penyedia' => 'Penyedia', 'model' => 'Model & parameter', 'prompt' => 'Prompt per bagian', 'pemakaian' => 'Batas pemakaian'];
 
     #[Url(except: 'penyedia')]
     public string $tab = 'penyedia';
@@ -52,6 +55,17 @@ class PengaturanAi extends Component
     #[Locked]
     public array $peringatanCloud = [];
 
+    /** @var array{suhu: float|string, maks_token: int|string, jumlah_versi: int|string} Parameter jawaban yang sedang disunting. */
+    public array $isianParameter = ParameterAi::BAWAAN;
+
+    /** `diperbarui_pada` saat parameter dimuat (pembanding bentrok). */
+    #[Locked]
+    public ?string $versiParameter = null;
+
+    /** @var array<string, array{model: list<array<string, mixed>>, galat: string|null}> Daftar model yang sudah dimuat per penyedia. */
+    #[Locked]
+    public array $daftarModel = [];
+
     /** Pemilihan penyedia aktif & cadangan terbuka. */
     public bool $pilihTerbuka = false;
 
@@ -65,6 +79,7 @@ class PengaturanAi extends Component
     public function mount(): void
     {
         $this->rapikanTab();
+        $this->muatParameter();
     }
 
     public function updatedTab(): void
@@ -138,6 +153,78 @@ class PengaturanAi extends Component
         $this->lokalTerbuka = false;
         $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === 'ollama';
         $this->dispatch('notify', message: $naik ? 'Konfigurasi server sekolah tersimpan — belum ada penyedia aktif, jadi server sekolah dipakai sebagai penyedia aktif.' : 'Konfigurasi server sekolah tersimpan.', type: 'success');
+    }
+
+    /** Muat daftar model penyedia (DaftarModelAi); kegagalan tampil di kartu modelnya. */
+    public function muatModel(string $penyedia, DaftarModelAi $daftar): void
+    {
+        abort_unless(isset(PenyediaAi::DAFTAR[$penyedia]), 404);
+        $konfigurasi = app(PengaturanAiRepository::class)->ambil()['penyedia'][$penyedia] ?? [];
+        try {
+            $this->daftarModel[$penyedia] = ['model' => array_values($daftar->daftar($penyedia, $konfigurasi)), 'galat' => null];
+        } catch (RuntimeException $e) {
+            $this->daftarModel[$penyedia] = ['model' => [], 'galat' => $e->getMessage()];
+        }
+    }
+
+    /** Pakai satu model dari daftar yang dimuat untuk penyedia itu. */
+    public function pakaiModel(string $penyedia, string $model): void
+    {
+        abort_unless(in_array($model, array_column($this->daftarModel[$penyedia]['model'] ?? [], 'nama'), true), 404);
+
+        $lama = app(PengaturanAiRepository::class)->ambil();
+        $baru = $lama;
+        $baru['penyedia'][$penyedia] = ['model' => $model] + ($lama['penyedia'][$penyedia] ?? []);
+        $this->versi = $lama['diperbarui_pada'];
+        $ringkas = fn (array $p) => ['model' => ($p['penyedia'][$penyedia]['model'] ?? '') ?: 'belum diisi'];
+        if ($this->simpanPengaturan($lama, $baru, $ringkas, ['model' => 'Model'], PenyediaAi::nama($penyedia).' — ', null, 'ubah_model_ai')) {
+            $this->dispatch('notify', message: "Model {$model} dipakai untuk ".PenyediaAi::nama($penyedia).'.', type: 'success');
+        }
+    }
+
+    /** Simpan parameter jawaban (ParameterAi). */
+    public function simpanParameter(): void
+    {
+        $this->resetErrorBag();
+        ['data' => $data, 'galat' => $galat] = ParameterAi::rapikan($this->isianParameter);
+        if ($galat !== []) {
+            foreach ($galat as $kolom => $pesan) {
+                $this->addError("isianParameter.{$kolom}", $pesan);
+            }
+
+            return;
+        }
+
+        $lama = app(PengaturanAiRepository::class)->ambil();
+        $baru = ['parameter' => $data] + $lama;
+        $this->versi = $this->versiParameter;
+        $ringkas = fn (array $p) => [
+            'suhu' => number_format(ParameterAi::dari($p)['suhu'], 1, ',', ''), 'maks_token' => ParameterAi::MAKS_TOKEN[ParameterAi::dari($p)['maks_token']] ?? ParameterAi::dari($p)['maks_token'],
+            'jumlah_versi' => ParameterAi::dari($p)['jumlah_versi'].' versi',
+        ];
+        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['suhu' => 'Kreativitas', 'maks_token' => 'Panjang jawaban', 'jumlah_versi' => 'Jumlah versi'], 'Parameter jawaban — ', null, 'ubah_model_ai')) {
+            $this->versiParameter = $this->versi;
+
+            return;
+        }
+
+        $this->isianParameter = $data;
+        $this->versiParameter = $this->versi;
+        $this->dispatch('notify', message: 'Parameter jawaban AI tersimpan.', type: 'success');
+    }
+
+    /** Isi kembali parameter bawaan (tersimpan setelah Simpan). */
+    public function kembalikanParameter(): void
+    {
+        $this->isianParameter = ParameterAi::BAWAAN;
+        $this->resetErrorBag();
+    }
+
+    /** Pakai preset kreativitas. */
+    public function pilihPresetSuhu(string $preset): void
+    {
+        abort_unless(isset(ParameterAi::PRESET_SUHU[$preset]), 404);
+        $this->isianParameter['suhu'] = ParameterAi::PRESET_SUHU[$preset][0];
     }
 
     /** Buka formulir satu penyedia cloud; kunci API tersimpan tidak pernah dimuat ke formulir. */
@@ -294,7 +381,7 @@ class PengaturanAi extends Component
      * @param  array<string, string>  $label
      * @param  string|null  $tambahan  Catatan riwayat tambahan (mis. "Kunci API: diganti").
      */
-    private function simpanPengaturan(array $lama, array $baru, \Closure $ringkas, array $label, string $awalan, ?string $tambahan = null): bool
+    private function simpanPengaturan(array $lama, array $baru, \Closure $ringkas, array $label, string $awalan, ?string $tambahan = null, string $aksi = 'ubah_penyedia_ai'): bool
     {
         if ($lama['diperbarui_pada'] !== $this->versi) {
             $this->versi = $lama['diperbarui_pada'];
@@ -316,9 +403,13 @@ class PengaturanAi extends Component
         }
 
         if ($perubahan !== null) {
-            RiwayatPengaturan::catat('ubah_penyedia_ai', $awalan.$perubahan);
+            RiwayatPengaturan::catat($aksi, $awalan.$perubahan);
         }
         $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
+        // Simpan dari halaman ini sendiri tidak membuat isian parameter yang terbuka dianggap bentrok.
+        if ($this->versiParameter === $lama['diperbarui_pada']) {
+            $this->versiParameter = $this->versi;
+        }
 
         return true;
     }
@@ -355,6 +446,13 @@ class PengaturanAi extends Component
     public function ringkasanSaran(): array
     {
         return RiwayatSaranAi::ringkasan(RiwayatSaranAi::untuk(StubData::currentUser()));
+    }
+
+    private function muatParameter(): void
+    {
+        $ai = app(PengaturanAiRepository::class)->ambil();
+        $this->isianParameter = ParameterAi::dari($ai);
+        $this->versiParameter = $ai['diperbarui_pada'];
     }
 
     private function rapikanTab(): void

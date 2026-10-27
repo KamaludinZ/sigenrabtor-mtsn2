@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\ArsipFinalRepository;
 use App\Contracts\BukuDokumenRepository;
 use App\Contracts\DaftarIsiRepository;
+use App\Contracts\DaftarModelAi;
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\DataPaguRepository;
 use App\Contracts\KegiatanRepository;
@@ -32,6 +33,7 @@ use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Stub\StubArsipFinalRepository;
 use App\Support\Stub\StubBukuDokumenRepository;
 use App\Support\Stub\StubDaftarIsiRepository;
+use App\Support\Stub\StubDaftarModelAi;
 use App\Support\Stub\StubDasarHukumRepository;
 use App\Support\Stub\StubDataPaguRepository;
 use App\Support\Stub\StubKegiatanRepository;
@@ -93,6 +95,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PemakaianAiRepository::class, StubPemakaianAiRepository::class);
         $this->app->singleton(RiwayatSaranAiRepository::class, StubRiwayatSaranAiRepository::class);
         $this->app->singleton(PengaturanAiRepository::class, StubPengaturanAiRepository::class);
+        $this->app->singleton(DaftarModelAi::class, StubDaftarModelAi::class);
 
         // Konversi PDF (ekspor Monitoring; kelak cetak KAK/RAB & buku) lewat LibreOffice headless.
         $this->app->singleton(PengubahPdf::class, PengubahPdfLibreOffice::class);

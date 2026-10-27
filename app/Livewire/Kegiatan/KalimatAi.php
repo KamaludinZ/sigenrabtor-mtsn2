@@ -17,6 +17,7 @@ use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\PermintaanSaranKalimat;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\TombolAi;
+use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PenyediaAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
@@ -453,7 +454,7 @@ class KalimatAi extends Component
     }
 
     /**
-     * Hasil penyusun dirapikan: maks. 3 versi, teks satu spasi (nama cover kapital satu baris), sesuai batas panjang
+     * Hasil penyusun dirapikan: maks. jumlah versi Pengaturan AI (ParameterAi, 2–3), teks satu spasi (nama cover kapital satu baris), sesuai batas panjang
      * kolomnya, tanpa versi kosong/kembar.
      *
      * @param  array<int, mixed>  $saran
@@ -475,7 +476,7 @@ class KalimatAi extends Component
             $hasil[] = ['judul' => Teks::rapikan((string) ($s['judul'] ?? '')) ?: 'Versi '.(count($hasil) + 1), 'ciri' => mb_substr(Teks::rapikan((string) ($s['ciri'] ?? '')), 0, 60), 'teks' => $teks];
         }
 
-        return array_slice($hasil, 0, 3);
+        return array_slice($hasil, 0, ParameterAi::dari(StubPengaturan::pengaturanAi())['jumlah_versi']);
     }
 
     /** Data kegiatan dengan teks yang sedang disunting (bahan AI & pratinjau mengikuti layar). */
