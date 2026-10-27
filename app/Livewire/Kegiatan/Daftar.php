@@ -7,6 +7,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\KunciDokumen;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -115,7 +116,8 @@ class Daftar extends Component
                 'status' => StatusKegiatan::tryFrom($k['status'] ?? '') ?? StatusKegiatan::Draf,
                 'kunci' => KunciDokumen::dari($k),
                 'diperbarui' => $k['diperbarui_pada'] ?? null,
-                'asal' => ($k['asal'] ?? null) === 'impor_excel' ? 'impor' : 'manual',
+                'asal' => in_array($k['asal'] ?? null, ['impor_excel', 'impor_perkin'], true) ? 'impor' : 'manual',
+                'kode_hilang' => KodeHilang::dari($k),
             ];
         }, app(KegiatanRepository::class)->semua());
     }

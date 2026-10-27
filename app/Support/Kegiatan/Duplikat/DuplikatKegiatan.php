@@ -11,6 +11,7 @@ use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
@@ -43,11 +44,6 @@ final class DuplikatKegiatan
         'uraian_pelaksanaan', 'konteks', 'sumber_dana',
     ];
 
-    /** Kolom kode → [label, daftar master tahun aktif, kunci pencarian]. */
-    private const KODE = [
-        'kode_rktm' => 'Kode RKTM', 'kode_sk' => 'Kode SK', 'kode_iksk' => 'IKSK', 'kode_edm' => 'Kode EDM', 'budaya_mutu' => '5 Budaya Mutu',
-    ];
-
     /**
      * Rencana salinan satu kegiatan ke tahun aktif tanpa menyimpan apa pun: data draf baru beserta catatan perubahan
      * yang perlu diperhatikan (kode yang tidak ada di master tahun aktif dikosongkan, pagu dari Data Pagu atau disalin).
@@ -66,13 +62,12 @@ final class DuplikatKegiatan
             $data[$kolom] = self::geserTahun($data[$kolom] ?? null, $selisih);
         }
 
-        $master = ['kode_rktm' => MasterKode::kodeRktm(), 'kode_sk' => MasterKode::kodeSk(), 'kode_iksk' => MasterKode::kodeIksk(), 'kode_edm' => MasterKode::kodeEdm(), 'budaya_mutu' => MasterKode::budayaMutu()];
-        foreach (self::KODE as $kolom => $label) {
-            $nilai = $data[$kolom] ?? null;
-            if (filled($nilai) && MasterKode::cari($master[$kolom], $nilai, $kolom === 'budaya_mutu' ? 'nomor' : 'kode') === null) {
-                $data[$kolom] = null;
-                $catatan[] = ['jenis' => 'kode', 'teks' => "{$label} {$nilai} tidak ada di master TA {$tahun} — pilih ulang."];
-            }
+        // Kode yang tidak ada di master tahun aktif dikosongkan; kode lamanya dicatat sebagai penanda (KodeHilang).
+        $data['kode_hilang'] = [];
+        foreach (KodeHilang::tidakAdaDi($data, $tahun) as ['kolom' => $kolom, 'label' => $label, 'kode' => $kode]) {
+            $data[$kolom] = null;
+            $data['kode_hilang'][$kolom] = KodeHilang::catatan($kode, 'duplikat', TahunKegiatan::dari($kegiatan));
+            $catatan[] = ['jenis' => 'kode', 'teks' => "{$label} {$kode} tidak ada di master TA {$tahun} — pilih ulang."];
         }
 
         $pagu = self::dataPagu((string) ($data['nama_kegiatan'] ?? ''), $tahun);
@@ -197,6 +192,8 @@ final class DuplikatKegiatan
                 'lama_hari' => $pelaksanaan->lamaHari,
                 'status' => (string) ($k['status'] ?? 'draf'),
                 'sudah_ada' => $aktif[PemeriksaImporKegiatan::kunciNama($nama)] ?? null,
+                // Kode yang akan dikosongkan saat diduplikat (tidak ada di master tahun aktif).
+                'kode_hilang' => KodeHilang::tidakAdaDi($k, $tahunAktif),
             ];
         }
         usort($baris, fn (array $a, array $b) => [$a['leading'] ?? '~', $a['nama']] <=> [$b['leading'] ?? '~', $b['nama']]);

@@ -20,6 +20,8 @@
     $komponenEdm = MasterKode::komponenEdm();
     $opsiSkCari = array_map(fn ($sk) => ['nilai' => $sk['kode'], 'label' => $sk['uraian'], 'keterangan' => count(MasterKode::kodeIksk($sk['kode'])).' indikator IKSK', 'grup' => null], MasterKode::kodeSk());
     $opsiEdmCari = array_map(fn ($e) => ['nilai' => $e['kode'], 'label' => $e['uraian'], 'keterangan' => null, 'grup' => $e['komponen'].' · '.($komponenEdm[$e['komponen']] ?? '')], MasterKode::kodeEdm());
+    $kodeHilang = $this->kodeHilang();
+    $hilangPer = array_column($kodeHilang, null, 'kolom');
 @endphp
 
 <div class="mx-auto max-w-7xl"
@@ -82,6 +84,7 @@
     @endif
 
     <x-kode.status-kelengkapan :status="$this->statusKode" class="mt-4" />
+    <x-kode.penanda-hilang :hilang="$kodeHilang" class="mt-4" />
 
     @if ($bentrok)
         <div class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-900 ring-1 ring-red-200" role="alert" data-testid="banner-bentrok">
@@ -130,6 +133,7 @@
                 <x-ui.field label="Kode RKTM" for="kode_rktm" error="form.kode_rktm">
                     <x-ui.pilih-cari id="kode_rktm" model="form.kode_rktm" :opsi="$opsiRktmCari" :disabled="! $masterTersedia || ! $bisaUbah"
                                      placeholder="— Pilih kode RKTM —" cari-placeholder="Cari kode, SNP, atau sub kegiatan…" />
+                    <x-kode.hilang-isian :item="$hilangPer['kode_rktm'] ?? null" />
                 </x-ui.field>
                 @if ($rktmTerpilih)
                     <dl class="mt-3 grid gap-2 rounded-lg bg-stone-50 px-3 py-2.5 text-xs ring-1 ring-stone-200 sm:grid-cols-3">
@@ -152,6 +156,7 @@
                         @if ($skTerpilih)
                             <p class="mt-1.5 text-xs leading-relaxed text-stone-600" data-testid="uraian-sk">{{ $skTerpilih['uraian'] }}</p>
                         @endif
+                        <x-kode.hilang-isian :item="$hilangPer['kode_sk'] ?? null" />
                     </x-ui.field>
                     <x-ui.field label="Kode IKSK" for="kode_iksk" error="form.kode_iksk"
                                 :hint="$form->kode_sk ? count($opsiIksk).' indikator di bawah '.$form->kode_sk.'.' : 'Pilih kode SK lebih dulu; daftar IKSK menyesuaikan SK.'">
@@ -160,6 +165,7 @@
                         @if ($ikskTerpilih)
                             <p class="mt-1.5 text-xs leading-relaxed text-stone-600" data-testid="uraian-iksk">{{ $ikskTerpilih['uraian'] }}</p>
                         @endif
+                        <x-kode.hilang-isian :item="$hilangPer['kode_iksk'] ?? null" />
                     </x-ui.field>
                 </div>
             </x-ui.form-section>
@@ -171,6 +177,7 @@
                 <x-ui.field label="Kode EDM" for="kode_edm" error="form.kode_edm" :hint="$edmTerpilih['uraian'] ?? null">
                     <x-ui.pilih-cari id="kode_edm" model="form.kode_edm" :opsi="$opsiEdmCari" :disabled="! $masterTersedia || ! $bisaUbah"
                                      placeholder="— Pilih kode EDM —" cari-placeholder="Cari kode atau indikator EDM…" />
+                    <x-kode.hilang-isian :item="$hilangPer['kode_edm'] ?? null" />
                 </x-ui.field>
             </x-ui.form-section>
 
@@ -191,6 +198,7 @@
                     @endforeach
                 </div>
                 @error('form.budaya_mutu') <p class="form-error">{{ $message }}</p> @enderror
+                <x-kode.hilang-isian :item="$hilangPer['budaya_mutu'] ?? null" />
             </x-ui.form-section>
         </fieldset>
 

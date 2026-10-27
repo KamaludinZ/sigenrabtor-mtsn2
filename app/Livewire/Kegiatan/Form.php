@@ -13,6 +13,7 @@ use App\Support\Format;
 use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\SaranPelaksanaan;
@@ -47,6 +48,10 @@ class Form extends Component
     /** @var list<array{aksi: string, status: string, oleh: string, peran: string, pada: string}> Jejak perubahan status (PRD N7). */
     #[Locked]
     public array $riwayatStatus = [];
+
+    /** @var array<string, array{kode: string, asal: string, tahun: int|null}> Catatan kode master yang dikosongkan saat diduplikat/diimpor (KodeHilang). */
+    #[Locked]
+    public array $kodeHilang = [];
 
     /** Id kegiatan tersimpan; null = kegiatan baru yang belum pernah disimpan. */
     #[Locked]
@@ -118,6 +123,7 @@ class Form extends Component
         $this->kegiatanId = $kegiatan;
         $this->status = StatusKegiatan::tryFrom($data['status'] ?? '')?->value ?? StatusKegiatan::Draf->value;
         $this->riwayatStatus = array_values((array) ($data['riwayat_status'] ?? []));
+        $this->kodeHilang = KodeHilang::sisa((array) ($data['kode_hilang'] ?? []), $data);
         $this->diperbaruiPada = $data['diperbarui_pada'] ?? null;
     }
 
@@ -852,9 +858,24 @@ class Form extends Component
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Penanda kode master yang hilang (KodeHilang) untuk kegiatan tersimpan; kode dipilih di halaman Kode & Klasifikasi.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function penandaKodeHilang(): array
+    {
+        $tersimpan = $this->kegiatanId ? app(KegiatanRepository::class)->temukan($this->kegiatanId) : null;
+
+        return $tersimpan === null ? [] : KodeHilang::dari(['kode_hilang' => $this->kodeHilang] + $this->form->dataUntukDisimpan() + $tersimpan);
+    }
+
     private function dataUntukDisimpan(): array
     {
-        return ['status' => $this->status, 'riwayat_status' => $this->riwayatStatus] + $this->form->dataUntukDisimpan();
+        $data = $this->form->dataUntukDisimpan();
+
+        // Penanda kode hilang ikut tersimpan selama kolomnya belum diisi lagi.
+        return ['status' => $this->status, 'riwayat_status' => $this->riwayatStatus, 'kode_hilang' => KodeHilang::sisa($this->kodeHilang, $data)] + $data;
     }
 
     private function peran(): string

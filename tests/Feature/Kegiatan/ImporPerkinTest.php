@@ -226,6 +226,9 @@ class ImporPerkinTest extends TestCase
         $this->assertSame(['draf', 2026, 'SK.9', 'IKSK 9.1', 'impor_perkin', [7]], [$pelatihan['status'], $pelatihan['tahun_anggaran'], $pelatihan['kode_sk'], $pelatihan['kode_iksk'], $pelatihan['asal'], $pelatihan['bulan_pelaksanaan']]);
         $this->assertSame('Diimpor dari cascade Perkin (MASTER 2026.xlsx, sheet Cascade Perkin).', $pelatihan['riwayat_status'][0]['catatan']);
         $this->assertSame(['SK.8', null], [$baru['Bimbingan Olimpiade Sains']['kode_sk'], $baru['Bimbingan Olimpiade Sains']['kode_iksk']]);
+        // IKSK di luar master tercatat sebagai penanda kode hilang.
+        $this->assertSame(['kode_iksk' => ['kode' => 'IKSK 8.9', 'asal' => 'impor', 'tahun' => null]], $baru['Bimbingan Olimpiade Sains']['kode_hilang']);
+        $this->assertSame([], $pelatihan['kode_hilang']);
 
         // Berkas yang sama diunggah lagi: tidak ada yang siap → tidak ada konfirmasi, batal langsung.
         $komponen->call('ulangi')

@@ -5,7 +5,7 @@
 {{--
     Daftar kegiatan tahun sebelumnya untuk diduplikat (DuplikatKegiatan::sumber): kotak pilih terikat `pilihan` komponen
     induk; tabel di layar lebar, kartu di layar sempit. Kegiatan yang namanya sudah ada di tahun aktif tidak bisa dipilih;
-    rincian (tujuan, tempat, peserta, lama) dibuka per baris.
+    rincian (tujuan, tempat, peserta, lama) dibuka per baris; kode yang tidak ada di master tahun aktif diberi lencana.
 --}}
 <div {{ $attributes->class(['min-w-0']) }} data-testid="daftar-tahun-lalu">
     {{-- Layar lebar: tabel --}}
@@ -29,8 +29,9 @@
                     </td>
                     <td class="px-3 py-3">
                         <label for="pilih-lalu-{{ $b['id'] }}" class="block cursor-pointer font-medium text-stone-900">{{ $b['nama'] }}</label>
-                        <p class="mt-0.5 text-xs text-stone-500">
-                            <span class="font-mono">{{ $b['kode_rktm'] ?? 'Tanpa kode RKTM' }}</span> · {{ $b['leading'] ? $b['leading'].' '.($b['nama_leading'] ?? '') : 'Leading belum dipilih' }}
+                        <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-stone-500">
+                            <span><span class="font-mono">{{ $b['kode_rktm'] ?? 'Tanpa kode RKTM' }}</span> · {{ $b['leading'] ? $b['leading'].' '.($b['nama_leading'] ?? '') : 'Leading belum dipilih' }}</span>
+                            <x-kode.lencana-hilang :hilang="$b['kode_hilang']" :tahun="$tahunAktif" />
                         </p>
                         @if ($b['sudah_ada'])
                             <p class="mt-1 text-xs text-gold-700">
@@ -83,6 +84,7 @@
                                 <x-rab.lencana-sumber :sumber="$s['sumber']" class="text-[10px]" />
                             @endforeach
                             <x-ui.status-badge :status="$b['status']" />
+                            <x-kode.lencana-hilang :hilang="$b['kode_hilang']" :tahun="$tahunAktif" />
                         </div>
                         @if ($b['sudah_ada'])
                             <p class="mt-1 text-xs text-gold-700">Sudah ada di TA {{ $tahunAktif }}</p>

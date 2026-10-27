@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\RingkasanKode;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
@@ -226,7 +227,11 @@ class Klasifikasi extends Component
         if ($perubahan = RingkasanKode::selisih($kodeTersimpan, $kodeBaru)) {
             $riwayat = $tersimpan['riwayat_kode'] ?? [];
             $riwayat[] = ['pada' => now()->toIso8601String(), 'oleh' => StubData::currentUser()['name'], 'perubahan' => $perubahan];
-            $repo->simpan(array_merge($tersimpan, $kodeBaru, ['riwayat_kode' => array_slice($riwayat, -self::BATAS_RIWAYAT)]), $this->kegiatanId);
+            $repo->simpan(array_merge($tersimpan, $kodeBaru, [
+                'riwayat_kode' => array_slice($riwayat, -self::BATAS_RIWAYAT),
+                // Penanda kode hilang gugur untuk kolom yang kini diisi.
+                'kode_hilang' => KodeHilang::sisa((array) ($tersimpan['kode_hilang'] ?? []), $kodeBaru),
+            ]), $this->kegiatanId);
         }
 
         $this->muatDari($repo->temukan($this->kegiatanId) ?? $tersimpan);
@@ -262,6 +267,16 @@ class Klasifikasi extends Component
     /**
      * @return array{id: int, tahun: int, is_locked: bool}
      */
+    /**
+     * Penanda kode master yang hilang mengikuti pilihan saat ini: kolom yang baru dipilih ulang tidak lagi ditandai.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function kodeHilang(): array
+    {
+        return KodeHilang::dari(array_merge($this->dataKegiatan, RingkasanKode::nilaiBaku($this->form->dataUntukDisimpan())));
+    }
+
     #[Computed]
     public function tahunAktif(): array
     {

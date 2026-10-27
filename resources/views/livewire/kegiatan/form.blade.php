@@ -113,6 +113,9 @@
             <x-kegiatan.banner-kunci :kegiatan-id="$kegiatanId" :status="$status" />
 
             @include('livewire.kegiatan.partials.banner-perbaikan')
+            @if ($kegiatanId)
+                <x-kode.penanda-hilang :hilang="$this->penandaKodeHilang()" :tautan="route('kegiatan.kode', ['kegiatan' => $kegiatanId])" class="mt-4" />
+            @endif
 
             @if ($kegiatanId && in_array($status, ['disetujui', 'final'], true))
                 <livewire:kegiatan.panel-arsip-final :kegiatan-id="$kegiatanId" wire:key="arsip-final-{{ $kegiatanId }}-{{ $status }}" />

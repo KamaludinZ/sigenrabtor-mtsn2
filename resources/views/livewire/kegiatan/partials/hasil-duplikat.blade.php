@@ -13,6 +13,11 @@
                 @foreach ($h['catatan'] as $c)
                     <p @class(['mt-0.5 text-xs', 'text-gold-700' => $c['jenis'] !== 'pagu', 'text-stone-500' => $c['jenis'] === 'pagu'])>{{ $c['teks'] }}</p>
                 @endforeach
+                @if (in_array('kode', array_column($h['catatan'], 'jenis'), true))
+                    <a href="{{ route('kegiatan.kode', ['kegiatan' => $h['id']]) }}" wire:navigate class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800" data-testid="pilih-ulang-kode">
+                        Pilih ulang kode <x-ui.icon name="chevron-right" class="size-3.5" />
+                    </a>
+                @endif
             </li>
         @endforeach
     </ul>

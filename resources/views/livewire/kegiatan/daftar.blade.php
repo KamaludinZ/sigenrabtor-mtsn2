@@ -228,6 +228,7 @@
                                         @if ($b['asal'] === 'impor')
                                             <span class="rounded bg-stone-100 px-1.5 py-px text-[10px] font-semibold text-stone-500" title="Dibuat lewat impor Excel">IMPOR</span>
                                         @endif
+                                        <x-kode.lencana-hilang :hilang="$b['kode_hilang']" :href="route('kegiatan.kode', ['kegiatan' => $b['id']])" />
                                     </span>
                                 </td>
                                 <td class="px-3 py-3 text-stone-700">

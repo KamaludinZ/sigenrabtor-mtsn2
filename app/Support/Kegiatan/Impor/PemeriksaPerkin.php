@@ -2,6 +2,7 @@
 
 namespace App\Support\Kegiatan\Impor;
 
+use App\Support\Kegiatan\KodeHilang;
 use App\Support\Master\Impor\PemeriksaIksk;
 use App\Support\Master\Impor\PemeriksaSk;
 use App\Support\MasterKode;
@@ -54,14 +55,20 @@ final class PemeriksaPerkin
     }
 
     /**
-     * Data kegiatan Draf dari baris siap: isian impor kegiatan + kode SK & IKSK.
+     * Data kegiatan Draf dari baris siap: isian impor kegiatan + kode SK & IKSK + catatan kode yang dikosongkan.
      *
      * @param  array<string, mixed>  $baris
      * @return array<string, mixed>
      */
     public static function dataKegiatan(array $baris): array
     {
-        return array_merge(PemeriksaImporKegiatan::dataKegiatan($baris), ['kode_sk' => $baris['kode_sk'], 'kode_iksk' => $baris['kode_iksk'], 'asal' => 'impor_perkin']);
+        // Kode di luar master yang dikosongkan dicatat sebagai penanda kode hilang (KodeHilang).
+        $hilang = [];
+        foreach ($baris['dikosongkan'] ?? [] as $kode) {
+            $hilang[str_starts_with($kode, 'IKSK') ? 'kode_iksk' : 'kode_sk'] = KodeHilang::catatan($kode, 'impor');
+        }
+
+        return array_merge(PemeriksaImporKegiatan::dataKegiatan($baris), ['kode_sk' => $baris['kode_sk'], 'kode_iksk' => $baris['kode_iksk'], 'kode_hilang' => $hilang, 'asal' => 'impor_perkin']);
     }
 
     /**
