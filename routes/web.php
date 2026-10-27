@@ -8,6 +8,7 @@ use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\RabLengkapKegiatan;
+use App\Http\Controllers\TerminKegiatan;
 use App\Http\Controllers\TotalAnggaranKegiatan;
 use App\Http\Controllers\UnduhArsipFinal;
 use App\Http\Controllers\UnduhBuku;
@@ -68,6 +69,7 @@ Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->where
 Route::get('/kegiatan/{kegiatan}/total-anggaran', TotalAnggaranKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.total_anggaran');
 Route::get('/kegiatan/{kegiatan}/rab-lengkap', RabLengkapKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab_lengkap');
 Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.konteks');
+Route::get('/kegiatan/{kegiatan}/termin', TerminKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.termin');
 // Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).
 Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('dokumen.cover.gambar');
 

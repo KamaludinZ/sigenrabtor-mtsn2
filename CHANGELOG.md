@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **endpoint termin pembayaran** per kegiatan (`/kegiatan/{id}/termin`, JSON) — tiap sumber dana dengan status termin terhadap total RAB (pas, kurang, lebih, atau dibayar sekaligus), setiap termin beserta tanggal terbaca, nominal, terbilang, persen, dan kumulatifnya, nominal per bulan, serta baris blok Mekanisme Pembayaran persis seperti tercetak di RAB.
 - Fondasi backend: aturan termin pembayaran kini juga dijaga database — paling banyak 12 termin, nomor berurutan tanpa celah, tanggal tidak mundur dari termin sebelumnya, dan tanggal di tahun anggaran kegiatannya — sambil tetap memungkinkan seluruh termin satu sumber dana diganti sekaligus.
 - Simpan otomatis catatan konteks kini lewat layanan server tersendiri yang hanya menulis catatan itu (isian lain yang belum disimpan tidak ikut tersimpan), merapikan spasinya, memeriksa batas 3.000 karakter, tidak menulis ulang teks yang sama, dan menolak kegiatan yang sudah terkunci.
 - Fondasi backend: **endpoint konteks kegiatan** (`/kegiatan/{id}/konteks`, JSON) — catatan konteks beserta panjangnya, kapan terakhir berubah, aspek catatan yang sudah ditulis (latar khusus, peserta, narasumber, output), peringatan bila memuat NIP, dan bahan yang akan dikirim ke AI persis seperti terkirim (NIP disembunyikan). Akun leading hanya bisa membuka kegiatan leading-nya.
