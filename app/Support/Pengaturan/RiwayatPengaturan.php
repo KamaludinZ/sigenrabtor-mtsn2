@@ -40,6 +40,7 @@ final class RiwayatPengaturan
         'ubah_penyedia_ai' => ['Ubah penyedia AI', 'ai'],
         'ubah_model_ai' => ['Ubah model & parameter AI', 'ai'],
         'ubah_prompt_ai' => ['Ubah prompt AI', 'ai'],
+        'ubah_batas_ai' => ['Ubah batas pemakaian AI', 'ai'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

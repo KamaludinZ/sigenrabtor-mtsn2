@@ -46,6 +46,7 @@ class StubPengaturanAiRepository implements PengaturanAiRepository
             'penyedia' => ['ollama' => ['base_url' => 'http://localhost:11434', 'model' => '', 'batas_waktu' => 60, 'ada_kunci' => false]],
             'parameter' => ParameterAi::BAWAAN,
             'batas_per_user_per_hari' => 20,
+            'batas_khusus' => [],
             'diperbarui_pada' => null,
         ];
     }

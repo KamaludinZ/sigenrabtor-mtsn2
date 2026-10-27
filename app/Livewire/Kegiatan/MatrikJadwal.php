@@ -320,7 +320,7 @@ class MatrikJadwal extends Component
         }
         if (BatasAi::sisa($pengguna) <= 0) {
             $this->usulan = [];
-            $this->usulGagal = BatasAi::pesanHabis();
+            $this->usulGagal = BatasAi::pesanHabis($pengguna);
 
             return;
         }

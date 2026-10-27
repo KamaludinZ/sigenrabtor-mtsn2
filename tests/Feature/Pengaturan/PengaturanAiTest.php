@@ -46,7 +46,7 @@ class PengaturanAiTest extends TestCase
         BatasAi::catat(['id' => 3], 'sasaran');
         $halaman = Livewire::withQueryParams(['tab' => 'pemakaian'])->test(PengaturanAi::class)
             ->assertSeeHtml('data-testid="panel-pemakaian-ai"')
-            ->assertSee('2 permintaan dari semua akun · batas 20 per akun per hari.')
+            ->assertSee('2 permintaan dari semua akun · batas umum 20 per akun per hari.')
             ->assertSeeHtml('data-akun="3"')
             ->assertDontSeeHtml('data-akun="6"')
             ->assertSeeHtml('href="'.route('saran_ai.index').'"');

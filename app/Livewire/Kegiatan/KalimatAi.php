@@ -276,7 +276,7 @@ class KalimatAi extends Component
             return false;
         }
         if (BatasAi::sisa($pengguna) <= 0) {
-            $this->galatAi[$bagian] = BatasAi::pesanHabis();
+            $this->galatAi[$bagian] = BatasAi::pesanHabis($pengguna);
 
             return false;
         }
@@ -520,7 +520,7 @@ class KalimatAi extends Component
             'aspek' => KonteksAi::aspekTerisi($konteks),
             'konteks' => $konteks !== '',
             'penyedia' => PenyediaAi::nama(StubPengaturan::pengaturanAi()['provider_aktif']),
-            'batas' => StubPengaturan::pengaturanAi()['batas_per_user_per_hari'],
+            'batas' => BatasAi::batas(StubData::currentUser()),
         ];
     }
 

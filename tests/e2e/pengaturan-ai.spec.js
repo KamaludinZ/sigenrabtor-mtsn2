@@ -170,4 +170,30 @@ test.describe('Pengaturan AI', () => {
         await tujuan.getByTestId('formulir-prompt').getByTestId('simpan-prompt').click();
         await expect(tujuan.getByTestId('status-prompt-tujuan')).toHaveText('Bawaan');
     });
+
+    test('batas pemakaian: batas umum lewat pilihan cepat, batas khusus satu akun, lalu pulihkan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai?tab=pemakaian');
+        const batas = page.getByTestId('batas-harian-ai');
+
+        await batas.getByRole('radio', { name: '50' }).click();
+        await expect(batas.getByTestId('isian-batas')).toHaveValue('50');
+        await batas.getByTestId('simpan-batas').click();
+        await expect(page.getByText('Batas umum tersimpan: 50 permintaan AI per akun per hari.')).toBeVisible();
+
+        const akun = page.getByTestId('pemakaian-per-akun').locator('[data-akun="3"]');
+        await akun.getByTestId('ubah-khusus-3').click();
+        await akun.getByTestId('isian-khusus').fill('80');
+        await akun.getByTestId('simpan-khusus').click();
+        await expect(akun.getByTestId('khusus-3')).toHaveText('Khusus 80');
+        await expect(akun.getByTestId('terpakai-3')).toContainText('/ 80');
+
+        // Pulihkan: akun memakai batas umum, batas umum kembali 20 (dipakai tes Kalimat KAK).
+        await akun.getByTestId('ubah-khusus-3').click();
+        await akun.getByTestId('hapus-khusus').click();
+        await expect(akun.getByTestId('khusus-3')).toHaveCount(0);
+        await batas.getByRole('radio', { name: '20' }).click();
+        await batas.getByTestId('simpan-batas').click();
+        await expect(page.getByText('Batas umum tersimpan: 20 permintaan AI per akun per hari.')).toBeVisible();
+    });
 });

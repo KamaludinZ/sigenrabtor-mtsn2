@@ -3,6 +3,7 @@
 namespace App\Support\Kegiatan;
 
 use App\Support\Pengaturan\PromptAi;
+use App\Support\Stub\StubData;
 
 /**
  * Keadaan tombol "Buat dengan AI" satu bagian BagianAi (komponen <x-ai.tombol-buat>): siap, menunggu (di klien lewat
@@ -27,7 +28,7 @@ final class TombolAi
             ! $bisaUbah => $hasil('nonaktif', 'Buat dengan AI', 'Kegiatan terkunci — kalimatnya tidak bisa diubah.'),
             blank(trim((string) ($kegiatan['nama_kegiatan'] ?? ''))) => $hasil('nonaktif', 'Buat dengan AI', 'Isi nama kegiatan dulu di Data Kegiatan.'),
             $saran !== [] => $hasil('ada', 'Lihat saran ('.count($saran).')'),
-            $sisa <= 0 => $hasil('nonaktif', 'Buat dengan AI', BatasAi::pesanHabis()),
+            $sisa <= 0 => $hasil('nonaktif', 'Buat dengan AI', BatasAi::pesanHabis(StubData::currentUser())),
             $galat !== null => $hasil('gagal', 'Coba lagi', $galat),
             default => $hasil('siap', 'Buat dengan AI', "Sisa {$sisa} permintaan AI hari ini."),
         };
