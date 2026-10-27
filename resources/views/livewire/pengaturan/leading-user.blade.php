@@ -271,7 +271,7 @@
                         </div>
                     @else
                         {{-- Layar lebar: tabel yang bisa diurutkan. --}}
-                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariAkun,peranAkun,statusAkun,urutkanAkun,simpanAkun">
+                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariAkun,peranAkun,statusAkun,urutkanAkun,simpanAkun,ubahStatusAkun">
                             <table class="w-full text-sm" data-testid="tabel-akun">
                                 <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                                     <tr>
@@ -323,10 +323,17 @@
                                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
                                                 <span class="mt-1.5 flex justify-end gap-0.5">
                                                     <button type="button" wire:click="ubahAkun({{ $a['id'] }})" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="Ubah" aria-label="Ubah akun {{ $a['name'] }}"><x-ui.icon name="pencil" class="size-4" /></button>
-                                                    <button type="button" class="rounded-md p-1 text-stone-400" disabled title="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} — sedang disiapkan" aria-label="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} akun {{ $a['name'] }} (sedang disiapkan)"><x-ui.icon :name="$a['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
+                                                    @if ($a['id'] === $saya)
+                                                        <button type="button" class="rounded-md p-1 text-stone-300" disabled title="Akun Anda sendiri tidak bisa dinonaktifkan" aria-label="Nonaktifkan akun {{ $a['name'] }} (akun Anda)"><x-ui.icon name="lock" class="size-4" /></button>
+                                                    @else
+                                                        <button type="button" wire:click="ubahStatusAkun({{ $a['id'] }})" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }}" aria-label="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} akun {{ $a['name'] }}"><x-ui.icon :name="$a['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
+                                                    @endif
                                                 </span>
                                             </td>
                                         </tr>
+                                        @if ($konfirmasiNonaktifAkun === (string) $a['id'])
+                                            @include('livewire.pengaturan.partials.konfirmasi-nonaktif-akun', ['a' => $a, 'kolom' => 5])
+                                        @endif
                                     @endforeach
                                 </tbody>
                             </table>
@@ -354,7 +361,15 @@
                                         {{ $a['role'] === 'admin' ? 'Semua leading' : ($a['leadings'] === [] ? 'Belum ditautkan ke leading' : implode(', ', array_map(fn ($k) => $k.' '.($namaLeading[$k] ?? '').($chipLeading($k)[0] ? '' : ' (nonaktif)'), $a['leadings']))) }}
                                     </p>
                                     <p class="text-[11px] text-stone-500">{{ $kegiatanAkun[$a['id']] ?? 0 }} kegiatan · {{ $a['terakhir_masuk'] ? 'masuk '.Format::tanggal($a['terakhir_masuk']) : 'belum pernah masuk' }}</p>
-                                    <button type="button" wire:click="ubahAkun({{ $a['id'] }})" class="btn-ghost mt-1.5 px-2 py-1 text-xs" aria-label="Ubah akun {{ $a['name'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                    <span class="mt-1.5 flex flex-wrap gap-1">
+                                        <button type="button" wire:click="ubahAkun({{ $a['id'] }})" class="btn-ghost px-2 py-1 text-xs" aria-label="Ubah akun {{ $a['name'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                        @unless ($a['id'] === $saya)
+                                            <button type="button" wire:click="ubahStatusAkun({{ $a['id'] }})" class="btn-ghost px-2 py-1 text-xs" aria-label="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} akun {{ $a['name'] }}"><x-ui.icon :name="$a['is_active'] ? 'lock' : 'check-circle'" class="size-3.5" /> {{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }}</button>
+                                        @endunless
+                                    </span>
+                                    @if ($konfirmasiNonaktifAkun === (string) $a['id'])
+                                        @include('livewire.pengaturan.partials.konfirmasi-nonaktif-akun', ['a' => $a, 'kolom' => null])
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>

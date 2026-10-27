@@ -29,4 +29,11 @@ interface PenggunaRepository
      * @throws \RuntimeException Penyimpanan gagal.
      */
     public function simpan(array $data, ?int $id = null): int;
+
+    /**
+     * Catat waktu masuk terakhir akun $id (dipanggil saat masuk berhasil).
+     *
+     * @throws \RuntimeException Penyimpanan gagal.
+     */
+    public function catatMasuk(int $id): void;
 }

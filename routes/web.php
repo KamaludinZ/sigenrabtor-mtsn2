@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
@@ -25,6 +26,7 @@ use App\Livewire\Pengaturan\ProfilMadrasah as PengaturanProfilMadrasah;
 use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
+use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -69,6 +71,12 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.
 Route::get('/demo/peran/{role}', function (string $role) {
     session(['stub_role' => $role]);
+    // Padanan peristiwa masuk: waktu masuk terakhir akun persona tercatat di Pengaturan › Leading & User.
+    try {
+        app(PenggunaRepository::class)->catatMasuk(StubData::currentUser()['id']);
+    } catch (RuntimeException $e) {
+        report($e);
+    }
 
     return back();
 })->whereIn('role', ['admin', 'leading'])->name('demo.peran');

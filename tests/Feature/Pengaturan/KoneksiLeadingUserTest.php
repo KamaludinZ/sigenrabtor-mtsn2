@@ -82,4 +82,12 @@ class KoneksiLeadingUserTest extends TestCase
             ->assertSet('isianAkun.jabatan', 'Jabatan baru');
         $this->assertSame('Diubah tab lain', app(PenggunaRepository::class)->temukan(3)['jabatan']);
     }
+
+    public function test_masuk_di_tempat_lain_bukan_perubahan(): void
+    {
+        $komponen = Livewire::test(LeadingUser::class)->call('ubahLeading', '1.7')->set('isianLeading.urutan', '30');
+        app(PenggunaRepository::class)->catatMasuk(1);
+
+        $komponen->call('simpanLeading')->assertDispatched('notify', message: 'Leading 1.7 Mahad diperbarui.', type: 'success');
+    }
 }

@@ -27,7 +27,8 @@ use RuntimeException;
  * (`ubahStatusLeading`, konfirmasi beserta dampaknya, minimal satu tetap aktif). Akun ditambah/diubah lewat formulir
  * inline (aturan AturanAkun: surel unik, peran, tautan leading, NIP; riwayat tambah_akun/ubah_akun). Tautan akun dikelola
  * juga dari sisi leading lewat panel per baris (`bukaTautan`, `tautkanAkun`, `lepasTautan`; riwayat ubah_tautan_leading).
- * Setiap aksi tulis menolak menimpa perubahan dari tab/admin lain (sidik data `$versi` dicatat `rendering()`).
+ * Akun dinonaktifkan/diaktifkan lewat `ubahStatusAkun` (konfirmasi, akun sendiri & admin aktif terakhir dilindungi). Setiap
+ * aksi tulis menolak menimpa perubahan dari tab/admin lain (sidik data `$versi` dicatat `rendering()`).
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -98,6 +99,9 @@ class LeadingUser extends Component
     #[Url(as: 'arah_akun', except: '')]
     public string $arahAkun = '';
 
+    /** Id akun (teks) yang menunggu konfirmasi dinonaktifkan. */
+    public ?string $konfirmasiNonaktifAkun = null;
+
     /** Akun yang disunting: 'baru' (tambah), id akun (ubah, sebagai teks), atau null. */
     public ?string $suntingAkun = null;
 
@@ -161,7 +165,7 @@ class LeadingUser extends Component
 
     public function batalAkun(): void
     {
-        $this->reset('suntingAkun', 'isianAkun');
+        $this->reset('suntingAkun', 'isianAkun', 'konfirmasiNonaktifAkun');
         $this->resetErrorBag(array_map(fn (string $k) => "isianAkun.{$k}", array_keys($this->isianAkun)));
     }
 
@@ -225,6 +229,66 @@ class LeadingUser extends Component
         $this->batalAkun();
         $this->dispatch('notify', message: 'Akun '.$baru['name'].($lama === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
         $this->dispatch('akun-disimpan', id: $idBaru);
+    }
+
+    /**
+     * Nonaktifkan akun (konfirmasi dulu) atau aktifkan kembali. Akun sendiri & admin aktif terakhir tidak bisa
+     * dinonaktifkan; akun nonaktif tetap tercatat sebagai pembuat kegiatannya.
+     */
+    public function ubahStatusAkun(int $id, PenggunaRepository $repo): void
+    {
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
+        $akun = collect($this->akun)->firstWhere('id', $id);
+        if ($akun === null) {
+            return;
+        }
+
+        if ($akun['is_active']) {
+            $tolak = match (true) {
+                $id === StubData::currentUser()['id'] => 'Akun Anda sendiri tidak bisa dinonaktifkan.',
+                $akun['role'] === 'admin' && count(array_filter($this->akun, fn (array $a) => $a['role'] === 'admin' && $a['is_active'])) === 1 => 'Minimal satu admin aktif harus tetap ada.',
+                default => null,
+            };
+            if ($tolak !== null) {
+                $this->konfirmasiNonaktifAkun = null;
+                $this->dispatch('notify', message: $tolak, type: 'error');
+
+                return;
+            }
+            if ($this->konfirmasiNonaktifAkun !== (string) $id) {
+                $this->batalAkun();
+                $this->konfirmasiNonaktifAkun = (string) $id;
+
+                return;
+            }
+        }
+
+        $aktif = ! $akun['is_active'];
+        try {
+            $repo->simpan(['is_active' => $aktif], $id);
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: 'Status akun gagal disimpan — coba lagi.', type: 'error');
+
+            return;
+        }
+
+        RiwayatPengaturan::catat('ubah_status_akun', "Akun {$akun['name']}".($aktif ? ' diaktifkan kembali' : ' dinonaktifkan'));
+        unset($this->akun);
+        $this->konfirmasiNonaktifAkun = null;
+        $tanpaLeadingAktif = $aktif && $akun['role'] === 'leading'
+            && array_intersect($akun['leadings'], array_column(array_filter($this->leading, fn (array $l) => $l['is_active']), 'kode')) === [];
+        $this->dispatch('notify', message: "Akun {$akun['name']}".($aktif
+            ? ($tanpaLeadingAktif ? ' aktif kembali, tetapi belum tertaut ke leading aktif — tautkan dulu agar bisa membuat kegiatan.' : ' aktif kembali — bisa masuk lagi.')
+            : ' dinonaktifkan — tidak bisa masuk lagi.'), type: $tanpaLeadingAktif ? 'info' : 'success');
+    }
+
+    /** Jumlah kegiatan (semua tahun) yang dibuat akun $id — tetap tercatat atas namanya bila akun dinonaktifkan. */
+    public function kegiatanBuatan(int $id): int
+    {
+        return count(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => (int) ($k['user_id'] ?? 0) === $id));
     }
 
     public function hapusSaringanAkun(): void
@@ -708,10 +772,12 @@ class LeadingUser extends Component
         $this->versi = self::sidik();
     }
 
-    /** Sidik isi data leading & akun (padanan updated_at terbaru di backend). */
+    /** Sidik isi data leading & akun (padanan updated_at terbaru di backend); waktu masuk tidak dihitung sebagai perubahan. */
     private static function sidik(): string
     {
-        return sha1(json_encode([app(LeadingRepository::class)->semua(), app(PenggunaRepository::class)->semua()]));
+        $akun = array_map(fn (array $a) => array_diff_key($a, ['terakhir_masuk' => true]), app(PenggunaRepository::class)->semua());
+
+        return sha1(json_encode([app(LeadingRepository::class)->semua(), $akun]));
     }
 
     /**

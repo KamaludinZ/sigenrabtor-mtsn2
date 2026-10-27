@@ -34,7 +34,7 @@ class StubPenggunaRepository implements PenggunaRepository
         $lama = $indeks === false ? [] : $semua[$indeks];
         $id ??= max([0, ...array_map('intval', array_column($semua, 'id'))]) + 1;
 
-        $baris = self::rapikan(['id' => $id, 'dibuat_pada' => $lama['dibuat_pada'] ?? now()->toIso8601String(), 'terakhir_masuk' => $lama['terakhir_masuk'] ?? null] + $data + $lama);
+        $baris = self::rapikan(['id' => $id] + $data + ['dibuat_pada' => $lama['dibuat_pada'] ?? now()->toIso8601String(), 'terakhir_masuk' => $lama['terakhir_masuk'] ?? null] + $lama);
         if ($indeks === false) {
             $semua[] = $baris;
         } else {
@@ -43,6 +43,13 @@ class StubPenggunaRepository implements PenggunaRepository
         $this->tulis($semua);
 
         return $id;
+    }
+
+    public function catatMasuk(int $id): void
+    {
+        if ($this->temukan($id) !== null) {
+            $this->simpan(['terakhir_masuk' => now()->toIso8601String()], $id);
+        }
     }
 
     /**

@@ -1096,4 +1096,24 @@ test.describe('Pengaturan admin', () => {
         await page.getByTestId('formulir-leading').getByRole('button', { name: 'Simpan' }).click();
         await expect(page.getByText('Leading 1.7 Mahad diperbarui.')).toBeVisible();
     });
+
+    test('akun: nonaktifkan dengan konfirmasi, akun sendiri terlindungi, lalu aktifkan kembali', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading?tab=akun');
+        const daftar = page.getByTestId('daftar-akun');
+        await expect(daftar.getByRole('button', { name: 'Nonaktifkan akun Koordinator PUSKOM', exact: true })).toHaveCount(0);
+
+        await page.getByRole('button', { name: 'Nonaktifkan akun Siti Rohmah, M.Pd.', exact: true }).filter({ visible: true }).click();
+        const konfirmasi = daftar.getByTestId('konfirmasi-nonaktif-akun').filter({ visible: true });
+        await expect(konfirmasi).toContainText('Akun tidak bisa masuk lagi.');
+        await konfirmasi.screenshot({ path: `storage/playwright/shots/akun-nonaktif-${testInfo.project.name}.png` });
+        await konfirmasi.getByRole('button', { name: 'Nonaktifkan' }).click();
+        await expect(page.getByText('Akun Siti Rohmah, M.Pd. dinonaktifkan — tidak bisa masuk lagi.')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Aktifkan akun Siti Rohmah, M.Pd.', exact: true }).filter({ visible: true })).toBeVisible();
+
+        // Pulihkan (proyek mobile memakai data yang sama).
+        await page.getByRole('button', { name: 'Aktifkan akun Siti Rohmah, M.Pd.', exact: true }).filter({ visible: true }).click();
+        await expect(page.getByText('Akun Siti Rohmah, M.Pd. aktif kembali — bisa masuk lagi.')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Nonaktifkan akun Siti Rohmah, M.Pd.', exact: true }).filter({ visible: true })).toBeVisible();
+    });
 });
