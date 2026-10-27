@@ -77,7 +77,7 @@
                     <li class="grid gap-x-6 gap-y-3 px-5 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_16rem_9rem]" data-kegiatan="{{ $b['id'] }}" wire:key="periksa-{{ $b['id'] }}">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <a href="{{ route('kegiatan.edit', ['kegiatan' => $b['id']]) }}" wire:navigate class="font-semibold text-stone-900 hover:text-brand-800">{{ $b['nama'] }}</a>
+                                <a href="{{ route('pemeriksaan.periksa', ['kegiatan' => $b['id']]) }}" wire:navigate class="font-semibold text-stone-900 hover:text-brand-800">{{ $b['nama'] }}</a>
                                 <x-ui.status-badge :status="$b['status']->value" />
                             </div>
                             <p class="mt-0.5 text-xs text-stone-500">
@@ -110,9 +110,9 @@
                                 {{ $b['kurang'] === 0 ? 'Dokumen lengkap' : $b['kurang'].' isian kurang' }}
                             </span>
                             @if ($tab === 'diperiksa')
-                                <button type="button" class="btn-primary px-3 py-1.5 text-xs" disabled title="Sedang disiapkan">Periksa <x-ui.segera /></button>
+                                <a href="{{ route('pemeriksaan.periksa', ['kegiatan' => $b['id']]) }}" wire:navigate class="btn-primary px-3 py-1.5 text-xs">Periksa <x-ui.icon name="chevron-right" class="size-3.5" /></a>
                             @else
-                                <a href="{{ route('kegiatan.edit', ['kegiatan' => $b['id']]) }}" wire:navigate class="btn-ghost px-2.5 py-1 text-xs">Buka <x-ui.icon name="chevron-right" class="size-3.5" /></a>
+                                <a href="{{ route('pemeriksaan.periksa', ['kegiatan' => $b['id']]) }}" wire:navigate class="btn-ghost px-2.5 py-1 text-xs">Lihat dokumen <x-ui.icon name="chevron-right" class="size-3.5" /></a>
                             @endif
                         </div>
                     </li>

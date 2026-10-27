@@ -250,12 +250,13 @@ final readonly class SusunanKak
 
     /**
      * Blok tanda tangan: Mengetahui (Ketua Komite; per sumber dana menurut PenandaTangan::mengetahui, bawaan DIPA & Komite),
-     * Pembuat (pejabat leading), Menyetujui (Kepala).
+     * Pembuat (pejabat leading), Menyetujui (Kepala). Lembar pengesahan RAB memakai blok yang sama (SusunanRab).
      *
      * @param  array<string, mixed>  $kegiatan
+     * @param  callable(string): mixed  $kosong  Pencatat isian yang belum lengkap (tanggal dokumen).
      * @return array{jenis: string, kolom: list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null}>}
      */
-    private static function pengesahan(array $kegiatan, ?string $sumber, string $kota, callable $kosong): array
+    public static function pengesahan(array $kegiatan, ?string $sumber, string $kota, callable $kosong): array
     {
         $pejabat = PenandaTangan::pimpinan();
         $pembuat = PenandaTangan::pembuat($kegiatan);

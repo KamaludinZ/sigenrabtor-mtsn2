@@ -38,4 +38,38 @@ test.describe('Pemeriksaan', () => {
 
         await page.goto('/demo/peran/leading');
     });
+
+    test('detail dokumen: KAK/TOR & RAB per sumber dana, kelengkapan, anggaran, riwayat', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pemeriksaan?status=draf');
+        await page.getByTestId('daftar-pemeriksaan').locator('li[data-kegiatan="2"]').getByRole('link', { name: 'Lihat dokumen' }).click();
+        await expect(page).toHaveURL(/\/pemeriksaan\/2$/);
+        await expect(page.getByRole('heading', { name: 'Supervisi Akademik dan Refleksi Pembelajaran', level: 1 })).toBeVisible();
+        await expect(page.getByTestId('pratinjau-kak')).toContainText('Sumber dana: DIPA');
+        await expect(page.getByTestId('panel-keputusan')).toContainText('Belum diajukan');
+        await expect(page.getByTestId('kelengkapan-dokumen').locator('li[data-kelengkapan]')).toHaveCount(2);
+        await expect(page.getByTestId('ringkasan-anggaran').locator('[data-sumber="Komite"]')).toContainText('Sesuai pagu');
+
+        const pratinjau = page.getByTestId('pratinjau-pemeriksaan');
+        await pratinjau.getByRole('group', { name: 'Jenis dokumen' }).getByRole('button', { name: 'RAB' }).click();
+        await expect(page).toHaveURL(/dokumen=rab/);
+        await expect(page.getByTestId('pratinjau-rab')).toContainText('Rencana Anggaran Biaya Kegiatan Supervisi Akademik dan Refleksi Pembelajaran');
+        await expect(page.getByTestId('tabel-rab-dipa')).toBeVisible();
+
+        await page.getByTestId('kelengkapan-dokumen').locator('[data-dokumen="rab-komite"]').click();
+        await expect(page).toHaveURL(/sumber=Komite/);
+        await expect(page.getByTestId('tabel-rab-komite')).toBeVisible();
+        await expect(page.getByTestId('kelengkapan-dokumen').locator('[data-dokumen="rab-komite"]')).toHaveAttribute('aria-pressed', 'true');
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/pemeriksaan-detail-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.reload();
+        await expect(page.getByTestId('tabel-rab-komite')).toBeVisible();
+        await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Pemeriksaan' }).click();
+        await expect(page).toHaveURL(/\/pemeriksaan\?status=draf$/);
+
+        await page.goto('/demo/peran/leading');
+    });
 });
