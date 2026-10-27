@@ -10,6 +10,7 @@
     $kesiapan = $this->kesiapan();
     $pengaturan = $this->pengaturan;
     $bolehUbah = ! $this->tahunTerkunci();
+    $bisaUrut = $bolehUbah && $suntingButir === null && count($dasarHukum) > 1;
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -68,7 +69,7 @@
                 <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
                     <div class="min-w-0">
                         <h2 id="judul-dasar-hukum" class="text-base font-semibold text-stone-900">Dasar hukum</h2>
-                        <p class="mt-0.5 text-sm text-stone-500">{{ count($dasarHukum) }} butir · tercetak bernomor di bagian 2 KAK/TOR sesuai urutan ini.</p>
+                        <p class="mt-0.5 text-sm text-stone-500">{{ count($dasarHukum) }} butir · tercetak bernomor di bagian 2 KAK/TOR sesuai urutan ini{{ $bisaUrut ? ' — seret nomor untuk memindahkan' : '' }}.</p>
                     </div>
                     @if ($bolehUbah)
                         <div class="flex shrink-0 flex-wrap gap-2 self-start">
@@ -78,6 +79,12 @@
                         </div>
                     @endif
                 </header>
+                @if ($butirTerhapus && $butirTerhapus['tahun'] === $ta)
+                    <div class="flex items-center justify-between gap-3 border-b border-stone-100 bg-stone-800 px-5 py-2.5 text-sm text-white sm:px-6" role="status" data-testid="butir-terhapus">
+                        <span class="min-w-0 truncate">Butir {{ $butirTerhapus['posisi'] + 1 }} dihapus: “{{ \App\Support\Pengaturan\DaftarDasarHukum::rapikan($butirTerhapus['butir']['teks']) }}”</span>
+                        <button type="button" wire:click="urungkanHapusButir" class="shrink-0 font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                    </div>
+                @endif
                 @if ($dasarHukum === [] && $suntingButir !== 'baru')
                     <p class="px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="dasar-hukum-kosong">
                         Belum ada dasar hukum TA {{ $ta }}.
@@ -86,29 +93,35 @@
                         @endunless
                     </p>
                 @else
-                    <ol class="divide-y divide-stone-100">
+                    {{-- Seret pegangan nomor atau pakai naik/turun; setiap pindah langsung tersimpan. Fokus dikembalikan ke tombol yang sama. --}}
+                    <ol class="divide-y divide-stone-100" @if ($bisaUrut) wire:sort="pindahkanButir" @endif
+                        x-data x-on:butir-dipindah.window="$nextTick(() => { const li = $el.querySelector(`li[data-id='${CSS.escape($event.detail.id)}']`); (li?.querySelector(`[data-geser='${$event.detail.arah}']:not([disabled])`) ?? li?.querySelector('[data-geser]:not([disabled])'))?.focus() })">
                         @foreach ($dasarHukum as $i => $butir)
-                            <li class="flex items-start gap-3 px-5 py-3 sm:px-6" data-butir="{{ $i + 1 }}" data-id="{{ $butir['id'] }}" wire:key="butir-{{ $butir['id'] }}">
-                                <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600 tabular-nums" aria-hidden="true">{{ $i + 1 }}</span>
+                            <li class="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:px-6"
+                                data-butir="{{ $i + 1 }}" data-id="{{ $butir['id'] }}" wire:key="butir-{{ $butir['id'] }}" @if ($bisaUrut) wire:sort:item="{{ $butir['id'] }}" @endif>
+                                @if ($bisaUrut)
+                                    <span wire:sort:handle title="Seret untuk mengurutkan" aria-hidden="true"
+                                          class="group/handle mt-0.5 grid size-6 cursor-grab touch-none place-items-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600 tabular-nums hover:bg-brand-100 hover:text-brand-800 active:cursor-grabbing">
+                                        <span class="group-hover/handle:hidden">{{ $i + 1 }}</span>
+                                        <x-ui.icon name="grip" class="hidden size-3.5 group-hover/handle:block" />
+                                    </span>
+                                @else
+                                    <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600 tabular-nums" aria-hidden="true">{{ $i + 1 }}</span>
+                                @endif
                                 @if ($suntingButir === $butir['id'])
                                     @include('livewire.pengaturan.partials.isian-butir-dasar-hukum', ['label' => 'Ubah butir '.($i + 1)])
                                 @else
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm text-stone-800">{{ $butir['teks'] }}</p>
-                                        @if ($konfirmasiHapus === $butir['id'])
-                                            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 ring-1 ring-red-200" role="group" aria-label="Konfirmasi hapus butir {{ $i + 1 }}">
-                                                <span class="text-sm text-red-800">Hapus butir {{ $i + 1 }}? Nomor butir sesudahnya bergeser.</span>
-                                                <span class="flex gap-1.5">
-                                                    <button type="button" class="btn-ghost px-2 py-1 text-xs" wire:click="batalButir">Batal</button>
-                                                    <button type="button" class="btn-danger px-2.5 py-1 text-xs" wire:click="hapusButir">Hapus</button>
-                                                </span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    @if ($bolehUbah && $konfirmasiHapus !== $butir['id'])
-                                        <div class="-my-1 flex shrink-0 gap-0.5">
-                                            <button type="button" wire:click="ubahButir(@js($butir['id']))" class="btn-ghost p-1.5" aria-label="Ubah butir {{ $i + 1 }}" title="Ubah"><x-ui.icon name="pencil" class="size-4" /></button>
-                                            <button type="button" wire:click="mintaHapusButir(@js($butir['id']))" class="btn-ghost p-1.5 text-red-700 hover:bg-red-50" aria-label="Hapus butir {{ $i + 1 }}" title="Hapus"><x-ui.icon name="trash" class="size-4" /></button>
+                                    <p class="min-w-0 text-sm text-stone-800">{{ $butir['teks'] }}</p>
+                                    @if ($bolehUbah && $suntingButir === null)
+                                        <div class="col-start-2 -my-1 flex justify-end gap-0.5 sm:col-start-auto">
+                                            <button type="button" wire:click="geserButir(@js($butir['id']), -1)" @disabled($loop->first) data-geser="naik"
+                                                    class="rounded-md p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Naikkan" aria-label="Naikkan butir {{ $i + 1 }}"><x-ui.icon name="arrow-up" class="size-4" /></button>
+                                            <button type="button" wire:click="geserButir(@js($butir['id']), 1)" @disabled($loop->last) data-geser="turun"
+                                                    class="rounded-md p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                                                    title="Turunkan" aria-label="Turunkan butir {{ $i + 1 }}"><x-ui.icon name="arrow-down" class="size-4" /></button>
+                                            <button type="button" wire:click="ubahButir(@js($butir['id']))" class="rounded-md p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="Ubah" aria-label="Ubah butir {{ $i + 1 }}"><x-ui.icon name="pencil" class="size-4" /></button>
+                                            <button type="button" wire:click="hapusButir(@js($butir['id']))" class="rounded-md p-1.5 text-stone-500 hover:bg-red-50 hover:text-red-600" title="Hapus" aria-label="Hapus butir {{ $i + 1 }}"><x-ui.icon name="trash" class="size-4" /></button>
                                         </div>
                                     @endif
                                 @endif
@@ -121,6 +134,7 @@
                             </li>
                         @endif
                     </ol>
+                    <p class="sr-only" role="status">{{ $pengumuman }}</p>
                 @endif
                 <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Tanda baca akhir disusun otomatis seperti di dokumen: titik koma (;), butir terakhir titik (.). Tulis <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{tahun}</code> agar tahun anggaran terisi sendiri.</p>
             </section>

@@ -78,8 +78,7 @@ class DaftarDasarHukumTest extends TestCase
             ->assertSet('suntingButir', 'dh-2026-2')
             ->assertSet('teksButir', 'Peraturan Menteri Agama Nomor 10 Tahun 2010 tentang Organisasi dan Tata Kerja Kementerian Agama')
             ->assertSeeHtml('data-testid="isian-butir"')
-            ->assertSeeHtml('aria-label="Ubah butir 1"')
-            ->assertDontSeeHtml('aria-label="Ubah butir 2"')
+            ->assertDontSeeHtml('aria-label="Ubah butir 1"')
             ->set('teksButir', '   ')
             ->call('simpanButir')
             ->assertHasErrors(['teksButir'])
@@ -111,29 +110,80 @@ class DaftarDasarHukumTest extends TestCase
         $komponen->call('ubahButir', 'tidak-ada')->assertSet('suntingButir', null);
     }
 
-    public function test_hapus_butir_dengan_konfirmasi(): void
+    /** @return list<string> */
+    private function urutanId(int $tahun = 2026): array
+    {
+        return array_column(app(DasarHukumRepository::class)->untukTahun($tahun)['dasar_hukum'], 'id');
+    }
+
+    public function test_hapus_langsung_dan_urungkan_ke_posisi_semula(): void
     {
         $komponen = Livewire::test(DasarHukum::class)
-            ->call('mintaHapusButir', 'dh-2026-2')
-            ->assertSet('konfirmasiHapus', 'dh-2026-2')
-            ->assertSeeHtml('aria-label="Konfirmasi hapus butir 2"')
-            ->call('batalButir')
-            ->assertSet('konfirmasiHapus', null);
-        $this->assertCount(4, $this->tersimpan());
+            ->call('hapusButir', 'dh-2026-2')
+            ->assertSet('butirTerhapus.posisi', 1)
+            ->assertSet('butirTerhapus.butir.id', 'dh-2026-2')
+            ->assertSeeHtml('data-testid="butir-terhapus"')
+            ->assertSee('Butir 2 dihapus: “Peraturan Menteri Agama Nomor 10 Tahun 2010')
+            ->assertSee('3 butir · tercetak bernomor');
+        $this->assertSame(['dh-2026-1', 'dh-2026-3', 'dh-2026-4'], $this->urutanId());
+        $this->assertStringStartsWith('Dasar hukum TA 2026 — hapus butir 2: Peraturan Menteri Agama Nomor 10', $this->riwayatTerakhir()['keterangan']);
 
-        $komponen->call('mintaHapusButir', 'dh-2026-4')
-            ->call('hapusButir')
-            ->assertSet('konfirmasiHapus', null)
-            ->assertDispatched('notify', message: 'Butir 4 dihapus dari dasar hukum TA 2026.', type: 'success')
-            ->assertSee('3 butir · tercetak bernomor')
-            ->assertDontSee(self::RKTM);
-        $this->assertSame(['dh-2026-1', 'dh-2026-2', 'dh-2026-3'], array_column(app(DasarHukumRepository::class)->untukTahun(2026)['dasar_hukum'], 'id'));
-        $this->assertStringEndsWith('Penyelenggaraan Pendidikan Madrasah.', StubData::dasarHukum(2026)[2], 'Butir terakhir yang baru kini diakhiri titik.');
-        $this->assertStringStartsWith('Dasar hukum TA 2026 — hapus butir 4: Surat Keputusan', $this->riwayatTerakhir()['keterangan']);
+        $komponen->call('urungkanHapusButir')
+            ->assertSet('butirTerhapus', null)
+            ->assertDispatched('notify', message: 'Butir 2 dikembalikan.', type: 'success')
+            ->assertDontSeeHtml('data-testid="butir-terhapus"');
+        $this->assertSame(['dh-2026-1', 'dh-2026-2', 'dh-2026-3', 'dh-2026-4'], $this->urutanId());
+        $this->assertStringStartsWith('Dasar hukum TA 2026 — kembalikan butir 2:', $this->riwayatTerakhir()['keterangan']);
 
-        // Hapus tanpa konfirmasi tidak berbuat apa-apa.
-        $komponen->call('hapusButir');
-        $this->assertCount(3, $this->tersimpan());
+        // Butir terakhir dihapus: butir sebelumnya kini dicetak dengan titik.
+        $komponen->call('hapusButir', 'dh-2026-4');
+        $this->assertStringEndsWith('Penyelenggaraan Pendidikan Madrasah.', StubData::dasarHukum(2026)[2]);
+
+        // Urungkan hanya untuk tahun yang sama & hilang setelah aksi lain.
+        $komponen->set('tahun', '2025')->assertSet('butirTerhapus', null)->call('urungkanHapusButir');
+        $this->assertCount(3, $this->tersimpan(2025));
+        $komponen->set('tahun', '')->call('hapusButir', 'dh-2026-3')->call('ubahButir', 'dh-2026-1')->assertSet('butirTerhapus', null)->call('urungkanHapusButir');
+        $this->assertSame(['dh-2026-1', 'dh-2026-2'], $this->urutanId());
+
+        $komponen->call('hapusButir', 'tidak-ada');
+        $this->assertCount(2, $this->tersimpan());
+    }
+
+    public function test_urutkan_dengan_seret_dan_naik_turun(): void
+    {
+        $komponen = Livewire::test(DasarHukum::class)
+            ->assertSeeHtml('wire:sort="pindahkanButir"')
+            ->assertSeeHtml('wire:sort:item="dh-2026-1"')
+            ->assertSee('seret nomor untuk memindahkan')
+            ->assertSeeHtml('aria-label="Naikkan butir 1"')
+            ->call('pindahkanButir', 'dh-2026-4', 0)
+            ->assertSet('pengumuman', 'Butir 4 dipindah ke nomor 1.')
+            ->assertSeeHtmlInOrder(['data-butir="1" data-id="dh-2026-4"', self::RKTM.' 2026;', 'data-butir="4" data-id="dh-2026-3"', 'Penyelenggaraan Pendidikan Madrasah.']);
+        $this->assertSame(['dh-2026-4', 'dh-2026-1', 'dh-2026-2', 'dh-2026-3'], $this->urutanId());
+        $this->assertStringStartsWith('Dasar hukum TA 2026 — pindah butir 4 ke 1: Surat Keputusan', $this->riwayatTerakhir()['keterangan']);
+        $this->assertSame(self::RKTM.' 2026;', StubData::dasarHukum(2026)[0], 'Dokumen mengikuti urutan baru.');
+
+        $komponen->call('geserButir', 'dh-2026-4', 1)
+            ->assertDispatched('butir-dipindah', id: 'dh-2026-4', arah: 'turun');
+        $this->assertSame(['dh-2026-1', 'dh-2026-4', 'dh-2026-2', 'dh-2026-3'], $this->urutanId());
+        $komponen->call('geserButir', 'dh-2026-4', -1)
+            ->assertDispatched('butir-dipindah', id: 'dh-2026-4', arah: 'naik');
+        $this->assertSame(['dh-2026-4', 'dh-2026-1', 'dh-2026-2', 'dh-2026-3'], $this->urutanId());
+
+        // Di ujung, posisi di luar rentang, atau sedang menyunting: tidak berpindah & tidak dicatat.
+        $jumlahRiwayat = count(app(RiwayatPengaturanRepository::class)->semua());
+        $komponen->call('geserButir', 'dh-2026-4', -1)->assertNotDispatched('butir-dipindah')
+            ->call('pindahkanButir', 'dh-2026-3', 99)
+            ->call('ubahButir', 'dh-2026-1')
+            ->assertDontSeeHtml('wire:sort="pindahkanButir"')
+            ->assertDontSeeHtml('aria-label="Naikkan butir 2"')
+            ->call('pindahkanButir', 'dh-2026-1', 3);
+        $this->assertSame(['dh-2026-4', 'dh-2026-1', 'dh-2026-2', 'dh-2026-3'], $this->urutanId());
+        $this->assertCount($jumlahRiwayat, app(RiwayatPengaturanRepository::class)->semua());
+
+        // Pindah membatalkan urungkan hapus (posisinya tidak lagi berarti).
+        $komponen->call('batalButir')->call('hapusButir', 'dh-2026-2')->call('pindahkanButir', 'dh-2026-3', 0)->assertSet('butirTerhapus', null);
+        $this->assertSame(['dh-2026-3', 'dh-2026-4', 'dh-2026-1'], $this->urutanId());
     }
 
     public function test_tahun_kosong_bisa_diisi_dan_tahun_terkunci_hanya_dilihat(): void
@@ -154,11 +204,13 @@ class DaftarDasarHukumTest extends TestCase
             ->set('tahun', '2025')
             ->assertSet('suntingButir', null)
             ->assertDontSeeHtml('wire:click="tambahButir"')
-            ->assertDontSeeHtml('aria-label="Ubah butir 1"');
+            ->assertDontSeeHtml('aria-label="Ubah butir 1"')
+            ->assertDontSeeHtml('wire:sort="pindahkanButir"');
         $terkunci->call('tambahButir')->assertSet('suntingButir', null)
             ->call('ubahButir', 'dh-2025-1')->assertSet('suntingButir', null)
-            ->call('mintaHapusButir', 'dh-2025-1')->assertSet('konfirmasiHapus', null);
-        $this->assertCount(3, $this->tersimpan(2025));
+            ->call('hapusButir', 'dh-2025-1')
+            ->call('pindahkanButir', 'dh-2025-3', 0);
+        $this->assertSame(['dh-2025-1', 'dh-2025-2', 'dh-2025-3'], $this->urutanId(2025));
     }
 
     public function test_batas_jumlah_butir(): void

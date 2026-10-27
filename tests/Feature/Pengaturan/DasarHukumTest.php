@@ -42,7 +42,7 @@ class DasarHukumTest extends TestCase
 
         Livewire::test(DasarHukum::class)
             ->assertSet('tahun', '')
-            ->assertSee('4 butir · tercetak bernomor di bagian 2 KAK/TOR sesuai urutan ini.')
+            ->assertSee('4 butir · tercetak bernomor di bagian 2 KAK/TOR sesuai urutan ini — seret nomor untuk memindahkan.')
             ->assertSeeHtmlInOrder(['data-butir="1"', 'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003', 'data-butir="4"', 'Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun 2026.'])
             ->assertSeeHtmlInOrder(['data-testid="paragraf-baku"', 'Madrasah Tsanawiyah Negeri 2 Kota Malang, sebagai lembaga pendidikan Islam', 'Tahun Anggaran 2026'])
             ->assertSeeHtmlInOrder(['data-testid="kalimat-sisip"', 'Salah satu kegiatan yang relevan dan mendukung program Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan ', '<mark', 'nama kegiatan', '</mark>.'])

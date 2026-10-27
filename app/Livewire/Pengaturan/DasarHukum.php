@@ -21,8 +21,8 @@ use Livewire\Component;
  * anggaran (tercetak bernomor di bagian 2 KAK) dan paragraf latar belakang baku (bagian 1) beserta kalimat penutup yang
  * menyisipkan nama kegiatan, tersimpan lewat DasarHukumRepository (teks mentah, penanda diisi TeksBaku). Tahun yang dilihat
  * di `?ta=` ('' = tahun aktif); pratinjau memakai susunan yang sama dengan dokumen (SusunanKak, KalimatKak). Butir dasar
- * hukum ditambah/diubah/dihapus satu per satu dan langsung tersimpan (aturan & tanda baca cetak di DaftarDasarHukum);
- * tahun terkunci hanya dilihat.
+ * hukum ditambah/diubah/dihapus (bisa diurungkan) dan diurutkan (seret atau naik/turun) satu per satu dan langsung
+ * tersimpan (aturan & tanda baca cetak di DaftarDasarHukum); tahun terkunci hanya dilihat.
  */
 #[Layout('layouts.app')]
 class DasarHukum extends Component
@@ -35,8 +35,11 @@ class DasarHukum extends Component
 
     public string $teksButir = '';
 
-    /** Id butir yang menunggu konfirmasi hapus. */
-    public ?string $konfirmasiHapus = null;
+    /** @var array{tahun: int, posisi: int, butir: array{id: string, teks: string}}|null Butir yang baru dihapus (bisa diurungkan). */
+    public ?array $butirTerhapus = null;
+
+    /** Pengumuman pembaca layar setelah butir dipindah. */
+    public string $pengumuman = '';
 
     public function mount(): void
     {
@@ -47,6 +50,7 @@ class DasarHukum extends Component
     {
         $this->rapikanTahun();
         $this->batalButir();
+        $this->butirTerhapus = null;
         unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
     }
 
@@ -62,6 +66,7 @@ class DasarHukum extends Component
         }
 
         $this->batalButir();
+        $this->butirTerhapus = null;
         $this->suntingButir = 'baru';
     }
 
@@ -73,13 +78,14 @@ class DasarHukum extends Component
         }
 
         $this->batalButir();
+        $this->butirTerhapus = null;
         $this->suntingButir = $id;
         $this->teksButir = DaftarDasarHukum::rapikan($butir['teks']);
     }
 
     public function batalButir(): void
     {
-        $this->reset('suntingButir', 'teksButir', 'konfirmasiHapus');
+        $this->reset('suntingButir', 'teksButir');
         $this->resetErrorBag('teksButir');
     }
 
@@ -124,30 +130,52 @@ class DasarHukum extends Component
         $this->dispatch('notify', message: ($id === 'baru' ? 'Butir dasar hukum ditambahkan' : 'Butir dasar hukum diperbarui')." untuk TA {$tahun}.", type: 'success');
     }
 
-    public function mintaHapusButir(string $id): void
-    {
-        if ($this->tahunTerkunci() || ! in_array($id, array_column($this->pengaturan['dasar_hukum'], 'id'), true)) {
-            return;
-        }
-
-        $this->batalButir();
-        $this->konfirmasiHapus = $id;
-    }
-
-    public function hapusButir(DasarHukumRepository $repo): void
+    /** Hapus langsung; bilah "Urungkan" mengembalikannya ke posisi semula. */
+    public function hapusButir(string $id, DasarHukumRepository $repo): void
     {
         $daftar = $this->pengaturan['dasar_hukum'];
-        $i = array_search($this->konfirmasiHapus, array_column($daftar, 'id'), true);
+        $i = array_search($id, array_column($daftar, 'id'), true);
         if ($i === false || $this->tahunTerkunci()) {
-            $this->batalButir();
-
             return;
         }
 
-        $teks = DaftarDasarHukum::rapikan($daftar[$i]['teks']);
-        array_splice($daftar, $i, 1);
-        $this->simpanDaftar($repo, $daftar, 'hapus butir '.($i + 1).': '.Str::limit($teks, 120));
-        $this->dispatch('notify', message: 'Butir '.($i + 1).' dihapus dari dasar hukum TA '.$this->tahunDilihat().'.', type: 'success');
+        [$butir] = array_splice($daftar, $i, 1);
+        $this->simpanDaftar($repo, $daftar, 'hapus butir '.($i + 1).': '.Str::limit(DaftarDasarHukum::rapikan($butir['teks']), 120));
+        $this->butirTerhapus = ['tahun' => $this->tahunDilihat(), 'posisi' => $i, 'butir' => $butir];
+    }
+
+    public function urungkanHapusButir(DasarHukumRepository $repo): void
+    {
+        $terhapus = $this->butirTerhapus;
+        $this->butirTerhapus = null;
+        $daftar = $this->pengaturan['dasar_hukum'];
+        if ($terhapus === null || $terhapus['tahun'] !== $this->tahunDilihat() || $this->tahunTerkunci()
+            || in_array($terhapus['butir']['id'], array_column($daftar, 'id'), true) || count($daftar) >= DaftarDasarHukum::MAKS_BUTIR) {
+            return;
+        }
+
+        $posisi = min($terhapus['posisi'], count($daftar));
+        array_splice($daftar, $posisi, 0, [$terhapus['butir']]);
+        $this->simpanDaftar($repo, $daftar, 'kembalikan butir '.($posisi + 1).': '.Str::limit(DaftarDasarHukum::rapikan($terhapus['butir']['teks']), 120));
+        $this->dispatch('notify', message: 'Butir '.($posisi + 1).' dikembalikan.', type: 'success');
+    }
+
+    /** Tombol naik/turun: geser satu posisi ($arah -1/1), fokus tetap di tombol yang sama. */
+    public function geserButir(string $id, int $arah, DasarHukumRepository $repo): void
+    {
+        $dari = array_search($id, array_column($this->pengaturan['dasar_hukum'], 'id'), true);
+        if ($dari !== false && $this->pindah($repo, $dari, $dari + ($arah > 0 ? 1 : -1))) {
+            $this->dispatch('butir-dipindah', id: $id, arah: $arah > 0 ? 'turun' : 'naik');
+        }
+    }
+
+    /** Handler seret-lepas (wire:sort): $id butir yang dipindah, $posisi indeks tujuannya. */
+    public function pindahkanButir(string $id, int $posisi, DasarHukumRepository $repo): void
+    {
+        $dari = array_search($id, array_column($this->pengaturan['dasar_hukum'], 'id'), true);
+        if ($dari !== false) {
+            $this->pindah($repo, $dari, $posisi);
+        }
     }
 
     /**
@@ -246,6 +274,24 @@ class DasarHukum extends Component
 
         unset($this->pengaturan, $this->dasarHukum);
         $this->batalButir();
+    }
+
+    /** Pindahkan butir indeks $dari ke $ke lalu simpan; false bila tidak ada yang berpindah. */
+    private function pindah(DasarHukumRepository $repo, int $dari, int $ke): bool
+    {
+        $daftar = $this->pengaturan['dasar_hukum'];
+        $ke = max(0, min($ke, count($daftar) - 1));
+        if ($dari === $ke || ! isset($daftar[$dari]) || $this->tahunTerkunci() || $this->suntingButir !== null) {
+            return false;
+        }
+
+        $this->butirTerhapus = null;
+        [$butir] = array_splice($daftar, $dari, 1);
+        array_splice($daftar, $ke, 0, [$butir]);
+        $this->simpanDaftar($repo, $daftar, 'pindah butir '.($dari + 1).' ke '.($ke + 1).': '.Str::limit(DaftarDasarHukum::rapikan($butir['teks']), 120));
+        $this->pengumuman = 'Butir '.($dari + 1).' dipindah ke nomor '.($ke + 1).'.';
+
+        return true;
     }
 
     private function rapikanTahun(): void

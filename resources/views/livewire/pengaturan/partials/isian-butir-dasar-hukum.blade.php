@@ -1,5 +1,5 @@
 {{-- Isian satu butir dasar hukum (tambah/ubah): Enter menyimpan, Esc membatalkan. --}}
-<form wire:submit="simpanButir" class="min-w-0 flex-1" data-testid="isian-butir">
+<form wire:submit="simpanButir" class="min-w-0 flex-1 sm:col-span-2" data-testid="isian-butir">
     <label for="teks-butir" class="sr-only">{{ $label }}</label>
     <textarea id="teks-butir" wire:model="teksButir" rows="2" maxlength="{{ \App\Support\Pengaturan\DaftarDasarHukum::MAKS_KARAKTER }}" class="form-input text-sm"
               placeholder="mis. Peraturan Menteri Agama Nomor … Tahun … tentang …" autocomplete="off"

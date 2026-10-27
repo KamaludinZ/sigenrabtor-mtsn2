@@ -592,12 +592,49 @@ test.describe('Pengaturan admin', () => {
         expect(overflow).toBeLessThanOrEqual(0);
         await daftar.screenshot({ path: `storage/playwright/shots/dasar-hukum-ubah-${testInfo.project.name}.png` });
 
-        // Pulihkan: hapus butir uji (proyek mobile & tes dokumen memakai data yang sama).
+        // Hapus langsung lalu urungkan; hapus lagi untuk memulihkan (proyek mobile & tes dokumen memakai data yang sama).
         await daftar.getByRole('button', { name: 'Hapus butir 5' }).click();
-        await expect(daftar.getByRole('group', { name: 'Konfirmasi hapus butir 5' })).toBeVisible();
-        await daftar.getByRole('group', { name: 'Konfirmasi hapus butir 5' }).getByRole('button', { name: 'Hapus' }).click();
-        await expect(page.getByText('Butir 5 dihapus dari dasar hukum TA 2026.')).toBeVisible();
+        await expect(daftar.getByTestId('butir-terhapus')).toContainText('Butir 5 dihapus');
+        await expect(daftar.locator('li[data-butir]')).toHaveCount(4);
+        await daftar.getByTestId('butir-terhapus').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(page.getByText('Butir 5 dikembalikan.')).toBeVisible();
+        await expect(daftar.locator('li[data-butir="5"]')).toContainText('(diubah).');
+        await daftar.getByRole('button', { name: 'Hapus butir 5' }).click();
         await expect(daftar.locator('li[data-butir]')).toHaveCount(4);
         await expect(daftar.locator('li[data-butir="4"]')).toContainText('Tahun 2026.');
+    });
+
+    test('dasar hukum: urutkan butir dengan seret (desktop) atau naik/turun, dokumen mengikuti', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        const daftar = page.getByTestId('daftar-dasar-hukum');
+        const pratinjau = page.getByTestId('pratinjau-dasar-hukum').locator('ol li');
+        const butir = (n) => daftar.locator(`li[data-butir="${n}"]`);
+        await expect(butir(4)).toContainText('Rencana Kerja Tahunan Madrasah');
+
+        if (testInfo.project.name === 'desktop') {
+            await butir(4).locator('[wire\\:sort\\:handle]').dragTo(butir(1).locator('[wire\\:sort\\:handle]'));
+        } else {
+            for (const n of [4, 3, 2]) {
+                await daftar.getByRole('button', { name: `Naikkan butir ${n}` }).click();
+                await expect(daftar.getByRole('button', { name: n === 2 ? 'Turunkan butir 1' : `Naikkan butir ${n - 1}` })).toBeFocused();
+            }
+        }
+        await expect(butir(1)).toContainText('Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun 2026;');
+        await expect(butir(4)).toContainText('Penyelenggaraan Pendidikan Madrasah.');
+        await expect(pratinjau.first()).toContainText('Rencana Kerja Tahunan Madrasah');
+        await expect(daftar.getByRole('button', { name: 'Naikkan butir 1' })).toBeDisabled();
+        await expect(page.getByRole('status').filter({ hasText: 'dipindah ke nomor 1.' })).toBeAttached();
+        await daftar.screenshot({ path: `storage/playwright/shots/dasar-hukum-urut-${testInfo.project.name}.png` });
+
+        // Pulihkan urutan semula dengan tombol turun (fokus tetap di tombol yang sama).
+        for (const n of [1, 2, 3]) {
+            await daftar.getByRole('button', { name: `Turunkan butir ${n}` }).click();
+            // Di posisi terakhir tombol turun nonaktif: fokus pindah ke tombol naik butir yang sama.
+            await expect(daftar.getByRole('button', { name: n === 3 ? 'Naikkan butir 4' : `Turunkan butir ${n + 1}` })).toBeFocused();
+        }
+        await expect(butir(4)).toContainText('Tahun 2026.');
+        await expect(butir(1)).toContainText('Undang-Undang Republik Indonesia Nomor 20 Tahun 2003');
+        await expect(daftar.getByRole('button', { name: 'Turunkan butir 4' })).toBeDisabled();
     });
 });
