@@ -71,7 +71,7 @@
         </button>
         <div class="flex justify-end gap-2">
             <button type="button" wire:click="batalLatar" class="btn-ghost">Batal</button>
-            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanLatar"><x-ui.icon name="save" class="size-4" /> Simpan</button>
+            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanLatar"><x-ui.icon name="save" class="size-4" /> <span wire:loading.remove wire:target="simpanLatar">Simpan</span><span wire:loading wire:target="simpanLatar">Menyimpan…</span></button>
         </div>
     </div>
 </form>

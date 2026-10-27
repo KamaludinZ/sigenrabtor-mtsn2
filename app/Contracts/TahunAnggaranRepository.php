@@ -34,6 +34,7 @@ interface TahunAnggaranRepository
      * Simpan nomor & tanggal (Y-m-d) SK RKTM/RKAM tahun $tahun; keduanya null = dikosongkan.
      *
      * @throws \InvalidArgumentException Tahun belum dibuat.
+     * @throws \RuntimeException Penyimpanan gagal.
      */
     public function simpanSk(int $tahun, ?string $nomor, ?string $tanggal): void;
 }

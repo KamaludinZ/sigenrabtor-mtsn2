@@ -735,4 +735,33 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByText('SK RKTM/RKAM TA 2026 dikosongkan.')).toBeVisible();
         await expect(sk.getByTestId('sk-kosong')).toBeVisible();
     });
+
+    test('dasar hukum: perubahan dari tab lain tidak tertimpa — tampilan dimuat ulang lebih dulu', async ({ page, context }, testInfo) => {
+        const butirB = `Butir dari tab B ${testInfo.project.name}`;
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        const tabB = await context.newPage();
+        await tabB.goto('/pengaturan/madrasah/dasar-hukum');
+        const daftarA = page.getByTestId('daftar-dasar-hukum');
+        const daftarB = tabB.getByTestId('daftar-dasar-hukum');
+        await expect(daftarA.locator('li[data-butir]')).toHaveCount(4);
+
+        await daftarB.getByRole('button', { name: 'Tambah butir' }).click();
+        await daftarB.getByRole('textbox', { name: 'Butir baru' }).fill(butirB);
+        await daftarB.getByRole('textbox', { name: 'Butir baru' }).press('Enter');
+        await expect(daftarB.locator('li[data-butir]')).toHaveCount(5);
+        await tabB.close();
+
+        // Tab A masih menampilkan 4 butir; aksinya ditolak dan tampilan dimuat ulang.
+        await daftarA.getByRole('button', { name: 'Hapus butir 4' }).click();
+        await expect(page.getByText('baru saja diubah di tempat lain')).toBeVisible();
+        await expect(daftarA.locator('li[data-butir]')).toHaveCount(5);
+        await expect(daftarA.locator('li[data-butir="5"]')).toContainText(`${butirB}.`);
+        await expect(daftarA.getByTestId('butir-terhapus')).toHaveCount(0);
+
+        // Pulihkan: hapus butir tab B.
+        await daftarA.getByRole('button', { name: 'Hapus butir 5' }).click();
+        await expect(daftarA.locator('li[data-butir]')).toHaveCount(4);
+        await expect(daftarA.locator('li[data-butir="4"]')).toContainText('Tahun 2026.');
+    });
 });

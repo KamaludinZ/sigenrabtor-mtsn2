@@ -6,6 +6,7 @@ use App\Contracts\DasarHukumRepository;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Dasar hukum & latar belakang baku tiruan di berkas JSON (disk "local"), berkunci tahun. Saat berkas belum ada, contoh
@@ -50,9 +51,12 @@ class StubDasarHukumRepository implements DasarHukumRepository
             ], array_values($data['dasar_hukum'])),
             'latar_belakang' => (string) $data['latar_belakang'],
             'kalimat_penutup' => (string) $data['kalimat_penutup'],
-            'diperbarui_pada' => now()->toIso8601String(),
+            // Mikrodetik: dua simpan dalam satu detik tetap berbeda versinya.
+            'diperbarui_pada' => now()->format('Y-m-d\\TH:i:s.uP'),
         ];
-        $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        if (! $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+            throw new RuntimeException('Data dasar hukum gagal ditulis.');
+        }
     }
 
     public function teksBawaan(): array

@@ -13,7 +13,8 @@ interface DasarHukumRepository
 {
     /**
      * Pengaturan tahun $tahun (teks mentah). Tahun yang belum diatur: dasar hukum kosong, paragraf & kalimat penutup
-     * bawaan, `diatur` false.
+     * bawaan, `diatur` false. `diperbarui_pada` berubah tiap simpan — layar memakainya untuk mengenali perubahan dari
+     * tab/pengguna lain sebelum menimpa.
      *
      * @return array{dasar_hukum: list<array{id: string, teks: string}>, latar_belakang: string, kalimat_penutup: string, diatur: bool, diperbarui_pada: string|null}
      */
@@ -23,6 +24,8 @@ interface DasarHukumRepository
      * Simpan seluruh pengaturan tahun $tahun. Urutan butir = urutan cetak; butir tanpa id diberi id baru.
      *
      * @param  array{dasar_hukum: list<array{id?: string|null, teks: string}>, latar_belakang: string, kalimat_penutup: string}  $data
+     *
+     * @throws \RuntimeException Penyimpanan gagal; isian di layar tetap utuh agar bisa disimpan ulang.
      */
     public function simpan(int $tahun, array $data): void;
 

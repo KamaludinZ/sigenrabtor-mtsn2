@@ -96,7 +96,8 @@
                     </p>
                 @else
                     {{-- Seret pegangan nomor atau pakai naik/turun; setiap pindah langsung tersimpan. Fokus dikembalikan ke tombol yang sama. --}}
-                    <ol class="divide-y divide-stone-100" @if ($bisaUrut) wire:sort="pindahkanButir" @endif
+                    <ol class="divide-y divide-stone-100 transition-opacity" @if ($bisaUrut) wire:sort="pindahkanButir" @endif
+                        wire:loading.class="opacity-60" wire:loading.attr="aria-busy" wire:target="geserButir,pindahkanButir,hapusButir,urungkanHapusButir"
                         x-data x-on:butir-dipindah.window="$nextTick(() => { const li = $el.querySelector(`li[data-id='${CSS.escape($event.detail.id)}']`); (li?.querySelector(`[data-geser='${$event.detail.arah}']:not([disabled])`) ?? li?.querySelector('[data-geser]:not([disabled])'))?.focus() })">
                         @foreach ($dasarHukum as $i => $butir)
                             <li class="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto] sm:px-6"
@@ -173,7 +174,7 @@
                         <p class="mt-2 text-xs text-stone-500">Kosongkan keduanya untuk menghapus SK. Biasanya ditetapkan akhir TA {{ $ta - 1 }} atau awal TA {{ $ta }}.</p>
                         <div class="mt-4 flex justify-end gap-2">
                             <button type="button" wire:click="batalSk" class="btn-ghost">Batal</button>
-                            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanSk"><x-ui.icon name="save" class="size-4" /> Simpan</button>
+                            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanSk"><x-ui.icon name="save" class="size-4" /> <span wire:loading.remove wire:target="simpanSk">Simpan</span><span wire:loading wire:target="simpanSk">Menyimpan…</span></button>
                         </div>
                     </form>
                 @else

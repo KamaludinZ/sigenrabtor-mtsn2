@@ -6,6 +6,7 @@ use App\Contracts\TahunAnggaranRepository;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Tahun anggaran tiruan di berkas JSON (disk "local"). Saat berkas belum ada, contoh disiapkan: 2026 aktif (SK RKTM
@@ -83,7 +84,9 @@ class StubTahunAnggaranRepository implements TahunAnggaranRepository
      */
     private function tulis(array $semua): void
     {
-        $this->disk()->put($this->berkas(), json_encode(array_values($semua), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        if (! $this->disk()->put($this->berkas(), json_encode(array_values($semua), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+            throw new RuntimeException('Data tahun anggaran gagal ditulis.');
+        }
     }
 
     private function berkas(): string

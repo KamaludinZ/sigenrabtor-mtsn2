@@ -18,7 +18,7 @@
         </div>
         <div class="flex gap-2">
             <button type="button" wire:click="batalButir" class="btn-ghost px-2.5 py-1 text-xs">Batal</button>
-            <button type="submit" class="btn-primary px-2.5 py-1 text-xs" wire:loading.attr="disabled" wire:target="simpanButir"><x-ui.icon name="save" class="size-3.5" /> Simpan</button>
+            <button type="submit" class="btn-primary px-2.5 py-1 text-xs" wire:loading.attr="disabled" wire:target="simpanButir"><x-ui.icon name="save" class="size-3.5" /> <span wire:loading.remove wire:target="simpanButir">Simpan</span><span wire:loading wire:target="simpanButir">Menyimpan…</span></button>
         </div>
     </div>
 </form>
