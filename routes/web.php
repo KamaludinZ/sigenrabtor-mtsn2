@@ -11,6 +11,7 @@ use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateDataPagu;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
 use App\Http\Middleware\HanyaAdmin;
+use App\Livewire\Buku\Daftar as BukuDaftar;
 use App\Livewire\Dashboard;
 use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
 use App\Livewire\Kegiatan\Form as KegiatanForm;
@@ -42,6 +43,7 @@ Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name(
 Route::get('/kegiatan/format-rincian-rab', UnduhFormatRincianRab::class)->name('kegiatan.rab.template');
 Route::get('/kegiatan/buat', KegiatanForm::class)->name('kegiatan.create');
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
+Route::get('/buku', BukuDaftar::class)->name('buku.index');
 Route::get('/data-pagu/template', UnduhTemplateDataPagu::class)->middleware(HanyaAdmin::class)->name('pagu.template');
 Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegiatan')->name('kegiatan.edit');
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
