@@ -2,6 +2,8 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\PenggunaRepository;
+
 /**
  * Data tiruan pengaturan admin (PRD Fase 5–7) yang belum punya layar sendiri: akun, template dokumen, dan pengaturan
  * AI. Task backend menggantinya dengan tabel users, cover_templates,
@@ -10,16 +12,13 @@ namespace App\Support\Stub;
 class StubPengaturan
 {
     /**
-     * Akun aplikasi (nama fiktif): persona yang sama dengan sakelar "lihat sebagai".
+     * Akun aplikasi (PenggunaRepository, aktif & nonaktif): akun 1 & 2 = persona sakelar "lihat sebagai".
      *
-     * @return list<array{id: int, name: string, role: string, jabatan: string, leadings: list<string>, is_active: bool}>
+     * @return list<array{id: int, name: string, email: string, role: string, nip: string|null, jabatan: string|null, leadings: list<string>, is_active: bool, terakhir_masuk: string|null, dibuat_pada: string|null}>
      */
     public static function pengguna(): array
     {
-        return [
-            ['id' => 1, 'name' => 'Muslimin, M.Pd.', 'role' => 'leading', 'jabatan' => 'Tim Penjamin Mutu', 'leadings' => ['1.6'], 'is_active' => true],
-            ['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin', 'jabatan' => 'Admin Aplikasi', 'leadings' => [], 'is_active' => true],
-        ];
+        return app(PenggunaRepository::class)->semua();
     }
 
     /**

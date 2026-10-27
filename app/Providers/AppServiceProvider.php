@@ -6,10 +6,12 @@ use App\Contracts\DaftarIsiRepository;
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\DataPaguRepository;
 use App\Contracts\KegiatanRepository;
+use App\Contracts\LeadingRepository;
 use App\Contracts\MasterKodeRepository;
 use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\NomorHalamanRepository;
 use App\Contracts\PejabatRepository;
+use App\Contracts\PenggunaRepository;
 use App\Contracts\PengubahPdf;
 use App\Contracts\PenyusunUsulanJadwal;
 use App\Contracts\ProfilMadrasahRepository;
@@ -23,10 +25,12 @@ use App\Support\Stub\StubDaftarIsiRepository;
 use App\Support\Stub\StubDasarHukumRepository;
 use App\Support\Stub\StubDataPaguRepository;
 use App\Support\Stub\StubKegiatanRepository;
+use App\Support\Stub\StubLeadingRepository;
 use App\Support\Stub\StubMasterKodeRepository;
 use App\Support\Stub\StubMatrikJadwalRepository;
 use App\Support\Stub\StubNomorHalamanRepository;
 use App\Support\Stub\StubPejabatRepository;
+use App\Support\Stub\StubPenggunaRepository;
 use App\Support\Stub\StubProfilMadrasahRepository;
 use App\Support\Stub\StubRabRepository;
 use App\Support\Stub\StubRiwayatPengaturanRepository;
@@ -61,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PejabatRepository::class, StubPejabatRepository::class);
         $this->app->singleton(DataPaguRepository::class, StubDataPaguRepository::class);
         $this->app->singleton(DasarHukumRepository::class, StubDasarHukumRepository::class);
+        $this->app->singleton(LeadingRepository::class, StubLeadingRepository::class);
+        $this->app->singleton(PenggunaRepository::class, StubPenggunaRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         $this->app->singleton(PenyusunUsulanJadwal::class, StubUsulanJadwal::class);
 

@@ -70,7 +70,7 @@ class IkhtisarPengaturanTest extends TestCase
         $keterangan = array_column($kesiapan->butir, 'keterangan', 'kunci');
         $this->assertSame('Alamat, telepon, logo kop belum diisi.', $keterangan['profil']);
         $this->assertSame('Nama & NIP Kepala Madrasah dan Ketua Komite belum diisi.', $keterangan['pejabat']);
-        $this->assertSame('8 leading · 2 akun.', $keterangan['leading']);
+        $this->assertSame('8 leading · 5 akun aktif.', $keterangan['leading']);
         $this->assertStringStartsWith(count(MasterKode::kodeSk(2026)).' SK · ', $keterangan['master']);
 
         Livewire::test(Ikhtisar::class)

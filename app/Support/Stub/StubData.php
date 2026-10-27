@@ -3,7 +3,9 @@
 namespace App\Support\Stub;
 
 use App\Contracts\DasarHukumRepository;
+use App\Contracts\LeadingRepository;
 use App\Contracts\PejabatRepository;
+use App\Contracts\PenggunaRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\Pengaturan\DaftarDasarHukum;
@@ -39,42 +41,33 @@ class StubData
      */
     public static function currentUser(): array
     {
-        if (session('stub_role') === 'admin') {
-            return [
-                'id' => 2,
-                'name' => 'Koordinator PUSKOM',
-                'role' => 'admin',
-                'jabatan' => 'Admin Aplikasi',
-                'leadings' => [],
-            ];
-        }
+        $bawaan = session('stub_role') === 'admin'
+            ? ['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin', 'jabatan' => 'Admin Aplikasi', 'leadings' => []]
+            : ['id' => 1, 'name' => 'Muslimin, M.Pd.', 'role' => 'leading', 'jabatan' => 'Tim Penjamin Mutu', 'leadings' => ['1.6']];
+        // Nama, jabatan, dan tautan leading mengikuti akun di Pengaturan › Leading & User; perannya tetap peran demo.
+        $akun = app(PenggunaRepository::class)->temukan($bawaan['id']);
 
-        return [
-            'id' => 1,
-            'name' => 'Muslimin, M.Pd.',
-            'role' => 'leading',
-            'jabatan' => 'Tim Penjamin Mutu',
-            'leadings' => ['1.6'],
+        return $akun === null ? $bawaan : [
+            'id' => $bawaan['id'],
+            'name' => $akun['name'],
+            'role' => $bawaan['role'],
+            'jabatan' => $akun['jabatan'] ?? $bawaan['jabatan'],
+            'leadings' => $bawaan['role'] === 'admin' ? [] : $akun['leadings'],
         ];
     }
 
     /**
-     * Unit penerima mandat (leading) beserta jabatan penanda tangannya (PRD F30, diatur admin).
+     * Unit penerima mandat (leading) yang aktif beserta jabatan penanda tangannya (PRD F30, LeadingRepository — diatur
+     * admin di Pengaturan › Leading & User), urut `urutan`.
      *
      * @return list<array{kode: string, nama_unit: string, jabatan_penanda_tangan: string}>
      */
     public static function leadings(): array
     {
-        return [
-            ['kode' => '1.1', 'nama_unit' => 'Waka Kurikulum', 'jabatan_penanda_tangan' => 'Wakil Kepala Bidang Kurikulum'],
-            ['kode' => '1.2', 'nama_unit' => 'Waka Kesiswaan', 'jabatan_penanda_tangan' => 'Wakil Kepala Bidang Kesiswaan'],
-            ['kode' => '1.3', 'nama_unit' => 'Waka Sarpras', 'jabatan_penanda_tangan' => 'Wakil Kepala Bidang Sarana dan Prasarana'],
-            ['kode' => '1.4', 'nama_unit' => 'Waka Humas', 'jabatan_penanda_tangan' => 'Wakil Kepala Bidang Hubungan Masyarakat'],
-            ['kode' => '1.5', 'nama_unit' => 'Ka. TU', 'jabatan_penanda_tangan' => 'Kepala Tata Usaha'],
-            ['kode' => '1.6', 'nama_unit' => 'Tim Penjamin Mutu', 'jabatan_penanda_tangan' => 'Ketua Tim Penjamin Mutu'],
-            ['kode' => '1.7', 'nama_unit' => 'Mahad', 'jabatan_penanda_tangan' => 'Pengasuh Mahad'],
-            ['kode' => '1.8', 'nama_unit' => 'PMM', 'jabatan_penanda_tangan' => 'Koordinator PMM'],
-        ];
+        return array_values(array_map(
+            fn (array $l) => ['kode' => $l['kode'], 'nama_unit' => $l['nama_unit'], 'jabatan_penanda_tangan' => $l['jabatan_penanda_tangan']],
+            array_filter(app(LeadingRepository::class)->semua(), fn (array $l) => $l['is_active']),
+        ));
     }
 
     /**

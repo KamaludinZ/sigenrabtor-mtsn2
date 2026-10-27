@@ -54,7 +54,7 @@ final readonly class KesiapanPengaturan
             ['kunci' => 'dasar_hukum', 'bagian' => 'madrasah', 'judul' => 'Dasar hukum & latar belakang baku', 'siap' => $dasarHukum > 0, 'wajib' => true,
                 'keterangan' => "{$dasarHukum} butir dasar hukum dan paragraf latar belakang baku."],
             ['kunci' => 'leading', 'bagian' => 'leading', 'judul' => 'Leading & akun', 'siap' => MasterKode::leadings() !== [], 'wajib' => true,
-                'keterangan' => count(MasterKode::leadings()).' leading · '.count(StubPengaturan::pengguna()).' akun.'],
+                'keterangan' => count(MasterKode::leadings()).' leading · '.count(array_filter(StubPengaturan::pengguna(), fn (array $a) => $a['is_active'])).' akun aktif.'],
             ['kunci' => 'master', 'bagian' => 'master', 'judul' => "Master kode {$tahun}", 'siap' => MasterKode::tersedia($tahun), 'wajib' => true,
                 'keterangan' => MasterKode::tersedia($tahun)
                     ? implode(' · ', [$jumlahKode('SK', MasterKode::kodeSk($tahun)), $jumlahKode('IKSK', MasterKode::kodeIksk(null, $tahun)), $jumlahKode('RKTM', MasterKode::kodeRktm($tahun)), $jumlahKode('EDM', MasterKode::kodeEdm($tahun)), $jumlahKode('budaya mutu', MasterKode::budayaMutu($tahun))]).'.'
