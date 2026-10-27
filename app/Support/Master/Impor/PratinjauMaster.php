@@ -22,10 +22,11 @@ final class PratinjauMaster
     public const KOLOM = [
         'sk' => ['uraian' => 'Uraian'],
         'iksk' => ['uraian' => 'Uraian', 'kode_sk' => 'SK induk'],
+        'rktm' => ['sub_kegiatan' => 'Sub kegiatan', 'kegiatan' => 'Kegiatan', 'snp' => 'Standar (SNP)'],
     ];
 
     /** Jenis → pembaca sheet (jenis lain menyusul). */
-    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class];
+    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class, 'rktm' => PemeriksaRktm::class];
 
     /**
      * @param  array<string, string>  $sheet  Jenis → nama sheet yang dikenali.

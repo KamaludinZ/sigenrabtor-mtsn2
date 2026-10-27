@@ -859,7 +859,10 @@ test.describe('Pengaturan admin', () => {
         await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText('SK induk: SK.10');
         await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText('dipakai 1 kegiatan');
         await pratinjau.getByRole('tab', { name: /RKTM/ }).click();
-        await expect(pratinjau.getByTestId('pratinjau-menyusul')).toContainText('Sheet SNP sudah dikenali');
+        await expect(pratinjau.locator('li[data-kode="1.1.2"]')).toContainText('Standar (SNP): PENGEMBANGAN STANDAR ISI');
+        await expect(pratinjau.locator('li[data-kode="6.17.13"]')).toContainText('padahal dipakai 1 kegiatan TA 2026');
+        await pratinjau.getByRole('tab', { name: /EDM/ }).click();
+        await expect(pratinjau.getByTestId('pratinjau-menyusul')).toContainText('Sheet EDM sudah dikenali');
         await panel.getByRole('button', { name: 'Kembali' }).click();
         await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
 
