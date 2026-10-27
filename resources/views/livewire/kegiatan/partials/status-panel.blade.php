@@ -34,10 +34,14 @@
     @if ($this->aksiStatus !== [])
         <div class="mt-3 space-y-2">
             @foreach ($this->aksiStatus as $kunci => $aksi)
+                @php
+                    // Pengajuan setelah dikembalikan = pengajuan ulang hasil perbaikan.
+                    $label = $kunci === 'ajukan' && $status === \App\Enums\StatusKegiatan::Dikembalikan->value ? 'Ajukan ulang' : $aksi['label'];
+                @endphp
                 <div x-data="{ yakin: false }" wire:key="aksi-{{ $kunci }}-{{ $status }}">
                     <button type="button" x-show="! yakin" x-on:click="yakin = true" class="{{ $gayaTombol[$aksi['gaya']] }} w-full">
                         <x-ui.icon :name="$aksi['ikon']" class="size-4" />
-                        {{ $aksi['label'] }}
+                        {{ $label }}
                     </button>
                     <div x-cloak x-show="yakin" class="rounded-lg bg-stone-50 p-2.5 ring-1 ring-stone-200">
                         <p class="text-xs text-stone-600">{{ $aksi['konfirmasi'] }}</p>
@@ -45,7 +49,7 @@
                             {{-- Konfirmasi ditutup saat dikirim: bila aksi ditolak validasi, tombol aksi kembali tersedia. --}}
                             <button type="button" wire:click="ubahStatus('{{ $kunci }}')" x-on:click="yakin = false" wire:loading.attr="disabled"
                                     class="{{ $gayaTombol[$aksi['gaya']] }} flex-1 px-2.5 py-1.5 text-xs">
-                                Ya, {{ mb_strtolower($aksi['label']) }}
+                                Ya, {{ mb_strtolower($label) }}
                             </button>
                             <button type="button" x-on:click="yakin = false" class="btn-ghost px-2.5 py-1.5 text-xs">Batal</button>
                         </div>

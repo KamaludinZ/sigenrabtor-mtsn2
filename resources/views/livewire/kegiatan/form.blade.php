@@ -124,6 +124,8 @@
                 </div>
             @endunless
 
+            @include('livewire.kegiatan.partials.banner-perbaikan')
+
             {{-- fieldset[disabled] mengunci semua isian & tombol di dalamnya saat status bukan Draf/Dikembalikan --}}
             <fieldset @disabled(! $this->dapatDiedit()) class="min-w-0 space-y-6">
             @foreach ($this->sections as $section)

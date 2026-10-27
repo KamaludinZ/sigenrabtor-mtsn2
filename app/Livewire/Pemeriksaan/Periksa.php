@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
@@ -119,6 +120,13 @@ class Periksa extends Component
         ], $this->kak->daftarSumber);
     }
 
+    /** Perbaikan terakhir (dikembalikan/dibuka kuncinya) beserta bagian yang berubah sesudahnya; null bila belum pernah. */
+    #[Computed]
+    public function perbaikan(): ?PerbaikanKegiatan
+    {
+        return PerbaikanKegiatan::dari($this->dataKegiatan);
+    }
+
     /** @return list<AnggaranSumber> */
     #[Computed]
     public function anggaran(): array
@@ -209,11 +217,16 @@ class Periksa extends Component
 
         $data = $this->dataKegiatan;
         $data['status'] = $definisi['ke']->value;
-        $data['riwayat_status'] = [...array_values((array) ($data['riwayat_status'] ?? [])), RiwayatStatus::entri($aksi, $definisi['ke'], StubData::currentUser(), $this->catatan)];
+        $entri = RiwayatStatus::entri($aksi, $definisi['ke'], StubData::currentUser(), $this->catatan);
+        if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {
+            // Titik awal perbaikan: bagian yang berubah sesudahnya ditandai untuk leading & pemeriksa berikutnya.
+            $entri['sidik'] = PerbaikanKegiatan::sidik($data);
+        }
+        $data['riwayat_status'] = [...array_values((array) ($data['riwayat_status'] ?? [])), $entri];
         app(KegiatanRepository::class)->simpan($data, $this->kegiatanId);
 
         $this->catatan = '';
-        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan);
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan);
         $this->dispatch('notify', message: $aksi === 'setujui' ? 'Kegiatan disetujui — leading dapat mencetak dan menandatangani dokumennya.' : 'Kegiatan dikembalikan ke leading beserta catatan perbaikannya.');
     }
 
@@ -240,7 +253,7 @@ class Periksa extends Component
 
     private function berubahDiTempatLain(): bool
     {
-        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan);
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan);
         if ($this->sidik() === $this->versi) {
             return false;
         }

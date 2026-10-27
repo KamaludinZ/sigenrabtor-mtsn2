@@ -3,9 +3,9 @@ import { expect, test } from '@playwright/test';
 // Panel status Data Kegiatan muncul dua kali (mobile di kolom utama, desktop di samping); ambil yang terlihat.
 const panelStatus = (page) => page.getByTestId('panel-status').locator('visible=true');
 
-async function ajukan(page) {
-    await panelStatus(page).getByRole('button', { name: 'Ajukan pemeriksaan', exact: true }).click();
-    await panelStatus(page).getByRole('button', { name: 'Ya, ajukan pemeriksaan' }).click();
+async function ajukan(page, label = 'Ajukan pemeriksaan') {
+    await panelStatus(page).getByRole('button', { name: label, exact: true }).click();
+    await panelStatus(page).getByRole('button', { name: `Ya, ${label.toLowerCase()}` }).click();
     await expect(page.getByText('Status kegiatan: Diperiksa.')).toBeVisible();
 }
 
@@ -82,7 +82,7 @@ test.describe('Pemeriksaan', () => {
         await page.goto('/demo/peran/leading');
     });
 
-    test('keputusan: kembalikan wajib catatan, leading melihat catatan, pengajuan ulang disetujui', async ({ page }, testInfo) => {
+    test('keputusan & perbaikan: kembalikan wajib catatan, leading memperbaiki data lalu ajukan ulang, admin melihat yang diubah lalu menyetujui', async ({ page }, testInfo) => {
         // Kegiatan baru per proyek agar tidak mengubah contoh yang dipakai tes lain.
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/buat');
@@ -127,13 +127,23 @@ test.describe('Pemeriksaan', () => {
         await expect(panel).toHaveAttribute('data-status', 'dikembalikan');
         await expect(page.getByTestId('riwayat-pemeriksaan')).toContainText('Sesuaikan honor narasumber dengan SBM.');
 
+        // Leading memperbaiki data: catatan & bagian yang sudah diubah tampil di Data Kegiatan, lalu ajukan ulang.
         await page.goto('/demo/peran/leading');
         await page.goto(urlKegiatan);
         await expect(panelStatus(page).locator('[data-catatan-pemeriksa]').first()).toContainText('Sasaran belum terukur.');
-        await ajukan(page);
+        const banner = page.getByTestId('banner-perbaikan');
+        await expect(banner.getByTestId('catatan-perbaikan')).toContainText('Sesuaikan honor narasumber dengan SBM.');
+        await expect(banner).toContainText('Belum ada perubahan tersimpan sejak dikembalikan.');
+        await page.locator('#tempat').fill('Laboratorium Komputer');
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(banner.getByTestId('perubahan-perbaikan').locator('[data-bagian-diubah]')).toHaveText(['Pelaksanaan']);
+        await page.screenshot({ path: `storage/playwright/shots/perbaikan-data-${testInfo.project.name}.png` });
+        await ajukan(page, 'Ajukan ulang');
+        await expect(banner).toHaveCount(0);
 
         await page.goto('/demo/peran/admin');
         await page.goto(`/pemeriksaan/${id}`);
+        await expect(page.getByTestId('pengajuan-ulang').locator('[data-bagian-diubah]')).toHaveText(['Pelaksanaan']);
         await panel.getByRole('button', { name: 'Setujui', exact: true }).click();
         await panel.getByRole('button', { name: 'Ya, setujui' }).click();
         await expect(panel).toHaveAttribute('data-status', 'disetujui');

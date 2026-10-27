@@ -14,6 +14,7 @@
     $jumlahDokumen = count($this->kelengkapan) * 2;
     $melebihi = collect($this->anggaran)->filter(fn ($a) => $a->keteranganPagu()->melebihi())->map(fn ($a) => 'RAB '.$a->sumber)->values()->all();
     $berikutnya = $status === StatusKegiatan::Diperiksa ? null : $this->berikutnya();
+    $ulang = $status === StatusKegiatan::Diperiksa && $this->perbaikan?->diajukanUlang ? $this->perbaikan : null;
     $teksKonfirmasi = [
         'kembalikan' => ['Kembalikan ke leading?', 'Leading dapat memperbaiki data sesuai catatan lalu mengajukan ulang.'],
         'setujui' => ['Setujui kegiatan ini?', 'Dokumen siap dicetak untuk ditandatangani; leading lalu mengunggah arsip final.'],
@@ -30,6 +31,27 @@
         {{ $keadaan[0] }}
     </h2>
     <p class="mt-0.5 text-xs text-stone-500">{{ $keadaan[1] }}</p>
+
+    @if ($ulang)
+        {{-- Pengajuan ulang: catatan sebelumnya & bagian data yang berubah sejak dikembalikan (PerbaikanKegiatan). --}}
+        <div class="mt-3 rounded-lg bg-sky-50 px-2.5 py-2 text-xs text-stone-700 ring-1 ring-sky-200" data-testid="pengajuan-ulang">
+            <p class="font-semibold text-sky-900">Pengajuan ulang</p>
+            <p class="mt-0.5">{{ $ulang->aksi === 'buka_kunci' ? 'Kunci dibuka' : 'Dikembalikan' }} {{ $waktu($ulang->pada) }} oleh {{ $ulang->oleh }}{{ $ulang->catatan ? ' dengan catatan:' : '.' }}</p>
+            @if ($ulang->catatan)
+                <p class="mt-1 line-clamp-4 rounded-md bg-white px-2 py-1 whitespace-pre-line ring-1 ring-sky-100">{{ $ulang->catatan }}</p>
+            @endif
+            @if ($ulang->diubah === [])
+                <p class="mt-1.5 font-medium text-gold-700">Tidak ada data yang diubah sejak dikembalikan.</p>
+            @elseif ($ulang->diubah !== null)
+                <p class="mt-1.5 flex flex-wrap items-center gap-1">
+                    <span class="font-medium">Diubah:</span>
+                    @foreach ($ulang->diubah as $bagian)
+                        <span class="rounded-full bg-white px-2 py-0.5 font-medium text-sky-900 ring-1 ring-sky-200" data-bagian-diubah>{{ $bagian }}</span>
+                    @endforeach
+                </p>
+            @endif
+        </div>
+    @endif
 
     @if ($pilihan !== [])
         @if ($status === StatusKegiatan::Diperiksa && ($jumlahDokumen === 0 || $belumLengkap > 0 || $melebihi !== []))

@@ -11,6 +11,7 @@ use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\SaranPelaksanaan;
 use App\Support\MasterKode;
@@ -754,6 +755,10 @@ class Form extends Component
 
         $this->status = $definisi['ke']->value;
         $this->catatRiwayat($aksi, $definisi['ke']);
+        if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {
+            // Titik awal perbaikan di data (sama dengan keputusan di halaman Pemeriksaan).
+            $this->riwayatStatus[array_key_last($this->riwayatStatus)]['sidik'] = PerbaikanKegiatan::sidik(['id' => $this->kegiatanId] + $this->dataUntukDisimpan());
+        }
 
         $repo = app(KegiatanRepository::class);
         $repo->simpan($this->dataUntukDisimpan(), $this->kegiatanId);
@@ -763,6 +768,21 @@ class Form extends Component
         unset($this->aksiStatus, $this->drafTerbaru);
 
         $this->dispatch('notify', message: 'Status kegiatan: '.$definisi['ke']->label().'.');
+    }
+
+    /**
+     * Perbaikan yang sedang berjalan (status Dikembalikan): catatan pemeriksa & bagian data tersimpan yang sudah berubah
+     * sejak dikembalikan. Dibaca dari data tersimpan, jadi isian yang belum disimpan belum terhitung.
+     */
+    public function perbaikan(): ?PerbaikanKegiatan
+    {
+        if ($this->kegiatanId === null || $this->status !== StatusKegiatan::Dikembalikan->value) {
+            return null;
+        }
+
+        $perbaikan = PerbaikanKegiatan::dari(app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? []);
+
+        return $perbaikan && ! $perbaikan->diajukanUlang ? $perbaikan : null;
     }
 
     /**
