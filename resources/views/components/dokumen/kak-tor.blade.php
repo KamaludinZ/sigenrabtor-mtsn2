@@ -16,9 +16,7 @@
         <x-dokumen.cap-final :kunci="$susunan->kunci" />
     @endif
     @if ($susunan->draf)
-        <div class="pointer-events-none absolute inset-0 flex items-start justify-center overflow-hidden pt-64 select-none" aria-hidden="true">
-            <span class="-rotate-30 text-[7rem] font-bold tracking-[0.2em] text-stone-900/[0.06]">DRAF</span>
-        </div>
+        <x-dokumen.cap-draf class="items-start pt-64" />
     @endif
 
     {{-- Cover --}}

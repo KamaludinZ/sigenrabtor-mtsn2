@@ -15,7 +15,7 @@ use App\Support\Stub\StubData;
  * Susunan dokumen RAB satu kegiatan × sumber dana (PRD 7B.3) untuk <x-dokumen.rab>: judul, header (Kementerian, Satker,
  * kegiatan & kode RKTM, SK, IKSK, EDM, 5 Budaya Mutu, volume, jumlah yang diajukan), tabel rincian, blok Mekanisme
  * Pembayaran, dan lembar pengesahan yang sama dengan KAK. Kode dari NilaiVariabel, angka dari AngkaDokumen. Isian yang
- * belum lengkap tercatat di $kurang; cap DRAF mengikuti aturan KAK (belum disetujui, belum lengkap, atau melebihi pagu).
+ * belum lengkap tercatat di $kurang; cap DRAF lewat StatusDraf seperti KAK (belum disetujui, belum lengkap, atau melebihi pagu).
  */
 final readonly class SusunanRab
 {
@@ -44,6 +44,7 @@ final readonly class SusunanRab
         public array $daftarSumber,
         public ?PeringatanPagu $peringatanPagu = null,
         public ?KunciDokumen $kunci = null,
+        public ?StatusDraf $statusDraf = null,
     ) {}
 
     /**
@@ -104,6 +105,7 @@ final readonly class SusunanRab
         $peringatanPagu = $anggaran ? PeringatanPagu::untuk($sumber, $anggaran->hasil) : null;
         $status = StatusKegiatan::tryFrom($kegiatan['status'] ?? '') ?? StatusKegiatan::Draf;
         $nama = trim((string) ($kegiatan['nama_kegiatan'] ?? '')) ?: '…';
+        $statusDraf = StatusDraf::hitung($status, array_values(array_unique($kurang)), $peringatanPagu);
 
         return new self(
             'Rencana Anggaran Biaya Kegiatan '.KalimatKak::tanpaAwalanKegiatan($nama)." {$madrasah['nama_singkat']} Tahun {$tahun}",
@@ -113,11 +115,12 @@ final readonly class SusunanRab
             $statusTermin,
             $pengesahan['kolom'],
             array_values(array_unique($kurang)),
-            ! in_array($status, [StatusKegiatan::Disetujui, StatusKegiatan::Final], true) || $kurang !== [] || ($peringatanPagu?->status->melebihi() ?? false),
+            $statusDraf->draf,
             $sumber,
             $daftarSumber,
             $peringatanPagu,
             KunciDokumen::dari($kegiatan),
+            $statusDraf,
         );
     }
 }

@@ -80,6 +80,16 @@ test.describe('Pratinjau dokumen', () => {
         await expect(pagu).toHaveAttribute('data-status', 'gagal');
         await expect(pagu).toContainText('Melebihi pagu Rp450.000.');
         await expect(page.getByTestId('ringkasan-kaidah')).toContainText('perlu perhatian');
+
+        // Cap DRAF: alasan & cara menghilangkannya, penanda di kepala tiap dokumen, cap air di kertas.
+        await expect(page.getByTestId('dokumen-pratinjau').getByTestId('kepala-draf')).toHaveCount(3);
+        await expect(page.getByTestId('dokumen-pratinjau').getByTestId('cap-draf')).toHaveCount(3);
+        await page.getByTestId('keadaan-cetak').click();
+        const alasan = page.getByTestId('alasan-draf');
+        await expect(alasan).toBeVisible();
+        await expect(alasan.locator('[data-alasan="pagu"]')).toContainText('RAB Komite melebihi pagu Rp450.000.');
+        await alasan.locator('[data-alasan="pagu"]').getByRole('link').click();
+        await expect(page).toHaveURL(/\/kegiatan\/3\/rab\?sumber=Komite$/);
     });
 
     test('halaman RAB membuka letak tempat cetak di pratinjau', async ({ page }) => {

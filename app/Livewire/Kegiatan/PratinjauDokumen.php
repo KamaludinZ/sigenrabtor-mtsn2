@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\ChecklistIsian;
 use App\Support\Dokumen\KaidahDokumen;
+use App\Support\Dokumen\StatusDraf;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Dokumen\TahunDokumen;
@@ -43,10 +44,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusDraf);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusDraf);
         }
     }
 
@@ -81,6 +82,13 @@ class PratinjauDokumen extends Component
         $anggaran = $this->rab->anggaran;
 
         return $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
+    }
+
+    /** Cap DRAF set dokumen (cover + KAK/TOR + RAB) beserta alasannya. */
+    #[Computed]
+    public function statusDraf(): StatusDraf
+    {
+        return StatusDraf::gabung($this->kak->statusDraf, $this->rab->statusDraf);
     }
 
     /** @return list<array<string, mixed>> Checklist isian wajib per tempat mengisinya (ChecklistIsian). */

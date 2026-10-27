@@ -1,11 +1,11 @@
-@props(['gambar' => null, 'teks' => [], 'nilai' => [], 'garis' => false])
+@props(['gambar' => null, 'teks' => [], 'nilai' => [], 'garis' => false, 'draf' => false])
 
 @use('App\Support\Dokumen\TeksCover')
 
 {{--
     Cover KAK/TOR A4 potret: gambar desain (bila ada) memenuhi halaman, kotak teks diletakkan dengan persen halaman dan
     ukuran huruf berskala lebar halaman (satuan cqw), sehingga pratinjau sama di layar lebar maupun sempit.
-    $teks harus sudah lewat TeksCover::rapikan()/bawaan(); $garis menampilkan batas kotak untuk menata posisi.
+    $teks harus sudah lewat TeksCover::rapikan()/bawaan(); $garis menampilkan batas kotak untuk menata posisi; $draf memberi cap DRAF.
 --}}
 <div {{ $attributes->class(['@container relative mx-auto aspect-[210/297] w-full overflow-hidden bg-white shadow-sm ring-1 ring-stone-200']) }}
      data-testid="pratinjau-cover" data-gambar="{{ $gambar ? 'ya' : 'tidak' }}">
@@ -13,6 +13,10 @@
         <img src="{{ $gambar }}" alt="Desain cover" class="absolute inset-0 size-full object-cover" data-testid="gambar-cover">
     @else
         <div class="absolute inset-[4%] border-2 border-double border-stone-300" aria-hidden="true"></div>
+    @endif
+
+    @if ($draf)
+        <x-dokumen.cap-draf class="z-10 items-center" />
     @endif
 
     @foreach ($teks as $kotak)

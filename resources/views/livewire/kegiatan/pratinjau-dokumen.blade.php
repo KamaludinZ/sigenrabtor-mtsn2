@@ -65,15 +65,42 @@
                 @endforeach
             </nav>
         </div>
-        @if ($kak->draf || $rab->draf)
-            <span class="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200" data-testid="keadaan-cetak">
-                <x-ui.icon name="alert" class="size-3.5" /> Tercetak sebagai DRAF
-            </span>
-        @else
-            <span class="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-brand-200" data-testid="keadaan-cetak">
-                <x-ui.icon name="check-circle" class="size-3.5" /> Siap dicetak
-            </span>
-        @endif
+        @php
+            $statusDraf = $this->statusDraf;
+            $saran = [
+                'status' => ['Ajukan pemeriksaan dari Data Kegiatan — cap hilang setelah disetujui admin.', route('kegiatan.edit', ['kegiatan' => $kegiatanId])],
+                'kurang' => ['Lengkapi lewat checklist Isian wajib.', '#checklist-isian'],
+                'pagu' => ['Sesuaikan rincian RAB atau pagunya.', route('kegiatan.rab', ['kegiatan' => $kegiatanId, 'sumber' => $sumberAktif])],
+            ];
+        @endphp
+        <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
+            <button type="button" x-on:click="open = ! open" x-bind:aria-expanded="open" data-testid="keadaan-cetak" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}"
+                    @class(['inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold ring-1', 'text-red-700 ring-red-200' => $statusDraf->draf, 'text-brand-800 ring-brand-200' => ! $statusDraf->draf])>
+                <x-ui.icon :name="$statusDraf->draf ? 'alert' : 'check-circle'" class="size-3.5" />
+                {{ $statusDraf->draf ? 'Tercetak sebagai DRAF' : 'Siap dicetak' }}
+                <x-ui.icon name="chevron-down" class="size-3 opacity-60" />
+            </button>
+            <div x-cloak x-show="open" x-transition.origin.top.right class="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-3 text-xs shadow-lg ring-1 ring-stone-200" data-testid="alasan-draf">
+                @if ($statusDraf->draf)
+                    <p class="text-sm font-semibold text-stone-900">Mengapa tercetak sebagai DRAF?</p>
+                    <p class="mt-0.5 text-stone-500">Dokumen tetap bisa dicetak, tetapi bercap DRAF sampai semua hal di bawah selesai.</p>
+                    <ul class="mt-2 space-y-2">
+                        @foreach ($statusDraf->alasan as $alasan)
+                            <li class="flex gap-2" data-alasan="{{ $alasan['kunci'] }}">
+                                <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0 text-red-600" />
+                                <div class="min-w-0">
+                                    <p class="font-medium text-stone-800">{{ $alasan['teks'] }}</p>
+                                    <a href="{{ $saran[$alasan['kunci']][1] }}" @if (! str_starts_with($saran[$alasan['kunci']][1], '#')) wire:navigate @endif x-on:click="open = false" class="text-brand-700 hover:text-brand-800">{{ $saran[$alasan['kunci']][0] }}</a>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <p class="text-sm font-semibold text-stone-900">Siap dicetak</p>
+                    <p class="mt-0.5 text-stone-500">Kegiatan sudah disetujui, isian lengkap, dan RAB dalam batas pagu — dokumen tercetak tanpa cap DRAF.</p>
+                @endif
+            </div>
+        </div>
     </div>
 
     <div class="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -117,12 +144,12 @@
         {{-- Dokumen berurutan seperti dicetak. --}}
         <div class="min-w-0 space-y-6 rounded-2xl bg-stone-100 p-3 ring-1 ring-stone-200 sm:p-6 lg:col-start-1 lg:row-start-1" wire:loading.class="opacity-60" wire:target="sumber" data-testid="dokumen-pratinjau">
             <section id="dok-cover" class="scroll-mt-36" aria-label="Cover" wire:key="cover-{{ $sumberAktif }}">
-                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">Cover <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('cover')" :tahun="$tahunDokumen" /></p>
-                <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" class="max-w-[210mm]" />
+                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">Cover <x-dokumen.kepala-draf :status="$kak->statusDraf" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('cover')" :tahun="$tahunDokumen" /></p>
+                <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" :draf="$kak->draf" class="max-w-[210mm]" />
             </section>
 
             <section id="dok-kak" class="scroll-mt-36" aria-label="KAK/TOR" wire:key="kak-{{ $sumberAktif }}">
-                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">KAK/TOR <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('kak')" :tahun="$tahunDokumen" /></p>
+                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">KAK/TOR <x-dokumen.kepala-draf :status="$kak->statusDraf" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('kak')" :tahun="$tahunDokumen" /></p>
                 @if ($kak->peringatanPagu)
                     <x-rab.peringatan-pagu :sumber="$kak->sumber" :hasil="$kak->peringatanPagu->hasil" ringkas class="mx-auto mb-3 max-w-[210mm]" />
                 @endif
@@ -130,7 +157,7 @@
             </section>
 
             <section id="dok-rab" class="scroll-mt-36" aria-label="RAB" wire:key="rab-{{ $sumberAktif }}">
-                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">RAB{{ $sumberAktif ? ' '.$sumberAktif : '' }} <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('rab')" :tahun="$tahunDokumen" /></p>
+                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">RAB{{ $sumberAktif ? ' '.$sumberAktif : '' }} <x-dokumen.kepala-draf :status="$rab->statusDraf" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('rab')" :tahun="$tahunDokumen" /></p>
                 <x-dokumen.rab :susunan="$rab" />
             </section>
         </div>

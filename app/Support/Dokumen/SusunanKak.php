@@ -45,6 +45,7 @@ final readonly class SusunanKak
      * @param  array<string, string|null>  $statusPagu  Sumber → status pagu RAB-nya (null bila RAB belum berisi), untuk tab dokumen.
      * @param  array<int, list<string>>  $kurangPerBagian  Nomor bagian → isian yang belum lengkap di bagian itu (pratinjau sebagian).
      * @param  KunciDokumen|null  $kunci  Jejak kunci selama kegiatan Final (cap "Final · terkunci" di pratinjau).
+     * @param  StatusDraf|null  $statusDraf  Cap DRAF beserta alasannya (StatusDraf::hitung; $draf = $statusDraf->draf).
      */
     public function __construct(
         public array $cover,
@@ -57,6 +58,7 @@ final readonly class SusunanKak
         public array $statusPagu = [],
         public array $kurangPerBagian = [],
         public ?KunciDokumen $kunci = null,
+        public ?StatusDraf $statusDraf = null,
     ) {}
 
     /**
@@ -190,17 +192,20 @@ final readonly class SusunanKak
             'sumber' => $sumber ? 'Sumber dana: '.mb_strtoupper($sumber) : null,
         ];
 
+        $statusDraf = StatusDraf::hitung($status, array_values(array_unique($kurang)), $peringatanPagu);
+
         return new self(
             $cover,
             $bagian,
             array_values(array_unique($kurang)),
-            ! in_array($status, [StatusKegiatan::Disetujui, StatusKegiatan::Final], true) || $kurang !== [] || ($peringatanPagu?->status->melebihi() ?? false),
+            $statusDraf->draf,
             $sumber,
             $daftarSumber,
             $peringatanPagu,
             array_map(fn (AnggaranSumber $a) => $a->jumlahItem() > 0 ? $a->statusPagu() : null, $anggaran),
             array_map(fn (array $daftar) => array_values(array_unique($daftar)), $kurangPerBagian),
             KunciDokumen::dari($kegiatan),
+            $statusDraf,
         );
     }
 

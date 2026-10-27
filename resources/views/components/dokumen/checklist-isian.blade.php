@@ -7,7 +7,7 @@
     $ringkasan = ChecklistIsian::ringkasan($grup);
 @endphp
 
-<section {{ $attributes->class(['rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200']) }} aria-labelledby="judul-checklist" data-testid="checklist-isian">
+<section {{ $attributes->class(['scroll-mt-40 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200']) }} id="checklist-isian" aria-labelledby="judul-checklist" data-testid="checklist-isian">
     <div class="flex items-baseline justify-between gap-2">
         <h2 id="judul-checklist" class="text-sm font-semibold text-stone-900">Isian wajib</h2>
         <span @class(['text-xs font-semibold tabular-nums', 'text-brand-700' => $ringkasan['terisi'] === $ringkasan['jumlah'], 'text-stone-600' => $ringkasan['terisi'] < $ringkasan['jumlah']]) data-testid="ringkasan-checklist">{{ $ringkasan['terisi'] }}/{{ $ringkasan['jumlah'] }} lengkap</span>
