@@ -4,7 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Support\Format;
 use App\Support\Rab\KalkulatorRab;
-use App\Support\Rab\SimpanRincianRab;
+use App\Support\Rab\RincianRab;
 use App\Support\Rab\ValidasiItemBelanja;
 use Livewire\Form;
 
@@ -57,7 +57,7 @@ class ItemBelanjaForm extends Form
     /** Harga satuan berformat ribuan ("600.000"). */
     public string $harga_satuan = '';
 
-    /** Aturan, label, dan pesan bersama ValidasiItemBelanja (juga dipakai SimpanRincianRab di server). */
+    /** Aturan, label, dan pesan bersama ValidasiItemBelanja (juga dipakai RincianRab di server). */
     protected function rules(): array
     {
         return ValidasiItemBelanja::aturan();
@@ -147,7 +147,7 @@ class ItemBelanjaForm extends Form
      */
     public function dataItem(): array
     {
-        return SimpanRincianRab::rapikan(['kode' => $this->kode, 'uraian' => $this->uraian, 'kategori' => $this->kategori, 'volume' => $this->volume, 'satuan' => $this->satuan, 'harga_satuan' => $this->harga_satuan]);
+        return RincianRab::rapikan(['kode' => $this->kode, 'uraian' => $this->uraian, 'kategori' => $this->kategori, 'volume' => $this->volume, 'satuan' => $this->satuan, 'harga_satuan' => $this->harga_satuan]);
     }
 
     /**

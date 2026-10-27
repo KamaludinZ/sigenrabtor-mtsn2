@@ -15,7 +15,7 @@ use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
 use App\Support\Rab\RekapKelompok;
-use App\Support\Rab\SimpanRincianRab;
+use App\Support\Rab\RincianRab;
 use App\Support\Rab\TampilanRab;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Arr;
@@ -339,7 +339,7 @@ class Rab extends Component
     public function hapusItem(string $id): void
     {
         $this->pastikanDapatDiedit();
-        $terhapus = app(RabRepository::class)->hapusItem($this->kegiatanId, $this->sumber, $id);
+        $terhapus = RincianRab::hapus($this->kegiatanId, $this->sumber, $id);
 
         if ($terhapus === null) {
             return;
@@ -408,8 +408,7 @@ class Rab extends Component
             return;
         }
 
-        $repo = app(RabRepository::class);
-        $terhapus = $repo->hapusItem($this->kegiatanId, $this->sumber, $id);
+        $terhapus = RincianRab::hapus($this->kegiatanId, $this->sumber, $id);
 
         if ($terhapus === null) {
             return;
@@ -419,7 +418,7 @@ class Rab extends Component
             $this->tutupFormItem();
         }
 
-        $idBaru = $repo->tambahItem($this->kegiatanId, $tujuan, Arr::except($terhapus['item'], ['id']));
+        $idBaru = app(RabRepository::class)->tambahItem($this->kegiatanId, $tujuan, Arr::except($terhapus['item'], ['id']));
         $this->itemDipindah = ['id' => $idBaru, 'dari' => $this->sumber, 'ke' => $tujuan, 'index' => $terhapus['index'], 'item' => $terhapus['item']];
         $this->itemTerhapus = null;
         $this->segarkanRincian();
@@ -434,9 +433,8 @@ class Rab extends Component
             return;
         }
 
-        $repo = app(RabRepository::class);
-        $repo->hapusItem($this->kegiatanId, $pindah['ke'], $pindah['id']);
-        $repo->sisipkanItem($this->kegiatanId, $pindah['dari'], $pindah['index'], $pindah['item']);
+        RincianRab::hapus($this->kegiatanId, $pindah['ke'], $pindah['id']);
+        RincianRab::kembalikan($this->kegiatanId, $pindah['dari'], $pindah['index'], $pindah['item']);
         $this->itemDipindah = null;
         $this->segarkanRincian();
     }
@@ -478,7 +476,7 @@ class Rab extends Component
             return;
         }
 
-        app(RabRepository::class)->sisipkanItem($this->kegiatanId, $this->sumber, $this->itemTerhapus['index'], $this->itemTerhapus['item']);
+        RincianRab::kembalikan($this->kegiatanId, $this->sumber, $this->itemTerhapus['index'], $this->itemTerhapus['item']);
         $this->itemTerhapus = null;
         $this->segarkanRincian();
     }
@@ -526,12 +524,12 @@ class Rab extends Component
         $this->item->sinkronKategori();
         $this->item->validate();
 
-        // Server memeriksa ulang & menyimpan lewat SimpanRincianRab (status terkunci, sumber dana, aturan item).
+        // Server memeriksa ulang & menyimpan lewat RincianRab (status terkunci, sumber dana, aturan item).
         $isian = $this->item->dataItem();
         $this->itemTerhapus = null;
 
         if ($this->itemDiedit !== null) {
-            $hasil = SimpanRincianRab::ubah($this->kegiatanId, $this->sumber, $this->itemDiedit, $isian);
+            $hasil = RincianRab::ubah($this->kegiatanId, $this->sumber, $this->itemDiedit, $isian);
             $this->tutupFormItem();
             $this->segarkanRincian();
             $this->dispatch('notify', ...$hasil !== null
@@ -541,7 +539,7 @@ class Rab extends Component
             return;
         }
 
-        $hasil = SimpanRincianRab::tambah($this->kegiatanId, $this->sumber, $isian);
+        $hasil = RincianRab::tambah($this->kegiatanId, $this->sumber, $isian);
         $this->segarkanRincian();
 
         $this->item->kosongkan();

@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Validasi sisi server satu rincian belanja RAB — satu sumber aturan, pesan, dan label untuk form item (ItemBelanjaForm)
- * dan SimpanRincianRab. Aturan berlaku untuk ketikan mentah ("1,5", "Rp40.000") maupun nilai yang sudah dirapikan.
+ * dan RincianRab. Aturan berlaku untuk ketikan mentah ("1,5", "Rp40.000") maupun nilai yang sudah dirapikan.
  */
 final class ValidasiItemBelanja
 {

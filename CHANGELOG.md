@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- RAB: menghapus rincian, mengurungkan hapus, memindah item ke RAB sumber dana lain, dan mengurungkan pemindahan kini juga lewat layanan server yang sama — ditolak bila RAB sudah terkunci, dan urungkan yang terkirim dua kali tidak membuat item ganda.
 - RAB: menambah dan mengubah rincian belanja kini lewat satu layanan di server yang merapikan isian (volume "1,5", harga berformat rupiah, spasi berlebih, kelompok belanja ditebak dari uraian bila belum dipilih), memeriksa ulang aturan item, dan menolak perubahan bila RAB kegiatan sudah terkunci atau sumber dananya tidak dikenal.
 - Fondasi backend: **endpoint RAB lengkap** per kegiatan (`/kegiatan/{id}/rab-lengkap`, JSON) — setiap sumber dana dengan rincian belanja bernomor urut cetak beserta nama akun dan jumlahnya, subtotal per kelompok belanja dan per kode akun, pagu & status pagu, termin, terbilang, serta total kegiatan; RAB sumber dana yang sempat tidak dicentang tetap terlihat (ditandai tidak dipilih) tanpa ikut dijumlahkan.
 - Fondasi backend: rangkuman **RAB per sumber dana** di database — pagu, total RAB dari rinciannya, jumlah item, termin, status pagu (sesuai/sisa/melebihi/pagu belum diisi), dan status termin tiap kegiatan × sumber dana — dengan aturan yang sama persis dengan yang tampil di layar, siap dipakai laporan dan rekap.

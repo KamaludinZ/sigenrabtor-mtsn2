@@ -13,12 +13,13 @@ use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
- * Tambah & ubah satu rincian belanja RAB di server (PRD F11, RAB per sumber dana): isian dirapikan (`rapikan()` —
- * volume format Indonesia "1,5", harga rupiah berformat, spasi, kelompok ditebak dari uraian bila kosong), diperiksa
- * ValidasiItemBelanja, lalu disimpan lewat RabRepository. Ditolak bila kegiatan tidak ada (RuntimeException), sudah
- * terkunci statusnya (AuthorizationException → 403), atau sumber dananya bukan DIPA/Komite. Dipakai halaman RAB.
+ * Tambah, ubah, hapus, dan kembalikan (urungkan) satu rincian belanja RAB di server (PRD F11, RAB per sumber dana): isian
+ * dirapikan (`rapikan()` — volume format Indonesia "1,5", harga rupiah berformat, spasi, kelompok ditebak dari uraian bila
+ * kosong), diperiksa ValidasiItemBelanja, lalu ditulis lewat RabRepository. Setiap aksi ditolak bila kegiatan tidak ada
+ * (RuntimeException), sudah terkunci statusnya (AuthorizationException → 403), atau sumber dananya bukan DIPA/Komite
+ * (`pastikanDapatDiubah()`). Dipakai halaman RAB.
  */
-final class SimpanRincianRab
+final class RincianRab
 {
     /**
      * Bentuk simpan item: {kode, uraian, kategori, volume (int bila bulat, 2 desimal), satuan, harga_satuan}.
@@ -71,10 +72,37 @@ final class SimpanRincianRab
     }
 
     /**
-     * @param  array<string, mixed>  $isian
-     * @return array{kode: string, uraian: string, kategori: string, volume: float|int, satuan: string, harga_satuan: int}
+     * Hapus item; mengembalikan posisi & isinya (untuk urungkan lewat kembalikan()) atau null bila sudah tidak ada.
+     *
+     * @return array{index: int, item: array<string, mixed>}|null
      */
-    private static function siapkan(int $kegiatanId, string $sumber, array $isian): array
+    public static function hapus(int $kegiatanId, string $sumber, string $id): ?array
+    {
+        self::pastikanDapatDiubah($kegiatanId, $sumber);
+
+        return app(RabRepository::class)->hapusItem($kegiatanId, $sumber, $id);
+    }
+
+    /**
+     * Kembalikan item yang dihapus/dipindah ke posisinya semula (id sama; terkirim dua kali tidak menggandakan item).
+     *
+     * @param  array<string, mixed>  $item  Item lengkap dengan id, dari hapus().
+     */
+    public static function kembalikan(int $kegiatanId, string $sumber, int $index, array $item): void
+    {
+        self::pastikanDapatDiubah($kegiatanId, $sumber);
+
+        if (! in_array($item['id'] ?? null, array_column(app(RabRepository::class)->rincian($kegiatanId, $sumber), 'id'), true)) {
+            app(RabRepository::class)->sisipkanItem($kegiatanId, $sumber, $index, $item);
+        }
+    }
+
+    /**
+     * @throws RuntimeException Kegiatan tidak ditemukan.
+     * @throws AuthorizationException Status kegiatan mengunci RAB.
+     * @throws ValidationException Sumber dana bukan DIPA/Komite.
+     */
+    public static function pastikanDapatDiubah(int $kegiatanId, string $sumber): void
     {
         $kegiatan = app(KegiatanRepository::class)->temukan($kegiatanId) ?? throw new RuntimeException("Kegiatan {$kegiatanId} tidak ditemukan.");
         $status = StatusKegiatan::tryFrom((string) ($kegiatan['status'] ?? '')) ?? StatusKegiatan::Draf;
@@ -84,6 +112,15 @@ final class SimpanRincianRab
         if (SumberDana::tryFrom($sumber) === null) {
             throw ValidationException::withMessages(['sumber' => 'Sumber dana harus DIPA atau Komite.']);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $isian
+     * @return array{kode: string, uraian: string, kategori: string, volume: float|int, satuan: string, harga_satuan: int}
+     */
+    private static function siapkan(int $kegiatanId, string $sumber, array $isian): array
+    {
+        self::pastikanDapatDiubah($kegiatanId, $sumber);
 
         // Teks diperiksa sesudah dirapikan; volume & harga tetap mentah agar pesan salah ketiknya tepat ("harus berupa angka").
         $item = self::rapikan($isian);
