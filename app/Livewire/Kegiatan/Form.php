@@ -17,6 +17,7 @@ use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\SaranPelaksanaan;
+use App\Support\Kegiatan\SimpanKonteks;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
 use App\Support\Pengaturan\TeksBaku;
@@ -34,6 +35,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * Layar utama Data Kegiatan: satu form panjang berisi semua bagian sumber KAK/TOR & RAB.
@@ -316,17 +318,11 @@ class Form extends Component
             return;
         }
 
-        $repo = app(KegiatanRepository::class);
-        $data = $repo->temukan($this->kegiatanId);
-        $bersih = Teks::rapikan($this->form->konteks);
-
-        if ($data === null) {
+        // Hanya kolom konteks yang ditulis (SimpanKonteks); isian lain yang belum disimpan tetap di layar.
+        try {
+            SimpanKonteks::simpan($this->kegiatanId, $this->form->konteks);
+        } catch (RuntimeException) {
             return;
-        }
-
-        if (($data['konteks'] ?? '') !== $bersih) {
-            $data['konteks'] = $bersih;
-            $repo->simpan($data, $this->kegiatanId);
         }
 
         $this->konteksTersimpanPada = now()->format('H.i');
