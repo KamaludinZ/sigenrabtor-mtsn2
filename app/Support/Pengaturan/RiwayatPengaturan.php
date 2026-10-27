@@ -27,6 +27,7 @@ final class RiwayatPengaturan
         'ubah_pejabat' => ['Ubah pejabat penanda tangan', 'madrasah'],
         'salin_pejabat' => ['Salin pejabat dari tahun lain', 'madrasah'],
         'ubah_mengetahui' => ['Ubah blok Mengetahui', 'madrasah'],
+        'ubah_dasar_hukum' => ['Ubah dasar hukum', 'madrasah'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

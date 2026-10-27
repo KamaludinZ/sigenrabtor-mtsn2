@@ -75,7 +75,7 @@ class DasarHukumTest extends TestCase
         $ta2026 = $repo->untukTahun(2026);
         $this->assertTrue($ta2026['diatur']);
         $this->assertSame(['dh-2026-1', 'dh-2026-2', 'dh-2026-3', 'dh-2026-4'], array_column($ta2026['dasar_hukum'], 'id'));
-        $this->assertStringEndsWith('MTsN 2 Kota Malang Tahun {tahun}.', $ta2026['dasar_hukum'][3]['teks']);
+        $this->assertStringEndsWith('MTsN 2 Kota Malang Tahun {tahun}', $ta2026['dasar_hukum'][3]['teks']);
         $this->assertStringContainsString('Tahun Anggaran {tahun} memerlukan', $ta2026['latar_belakang']);
         $this->assertStringEndsWith('adalah kegiatan {nama_kegiatan}.', $ta2026['kalimat_penutup']);
         $this->assertSame(['dh-2025-1', 'dh-2025-2', 'dh-2025-3'], array_column($repo->untukTahun(2025)['dasar_hukum'], 'id'));
@@ -116,19 +116,19 @@ class DasarHukumTest extends TestCase
         $kegiatan = app(KegiatanRepository::class)->temukan(1);
         $nama = KalimatKak::tanpaAwalanKegiatan($kegiatan['nama_kegiatan']);
         $nilai = NilaiVariabel::untuk($kegiatan, null);
-        $this->assertSame(['Keputusan RKTM Tahun 2026.', 'Peraturan baru;'], $nilai['dasar_hukum']);
+        $this->assertSame(['Keputusan RKTM Tahun 2026;', 'Peraturan baru.'], $nilai['dasar_hukum']);
         $this->assertStringStartsWith('Paragraf baku TA 2026. ', $nilai['latar_belakang']);
         $this->assertStringEndsWith("Kegiatan {$nama} mendukung Perkin TA 2026.", $nilai['latar_belakang']);
 
         $bagian = collect(SusunanKak::dari($kegiatan)->bagian)->keyBy('nomor');
         $this->assertSame('Paragraf baku TA 2026.', $bagian[1]['isi'][0]['teks']);
         $this->assertSame("Kegiatan {$nama} mendukung Perkin TA 2026.", collect($bagian[1]['isi'])->last()['teks']);
-        $this->assertSame(['Keputusan RKTM Tahun 2026.', 'Peraturan baru;'], $bagian[2]['isi'][0]['butir']);
+        $this->assertSame(['Keputusan RKTM Tahun 2026;', 'Peraturan baru.'], $bagian[2]['isi'][0]['butir']);
 
         session(['stub_role' => 'admin']);
         Livewire::test(DasarHukum::class)
             ->assertSee('2 butir · tercetak bernomor')
-            ->assertSeeHtmlInOrder(['data-id="dh-2026-4"', 'Keputusan RKTM Tahun 2026.', 'Peraturan baru;'])
+            ->assertSeeHtmlInOrder(['data-id="dh-2026-4"', 'Keputusan RKTM Tahun 2026;', 'Peraturan baru.'])
             ->assertSeeHtmlInOrder(['data-testid="kalimat-sisip"', 'Kegiatan ', 'nama kegiatan</mark>', ' mendukung Perkin TA 2026.']);
     }
 

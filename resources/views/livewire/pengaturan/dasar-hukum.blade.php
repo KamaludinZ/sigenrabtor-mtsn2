@@ -9,6 +9,7 @@
     $contoh = \App\Support\Kegiatan\KalimatKak::tanpaAwalanKegiatan($this->contohKegiatan());
     $kesiapan = $this->kesiapan();
     $pengaturan = $this->pengaturan;
+    $bolehUbah = ! $this->tahunTerkunci();
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -62,18 +63,22 @@
                 </p>
             @endif
 
-            {{-- Dasar hukum --}}
+            {{-- Dasar hukum: butir ditambah/diubah/dihapus satu per satu dan langsung tersimpan. --}}
             <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-dasar-hukum" data-testid="daftar-dasar-hukum">
                 <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
                     <div class="min-w-0">
                         <h2 id="judul-dasar-hukum" class="text-base font-semibold text-stone-900">Dasar hukum</h2>
                         <p class="mt-0.5 text-sm text-stone-500">{{ count($dasarHukum) }} butir · tercetak bernomor di bagian 2 KAK/TOR sesuai urutan ini.</p>
                     </div>
-                    <div class="flex shrink-0 flex-wrap gap-2 self-start">
-                        <button type="button" class="btn-secondary" disabled title="Sedang disiapkan"><x-ui.icon name="plus" class="size-4" /> Tambah butir <x-ui.segera /></button>
-                    </div>
+                    @if ($bolehUbah)
+                        <div class="flex shrink-0 flex-wrap gap-2 self-start">
+                            <button type="button" wire:click="tambahButir" class="btn-secondary" @disabled($suntingButir === 'baru' || count($dasarHukum) >= \App\Support\Pengaturan\DaftarDasarHukum::MAKS_BUTIR)>
+                                <x-ui.icon name="plus" class="size-4" /> Tambah butir
+                            </button>
+                        </div>
+                    @endif
                 </header>
-                @if ($dasarHukum === [])
+                @if ($dasarHukum === [] && $suntingButir !== 'baru')
                     <p class="px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="dasar-hukum-kosong">
                         Belum ada dasar hukum TA {{ $ta }}.
                         @unless ($pengaturan['diatur'])
@@ -85,12 +90,39 @@
                         @foreach ($dasarHukum as $i => $butir)
                             <li class="flex items-start gap-3 px-5 py-3 sm:px-6" data-butir="{{ $i + 1 }}" data-id="{{ $butir['id'] }}" wire:key="butir-{{ $butir['id'] }}">
                                 <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600 tabular-nums" aria-hidden="true">{{ $i + 1 }}</span>
-                                <p class="min-w-0 flex-1 text-sm text-stone-800">{{ $butir['teks'] }}</p>
+                                @if ($suntingButir === $butir['id'])
+                                    @include('livewire.pengaturan.partials.isian-butir-dasar-hukum', ['label' => 'Ubah butir '.($i + 1)])
+                                @else
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm text-stone-800">{{ $butir['teks'] }}</p>
+                                        @if ($konfirmasiHapus === $butir['id'])
+                                            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 ring-1 ring-red-200" role="group" aria-label="Konfirmasi hapus butir {{ $i + 1 }}">
+                                                <span class="text-sm text-red-800">Hapus butir {{ $i + 1 }}? Nomor butir sesudahnya bergeser.</span>
+                                                <span class="flex gap-1.5">
+                                                    <button type="button" class="btn-ghost px-2 py-1 text-xs" wire:click="batalButir">Batal</button>
+                                                    <button type="button" class="btn-danger px-2.5 py-1 text-xs" wire:click="hapusButir">Hapus</button>
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @if ($bolehUbah && $konfirmasiHapus !== $butir['id'])
+                                        <div class="-my-1 flex shrink-0 gap-0.5">
+                                            <button type="button" wire:click="ubahButir(@js($butir['id']))" class="btn-ghost p-1.5" aria-label="Ubah butir {{ $i + 1 }}" title="Ubah"><x-ui.icon name="pencil" class="size-4" /></button>
+                                            <button type="button" wire:click="mintaHapusButir(@js($butir['id']))" class="btn-ghost p-1.5 text-red-700 hover:bg-red-50" aria-label="Hapus butir {{ $i + 1 }}" title="Hapus"><x-ui.icon name="trash" class="size-4" /></button>
+                                        </div>
+                                    @endif
+                                @endif
                             </li>
                         @endforeach
+                        @if ($suntingButir === 'baru')
+                            <li class="flex items-start gap-3 bg-brand-50/40 px-5 py-3 sm:px-6" wire:key="butir-baru" data-testid="butir-baru">
+                                <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800 tabular-nums" aria-hidden="true">{{ count($dasarHukum) + 1 }}</span>
+                                @include('livewire.pengaturan.partials.isian-butir-dasar-hukum', ['label' => 'Butir baru'])
+                            </li>
+                        @endif
                     </ol>
                 @endif
-                <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Akhiri butir dengan titik koma (;) dan butir terakhir dengan titik (.) seperti di dokumen.</p>
+                <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Tanda baca akhir disusun otomatis seperti di dokumen: titik koma (;), butir terakhir titik (.). Tulis <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{tahun}</code> agar tahun anggaran terisi sendiri.</p>
             </section>
 
             {{-- Latar belakang baku --}}

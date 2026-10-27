@@ -6,6 +6,7 @@ use App\Contracts\DasarHukumRepository;
 use App\Contracts\PejabatRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\TeksBaku;
 
 /**
@@ -93,13 +94,14 @@ class StubData
     }
 
     /**
-     * Dasar hukum KAK tahun $tahun (DasarHukumRepository, diatur admin), urut cetak, penanda tahun sudah terisi.
+     * Dasar hukum KAK tahun $tahun (DasarHukumRepository, diatur admin), urut cetak, siap cetak lewat
+     * DaftarDasarHukum::cetak() (penanda tahun terisi, tanda baca akhir menurut urutan).
      *
      * @return list<string>
      */
     public static function dasarHukum(int $tahun): array
     {
-        return array_map(fn (array $butir) => TeksBaku::isi($butir['teks'], $tahun), app(DasarHukumRepository::class)->untukTahun($tahun)['dasar_hukum']);
+        return DaftarDasarHukum::cetak(array_column(app(DasarHukumRepository::class)->untukTahun($tahun)['dasar_hukum'], 'teks'), $tahun);
     }
 
     /**

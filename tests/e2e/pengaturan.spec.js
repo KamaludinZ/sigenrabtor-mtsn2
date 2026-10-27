@@ -553,4 +553,51 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByTestId('dasar-hukum-terkunci')).toBeVisible();
         await expect(page.getByTestId('daftar-dasar-hukum')).toContainText('Tahun 2025.');
     });
+
+    test('dasar hukum: tambah, ubah (Enter/Esc), dan hapus butir dengan tanda baca otomatis', async ({ page }, testInfo) => {
+        const nama = `Peraturan Uji E2E ${testInfo.project.name} Tahun {tahun}`;
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        const daftar = page.getByTestId('daftar-dasar-hukum');
+        const pratinjau = page.getByTestId('pratinjau-dasar-hukum');
+        await expect(daftar.locator('li[data-butir]')).toHaveCount(4);
+
+        await daftar.getByRole('button', { name: 'Tambah butir' }).click();
+        const isian = daftar.getByRole('textbox', { name: 'Butir baru' });
+        await expect(isian).toBeFocused();
+        await isian.press('Enter');
+        await expect(daftar.getByRole('alert')).toHaveText('Butir dasar hukum wajib diisi.');
+        await isian.fill(`${nama};`);
+        await isian.press('Enter');
+        await expect(page.getByText('Butir dasar hukum ditambahkan untuk TA 2026.')).toBeVisible();
+        await expect(daftar.locator('li[data-butir]')).toHaveCount(5);
+        await expect(daftar.locator('li[data-butir="5"]')).toContainText(`Peraturan Uji E2E ${testInfo.project.name} Tahun 2026.`);
+        await expect(daftar.locator('li[data-butir="4"]')).toContainText('Tahun 2026;');
+        await expect(pratinjau.locator('ol li').last()).toHaveText(`Peraturan Uji E2E ${testInfo.project.name} Tahun 2026.`);
+
+        await daftar.getByRole('button', { name: 'Ubah butir 5' }).click();
+        const ubah = daftar.getByRole('textbox', { name: 'Ubah butir 5' });
+        await expect(ubah).toHaveValue(nama);
+        await ubah.fill('Teks yang dibatalkan');
+        await ubah.press('Escape');
+        await expect(ubah).toBeHidden();
+        await expect(daftar.locator('li[data-butir="5"]')).toContainText(`Peraturan Uji E2E ${testInfo.project.name} Tahun 2026.`);
+
+        await daftar.getByRole('button', { name: 'Ubah butir 5' }).click();
+        await daftar.getByRole('textbox', { name: 'Ubah butir 5' }).fill(`${nama} (diubah)`);
+        await daftar.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('Butir dasar hukum diperbarui untuk TA 2026.')).toBeVisible();
+        await expect(daftar.locator('li[data-butir="5"]')).toContainText('Tahun 2026 (diubah).');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await daftar.screenshot({ path: `storage/playwright/shots/dasar-hukum-ubah-${testInfo.project.name}.png` });
+
+        // Pulihkan: hapus butir uji (proyek mobile & tes dokumen memakai data yang sama).
+        await daftar.getByRole('button', { name: 'Hapus butir 5' }).click();
+        await expect(daftar.getByRole('group', { name: 'Konfirmasi hapus butir 5' })).toBeVisible();
+        await daftar.getByRole('group', { name: 'Konfirmasi hapus butir 5' }).getByRole('button', { name: 'Hapus' }).click();
+        await expect(page.getByText('Butir 5 dihapus dari dasar hukum TA 2026.')).toBeVisible();
+        await expect(daftar.locator('li[data-butir]')).toHaveCount(4);
+        await expect(daftar.locator('li[data-butir="4"]')).toContainText('Tahun 2026.');
+    });
 });

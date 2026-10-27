@@ -73,21 +73,21 @@ class StubDasarHukumRepository implements DasarHukumRepository
     }
 
     /**
-     * Contoh TA 2026 & 2025 (butir dasar hukum berbeda; tahun di butir SK RKTM lewat penanda).
+     * Contoh TA 2026 & 2025 (butir dasar hukum berbeda, tanpa tanda baca akhir; tahun di butir SK RKTM lewat penanda).
      *
      * @return array<string, array<string, mixed>>
      */
     public static function contoh(): array
     {
-        $uu = 'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;';
-        $pma90 = 'Peraturan Menteri Agama Nomor 90 Tahun 2013 tentang Penyelenggaraan Pendidikan Madrasah;';
-        $rktm = 'Surat Keputusan Kepala MTsN 2 Kota Malang tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun {tahun}.';
+        $uu = 'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional';
+        $pma90 = 'Peraturan Menteri Agama Nomor 90 Tahun 2013 tentang Penyelenggaraan Pendidikan Madrasah';
+        $rktm = 'Surat Keputusan Kepala MTsN 2 Kota Malang tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun {tahun}';
 
         return [
             '2026' => self::bawaan() + [
                 'dasar_hukum' => [
                     ['id' => 'dh-2026-1', 'teks' => $uu],
-                    ['id' => 'dh-2026-2', 'teks' => 'Peraturan Menteri Agama Nomor 10 Tahun 2010 tentang Organisasi dan Tata Kerja Kementerian Agama;'],
+                    ['id' => 'dh-2026-2', 'teks' => 'Peraturan Menteri Agama Nomor 10 Tahun 2010 tentang Organisasi dan Tata Kerja Kementerian Agama'],
                     ['id' => 'dh-2026-3', 'teks' => $pma90],
                     ['id' => 'dh-2026-4', 'teks' => $rktm],
                 ],
