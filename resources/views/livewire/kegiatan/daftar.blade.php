@@ -35,6 +35,9 @@
             <a href="{{ route('kegiatan.template') }}" class="btn-secondary" data-testid="unduh-template">
                 <x-ui.icon name="download" class="size-4" /> Unduh template
             </a>
+            <a href="{{ route('kegiatan.salin_impor') }}" wire:navigate class="btn-secondary" data-testid="tautan-salin-impor">
+                <x-ui.icon name="copy" class="size-4" /> Duplikat &amp; impor Perkin
+            </a>
             <button type="button" wire:click="bukaImpor" class="btn-secondary" aria-expanded="{{ $imporTerbuka ? 'true' : 'false' }}" aria-controls="panel-impor">
                 <x-ui.icon name="sheet" class="size-4" /> Impor dari Excel
             </button>
