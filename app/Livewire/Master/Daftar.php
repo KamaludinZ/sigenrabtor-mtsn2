@@ -10,13 +10,14 @@ use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
  * Master Kode Tahunan (PRD Fase 6 §14, F7): kode SK, IKSK, RKTM, EDM, dan 5 Budaya Mutu per tahun anggaran — tab per
  * jenis dengan jumlah baris & pemakaian oleh kegiatan tahun itu. Tahun di `?ta=` ('' = tahun aktif), jenis di `?jenis=`.
- * Unggah Excel + pratinjau menyusul (tombolnya masih "Segera").
+ * Unggah Excel lewat panel anak Master\UnggahMaster (pratinjau sebelum simpan menyusul).
  */
 #[Layout('layouts.app')]
 class Daftar extends Component
@@ -27,6 +28,9 @@ class Daftar extends Component
     #[Url(except: 'sk')]
     public string $jenis = 'sk';
 
+    /** Panel unggah master terbuka (tahun yang dilihat, bukan tahun terkunci). */
+    public bool $unggahTerbuka = false;
+
     public function mount(): void
     {
         $this->rapikan();
@@ -35,6 +39,18 @@ class Daftar extends Component
     public function updatedTahun(): void
     {
         $this->rapikan();
+        $this->unggahTerbuka = false;
+    }
+
+    public function bukaUnggah(): void
+    {
+        $this->unggahTerbuka = ! $this->tahunTerkunci();
+    }
+
+    #[On('unggah-master-ditutup')]
+    public function tutupUnggah(): void
+    {
+        $this->unggahTerbuka = false;
     }
 
     public function updatedJenis(): void

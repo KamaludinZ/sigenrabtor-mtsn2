@@ -18,7 +18,11 @@
                          deskripsi="Kode SK, IKSK, RKTM, EDM, dan 5 Budaya Mutu per tahun anggaran — diunggah dari Excel lalu dipilih leading di Kode & Klasifikasi, tidak diketik bebas.">
         <x-slot:aksi>
             <button type="button" class="btn-ghost" disabled title="Sedang disiapkan"><x-ui.icon name="download" class="size-4" /> Unduh template <x-ui.segera /></button>
-            <button type="button" class="btn-primary" disabled title="Sedang disiapkan"><x-ui.icon name="upload" class="size-4" /> Unggah Excel <x-ui.segera /></button>
+            @if ($this->tahunTerkunci())
+                <button type="button" class="btn-primary" disabled title="Tahun terkunci — master hanya dilihat" wire:key="unggah-terkunci"><x-ui.icon name="lock" class="size-4" /> Unggah Excel</button>
+            @else
+                <button type="button" wire:click="bukaUnggah" class="btn-primary" aria-expanded="{{ $unggahTerbuka ? 'true' : 'false' }}" aria-controls="panel-unggah-master" wire:key="unggah-buka"><x-ui.icon name="upload" class="size-4" /> Unggah Excel</button>
+            @endif
         </x-slot:aksi>
     </x-pengaturan.kepala>
 
@@ -46,6 +50,12 @@
         <p class="text-xs text-stone-500">Pilihan kode di Data Kegiatan memakai master TA {{ $tahunAktif }}.</p>
     </div>
 
+    @if ($unggahTerbuka)
+        <div class="mt-5" id="panel-unggah-master">
+            <livewire:master.unggah-master :tahun="$ta" wire:key="unggah-master-{{ $ta }}" />
+        </div>
+    @endif
+
     @if ($this->tahunTerkunci())
         <p class="mt-4 flex items-start gap-2 rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-700 ring-1 ring-stone-200" data-testid="master-terkunci">
             <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" /> Tahun Anggaran {{ $ta }} terkunci — master kodenya hanya bisa dilihat.
@@ -58,6 +68,9 @@
             <x-ui.icon name="database" class="mx-auto size-10 text-stone-300" />
             <h2 class="mt-3 text-base font-semibold text-stone-900">Master kode TA {{ $ta }} belum diunggah</h2>
             <p class="mx-auto mt-1 max-w-xl text-sm text-stone-500">Selama belum ada, leading belum bisa memilih kode RKTM, SK, IKSK, EDM, dan 5 Budaya Mutu untuk kegiatan tahun ini.</p>
+            @if (! $this->tahunTerkunci() && ! $unggahTerbuka)
+                <button type="button" wire:click="bukaUnggah" class="btn-primary mt-4"><x-ui.icon name="upload" class="size-4" /> Unggah master TA {{ $ta }}</button>
+            @endif
             <ol class="mx-auto mt-5 grid max-w-2xl gap-3 text-left text-sm sm:grid-cols-3">
                 @foreach (['Unduh template Excel master kode', 'Isi sheet Perkin, SNP, EDM, dan 5 Budaya Mutu', 'Unggah, periksa pratinjau, lalu simpan'] as $i => $langkah)
                     <li class="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2.5 ring-1 ring-stone-200">

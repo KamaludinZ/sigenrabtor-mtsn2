@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 test.describe('Pengaturan admin', () => {
     test('ikhtisar: khusus admin, peta bagian & kesiapan tahun anggaran', async ({ page }, testInfo) => {
@@ -812,5 +813,43 @@ test.describe('Pengaturan admin', () => {
         await expect(page).toHaveURL(/ta=2025/);
         await expect(page.getByTestId('master-terkunci')).toBeVisible();
         await expect(master.getByTestId('ringkasan-jenis')).toContainText('0 dipakai kegiatan TA 2025');
+    });
+
+    test('master kode: formulir unggah — pilih/seret berkas, sheet dikenali per jenis, galat berkas asing', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/master');
+        await page.getByRole('button', { name: 'Unggah Excel' }).click();
+        const panel = page.getByTestId('unggah-master');
+        await expect(panel).toBeVisible();
+        await expect(panel.getByTestId('akan-diganti')).toContainText('Master TA 2026 yang ada akan diganti');
+
+        await panel.getByTestId('input-berkas-master').setInputFiles('tests/fixtures/master-kode-asing.xlsx');
+        await expect(panel.getByTestId('galat-unggah-master')).toContainText('Tidak ada sheet yang dikenali');
+        await expect(panel.getByRole('button', { name: /Lanjut ke pratinjau/ })).toBeDisabled();
+        await panel.getByRole('button', { name: 'Batal pilih' }).click();
+
+        // Seret-lepas berkas ke zona unggah.
+        const isi = [...readFileSync('tests/fixtures/master-kode-contoh.xlsx')];
+        const transfer = await page.evaluateHandle((bita) => {
+            const dt = new DataTransfer();
+            dt.items.add(new File([new Uint8Array(bita)], 'master-2026.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+            return dt;
+        }, isi);
+        await panel.getByTestId('zona-berkas-master').dispatchEvent('drop', { dataTransfer: transfer });
+        await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
+        const sheet = panel.getByTestId('sheet-dikenali');
+        await expect(sheet.locator('[data-dikenali="ya"]')).toHaveCount(5);
+        await expect(sheet.locator('[data-jenis="rktm"]')).toContainText('sheet SNP');
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await panel.screenshot({ path: `storage/playwright/shots/master-unggah-${testInfo.project.name}.png` });
+
+        // Satu jenis: hanya jenis itu yang diperiksa.
+        await panel.getByTestId('cakupan-unggah').getByText('EDM', { exact: true }).click();
+        await expect(sheet.locator('[data-jenis]')).toHaveCount(1);
+        await expect(sheet.locator('[data-jenis="edm"]')).toContainText('sheet EDM');
+
+        await panel.getByRole('button', { name: 'Tutup unggah master' }).click();
+        await expect(panel).toHaveCount(0);
     });
 });
