@@ -52,12 +52,51 @@ class LeadingUserTest extends TestCase
             ->assertSet('tab', 'akun')
             ->assertSeeHtml('data-testid="daftar-akun"')
             ->assertSee('5 aktif (2 admin, 3 leading) · 1 nonaktif.')
-            ->assertSeeHtmlInOrder(['data-akun="2"', 'Koordinator PUSKOM', 'Admin', 'Anda', 'puskom@example.com', 'Semua leading'])
-            ->assertSeeHtmlInOrder(['data-akun="4"', 'Ahmad Fauzan, S.Pd.', 'Leading', '1.2 Waka Kesiswaan', '1.4 Waka Humas', 'Belum pernah masuk'])
-            ->assertSeeHtmlInOrder(['data-akun="6"', 'Dewi Kartika, S.E.', 'Nonaktif', 'Masuk 20 November 2025'])
+            // Bawaan: urut nama.
+            ->assertSeeHtmlInOrder(['data-akun="4"', 'data-akun="6"', 'data-akun="2"', 'data-akun="1"', 'data-akun="5"', 'data-akun="3"'])
+            ->assertSeeHtmlInOrder(['data-akun="2"', 'Koordinator PUSKOM', 'Anda', 'puskom@example.com', 'Admin', 'Semua leading', '6 Januari 2026', 'Aktif'])
+            ->assertSeeHtmlInOrder(['data-akun="4"', 'Ahmad Fauzan, S.Pd.', 'Leading', '1.2 Waka Kesiswaan', '1.4 Waka Humas', 'Belum pernah'])
+            ->assertSeeHtmlInOrder(['data-akun="6"', 'Dewi Kartika, S.E.', '20 November 2025', 'Nonaktif'])
+            ->assertSeeHtml('aria-label="Ubah akun Muslimin, M.Pd. (sedang disiapkan)"')
             ->assertSee('Tambah akun')
             ->set('tab', 'ngawur')
             ->assertSet('tab', 'leading');
+    }
+
+    public function test_tabel_akun_cari_saring_dan_urut(): void
+    {
+        session(['stub_role' => 'admin']);
+        $id = fn ($komponen) => array_column($komponen->instance()->akunTampil(), 'id');
+
+        $komponen = Livewire::withQueryParams(['tab' => 'akun'])->test(LeadingUser::class);
+        $this->assertSame([4, 6, 2, 1, 5, 3], $id($komponen));
+
+        $komponen->set('peranAkun', 'admin');
+        $this->assertSame([2, 5], $id($komponen));
+        $komponen->set('peranAkun', 'leading')->set('statusAkun', 'aktif');
+        $this->assertSame([4, 1, 3], $id($komponen));
+        $komponen->assertSee('Menampilkan 3 dari 6 akun.');
+        $komponen->set('statusAkun', 'nonaktif');
+        $this->assertSame([6], $id($komponen));
+        $komponen->call('hapusSaringanAkun')->set('cariAkun', 'kurikulum');
+        $this->assertSame([3], $id($komponen), 'Cari di jabatan.');
+        $komponen->set('cariAkun', 'PUSKOM@');
+        $this->assertSame([2], $id($komponen), 'Cari di surel tanpa memandang huruf besar.');
+        $komponen->set('cariAkun', 'tidak ada')->assertSeeHtml('data-testid="akun-kosong"')->call('hapusSaringanAkun');
+
+        // Terakhir masuk: terbaru dulu, yang belum pernah masuk selalu di akhir.
+        $komponen->call('urutkanAkun', 'masuk')->assertSet('urutAkun', 'masuk')->assertSet('arahAkun', '');
+        $this->assertSame([2, 1, 6, 4, 5, 3], $id($komponen));
+        $komponen->call('urutkanAkun', 'masuk')->assertSet('arahAkun', 'asc');
+        $this->assertSame([6, 1, 2, 4, 5, 3], $id($komponen));
+        $komponen->call('urutkanAkun', 'kegiatan');
+        $this->assertSame(1, $id($komponen)[0], 'Pembuat kegiatan terbanyak lebih dulu (akun 1: 2 kegiatan).');
+        $komponen->call('urutkanAkun', 'ngawur')->assertSet('urutAkun', 'kegiatan');
+        $komponen->set('peranAkun', 'ngawur')->assertSet('peranAkun', '');
+
+        Livewire::withQueryParams(['tab' => 'akun', 'peran_akun' => 'admin', 'urut_akun' => 'masuk'])->test(LeadingUser::class)
+            ->assertSet('peranAkun', 'admin')
+            ->assertSet('urutAkun', 'masuk');
     }
 
     public function test_ringkasan_mengikuti_data(): void

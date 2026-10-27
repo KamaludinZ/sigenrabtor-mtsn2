@@ -62,10 +62,112 @@ class LeadingUser extends Component
     /** Kode leading yang menunggu konfirmasi dinonaktifkan. */
     public ?string $konfirmasiNonaktif = null;
 
+    /** Kunci urut tabel akun → arah bawaan. */
+    public const URUT_AKUN = ['nama' => 'asc', 'masuk' => 'desc', 'kegiatan' => 'desc'];
+
+    #[Url(as: 'cari_akun', except: '')]
+    public string $cariAkun = '';
+
+    /** '' = semua, 'admin', 'leading'. */
+    #[Url(as: 'peran_akun', except: '')]
+    public string $peranAkun = '';
+
+    /** '' = semua, 'aktif', 'nonaktif'. */
+    #[Url(as: 'status_akun', except: '')]
+    public string $statusAkun = '';
+
+    #[Url(as: 'urut_akun', except: 'nama')]
+    public string $urutAkun = 'nama';
+
+    #[Url(as: 'arah_akun', except: '')]
+    public string $arahAkun = '';
+
     public function mount(): void
     {
         $this->updatedTab();
         $this->rapikanSaringanLeading();
+        $this->rapikanSaringanAkun();
+    }
+
+    public function updatedPeranAkun(): void
+    {
+        $this->rapikanSaringanAkun();
+    }
+
+    public function updatedStatusAkun(): void
+    {
+        $this->rapikanSaringanAkun();
+    }
+
+    public function urutkanAkun(string $kolom): void
+    {
+        if (! array_key_exists($kolom, self::URUT_AKUN)) {
+            return;
+        }
+
+        $this->arahAkun = $this->urutAkun === $kolom ? ($this->arahAkunEfektif() === 'asc' ? 'desc' : 'asc') : '';
+        $this->urutAkun = $kolom;
+        if ($this->arahAkun === self::URUT_AKUN[$kolom]) {
+            $this->arahAkun = '';
+        }
+    }
+
+    public function arahAkunEfektif(): string
+    {
+        return in_array($this->arahAkun, ['asc', 'desc'], true) ? $this->arahAkun : self::URUT_AKUN[$this->urutAkun];
+    }
+
+    public function hapusSaringanAkun(): void
+    {
+        $this->reset('cariAkun', 'peranAkun', 'statusAkun');
+    }
+
+    /**
+     * Akun setelah cari (nama, surel, jabatan) & saringan peran/status, terurut; yang belum pernah masuk di akhir saat
+     * diurutkan per waktu masuk.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function akunTampil(): array
+    {
+        $cari = mb_strtolower(trim($this->cariAkun));
+        $kegiatan = $this->kegiatanPerAkun();
+        $baris = array_values(array_filter($this->akun, fn (array $a) => ($this->peranAkun === '' || $a['role'] === $this->peranAkun)
+            && match ($this->statusAkun) {
+                'aktif' => $a['is_active'],
+                'nonaktif' => ! $a['is_active'],
+                default => true,
+            }
+            && ($cari === '' || str_contains(mb_strtolower($a['name'].' '.$a['email'].' '.($a['jabatan'] ?? '')), $cari))));
+
+        $arah = $this->arahAkunEfektif() === 'asc' ? 1 : -1;
+        usort($baris, function (array $a, array $b) use ($arah, $kegiatan) {
+            if ($this->urutAkun === 'masuk' && ($a['terakhir_masuk'] === null || $b['terakhir_masuk'] === null)) {
+                return ($a['terakhir_masuk'] === null) <=> ($b['terakhir_masuk'] === null) ?: strnatcasecmp($a['name'], $b['name']);
+            }
+            $hasil = match ($this->urutAkun) {
+                'masuk' => strtotime($a['terakhir_masuk']) <=> strtotime($b['terakhir_masuk']),
+                'kegiatan' => ($kegiatan[$a['id']] ?? 0) <=> ($kegiatan[$b['id']] ?? 0),
+                default => strnatcasecmp($a['name'], $b['name']),
+            };
+
+            return ($hasil * $arah) ?: strnatcasecmp($a['name'], $b['name']);
+        });
+
+        return $baris;
+    }
+
+    /**
+     * Jumlah kegiatan tahun aktif yang dibuat tiap akun (user_id pembuat).
+     *
+     * @return array<int, int>
+     */
+    public function kegiatanPerAkun(): array
+    {
+        $tahun = StubData::tahunAktif()['tahun'];
+        $id = array_filter(array_map(fn (array $k) => TahunKegiatan::dari($k) === $tahun ? ($k['user_id'] ?? null) : null, app(KegiatanRepository::class)->semua()));
+
+        return array_count_values(array_map('intval', $id));
     }
 
     public function updatedStatusLeading(): void
@@ -355,6 +457,22 @@ class LeadingUser extends Component
             'akun_nonaktif' => count($this->akun) - count($akunAktif),
             'per_peran' => array_merge(['admin' => 0, 'leading' => 0], array_count_values(array_column($akunAktif, 'role'))),
         ];
+    }
+
+    private function rapikanSaringanAkun(): void
+    {
+        if (! in_array($this->peranAkun, ['', 'admin', 'leading'], true)) {
+            $this->peranAkun = '';
+        }
+        if (! in_array($this->statusAkun, ['', 'aktif', 'nonaktif'], true)) {
+            $this->statusAkun = '';
+        }
+        if (! array_key_exists($this->urutAkun, self::URUT_AKUN)) {
+            $this->urutAkun = 'nama';
+        }
+        if (! in_array($this->arahAkun, ['', 'asc', 'desc'], true)) {
+            $this->arahAkun = '';
+        }
     }
 
     private function rapikanSaringanLeading(): void

@@ -208,49 +208,144 @@
                     @endif
                 </section>
             @else
+                @php
+                    $barisAkun = $this->akunTampil();
+                    $kegiatanAkun = $this->kegiatanPerAkun();
+                    $arahAkun = $this->arahAkunEfektif();
+                    $adaSaringanAkun = $cariAkun !== '' || $peranAkun !== '' || $statusAkun !== '';
+                    $chipLeading = function (string $kode) use ($namaLeading) {
+                        $aktif = collect($this->leading)->firstWhere('kode', '===', $kode)['is_active'] ?? false;
+
+                        return [$aktif, ($namaLeading[$kode] ?? 'Leading tidak terdaftar').($aktif ? '' : ' — nonaktif')];
+                    };
+                @endphp
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-daftar-akun" data-testid="daftar-akun">
-                    <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
-                        <h2 id="judul-daftar-akun" class="text-base font-semibold text-stone-900">Akun</h2>
-                        <p class="mt-0.5 text-sm text-stone-500">{{ $ringkas['akun_aktif'] }} aktif ({{ $ringkas['per_peran']['admin'] }} admin, {{ $ringkas['per_peran']['leading'] }} leading){{ $ringkas['akun_nonaktif'] ? ' · '.$ringkas['akun_nonaktif'].' nonaktif' : '' }}.</p>
+                    <header class="space-y-3 border-b border-stone-100 px-5 py-4 sm:px-6">
+                        <div class="min-w-0">
+                            <h2 id="judul-daftar-akun" class="text-base font-semibold text-stone-900">Akun</h2>
+                            <p class="mt-0.5 text-sm text-stone-500" data-testid="ringkasan-tabel-akun">
+                                {{ $adaSaringanAkun ? 'Menampilkan '.count($barisAkun).' dari '.count($this->akun).' akun.' : $ringkas['akun_aktif'].' aktif ('.$ringkas['per_peran']['admin'].' admin, '.$ringkas['per_peran']['leading'].' leading)'.($ringkas['akun_nonaktif'] ? ' · '.$ringkas['akun_nonaktif'].' nonaktif' : '').'.' }}
+                            </p>
+                        </div>
+                        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem_9rem]">
+                            <label>
+                                <span class="sr-only">Cari akun</span>
+                                <input type="search" wire:model.live.debounce.300ms="cariAkun" placeholder="Cari nama, surel, atau jabatan…" class="form-input py-1.5" autocomplete="off">
+                            </label>
+                            <label>
+                                <span class="sr-only">Saring peran</span>
+                                <select wire:model.live="peranAkun" class="form-input py-1.5" aria-label="Peran akun">
+                                    <option value="">Semua peran</option>
+                                    @foreach (LeadingUser::PERAN as $kunci => $p)
+                                        <option value="{{ $kunci }}">{{ $p['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label>
+                                <span class="sr-only">Saring status</span>
+                                <select wire:model.live="statusAkun" class="form-input py-1.5" aria-label="Status akun">
+                                    <option value="">Semua status</option>
+                                    <option value="aktif">Aktif</option>
+                                    <option value="nonaktif">Nonaktif</option>
+                                </select>
+                            </label>
+                        </div>
                     </header>
-                    <ul class="divide-y divide-stone-100">
-                        @foreach ($this->akun as $a)
-                            @php
-                                [$labelStatus, $gayaStatus, $ikonStatus] = $status($a['is_active']);
-                            @endphp
-                            <li class="grid gap-x-4 gap-y-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_8rem] sm:px-6" data-akun="{{ $a['id'] }}" wire:key="akun-{{ $a['id'] }}">
-                                <div class="min-w-0">
-                                    <p class="flex flex-wrap items-center gap-2">
-                                        <span @class(['font-medium', 'text-stone-900' => $a['is_active'], 'text-stone-500' => ! $a['is_active']])>{{ $a['name'] }}</span>
-                                        <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', 'bg-sky-50 text-sky-800 ring-sky-200' => $a['role'] === 'admin', 'bg-stone-100 text-stone-700 ring-stone-200' => $a['role'] !== 'admin'])>{{ LeadingUser::PERAN[$a['role']]['label'] }}</span>
-                                        @if ($a['id'] === $saya)
-                                            <span class="text-[11px] font-semibold text-brand-700">Anda</span>
-                                        @endif
-                                    </p>
+
+                    @if ($barisAkun === [])
+                        <div class="px-5 py-10 text-center sm:px-6" data-testid="akun-kosong">
+                            <p class="text-sm font-medium text-stone-700">Tidak ada akun yang cocok.</p>
+                            <button type="button" wire:click="hapusSaringanAkun" class="mt-2 text-sm font-semibold text-brand-700 hover:text-brand-800">Hapus saringan</button>
+                        </div>
+                    @else
+                        {{-- Layar lebar: tabel yang bisa diurutkan. --}}
+                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariAkun,peranAkun,statusAkun,urutkanAkun">
+                            <table class="w-full text-sm" data-testid="tabel-akun">
+                                <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
+                                    <tr>
+                                        <x-monitoring.judul-urut kolom="nama" label="Nama & surel" :urut="$urutAkun" :arah="$arahAkun" aksi="urutkanAkun" class="pl-5 sm:pl-6" />
+                                        <th scope="col" class="px-3 py-2 text-left">Peran &amp; leading</th>
+                                        <x-monitoring.judul-urut kolom="kegiatan" label="Kegiatan" :urut="$urutAkun" :arah="$arahAkun" aksi="urutkanAkun" rata="right" />
+                                        <x-monitoring.judul-urut kolom="masuk" label="Terakhir masuk" :urut="$urutAkun" :arah="$arahAkun" aksi="urutkanAkun" />
+                                        <th scope="col" class="px-5 py-2 text-right sm:px-6">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-stone-100">
+                                    @foreach ($barisAkun as $a)
+                                        @php
+                                            [$labelStatus, $gayaStatus, $ikonStatus] = $status($a['is_active']);
+                                        @endphp
+                                        <tr @class(['align-top', 'text-stone-500' => ! $a['is_active']]) data-akun="{{ $a['id'] }}" wire:key="akun-{{ $a['id'] }}">
+                                            <td class="py-3 pr-3 pl-5 sm:pl-6">
+                                                <p class="flex flex-wrap items-center gap-x-2">
+                                                    <span @class(['font-medium', 'text-stone-900' => $a['is_active'], 'text-stone-500' => ! $a['is_active']])>{{ $a['name'] }}</span>
+                                                    @if ($a['id'] === $saya)
+                                                        <span class="text-[11px] font-semibold text-brand-700">Anda</span>
+                                                    @endif
+                                                </p>
+                                                <p class="text-xs text-stone-500">{{ $a['email'] }}</p>
+                                                @if ($a['jabatan'])
+                                                    <p class="text-xs text-stone-500">{{ $a['jabatan'] }}</p>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-3 text-xs">
+                                                <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', 'bg-sky-50 text-sky-800 ring-sky-200' => $a['role'] === 'admin', 'bg-stone-100 text-stone-700 ring-stone-200' => $a['role'] !== 'admin'])>{{ LeadingUser::PERAN[$a['role']]['label'] }}</span>
+                                                <p class="mt-1.5 flex flex-wrap gap-1">
+                                                    @if ($a['role'] === 'admin')
+                                                        <span class="text-stone-500">Semua leading</span>
+                                                    @else
+                                                        @forelse ($a['leadings'] as $kode)
+                                                            @php
+                                                                [$leadingAktif, $judulLeading] = $chipLeading($kode);
+                                                            @endphp
+                                                            <span @class(['rounded-md px-1.5 py-0.5 font-medium whitespace-nowrap ring-1', 'bg-stone-50 text-stone-700 ring-stone-200' => $leadingAktif, 'bg-stone-50 text-stone-400 ring-stone-200 line-through' => ! $leadingAktif]) title="{{ $judulLeading }}">{{ $kode }} {{ $namaLeading[$kode] ?? '' }}</span>
+                                                        @empty
+                                                            <span class="font-medium text-gold-700">Belum ditautkan</span>
+                                                        @endforelse
+                                                    @endif
+                                                </p>
+                                            </td>
+                                            <td class="px-3 py-3 text-right whitespace-nowrap text-stone-600 tabular-nums">{{ $kegiatanAkun[$a['id']] ?? 0 }}</td>
+                                            <td class="px-3 py-3 text-xs whitespace-nowrap text-stone-600">{{ $a['terakhir_masuk'] ? Format::tanggal($a['terakhir_masuk']) : 'Belum pernah' }}</td>
+                                            <td class="py-3 pr-5 pl-3 text-right sm:pr-6">
+                                                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
+                                                <span class="mt-1.5 flex justify-end gap-0.5">
+                                                    <button type="button" class="rounded-md p-1 text-stone-400" disabled title="Ubah — sedang disiapkan" aria-label="Ubah akun {{ $a['name'] }} (sedang disiapkan)"><x-ui.icon name="pencil" class="size-4" /></button>
+                                                    <button type="button" class="rounded-md p-1 text-stone-400" disabled title="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} — sedang disiapkan" aria-label="{{ $a['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} akun {{ $a['name'] }} (sedang disiapkan)"><x-ui.icon :name="$a['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Layar sempit: kartu. --}}
+                        <ul class="divide-y divide-stone-100 md:hidden">
+                            @foreach ($barisAkun as $a)
+                                @php
+                                    [$labelStatus, $gayaStatus, $ikonStatus] = $status($a['is_active']);
+                                @endphp
+                                <li class="px-5 py-3" data-akun="{{ $a['id'] }}" wire:key="kartu-akun-{{ $a['id'] }}">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <p class="flex min-w-0 flex-wrap items-center gap-x-2">
+                                            <span @class(['font-medium', 'text-stone-900' => $a['is_active'], 'text-stone-500' => ! $a['is_active']])>{{ $a['name'] }}</span>
+                                            <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1', 'bg-sky-50 text-sky-800 ring-sky-200' => $a['role'] === 'admin', 'bg-stone-100 text-stone-700 ring-stone-200' => $a['role'] !== 'admin'])>{{ LeadingUser::PERAN[$a['role']]['label'] }}</span>
+                                            @if ($a['id'] === $saya)
+                                                <span class="text-[11px] font-semibold text-brand-700">Anda</span>
+                                            @endif
+                                        </p>
+                                        <span class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
+                                    </div>
                                     <p class="truncate text-xs text-stone-500">{{ $a['email'] }}{{ $a['jabatan'] ? ' · '.$a['jabatan'] : '' }}</p>
-                                </div>
-                                <div class="min-w-0 text-xs">
-                                    @if ($a['role'] === 'admin')
-                                        <span class="text-stone-500">Semua leading</span>
-                                    @else
-                                        <span class="flex flex-wrap gap-1">
-                                            @foreach ($a['leadings'] as $kode)
-                                                @php
-                                                    $leadingAktif = collect($this->leading)->firstWhere('kode', '===', $kode)['is_active'] ?? false;
-                                                @endphp
-                                                <span @class(['rounded-md px-1.5 py-0.5 font-medium ring-1', 'bg-stone-50 text-stone-700 ring-stone-200' => $leadingAktif, 'bg-stone-50 text-stone-400 ring-stone-200 line-through' => ! $leadingAktif])
-                                                      title="{{ ($namaLeading[$kode] ?? 'Leading tidak terdaftar').($leadingAktif ? '' : ' — nonaktif') }}">{{ $kode }} {{ $namaLeading[$kode] ?? '' }}</span>
-                                            @endforeach
-                                        </span>
-                                    @endif
-                                </div>
-                                <div class="flex items-start justify-between gap-2 sm:flex-col sm:items-end">
-                                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
-                                    <span class="text-[11px] text-stone-500">{{ $a['terakhir_masuk'] ? 'Masuk '.Format::tanggal($a['terakhir_masuk']) : 'Belum pernah masuk' }}</span>
-                                </div>
-                            </li>
-                        @endforeach
-                    </ul>
+                                    <p class="mt-1 text-xs text-stone-600">
+                                        {{ $a['role'] === 'admin' ? 'Semua leading' : ($a['leadings'] === [] ? 'Belum ditautkan ke leading' : implode(', ', array_map(fn ($k) => $k.' '.($namaLeading[$k] ?? '').($chipLeading($k)[0] ? '' : ' (nonaktif)'), $a['leadings']))) }}
+                                    </p>
+                                    <p class="text-[11px] text-stone-500">{{ $kegiatanAkun[$a['id']] ?? 0 }} kegiatan · {{ $a['terakhir_masuk'] ? 'masuk '.Format::tanggal($a['terakhir_masuk']) : 'belum pernah masuk' }}</p>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </section>
             @endif
         </div>

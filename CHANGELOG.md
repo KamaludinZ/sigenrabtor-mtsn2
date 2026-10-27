@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Leading & User: daftar **Akun** kini berupa tabel (kartu di ponsel) yang bisa dicari (nama, surel, jabatan), disaring per peran dan status, serta diurutkan per nama, waktu masuk terakhir (yang belum pernah masuk di akhir), atau jumlah kegiatan buatannya tahun ini — tersimpan di URL. Tautan ke leading nonaktif dicoret; tombol ubah/nonaktifkan akun menyusul.
 - Leading & User: leading bisa **dinonaktifkan dan diaktifkan kembali**. Sebelum dinonaktifkan tampil konfirmasi beserta dampaknya (jumlah kegiatan yang tetap memakainya dan akun yang tidak lagi bisa membuat kegiatan baru); leading aktif terakhir tidak bisa dinonaktifkan, dan setiap perubahan tercatat di Riwayat. Leading nonaktif tidak muncul di pilihan untuk kegiatan baru, tetapi kegiatan lama tetap memakai dan mencetaknya, tetap bisa disimpan (pemilih leading menandainya "nonaktif"), dan saringan Data Kegiatan, Monitoring, serta Data Pagu menandainya "(nonaktif)".
 - Leading & User: **tambah dan ubah leading** lewat formulir — kode (mis. 1.9 atau 1.10, harus unik), nama unit (tidak boleh sama dengan leading lain), jabatan penanda tangan, dan urutan tampil. Kode leading yang sudah dipakai kegiatan atau akun dikunci agar data lama tetap tertaut. Leading baru langsung bisa dipilih di Data Kegiatan, dan setiap perubahan tercatat di Riwayat Perubahan.
 - Perbaikan: kode leading seperti "1.10" tidak lagi tertukar dengan "1.1" saat mencari pejabat leading di Profil & Pejabat atau leading bawaan saat impor kegiatan.
