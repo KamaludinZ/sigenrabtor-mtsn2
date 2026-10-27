@@ -41,7 +41,8 @@ class TahunAnggaranTest extends TestCase
             ->get(route('pengaturan.tahun.index'))
             ->assertOk()
             ->assertSeeLivewire(TahunAnggaran::class)
-            ->assertSeeHtml('href="'.route('pengaturan.tahun.index').'" wire:navigate title="Kelola tahun anggaran"')
+            ->assertSeeHtml('href="'.route('pengaturan.tahun.index').'" wire:navigate')
+            ->assertSee('Kelola tahun anggaran')
             ->assertSeeInOrder(['Pengaturan', 'Tahun Anggaran', 'Berlaku TA 2026']);
 
         $this->assertTrue(BagianPengaturan::cari('tahun')['tersedia']);

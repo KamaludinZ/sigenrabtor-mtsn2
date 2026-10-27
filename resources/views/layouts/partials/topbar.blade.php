@@ -5,18 +5,8 @@
     </button>
 
     <div class="flex min-w-0 flex-1 items-center gap-3">
-        {{-- Admin: chip tahun menuju Pengaturan › Tahun Anggaran untuk mengganti tahun aktif. --}}
-        @php($kelolaTahun = $currentUser['role'] === 'admin' && Route::has('pengaturan.tahun.index'))
-        <{{ $kelolaTahun ? 'a' : 'span' }} @if ($kelolaTahun) href="{{ route('pengaturan.tahun.index') }}" wire:navigate title="Kelola tahun anggaran" @endif
-            data-testid="chip-tahun-aktif"
-            @class(['inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 ring-1 ring-brand-200 ring-inset', 'hover:bg-brand-100' => $kelolaTahun])>
-            <x-ui.icon name="calendar" class="size-3.5" />
-            <span class="hidden sm:inline">Tahun Anggaran</span> {{ $tahunAktif['tahun'] }}
-            @if ($tahunAktif['is_locked'])
-                <x-ui.icon name="lock" class="size-3.5" />
-                <span class="sr-only">(terkunci)</span>
-            @endif
-        </{{ $kelolaTahun ? 'a' : 'span' }}>
+        {{-- Tahun aktif: satu tahun untuk semua dokumen; admin bisa menggantinya dari sini. --}}
+        <livewire:tahun-aktif />
         <span class="hidden truncate text-sm text-stone-500 md:block">{{ $madrasah['nama'] }}</span>
     </div>
 
