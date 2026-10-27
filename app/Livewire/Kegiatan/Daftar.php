@@ -93,6 +93,8 @@ class Daftar extends Component
     {
         $tahun = StubData::tahunAktif()['tahun'];
         $leading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
+        $semua = app(KegiatanRepository::class)->semua();
+        AnggaranKegiatan::muat($semua);
 
         return array_map(function (array $k) use ($tahun, $leading) {
             $anggaran = AnggaranKegiatan::untuk($k);
@@ -119,7 +121,7 @@ class Daftar extends Component
                 'asal' => in_array($k['asal'] ?? null, ['impor_excel', 'impor_perkin'], true) ? 'impor' : 'manual',
                 'kode_hilang' => KodeHilang::dari($k),
             ];
-        }, app(KegiatanRepository::class)->semua());
+        }, $semua);
     }
 
     /**

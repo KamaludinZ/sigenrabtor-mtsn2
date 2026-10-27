@@ -62,4 +62,13 @@ interface RabRepository
      * @return list<string>
      */
     public function sumberTersimpan(int $kegiatanId): array;
+
+    /**
+     * Muat RAB (rincian & termin semua sumber dana) banyak kegiatan sekaligus untuk halaman daftar — Monitoring, Data
+     * Kegiatan, Pemeriksaan, Duplikat — agar pembacaan rincian()/termin()/sumberTersimpan() sesudahnya tidak menanyai
+     * penyimpanan per kegiatan × sumber dana. Hanya mempercepat; hasil baca tetap sama. Tiruan: tidak melakukan apa-apa.
+     *
+     * @param  list<int>  $kegiatanIds
+     */
+    public function muat(array $kegiatanIds): void;
 }

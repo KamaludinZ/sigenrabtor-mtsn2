@@ -170,6 +170,7 @@ final class DuplikatKegiatan
         }
 
         $baris = [];
+        AnggaranKegiatan::muat($kegiatan);
         foreach ($kegiatan as $k) {
             if (TahunKegiatan::dari($k) !== $tahun || ($pengguna['role'] !== 'admin' && ! in_array($k['leading'] ?? null, $pengguna['leadings'], true))) {
                 continue;

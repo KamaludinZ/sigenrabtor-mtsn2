@@ -15,6 +15,24 @@ class AnggaranKegiatan
     public const URUTAN_SUMBER = [SumberDana::Dipa->value, SumberDana::Komite->value];
 
     /**
+     * Muat RAB semua kegiatan daftar sekaligus (RabRepository::muat) sebelum untuk() dipanggil per kegiatan — dipakai
+     * halaman yang menghitung anggaran banyak kegiatan (Monitoring, Dashboard, Data Kegiatan, Pemeriksaan, Duplikat).
+     *
+     * @param  iterable<array<string, mixed>>  $semuaKegiatan
+     */
+    public static function muat(iterable $semuaKegiatan): void
+    {
+        $id = [];
+        foreach ($semuaKegiatan as $k) {
+            if (filled($k['id'] ?? null)) {
+                $id[] = (int) $k['id'];
+            }
+        }
+
+        app(RabRepository::class)->muat($id);
+    }
+
+    /**
      * Anggaran setiap sumber dana kegiatan, urut DIPA lalu Komite. Bila $sertakanTerlepas, RAB tersimpan milik sumber
      * yang sudah tidak dipilih ikut dikembalikan (dipilih = false) agar tidak hilang diam-diam.
      *

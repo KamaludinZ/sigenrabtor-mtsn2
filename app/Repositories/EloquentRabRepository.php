@@ -22,8 +22,19 @@ class EloquentRabRepository implements RabRepository
     /** Kolom isian item (selain id) yang disalin dari/ke bentuk data RabRepository. */
     private const ISIAN = ['kode', 'uraian', 'kategori', 'volume', 'satuan', 'harga_satuan'];
 
+    /**
+     * RAB yang sudah dimuat lewat muat(): kegiatan → sumber → {rincian, termin}. Dikosongkan setiap kali menulis.
+     *
+     * @var array<int, array<string, array{rincian: list<array<string, mixed>>, termin: list<array{tanggal: string|null, nominal: int}>}>>
+     */
+    private array $dimuat = [];
+
     public function rincian(int $kegiatanId, string $sumber): array
     {
+        if (isset($this->dimuat[$kegiatanId])) {
+            return $this->dimuat[$kegiatanId][$sumber]['rincian'] ?? [];
+        }
+
         return $this->anggaran($kegiatanId, $sumber)?->rincian->map(fn (ItemBelanja $i) => self::keItem($i))->all() ?? [];
     }
 
@@ -97,6 +108,10 @@ class EloquentRabRepository implements RabRepository
 
     public function termin(int $kegiatanId, string $sumber): array
     {
+        if (isset($this->dimuat[$kegiatanId])) {
+            return $this->dimuat[$kegiatanId][$sumber]['termin'] ?? [];
+        }
+
         return $this->anggaran($kegiatanId, $sumber)?->termin
             ->map(fn (Termin $t) => ['tanggal' => $t->tanggal, 'nominal' => $t->nominal])->all() ?? [];
     }
@@ -116,11 +131,34 @@ class EloquentRabRepository implements RabRepository
 
     public function sumberTersimpan(int $kegiatanId): array
     {
+        if (isset($this->dimuat[$kegiatanId])) {
+            $ada = array_keys(array_filter($this->dimuat[$kegiatanId], fn (array $a) => $a['rincian'] !== [] || $a['termin'] !== []));
+
+            return array_values(array_filter(array_column(SumberDana::cases(), 'value'), fn (string $s) => in_array($s, $ada, true)));
+        }
+
         $ada = AnggaranKegiatan::query()->where('activity_id', $kegiatanId)
             ->where(fn ($q) => $q->has('rincian')->orHas('termin'))
             ->pluck('sumber_dana')->all();
 
         return array_values(array_filter(array_column(SumberDana::cases(), 'value'), fn (string $s) => in_array($s, $ada, true)));
+    }
+
+    public function muat(array $kegiatanIds): void
+    {
+        $baru = array_values(array_diff(array_unique(array_map('intval', $kegiatanIds)), array_keys($this->dimuat)));
+        if ($baru === []) {
+            return;
+        }
+
+        // Tiga kueri untuk seluruh daftar: baris anggaran, rinciannya, dan terminnya.
+        $this->dimuat += array_fill_keys($baru, []);
+        foreach (AnggaranKegiatan::query()->whereIn('activity_id', $baru)->with(['rincian', 'termin'])->get() as $anggaran) {
+            $this->dimuat[$anggaran->activity_id][$anggaran->sumber_dana] = [
+                'rincian' => $anggaran->rincian->map(fn (ItemBelanja $i) => self::keItem($i))->all(),
+                'termin' => $anggaran->termin->map(fn (Termin $t) => ['tanggal' => $t->tanggal, 'nominal' => $t->nominal])->all(),
+            ];
+        }
     }
 
     private function anggaran(int $kegiatanId, string $sumber): ?AnggaranKegiatan
@@ -131,6 +169,8 @@ class EloquentRabRepository implements RabRepository
     /** Baris anggaran yang dikunci untuk ditulis; dibuat (belum dipilih) bila sumber dana itu belum punya baris. */
     private function anggaranUntukDitulis(int $kegiatanId, string $sumber): AnggaranKegiatan
     {
+        $this->dimuat = [];
+
         return AnggaranKegiatan::query()->where('activity_id', $kegiatanId)->where('sumber_dana', $sumber)->lockForUpdate()->first()
             ?? AnggaranKegiatan::query()->create(['activity_id' => $kegiatanId, 'sumber_dana' => $sumber, 'dipilih' => false]);
     }
@@ -143,6 +183,7 @@ class EloquentRabRepository implements RabRepository
     /** Salinan total_rab & terbilang dari jumlah tiap baris (dihitung database). */
     private function hitungUlang(AnggaranKegiatan $anggaran): void
     {
+        $this->dimuat = [];
         $total = (int) $anggaran->rincian()->sum('jumlah');
         $anggaran->fill(['total_rab' => $total, 'terbilang' => $total > 0 ? Terbilang::rupiah($total) : null])->touch();
     }

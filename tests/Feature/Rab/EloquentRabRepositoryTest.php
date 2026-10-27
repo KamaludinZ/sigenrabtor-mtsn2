@@ -7,6 +7,7 @@ use App\Contracts\RabRepository;
 use App\Livewire\Kegiatan\Rab;
 use App\Repositories\EloquentKegiatanRepository;
 use App\Repositories\EloquentRabRepository;
+use App\Support\Monitoring\RingkasanAnggaran;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Stub\StubKegiatanRepository;
 use App\Support\Stub\StubRab;
@@ -98,6 +99,43 @@ class EloquentRabRepositoryTest extends TestCase
 
         $this->repo->simpanTermin($this->kegiatan, 'Komite', []);
         $this->assertSame([], $this->repo->sumberTersimpan($this->kegiatan));
+    }
+
+    public function test_muat_banyak_kegiatan_dalam_tiga_kueri(): void
+    {
+        $this->app->singleton(RabRepository::class, EloquentRabRepository::class);
+        $repo = app(RabRepository::class);
+        $kegiatan = [];
+        foreach (StubKegiatanRepository::contohSemua() as $contoh) {
+            $id = (new EloquentKegiatanRepository)->simpan(Arr::except($contoh, ['id', 'status']));
+            foreach (StubRab::DAFTAR_CONTOH[$contoh['id']] as $sumber) {
+                foreach (StubRab::rincian($contoh['id'], $sumber) as $item) {
+                    $repo->tambahItem($id, $sumber, $item);
+                }
+                $repo->simpanTermin($id, $sumber, StubRab::termin($contoh['id'], $sumber));
+            }
+            $kegiatan[] = (new EloquentKegiatanRepository)->temukan($id);
+        }
+        $baca = fn (RabRepository $r) => array_map(fn ($k) => [$r->sumberTersimpan($k['id']), $r->rincian($k['id'], 'DIPA'), $r->termin($k['id'], 'Komite')], $kegiatan);
+        $harapan = $baca(new EloquentRabRepository);
+
+        DB::enableQueryLog();
+        $repo->muat([...array_column($kegiatan, 'id'), 999]);
+        $this->assertCount(3, DB::getQueryLog());
+        $this->assertSame($harapan, $baca($repo));
+        $this->assertSame([[], []], [$repo->rincian(999, 'DIPA'), $repo->sumberTersimpan(999)]);
+        $this->assertCount(3, DB::getQueryLog(), 'Pembacaan sesudah muat() tidak menanyai database.');
+
+        // Ringkasan Monitoring seluruh kegiatan: RAB dimuat sekali.
+        DB::flushQueryLog();
+        $repo = new EloquentRabRepository;
+        $this->app->instance(RabRepository::class, $repo);
+        RingkasanAnggaran::dari($kegiatan);
+        $this->assertCount(3, DB::getQueryLog());
+
+        // Menulis membuang muatan: pembacaan berikutnya memakai data terbaru.
+        $repo->tambahItem($kegiatan[0]['id'], 'Komite', ['kode' => '', 'uraian' => 'Item baru', 'kategori' => 'lain', 'volume' => 1, 'satuan' => 'paket', 'harga_satuan' => 1_000]);
+        $this->assertSame('Item baru', Arr::last($repo->rincian($kegiatan[0]['id'], 'Komite'))['uraian']);
     }
 
     public function test_halaman_rab_memakai_database(): void

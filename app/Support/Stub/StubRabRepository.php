@@ -103,6 +103,11 @@ class StubRabRepository implements RabRepository
         ))));
     }
 
+    public function muat(array $kegiatanIds): void
+    {
+        // Berkas tiruan dibaca utuh setiap kali; tidak ada yang perlu dimuat lebih dulu.
+    }
+
     /**
      * Entri anggaran satu sumber dana (dibuat kosong bila belum ada).
      *

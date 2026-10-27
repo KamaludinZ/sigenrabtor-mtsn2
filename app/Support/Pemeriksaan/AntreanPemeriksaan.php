@@ -41,6 +41,7 @@ final class AntreanPemeriksaan
     public static function baris(array $kegiatan): array
     {
         $akun = array_column(StubPengaturan::pengguna(), 'name', 'id');
+        AnggaranKegiatan::muat($kegiatan);
 
         return array_map(function (array $k) use ($akun) {
             $riwayat = array_values((array) ($k['riwayat_status'] ?? []));

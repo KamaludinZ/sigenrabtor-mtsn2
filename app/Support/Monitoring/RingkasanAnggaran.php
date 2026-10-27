@@ -68,6 +68,7 @@ final readonly class RingkasanAnggaran
         $sampai = self::tanggal($saringan['sampai'] ?? null);
         $baris = [];
         $tanpaJadwal = 0;
+        AnggaranKegiatan::muat($semuaKegiatan);
 
         foreach ($semuaKegiatan as $k) {
             $statusKegiatan = StatusKegiatan::tryFrom($k['status'] ?? '') ?? StatusKegiatan::Draf;

@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: halaman yang menampilkan anggaran banyak kegiatan (Monitoring, Dashboard, tabel Data Kegiatan, antrean Pemeriksaan, daftar Duplikat) kini mengambil rincian & termin RAB seluruh kegiatan sekaligus, sehingga tetap cepat setelah data dipindah ke database.
 - Fondasi backend: **penyimpanan RAB di database** — tambah, ubah, hapus beserta urungkan, salin, geser urutan, dan pindah item antar-sumber dana, serta termin pembayaran, kini tersedia di PostgreSQL dengan hasil yang sama persis dengan data tiruan; total RAB dan terbilang tiap sumber dana ikut diperbarui setiap kali rincian berubah. Layar masih memakai data tiruan sampai penyimpanan dialihkan.
 - Fondasi backend: **skema database RAB** — rincian belanja (kode, uraian, kelompok, volume dua desimal, satuan, harga satuan) dan termin pembayaran per kegiatan × sumber dana. Jumlah tiap baris dihitung database dengan aturan pembulatan yang sama dengan kalkulator RAB sehingga tidak mungkin berbeda, dan RAB sebuah sumber dana tetap tersimpan walau sumber itu sempat tidak dicentang di Data Kegiatan.
 - Fondasi backend: **matrik tahapan & jadwal kegiatan di database** — butir tiap tahapan beserta tanda bulannya dan baris jadwal tersimpan berurutan sesuai urutan cetak, disimpan sekaligus dalam satu langkah; kegiatan yang belum pernah menyimpan tetap mendapat butir dan 6 baris jadwal baku, sedangkan jadwal yang sengaja dikosongkan tetap kosong. Layar masih memakai data tiruan sampai penyimpanan dialihkan.
