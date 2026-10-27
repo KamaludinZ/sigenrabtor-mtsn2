@@ -65,6 +65,28 @@ final class DaftarIsi
         ];
     }
 
+    /**
+     * Isi halaman daftar kegiatan satu buku untuk <x-dokumen.daftar-isi>: judul, subjudul terisi, kolom, baris (boleh
+     * membawa `halaman` dari simulasi nomor halaman), jumlah anggaran bila ditampilkan, catatan.
+     *
+     * @param  array<mixed>  $konfigurasi
+     * @param  list<array<string, mixed>>  $baris  Hasil baris() (atau BukuDokumen::isi()['baris']).
+     * @return array{judul: string, subjudul: string, kolom: list<string>, baris: list<array<string, mixed>>, jumlah: int|null, catatan: string}
+     */
+    public static function halaman(array $konfigurasi, array $baris, string $leading, string $sumber): array
+    {
+        $k = self::rapikan($konfigurasi);
+
+        return [
+            'judul' => $k['judul'],
+            'subjudul' => self::subjudul($k['subjudul'], $leading, $sumber),
+            'kolom' => $k['kolom'],
+            'baris' => $baris,
+            'jumlah' => $k['tampilkan_jumlah'] ? array_sum(array_column($baris, 'total')) : null,
+            'catatan' => $k['catatan'],
+        ];
+    }
+
     /** Subjudul dengan penanda {leading}, {sumber}, {tahun} terisi. */
     public static function subjudul(string $subjudul, string $leading, string $sumber): string
     {

@@ -171,18 +171,10 @@ class TemplateDaftarIsi extends Component
     #[Computed]
     public function pratinjau(): array
     {
-        $k = DaftarIsi::rapikan($this->konfigurasi);
         ['leading' => $leading, 'sumber' => $sumber] = $this->bukuPratinjau;
-        $baris = DaftarIsi::baris($this->semuaKegiatan, $leading, $sumber, $k['urutan']);
+        $baris = DaftarIsi::baris($this->semuaKegiatan, $leading, $sumber, DaftarIsi::rapikan($this->konfigurasi)['urutan']);
 
-        return [
-            'judul' => $k['judul'],
-            'subjudul' => DaftarIsi::subjudul($k['subjudul'], $leading, $sumber),
-            'kolom' => $k['kolom'],
-            'baris' => $baris,
-            'jumlah' => $k['tampilkan_jumlah'] ? array_sum(array_column($baris, 'total')) : null,
-            'catatan' => $k['catatan'],
-        ];
+        return DaftarIsi::halaman($this->konfigurasi, $baris, $leading, $sumber);
     }
 
     public function berubah(): bool

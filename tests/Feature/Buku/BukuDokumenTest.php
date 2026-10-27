@@ -83,6 +83,25 @@ class BukuDokumenTest extends TestCase
         $this->assertStringNotContainsString('id="cetak-cover-tahun"', $html, 'Tanpa jangkar ganda.');
     }
 
+    public function test_halaman_daftar_kegiatan_dengan_halaman_awal(): void
+    {
+        $kegiatan = BukuDokumen::tahunAktif(app(KegiatanRepository::class)->semua());
+        $isi = BukuDokumen::isi($kegiatan, '1.6', 'DIPA');
+        $halaman = $isi['halaman_daftar_isi'];
+
+        $this->assertSame('DAFTAR KEGIATAN', $halaman['judul']);
+        $this->assertSame('Tim Penjamin Mutu · Sumber Dana DIPA · Tahun Anggaran 2026', $halaman['subjudul']);
+        $this->assertSame([3, 11], array_column($halaman['baris'], 'halaman'));
+        $this->assertSame(6_300_000, $halaman['jumlah']);
+
+        Livewire::test(Daftar::class)
+            ->assertSeeHtml('data-testid="halaman-daftar-isi"')
+            ->assertSeeHtml('data-testid="pratinjau-daftar-isi"')
+            ->assertSeeHtml('data-testid="nomor-halaman-daftar-isi"')
+            ->assertSee('Halaman 2 dari 18')
+            ->assertSeeInOrder(['Review RKJM dan Penyusunan RKTM', '3', 'Supervisi Akademik dan Refleksi Pembelajaran', '11']);
+    }
+
     public function test_admin_melihat_semua_buku(): void
     {
         session(['stub_role' => 'admin']);

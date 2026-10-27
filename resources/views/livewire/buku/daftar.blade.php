@@ -75,7 +75,7 @@
 
         <div class="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
             {{-- Susunan buku --}}
-            <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-susunan" data-testid="susunan-buku" wire:loading.class="opacity-60" wire:target="leading,sumber,pilih">
+            <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200 lg:col-start-1 lg:row-start-1" aria-labelledby="judul-susunan" data-testid="susunan-buku" wire:loading.class="opacity-60" wire:target="leading,sumber,pilih">
                 <header class="flex flex-wrap items-start justify-between gap-2 border-b border-stone-100 px-5 py-4 sm:px-6">
                     <div class="min-w-0">
                         <h2 id="judul-susunan" class="text-base font-semibold text-stone-900">{{ $terpilih['leading'] }} · {{ $bukuIni['nama_leading'] }} — {{ $terpilih['sumber'] }}</h2>
@@ -122,7 +122,21 @@
                 </ol>
             </section>
 
-            <aside class="space-y-4" aria-label="Cover & pengaturan buku">
+            {{-- Halaman daftar kegiatan buku ini (konfigurasi daftar isi + halaman awal dari simulasi nomor halaman). --}}
+            <section class="min-w-0 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:p-5 lg:col-start-1" aria-labelledby="judul-halaman-daftar-isi" data-testid="halaman-daftar-isi">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 id="judul-halaman-daftar-isi" class="text-sm font-semibold text-stone-900">Halaman daftar kegiatan</h2>
+                    @if ($admin)
+                        <a href="{{ route('pengaturan.template.index', ['tab' => 'daftar_isi']) }}" wire:navigate class="text-xs font-semibold text-brand-700 hover:text-brand-800">Atur tampilan</a>
+                    @endif
+                </div>
+                <div class="mt-3 overflow-x-auto">
+                    <x-dokumen.daftar-isi :halaman="$isi['halaman_daftar_isi']" :nomor="$isi['simulasi']['halaman'][1]['label'] ?? null" :posisi="$isi['nomor_halaman']['posisi']" class="min-w-[20rem] max-w-md" />
+                </div>
+                <p class="mt-3 text-xs text-stone-500">Kolom Halaman memakai perkiraan dari pengaturan nomor halaman ({{ \App\Support\Dokumen\NomorHalaman::HALAMAN_KEGIATAN['cover'] + \App\Support\Dokumen\NomorHalaman::HALAMAN_KEGIATAN['kak'] + \App\Support\Dokumen\NomorHalaman::HALAMAN_KEGIATAN['rab'] }} halaman per kegiatan); angka pastinya dihitung saat PDF digabung.</p>
+            </section>
+
+            <aside class="space-y-4 lg:col-start-2 lg:row-span-2 lg:row-start-1" aria-label="Cover & pengaturan buku">
                 {{-- Halaman cover buku: desain cover default tahun aktif berisi nilai buku; klik untuk memperbesar. --}}
                 <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-cover-buku" data-testid="cover-buku"
                          x-data="{ besar: false }" x-on:keydown.escape.window="besar = false">

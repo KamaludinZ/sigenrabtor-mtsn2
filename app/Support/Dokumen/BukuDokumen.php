@@ -69,7 +69,7 @@ final class BukuDokumen
      * DRAF, dan halaman awalnya, serta simulasi nomor halaman.
      *
      * @param  list<array<string, mixed>>  $kegiatan  Kegiatan tahun aktif.
-     * @return array{daftar_isi: array<string, mixed>, baris: list<array<string, mixed>>, simulasi: array<string, mixed>, total: int}
+     * @return array{daftar_isi: array<string, mixed>, baris: list<array<string, mixed>>, simulasi: array<string, mixed>, nomor_halaman: array<string, mixed>, halaman_daftar_isi: array<string, mixed>, total: int}
      */
     public static function isi(array $kegiatan, string $leading, string $sumber): array
     {
@@ -79,7 +79,8 @@ final class BukuDokumen
         $perId = array_column($kegiatan, null, 'id');
 
         $baris = DaftarIsi::baris($kegiatan, $leading, $sumber, $konfigurasi['urutan']);
-        $simulasi = NomorHalaman::simulasi(NomorHalaman::rapikan(app(NomorHalamanRepository::class)->untuk($tahun)), array_column($baris, 'nama_kegiatan'));
+        $aturan = NomorHalaman::rapikan(app(NomorHalamanRepository::class)->untuk($tahun));
+        $simulasi = NomorHalaman::simulasi($aturan, array_column($baris, 'nama_kegiatan'));
 
         $baris = array_map(function (array $b, int $i) use ($perId, $sumber, $simulasi) {
             $data = $perId[$b['id']];
@@ -92,7 +93,15 @@ final class BukuDokumen
             ];
         }, $baris, array_keys($baris));
 
-        return ['daftar_isi' => $konfigurasi, 'baris' => $baris, 'simulasi' => $simulasi, 'total' => array_sum(array_column($baris, 'total'))];
+        return [
+            'daftar_isi' => $konfigurasi,
+            'baris' => $baris,
+            'simulasi' => $simulasi,
+            'nomor_halaman' => $aturan,
+            // Isi halaman daftar kegiatan (<x-dokumen.daftar-isi>) dengan halaman awal hasil simulasi.
+            'halaman_daftar_isi' => DaftarIsi::halaman($konfigurasi, $baris, $leading, $sumber),
+            'total' => array_sum(array_column($baris, 'total')),
+        ];
     }
 
     /**

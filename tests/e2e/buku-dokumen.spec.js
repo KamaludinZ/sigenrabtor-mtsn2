@@ -18,6 +18,13 @@ test.describe('Buku dokumen', () => {
         await expect(susunan.locator('[data-bagian-buku]')).toHaveCount(2);
         await expect(susunan.locator('li[data-kegiatan]')).not.toHaveCount(0);
         await expect(page.getByTestId('nama-berkas-buku')).toContainText('TOR_RAB_Tim_Penjamin_Mutu_DIPA_2026.pdf');
+        // Halaman daftar kegiatan: baris sama dengan susunan buku, kolom Halaman berisi halaman awal perkiraan.
+        const daftarIsi = page.getByTestId('halaman-daftar-isi').getByTestId('pratinjau-daftar-isi');
+        await expect(daftarIsi.getByTestId('di-judul-tercetak')).toHaveText('DAFTAR KEGIATAN');
+        await expect(daftarIsi.locator('[data-baris-daftar-isi]')).toHaveCount(await susunan.locator('li[data-kegiatan]').count());
+        await expect(daftarIsi.locator('[data-halaman-tercetak]').first()).toHaveText(/^\s*\d+\s*$/);
+        await expect(daftarIsi.getByTestId('nomor-halaman-daftar-isi')).toContainText('Halaman');
+
         const cover = page.getByTestId('cover-buku');
         await expect(cover.locator('[data-field="judul"]').first()).toHaveText('KEGIATAN');
         await expect(cover.locator('[data-field="nama_kegiatan"]').first()).toHaveText('TIM PENJAMIN MUTU');

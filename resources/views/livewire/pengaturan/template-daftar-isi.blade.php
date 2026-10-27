@@ -1,6 +1,5 @@
 @use('App\Enums\SumberDana')
 @use('App\Support\Dokumen\DaftarIsi')
-@use('App\Support\Format')
 
 @php
     $pratinjau = $this->pratinjau;
@@ -167,58 +166,7 @@
                 {{ $leading === null ? 'Contoh buku ' : 'Buku ' }}{{ $this->namaBuku($buku['leading'], $buku['sumber']) }} · {{ count($pratinjau['baris']) }} kegiatan
             </p>
             <div class="mt-3 overflow-x-auto">
-                <article class="mx-auto aspect-[210/297] w-full min-w-[20rem] max-w-md bg-white px-[8%] py-[9%] font-serif text-stone-900 shadow-sm ring-1 ring-stone-200" data-testid="pratinjau-daftar-isi">
-                    <h3 class="text-center text-sm font-bold tracking-wide uppercase" data-testid="di-judul-tercetak">{{ $pratinjau['judul'] }}</h3>
-                    @if ($pratinjau['subjudul'] !== '')
-                        <p class="mt-1 text-center text-[11px]" data-testid="di-subjudul-tercetak">{{ $pratinjau['subjudul'] }}</p>
-                    @endif
-                    <table class="mt-4 w-full border-collapse text-[10px] leading-snug">
-                        <thead>
-                            <tr>
-                                @foreach ($pratinjau['kolom'] as $kolom)
-                                    <th scope="col" @class(['border border-stone-500 px-1 py-0.5 font-semibold', 'text-left' => in_array($kolom, ['nama_kegiatan', 'bulan'], true), 'text-right' => $kolom === 'total', 'text-center' => in_array($kolom, ['no', 'kode_rktm', 'halaman'], true)])
-                                        data-kolom-tercetak="{{ $kolom }}">{{ DaftarIsi::KOLOM[$kolom][0] }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($pratinjau['baris'] as $baris)
-                                <tr data-baris-daftar-isi>
-                                    @foreach ($pratinjau['kolom'] as $kolom)
-                                        <td @class(['border border-stone-500 px-1 py-0.5 align-top', 'text-center' => in_array($kolom, ['no', 'kode_rktm', 'halaman'], true), 'text-right tabular-nums' => $kolom === 'total'])>
-                                            @switch($kolom)
-                                                @case('total') {{ Format::angka($baris['total']) }} @break
-                                                @case('halaman') … @break
-                                                @case('kode_rktm') {{ $baris['kode_rktm'] ?? '—' }} @break
-                                                @case('bulan') {{ $baris['bulan'] ?? '—' }} @break
-                                                @default {{ $baris[$kolom] }}
-                                            @endswitch
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="{{ count($pratinjau['kolom']) }}" class="border border-stone-500 px-1 py-3 text-center font-sans text-stone-400 italic">Belum ada kegiatan di buku ini.</td>
-                                </tr>
-                            @endforelse
-                            @if ($pratinjau['jumlah'] !== null && $pratinjau['baris'] !== [])
-                                @php
-                                    $posisiTotal = array_search('total', $pratinjau['kolom'], true);
-                                @endphp
-                                <tr class="font-semibold" data-testid="di-baris-jumlah">
-                                    <td colspan="{{ $posisiTotal }}" class="border border-stone-500 px-1 py-0.5 text-right">Jumlah</td>
-                                    <td class="border border-stone-500 px-1 py-0.5 text-right tabular-nums">{{ Format::angka($pratinjau['jumlah']) }}</td>
-                                    @if (count($pratinjau['kolom']) - $posisiTotal - 1 > 0)
-                                        <td colspan="{{ count($pratinjau['kolom']) - $posisiTotal - 1 }}" class="border border-stone-500"></td>
-                                    @endif
-                                </tr>
-                            @endif
-                        </tbody>
-                    </table>
-                    @if ($pratinjau['catatan'] !== '')
-                        <p class="mt-2 text-[9px] text-stone-600 italic" data-testid="di-catatan-tercetak">{{ $pratinjau['catatan'] }}</p>
-                    @endif
-                </article>
+                <x-dokumen.daftar-isi :halaman="$pratinjau" class="min-w-[20rem] max-w-md" />
             </div>
             <p class="mt-3 text-xs text-stone-500">Nomor halaman (“…”) diisi otomatis saat buku digabung, mengikuti urutan kegiatan ini.</p>
         </section>
