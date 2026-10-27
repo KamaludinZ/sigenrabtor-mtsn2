@@ -13,6 +13,9 @@ test.describe('Duplikat & impor cascade Perkin', () => {
         await expect(duplikat.getByRole('heading', { level: 2 }).first()).toContainText('TA 2025');
         await expect(page.getByTestId('perubahan-duplikat').locator('[data-perubahan]')).toHaveCount(6);
         await expect(page.getByTestId('jumlah-pilihan')).toHaveText('0 kegiatan dipilih');
+        // Data E2E belum punya kegiatan TA 2025 → tombol duplikat nonaktif sampai ada pilihan.
+        await expect(duplikat.getByRole('button', { name: 'Duplikat ke TA 2026' })).toBeDisabled();
+        await expect(page.getByTestId('dialog-duplikat')).toHaveCount(0);
 
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);

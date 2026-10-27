@@ -47,6 +47,13 @@
     </nav>
 
     @if ($tab === 'duplikat')
+        @if ($hasilDuplikat !== [])
+            @include('livewire.kegiatan.partials.hasil-duplikat')
+        @endif
+        @if ($dialogDuplikat)
+            @include('livewire.kegiatan.partials.dialog-duplikat', ['rencana' => $this->rencanaDuplikat()])
+        @endif
+
         <div class="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="panel-duplikat" wire:key="panel-duplikat">
             <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-sumber-duplikat">
                 <header class="space-y-3 border-b border-stone-100 px-5 py-4 sm:px-6">
@@ -101,7 +108,11 @@
                         @if ($pilihan !== [])
                             <button type="button" wire:click="kosongkanPilihan" class="btn-ghost px-2.5 py-1.5 text-sm">Kosongkan</button>
                         @endif
-                        <button type="button" class="btn-primary" disabled><x-ui.icon name="copy" class="size-4" /> Duplikat ke TA {{ $tahunAktif }} <x-ui.segera /></button>
+                        @if ($pilihan === [])
+                            <button type="button" class="btn-primary" disabled wire:key="duplikat-nonaktif"><x-ui.icon name="copy" class="size-4" /> Duplikat ke TA {{ $tahunAktif }}</button>
+                        @else
+                            <button type="button" wire:click="bukaDuplikat" class="btn-primary" wire:key="duplikat-aktif" data-testid="buka-duplikat"><x-ui.icon name="copy" class="size-4" /> Duplikat {{ count($pilihan) }} ke TA {{ $tahunAktif }}</button>
+                        @endif
                     </div>
                 </footer>
             </section>

@@ -7,13 +7,15 @@ use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
  * Duplikat & Impor Cascade Perkin (PRD §19, F22): dua cara membuat draf kegiatan tahun aktif secara massal — tab
  * `?tab=duplikat` (salin kegiatan tahun lalu; tahun sumber `?dari=`, cari & saringan leading, pilihan kegiatan) dan
- * `?tab=perkin` (impor dari sheet cascade Perkin). Proses salin & unggah menyusul.
+ * `?tab=perkin` (impor dari sheet cascade Perkin). Duplikat lewat dialog konfirmasi berisi rencana tiap kegiatan
+ * (DuplikatKegiatan::rencana) lalu DuplikatKegiatan::jalankan(); unggah Perkin menyusul.
  */
 #[Layout('layouts.app')]
 class SalinImpor extends Component
@@ -35,6 +37,17 @@ class SalinImpor extends Component
 
     /** Id kegiatan sumber yang dipilih untuk diduplikat. */
     public array $pilihan = [];
+
+    /** Dialog konfirmasi duplikat terbuka. */
+    public bool $dialogDuplikat = false;
+
+    /**
+     * Hasil duplikat terakhir: draf baru beserta catatannya.
+     *
+     * @var list<array{id: int, nama: string, catatan: list<array{jenis: string, teks: string}>}>
+     */
+    #[Locked]
+    public array $hasilDuplikat = [];
 
     public function mount(): void
     {
@@ -84,6 +97,53 @@ class SalinImpor extends Component
     public function kosongkanPilihan(): void
     {
         $this->pilihan = [];
+    }
+
+    public function bukaDuplikat(): void
+    {
+        $this->rapikan();
+        $this->dialogDuplikat = $this->pilihan !== [];
+    }
+
+    public function batalDuplikat(): void
+    {
+        $this->dialogDuplikat = false;
+    }
+
+    /**
+     * Rencana salinan kegiatan terpilih untuk dialog konfirmasi.
+     *
+     * @return list<array{id: int, nama: string, catatan: list<array{jenis: string, teks: string}>}>
+     */
+    public function rencanaDuplikat(): array
+    {
+        $perId = array_column(app(KegiatanRepository::class)->semua(), null, 'id');
+
+        return array_values(array_map(fn (int $id) => ['id' => $id, 'nama' => (string) ($perId[$id]['nama_kegiatan'] ?? '')] + ['catatan' => DuplikatKegiatan::rencana($perId[$id])['catatan']], array_filter($this->pilihan, fn (int $id) => isset($perId[$id]))));
+    }
+
+    /** Salin kegiatan terpilih menjadi draf tahun aktif. */
+    public function duplikat(): void
+    {
+        $this->rapikan();
+        $this->dialogDuplikat = false;
+        if ($this->pilihan === []) {
+            return;
+        }
+
+        $perId = array_column(app(KegiatanRepository::class)->semua(), null, 'id');
+        $pengguna = StubData::currentUser();
+        $this->hasilDuplikat = array_values(array_map(fn (int $id) => DuplikatKegiatan::jalankan($perId[$id], $pengguna), $this->pilihan));
+        $this->pilihan = [];
+        unset($this->semuaSumber);
+
+        $jumlah = count($this->hasilDuplikat);
+        $this->dispatch('notify', message: "{$jumlah} kegiatan diduplikat menjadi draf TA ".StubData::tahunAktif()['tahun'].'.', type: 'success');
+    }
+
+    public function tutupHasil(): void
+    {
+        $this->hasilDuplikat = [];
     }
 
     private function rapikan(): void
