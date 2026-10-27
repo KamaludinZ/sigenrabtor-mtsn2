@@ -13,6 +13,7 @@ use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use RuntimeException;
@@ -26,6 +27,7 @@ use RuntimeException;
  * (`ubahStatusLeading`, konfirmasi beserta dampaknya, minimal satu tetap aktif). Akun ditambah/diubah lewat formulir
  * inline (aturan AturanAkun: surel unik, peran, tautan leading, NIP; riwayat tambah_akun/ubah_akun). Tautan akun dikelola
  * juga dari sisi leading lewat panel per baris (`bukaTautan`, `tautkanAkun`, `lepasTautan`; riwayat ubah_tautan_leading).
+ * Setiap aksi tulis menolak menimpa perubahan dari tab/admin lain (sidik data `$versi` dicatat `rendering()`).
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -43,6 +45,10 @@ class LeadingUser extends Component
 
     #[Url(except: 'leading')]
     public string $tab = 'leading';
+
+    /** Sidik data leading & akun saat terakhir ditampilkan: pembanding perubahan dari tab/admin lain. */
+    #[Locked]
+    public ?string $versi = null;
 
     #[Url(as: 'cari_leading', except: '')]
     public string $cariLeading = '';
@@ -161,6 +167,9 @@ class LeadingUser extends Component
 
     public function simpanAkun(PenggunaRepository $repo): void
     {
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
         $id = $this->suntingAkun === 'baru' ? null : (int) $this->suntingAkun;
         $lama = $id === null ? null : collect($this->akun)->firstWhere('id', $id);
         if ($this->suntingAkun === null || ($id !== null && $lama === null)) {
@@ -378,6 +387,9 @@ class LeadingUser extends Component
 
     public function simpanLeading(LeadingRepository $repo): void
     {
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
         $kodeLama = $this->suntingLeading === 'baru' ? null : $this->suntingLeading;
         $lama = $kodeLama === null ? null : collect($this->leading)->firstWhere('kode', '===', $kodeLama);
         if ($this->suntingLeading === null || ($kodeLama !== null && $lama === null)) {
@@ -469,6 +481,9 @@ class LeadingUser extends Component
     /** Tautkan akun terpilih ke leading yang panelnya terbuka (hanya leading aktif & akun berperan leading). */
     public function tautkanAkun(PenggunaRepository $repo): void
     {
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
         $kode = $this->tautanLeading;
         $leading = $kode === null ? null : collect($this->leading)->firstWhere('kode', '===', $kode);
         $akun = collect($this->calonTautan((string) $kode))->firstWhere('id', (int) $this->akunDitautkan);
@@ -490,6 +505,9 @@ class LeadingUser extends Component
     /** Lepas tautan akun $id dari leading yang panelnya terbuka. */
     public function lepasTautan(int $id, PenggunaRepository $repo): void
     {
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
         $kode = $this->tautanLeading;
         $akun = collect($this->akun)->firstWhere('id', $id);
         if ($kode === null || $akun === null || ! in_array($kode, $akun['leadings'], true)) {
@@ -529,6 +547,9 @@ class LeadingUser extends Component
     /** Nonaktifkan meminta konfirmasi dulu (dampaknya ditampilkan); mengaktifkan kembali langsung. */
     public function ubahStatusLeading(string $kode, LeadingRepository $repo): void
     {
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
         $leading = collect($this->leading)->firstWhere('kode', '===', $kode);
         if ($leading === null) {
             return;
@@ -680,6 +701,34 @@ class LeadingUser extends Component
         if (! in_array($this->arahLeading, ['', 'asc', 'desc'], true)) {
             $this->arahLeading = '';
         }
+    }
+
+    public function rendering(): void
+    {
+        $this->versi = self::sidik();
+    }
+
+    /** Sidik isi data leading & akun (padanan updated_at terbaru di backend). */
+    private static function sidik(): string
+    {
+        return sha1(json_encode([app(LeadingRepository::class)->semua(), app(PenggunaRepository::class)->semua()]));
+    }
+
+    /**
+     * Data berubah di tab/admin lain sejak terakhir ditampilkan: aksi dibatalkan, tampilan dimuat ulang, isian formulir
+     * yang sedang diketik tetap.
+     */
+    private function berubahDiTempatLain(): bool
+    {
+        if (self::sidik() === $this->versi) {
+            return false;
+        }
+
+        unset($this->leading, $this->akun);
+        $this->konfirmasiNonaktif = null;
+        $this->dispatch('notify', message: 'Data leading & akun baru saja diubah di tempat lain. Tampilan sudah dimuat ulang — periksa lalu ulangi perubahan Anda.', type: 'error');
+
+        return true;
     }
 
     public function render()

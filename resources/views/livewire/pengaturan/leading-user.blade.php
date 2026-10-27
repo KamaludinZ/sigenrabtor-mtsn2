@@ -119,7 +119,7 @@
                         </div>
                     @else
                         {{-- Layar lebar: tabel yang bisa diurutkan. --}}
-                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariLeading,statusLeading,urutkanLeading">
+                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariLeading,statusLeading,urutkanLeading,ubahStatusLeading,tautkanAkun,lepasTautan,simpanLeading">
                             <table class="w-full text-sm" data-testid="tabel-leading">
                                 <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                                     <tr>
@@ -271,7 +271,7 @@
                         </div>
                     @else
                         {{-- Layar lebar: tabel yang bisa diurutkan. --}}
-                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariAkun,peranAkun,statusAkun,urutkanAkun">
+                        <div class="hidden overflow-x-auto md:block" wire:loading.class="opacity-60" wire:target="cariAkun,peranAkun,statusAkun,urutkanAkun,simpanAkun">
                             <table class="w-full text-sm" data-testid="tabel-akun">
                                 <thead class="bg-stone-50 text-xs font-semibold text-stone-500">
                                     <tr>

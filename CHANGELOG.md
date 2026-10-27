@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Leading & User kini **aman dipakai bersamaan**: bila leading atau akun diubah di tab atau oleh admin lain, simpan/aktifkan/tautkan berikutnya tidak menimpa perubahan itu — tampilan dimuat ulang dengan pemberitahuan dan isian formulir tetap ada. Tabel meredup selama memproses aksi.
 - Leading & User: **penautan akun dari sisi leading** — tombol *Tautkan akun* di tiap leading membuka panel berisi akun yang tertaut (beserta leading lain yang juga dipegangnya) dengan tombol *Lepas*, dan pilihan akun leading lain untuk ditautkan. Cocok untuk segera mengisi leading yang belum punya akun; leading nonaktif hanya bisa dilepas tautannya. Setiap perubahan langsung tersimpan dan tercatat di Riwayat.
 - Leading & User: **tambah dan ubah akun** lewat formulir — nama & gelar, surel (unik, untuk masuk), peran Admin atau Leading, leading yang ditautkan (wajib minimal satu untuk akun leading; centang beberapa sekaligus), jabatan, dan NIP dengan pemeriksaan dan pratinjau cetak. Peran akun sendiri tidak bisa diubah dan minimal satu admin aktif selalu tersisa. Nama akun yang sedang masuk langsung ikut berubah, dan setiap perubahan tercatat di Riwayat.
 - Leading & User: daftar **Akun** kini berupa tabel (kartu di ponsel) yang bisa dicari (nama, surel, jabatan), disaring per peran dan status, serta diurutkan per nama, waktu masuk terakhir (yang belum pernah masuk di akhir), atau jumlah kegiatan buatannya tahun ini — tersimpan di URL. Tautan ke leading nonaktif dicoret; tombol ubah/nonaktifkan akun menyusul.

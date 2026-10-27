@@ -1066,4 +1066,34 @@ test.describe('Pengaturan admin', () => {
         await panel.getByRole('button', { name: 'Tutup panel tautan 1.3' }).click();
         await expect(page.getByTestId('panel-tautan-leading').filter({ visible: true })).toHaveCount(0);
     });
+
+    test('leading & user: perubahan dari tab lain tidak tertimpa — aksi ditolak dan tampilan dimuat ulang', async ({ page, context }, testInfo) => {
+        const jabatan = `Pengasuh Mahad tab B ${testInfo.project.name}`;
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading');
+        // Tab A menyiapkan tautan (memilih akun belum mengirim request).
+        await page.getByRole('button', { name: 'Tautkan akun ke leading 1.3' }).filter({ visible: true }).click();
+        const panel = page.getByTestId('panel-tautan-leading').filter({ visible: true });
+        await panel.getByLabel('Pilih akun untuk 1.3').selectOption({ label: 'Ahmad Fauzan, S.Pd. — 1.2, 1.4' });
+
+        const tabB = await context.newPage();
+        await tabB.goto('/pengaturan/leading');
+        await tabB.getByRole('button', { name: 'Ubah leading 1.7' }).filter({ visible: true }).click();
+        await tabB.getByTestId('formulir-leading').getByLabel('Jabatan penanda tangan').fill(jabatan);
+        await tabB.getByTestId('formulir-leading').getByRole('button', { name: 'Simpan' }).click();
+        await expect(tabB.getByText('Leading 1.7 Mahad diperbarui.')).toBeVisible();
+        await tabB.close();
+
+        // Tab A belum memuat ulang: menautkan ditolak, tampilan memuat data terbaru.
+        await panel.getByRole('button', { name: 'Tautkan' }).click();
+        await expect(page.getByText('baru saja diubah di tempat lain')).toBeVisible();
+        await expect(page.getByTestId('daftar-leading').locator('[data-leading="1.7"]').filter({ visible: true })).toContainText(jabatan);
+        await expect(panel).toContainText('Belum ada akun');
+
+        // Pulihkan jabatan 1.7 (proyek mobile memakai data yang sama).
+        await page.getByRole('button', { name: 'Ubah leading 1.7' }).filter({ visible: true }).click();
+        await page.getByTestId('formulir-leading').getByLabel('Jabatan penanda tangan').fill('Pengasuh Mahad');
+        await page.getByTestId('formulir-leading').getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('Leading 1.7 Mahad diperbarui.')).toBeVisible();
+    });
 });

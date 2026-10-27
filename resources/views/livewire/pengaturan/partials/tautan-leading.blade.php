@@ -38,7 +38,7 @@
                         </select>
                         @error('akunDitautkan') <span class="form-error block" role="alert">{{ $message }}</span> @enderror
                     </label>
-                    <button type="button" wire:click="tautkanAkun" class="btn-secondary shrink-0" @disabled($calon === [])><x-ui.icon name="plus" class="size-4" /> Tautkan</button>
+                    <button type="button" wire:click="tautkanAkun" class="btn-secondary shrink-0" @disabled($calon === [])><x-ui.icon name="plus" class="size-4" /> <span wire:loading.remove wire:target="tautkanAkun">Tautkan</span><span wire:loading wire:target="tautkanAkun">Menautkan…</span></button>
                 </div>
                 <p class="mt-1.5 text-xs text-stone-500">Admin tidak perlu ditautkan — admin melihat semua leading. Akun baru dibuat di tab Akun.</p>
             @else
