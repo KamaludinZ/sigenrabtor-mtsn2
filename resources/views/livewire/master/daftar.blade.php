@@ -34,7 +34,8 @@
                     $dipilih = $t['tahun'] === $ta;
                 @endphp
                 <button type="button" wire:click="$set('tahun', '{{ $t['is_active'] ? '' : $t['tahun'] }}')" aria-pressed="{{ $dipilih ? 'true' : 'false' }}" data-tahun="{{ $t['tahun'] }}"
-                        @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium', 'bg-white text-stone-900 shadow-xs' => $dipilih, 'text-stone-500 hover:text-stone-800' => ! $dipilih])>
+                        @disabled($unggahTerbuka && ! $dipilih) @if ($unggahTerbuka) title="Tutup panel unggah dulu untuk melihat tahun lain" @endif
+                        @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50', 'bg-white text-stone-900 shadow-xs' => $dipilih, 'text-stone-500 hover:text-stone-800' => ! $dipilih])>
                     TA {{ $t['tahun'] }}
                     @if ($t['is_active'])
                         <span class="rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-800">aktif</span>

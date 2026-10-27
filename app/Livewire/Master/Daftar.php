@@ -48,9 +48,12 @@ class Daftar extends Component
     }
 
     #[On('unggah-master-ditutup')]
-    public function tutupUnggah(): void
+    public function tutupUnggah(bool $dibatalkan = false): void
     {
         $this->unggahTerbuka = false;
+        if ($dibatalkan) {
+            $this->dispatch('notify', message: 'Unggahan dibatalkan — master kode TA '.$this->tahunDilihat().' tidak berubah.', type: 'info');
+        }
     }
 
     public function updatedJenis(): void

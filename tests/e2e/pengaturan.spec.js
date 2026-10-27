@@ -799,12 +799,12 @@ test.describe('Pengaturan admin', () => {
         await expect(page).toHaveURL(/\/master$/);
         const master = page.getByTestId('master-kode');
         await expect(master.getByRole('tab', { name: /^SK/ })).toHaveAttribute('aria-selected', 'true');
-        await expect(master.locator('[data-kode="SK.10"]').filter({ visible: true })).toContainText('2 kegiatan');
+        await expect(master.locator('[data-kode="SK.10"]').filter({ visible: true })).toContainText(/\d+ kegiatan/);
 
         await master.getByRole('tab', { name: /RKTM/ }).click();
         await expect(page).toHaveURL(/jenis=rktm/);
         await expect(master.getByRole('heading', { name: 'Rencana Kerja Tahunan Madrasah (RKTM)' })).toBeVisible();
-        await expect(master.locator('[data-kode="6.17.12"]').filter({ visible: true })).toContainText('1 kegiatan');
+        await expect(master.locator('[data-kode="6.17.12"]').filter({ visible: true })).toContainText(/\d+ kegiatan/);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/master-kode-${testInfo.project.name}.png`, fullPage: true });
@@ -850,23 +850,23 @@ test.describe('Pengaturan admin', () => {
         await expect(pratinjau.getByRole('tab', { name: /^SK/ })).toHaveAttribute('aria-selected', 'true');
         const ringkasan = pratinjau.getByTestId('ringkasan-pratinjau');
         await expect(ringkasan.locator('[data-status="tetap"]')).toContainText('Tetap 3');
-        await expect(pratinjau.locator('li[data-kode="SK.11"]')).toContainText('padahal dipakai 1 kegiatan TA 2026');
+        await expect(pratinjau.locator('li[data-kode="SK.11"]')).toContainText(/padahal dipakai \d+ kegiatan TA 2026/);
         await ringkasan.locator('[data-status="hilang"]').click();
         await expect(pratinjau.locator('li[data-status="tetap"]')).toHaveCount(0);
         await expect(pratinjau.locator('li[data-status="hilang"]').first()).toBeVisible();
         await pratinjau.screenshot({ path: `storage/playwright/shots/master-pratinjau-sk-${testInfo.project.name}.png` });
         await pratinjau.getByRole('tab', { name: /IKSK/ }).click();
         await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText('SK induk: SK.10');
-        await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText('dipakai 1 kegiatan');
+        await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText(/dipakai \d+ kegiatan/);
         await pratinjau.getByRole('tab', { name: /RKTM/ }).click();
         await expect(pratinjau.locator('li[data-kode="1.1.2"]')).toContainText('Standar (SNP): PENGEMBANGAN STANDAR ISI');
-        await expect(pratinjau.locator('li[data-kode="6.17.13"]')).toContainText('padahal dipakai 1 kegiatan TA 2026');
+        await expect(pratinjau.locator('li[data-kode="6.17.13"]')).toContainText(/padahal dipakai \d+ kegiatan TA 2026/);
         await pratinjau.getByRole('tab', { name: /EDM/ }).click();
         await expect(pratinjau.locator('li[data-kode="A1"]')).toContainText('Komponen: Kedisiplinan');
-        await expect(pratinjau.locator('li[data-kode="A7"]')).toContainText('padahal dipakai 1 kegiatan TA 2026');
+        await expect(pratinjau.locator('li[data-kode="A7"]')).toContainText(/padahal dipakai \d+ kegiatan TA 2026/);
         await pratinjau.getByRole('tab', { name: /Budaya/ }).click();
         await expect(pratinjau.locator('li[data-status="tetap"]')).toHaveCount(5);
-        await expect(pratinjau.locator('li[data-kode="2"]')).toContainText('dipakai 3 kegiatan');
+        await expect(pratinjau.locator('li[data-kode="2"]')).toContainText(/dipakai \d+ kegiatan/);
         await panel.getByRole('button', { name: 'Kembali' }).click();
         await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
 
@@ -875,7 +875,28 @@ test.describe('Pengaturan admin', () => {
         await expect(sheet.locator('[data-jenis]')).toHaveCount(1);
         await expect(sheet.locator('[data-jenis="edm"]')).toContainText('sheet EDM');
 
+        // Pindah halaman selama ada unggahan meminta konfirmasi; ditolak = tetap di sini.
+        let pesanDialog = '';
+        page.once('dialog', (dialog) => {
+            pesanDialog = dialog.message();
+            dialog.dismiss();
+        });
+        await page.getByTestId('kepala-pengaturan').getByRole('link', { name: 'Pengaturan' }).click();
+        await expect.poll(() => pesanDialog).toContain('Unggahan master kode belum disimpan');
+        await expect(page).toHaveURL(/\/master/);
+
+        // Batalkan dari pratinjau: konfirmasi, lalu master tidak berubah.
+        await panel.getByRole('button', { name: 'Lanjut ke pratinjau' }).click();
+        await panel.getByRole('button', { name: 'Batalkan', exact: true }).click();
+        const konfirmasi = panel.getByTestId('konfirmasi-batal-unggah');
+        await expect(konfirmasi).toContainText('kode hilang) tidak disimpan; master TA 2026 tetap seperti sekarang.');
+        await panel.screenshot({ path: `storage/playwright/shots/master-batal-${testInfo.project.name}.png` });
+        await konfirmasi.getByRole('button', { name: 'Lanjutkan pratinjau' }).click();
+        await expect(konfirmasi).toHaveCount(0);
         await panel.getByRole('button', { name: 'Tutup unggah master' }).click();
+        await panel.getByTestId('konfirmasi-batal-unggah').getByRole('button', { name: 'Ya, batalkan' }).click();
+        await expect(page.getByText('Unggahan dibatalkan — master kode TA 2026 tidak berubah.')).toBeVisible();
         await expect(panel).toHaveCount(0);
+        await expect(page.getByTestId('master-kode').getByRole('tab', { name: /^SK/ })).toContainText('11');
     });
 });

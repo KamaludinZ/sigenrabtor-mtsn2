@@ -6,7 +6,11 @@
     $diganti = $this->akanDiganti();
 @endphp
 
-<section class="rounded-2xl bg-white shadow-xs ring-1 ring-brand-200" aria-labelledby="judul-unggah-master" data-testid="unggah-master">
+{{-- Selama ada berkas terpilih, menutup tab atau pindah halaman meminta konfirmasi (unggahan belum disimpan). --}}
+<section class="rounded-2xl bg-white shadow-xs ring-1 ring-brand-200" aria-labelledby="judul-unggah-master" data-testid="unggah-master"
+         x-data
+         x-on:beforeunload.window="if ($wire.terpilih) { $event.preventDefault(); $event.returnValue = ''; }"
+         x-on:livewire:navigate.document="if ($wire.terpilih && ! confirm('Unggahan master kode belum disimpan dan akan dibatalkan. Tinggalkan halaman ini?')) $event.preventDefault()">
     <header class="flex items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
         <div class="min-w-0">
             <h2 id="judul-unggah-master" class="text-base font-semibold text-stone-900">Unggah master kode TA {{ $tahun }}</h2>
@@ -112,6 +116,22 @@
         </div>
     @endif
 
+    @if ($konfirmasiBatal)
+        @php
+            $perubahan = $this->ringkasanPerubahan();
+        @endphp
+        <div class="flex flex-col gap-3 border-t border-red-200 bg-red-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6" role="alertdialog" aria-labelledby="judul-konfirmasi-batal" data-testid="konfirmasi-batal-unggah">
+            <p class="text-sm text-red-800" id="judul-konfirmasi-batal">
+                <span class="font-semibold">Batalkan unggahan?</span>
+                Perubahan dari berkas ini ({{ implode(', ', array_filter([$perubahan['baru'] ? $perubahan['baru'].' kode baru' : null, $perubahan['berubah'] ? $perubahan['berubah'].' kode berubah' : null, $perubahan['hilang'] ? $perubahan['hilang'].' kode hilang' : null])) }}) tidak disimpan; master TA {{ $tahun }} tetap seperti sekarang.
+            </p>
+            <div class="flex shrink-0 justify-end gap-2">
+                <button type="button" wire:click="$set('konfirmasiBatal', false)" class="btn-ghost">Lanjutkan pratinjau</button>
+                <button type="button" wire:click="batalkan" class="btn-danger">Ya, batalkan</button>
+            </div>
+        </div>
+    @endif
+
     <footer class="flex flex-col-reverse gap-2 border-t border-stone-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p class="text-xs text-stone-500">
             @if ($tahap === 'pratinjau')
@@ -123,6 +143,9 @@
         <div class="flex justify-end gap-2">
             @if ($tahap === 'pratinjau')
                 <button type="button" wire:click="kembali" class="btn-ghost">Kembali</button>
+                @unless ($konfirmasiBatal)
+                    <button type="button" wire:click="tutup" class="btn-ghost text-red-700 hover:bg-red-50">Batalkan</button>
+                @endunless
                 <button type="button" class="btn-primary" disabled title="Sedang disiapkan"><x-ui.icon name="save" class="size-4" /> Simpan master <x-ui.segera /></button>
             @else
                 @if ($terpilih)

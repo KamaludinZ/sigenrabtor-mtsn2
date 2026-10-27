@@ -20,7 +20,8 @@ use Livewire\WithFileUploads;
  * Formulir unggah berkas master kode (PRD §14) untuk satu tahun anggaran: pilih cakupan (berkas master lengkap atau
  * satu jenis), pilih/seret berkas Excel, lalu sheet tiap jenis dikenali dari namanya (BerkasMaster). Berkas sementara
  * disimpan sampai dibatalkan. *Lanjut ke pratinjau* membaca isi tiap sheet (PratinjauMaster) dan membandingkannya dengan
- * master tahun ini per jenis (tab, saringan status). Khusus admin; tahun terkunci tidak bisa diunggah.
+ * master tahun ini per jenis (tab, saringan status). Batal kapan saja tanpa mengubah data (konfirmasi bila pratinjau berisi
+ * perubahan; berkas sementara dibuang). Khusus admin; tahun terkunci tidak bisa diunggah.
  */
 class UnggahMaster extends Component
 {
@@ -54,6 +55,9 @@ class UnggahMaster extends Component
 
     /** Saringan status baris pratinjau: 'semua' atau kunci PratinjauMaster::STATUS. */
     public string $saring = 'semua';
+
+    /** Konfirmasi batal tampil (pratinjau berisi perubahan yang akan dibuang). */
+    public bool $konfirmasiBatal = false;
 
     public function mount(int $tahun): void
     {
@@ -140,7 +144,7 @@ class UnggahMaster extends Component
     /** Kembali ke pilihan berkas (berkas & cakupan tetap). */
     public function kembali(): void
     {
-        $this->reset('pratinjau', 'tabPratinjau', 'saring');
+        $this->reset('pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal');
         $this->tahap = 'unggah';
     }
 
@@ -179,10 +183,46 @@ class UnggahMaster extends Component
         $this->tahap = 'unggah';
     }
 
+    /** Tutup panel (tombol ×/Tutup/Batalkan): bila pratinjau berisi perubahan, minta konfirmasi dulu. */
     public function tutup(): void
     {
+        if ($this->tahap === 'pratinjau' && array_sum($this->ringkasanPerubahan()) > 0) {
+            $this->konfirmasiBatal = true;
+
+            return;
+        }
+
+        $this->batalkan();
+    }
+
+    /**
+     * Batalkan unggahan tanpa mengubah data: berkas sementara dibuang, pratinjau dikosongkan, master tetap; halaman
+     * diberi tahu (`dibatalkan` = ada berkas yang dibuang).
+     */
+    public function batalkan(): void
+    {
+        $adaBerkas = $this->terpilih !== null;
         $this->buangBerkas();
-        $this->dispatch('unggah-master-ditutup');
+        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal');
+        $this->tahap = 'unggah';
+        $this->dispatch('unggah-master-ditutup', dibatalkan: $adaBerkas);
+    }
+
+    /**
+     * Jumlah perubahan yang akan terjadi bila pratinjau disimpan, semua jenis: baru, berubah, hilang.
+     *
+     * @return array{baru: int, berubah: int, hilang: int}
+     */
+    public function ringkasanPerubahan(): array
+    {
+        $jumlah = ['baru' => 0, 'berubah' => 0, 'hilang' => 0];
+        foreach ($this->pratinjau as $item) {
+            foreach ($jumlah as $status => $n) {
+                $jumlah[$status] = $n + ($item['ringkasan'][$status] ?? 0);
+            }
+        }
+
+        return $jumlah;
     }
 
     /**
