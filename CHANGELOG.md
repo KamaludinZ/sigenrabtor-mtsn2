@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **skema data pelaksanaan** — tanggal selesai kegiatan (dihitung dari tanggal mulai, lama, dan pilihan hari kerja) kini ikut tersimpan di database agar kegiatan bisa dicari per rentang tanggal dan per bulan pelaksanaan, dengan batasan bahwa tanggal selesai tidak mendahului tanggal mulai dan bulan pelaksanaan hanya Januari–Desember.
 - Kelengkapan kode kegiatan kini diperiksa satu layanan di server: checklist isian di Pratinjau Dokumen dan kaidah dokumen ("kode dipilih dari master tahun aktif") sama-sama menandai kode yang belum dipilih, kode yang tidak ada di master tahun aktif, dan — baru — IKSK yang bukan indikator SK terpilih.
 - Penyimpanan kode & klasifikasi kegiatan kini dipegang satu layanan di server yang memeriksa ulang setiap kode (SK wajib, IKSK harus indikator SK-nya, kode harus ada di master tahun aktif, leading sesuai akun), menolak menimpa perubahan dari tab lain, mencatat riwayat perubahan kode, dan menggugurkan penanda kode hilang — sama hasilnya baik dengan data tiruan maupun database.
 - Aturan IKSK per SK kini dipegang satu layanan di server — pilihan IKSK untuk SK terpilih, pengosongan IKSK yang bukan indikator SK baru, pemilihan otomatis bila SK hanya punya satu indikator, dan pesan bila pasangannya tidak sesuai — dipakai sama oleh Data Kegiatan, Kode & Klasifikasi, validasi simpan, impor cascade Perkin, dan endpoint master kode, untuk master tahun anggaran mana pun.

@@ -7,6 +7,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Models\Kegiatan;
 use App\Models\RiwayatStatusKegiatan;
+use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Stub\StubData;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,6 +69,8 @@ class EloquentKegiatanRepository implements KegiatanRepository
             ]);
 
             $kegiatan->fill($this->kolom($data));
+            // Salinan tanggal selesai (DataPelaksanaan) untuk pencarian rentang jadwal di database; tidak dikirim ke tampilan.
+            $kegiatan->tanggal_selesai = DataPelaksanaan::dari($kegiatan->only(['tanggal_mulai', 'lama_hari', 'hari_kerja']))->selesai()?->toDateString();
             // Setiap simpan memperbarui versi, termasuk bila hanya sumber dana/panitia/riwayat yang berubah.
             $kegiatan->updated_at = $kegiatan->freshTimestamp();
             $kegiatan->save();
