@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Penyimpanan kode & klasifikasi kegiatan kini dipegang satu layanan di server yang memeriksa ulang setiap kode (SK wajib, IKSK harus indikator SK-nya, kode harus ada di master tahun aktif, leading sesuai akun), menolak menimpa perubahan dari tab lain, mencatat riwayat perubahan kode, dan menggugurkan penanda kode hilang — sama hasilnya baik dengan data tiruan maupun database.
 - Aturan IKSK per SK kini dipegang satu layanan di server — pilihan IKSK untuk SK terpilih, pengosongan IKSK yang bukan indikator SK baru, pemilihan otomatis bila SK hanya punya satu indikator, dan pesan bila pasangannya tidak sesuai — dipakai sama oleh Data Kegiatan, Kode & Klasifikasi, validasi simpan, impor cascade Perkin, dan endpoint master kode, untuk master tahun anggaran mana pun.
 - Fondasi backend: master kode per tahun anggaran kini bisa dibaca dari database dengan hasil yang sama persis dengan master tiruan, dan tersedia endpoint master kode per jenis (`/master-kode/{jenis}`, JSON) dengan pilihan tahun anggaran, pencarian, dan penyaring IKSK per SK.
 - Endpoint total anggaran kini menyertakan terbilang untuk setiap nominal yang dikirim — total, pagu, dan tiap termin pembayaran (beserta tanggal, persen, dan tulisan dokumennya) — memakai layanan terbilang yang sama dengan layar dan dokumen cetak.

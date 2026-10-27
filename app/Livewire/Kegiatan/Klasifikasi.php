@@ -7,6 +7,7 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\RingkasanKode;
+use App\Support\Kegiatan\SimpanKlasifikasi;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
@@ -27,7 +28,7 @@ class Klasifikasi extends Component
     public const ISIAN = RingkasanKode::ISIAN;
 
     /** Batas entri riwayat perubahan kode yang disimpan per kegiatan. */
-    public const BATAS_RIWAYAT = 20;
+    public const BATAS_RIWAYAT = SimpanKlasifikasi::BATAS_RIWAYAT;
 
     #[Locked]
     public int $kegiatanId;
@@ -210,31 +211,18 @@ class Klasifikasi extends Component
             throw $e;
         }
 
-        $repo = app(KegiatanRepository::class);
-        $tersimpan = $repo->temukan($this->kegiatanId) ?? $this->dataKegiatan;
-        $kodeTersimpan = RingkasanKode::nilaiBaku($tersimpan);
-        $kodeBaru = RingkasanKode::nilaiBaku($this->form->dataUntukDisimpan());
+        $hasil = SimpanKlasifikasi::simpan($this->kegiatanId, $this->form->dataUntukDisimpan(), $timpa ? null : $this->kodeDimuat, StubData::currentUser());
 
-        if (! $timpa && ($bentrok = RingkasanKode::selisih($this->kodeDimuat, $kodeTersimpan))) {
-            $this->bentrok = $bentrok;
+        if ($hasil['status'] === 'bentrok') {
+            $this->bentrok = $hasil['perubahan'];
             $this->dispatch('notify', message: 'Kode kegiatan ini baru diubah di tempat lain — pilih muat versi terbaru atau timpa.', type: 'error');
 
             return;
         }
 
-        if ($perubahan = RingkasanKode::selisih($kodeTersimpan, $kodeBaru)) {
-            $riwayat = $tersimpan['riwayat_kode'] ?? [];
-            $riwayat[] = ['pada' => now()->toIso8601String(), 'oleh' => StubData::currentUser()['name'], 'perubahan' => $perubahan];
-            $repo->simpan(array_merge($tersimpan, $kodeBaru, [
-                'riwayat_kode' => array_slice($riwayat, -self::BATAS_RIWAYAT),
-                // Penanda kode hilang gugur untuk kolom yang kini diisi.
-                'kode_hilang' => KodeHilang::sisa((array) ($tersimpan['kode_hilang'] ?? []), $kodeBaru),
-            ]), $this->kegiatanId);
-        }
+        $this->muatDari(app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? $this->dataKegiatan);
 
-        $this->muatDari($repo->temukan($this->kegiatanId) ?? $tersimpan);
-
-        $notifikasi = $perubahan
+        $notifikasi = $hasil['status'] === 'tersimpan'
             ? RingkasanKode::notifikasiSimpan($this->statusKode)
             : ['message' => 'Tidak ada perubahan kode untuk disimpan.', 'type' => 'info'];
 

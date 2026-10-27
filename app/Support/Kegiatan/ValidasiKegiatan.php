@@ -14,6 +14,7 @@ use Closure;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Validasi sisi server data kegiatan (bentuk data KegiatanRepository) — satu sumber aturan, pesan, dan label untuk form
@@ -167,13 +168,30 @@ final class ValidasiKegiatan
      */
     public static function galat(array $data, array $kecuali = [], ?array $pengguna = null, ?string $leadingTersimpan = null): array
     {
-        $aturan = array_filter(
-            self::aturan($data, $pengguna, $leadingTersimpan),
-            fn (string $kunci) => ! in_array(Str::before($kunci, '.'), $kecuali, true),
-            ARRAY_FILTER_USE_KEY,
-        );
+        return self::validator($data, fn (string $isian) => ! in_array($isian, $kecuali, true), $pengguna, $leadingTersimpan)->errors()->all();
+    }
 
-        return Validator::make($data, $aturan, self::pesan(), self::atribut())->errors()->all();
+    /**
+     * Periksa hanya isian $hanya (mis. kode & klasifikasi saat disimpan terpisah); aturan antarkolom tetap membaca $data
+     * utuh. Galat dilempar sebagai ValidationException berkunci isian.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<string>  $hanya
+     * @param  array<string, mixed>|null  $pengguna
+     *
+     * @throws ValidationException
+     */
+    public static function periksa(array $data, array $hanya, ?array $pengguna = null, ?string $leadingTersimpan = null): void
+    {
+        self::validator($data, fn (string $isian) => in_array($isian, $hanya, true), $pengguna, $leadingTersimpan)->validate();
+    }
+
+    /** @param  Closure(string): bool  $dipakai  Isian (akar kunci aturan) yang diperiksa. */
+    private static function validator(array $data, Closure $dipakai, ?array $pengguna, ?string $leadingTersimpan): \Illuminate\Validation\Validator
+    {
+        $aturan = array_filter(self::aturan($data, $pengguna, $leadingTersimpan), fn (string $kunci) => $dipakai(Str::before($kunci, '.')), ARRAY_FILTER_USE_KEY);
+
+        return Validator::make($data, $aturan, self::pesan(), self::atribut());
     }
 
     private static function selesaiDalamTahun(?CarbonImmutable $selesai, int $tahun): Closure
