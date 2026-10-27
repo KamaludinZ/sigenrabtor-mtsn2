@@ -19,6 +19,7 @@ use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Master\Daftar as MasterKodeDaftar;
 use App\Livewire\Monitoring\Anggaran as MonitoringAnggaran;
 use App\Livewire\Pagu\Daftar as DataPaguDaftar;
+use App\Livewire\Pemeriksaan\Daftar as PemeriksaanDaftar;
 use App\Livewire\Pengaturan\DasarHukum as PengaturanDasarHukum;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
 use App\Livewire\Pengaturan\LeadingUser as PengaturanLeadingUser;
@@ -48,6 +49,9 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');
 Route::get('/monitoring/ekspor/excel', EksporMonitoringExcel::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.excel');
 Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.pdf');
+
+// Pemeriksaan & arsip final (PRD Fase 6 §16), khusus admin.
+Route::get('/pemeriksaan', PemeriksaanDaftar::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.index');
 
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
 Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');
