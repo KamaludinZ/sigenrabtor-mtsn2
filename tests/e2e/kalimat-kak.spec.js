@@ -44,6 +44,12 @@ test.describe('Kalimat KAK (bantuan AI)', () => {
         await expect(modal.getByTestId('saran-diedit')).toBeVisible();
         await expect(modal.getByTestId('cetak-saran')).toContainText('bertujuan meningkatkan mutu pembelajaran yang berpihak pada murid.');
         await modal.screenshot({ path: `storage/playwright/shots/modal-saran-ai-${testInfo.project.name}.png` });
+        // Minta perbaikan dari teks yang disunting: chip instruksi → versi baru.
+        await modal.getByRole('button', { name: 'lebih singkat' }).click();
+        await expect(modal.locator('#instruksi-saran')).toHaveValue('lebih singkat');
+        await modal.getByTestId('minta-perbaikan').click();
+        await expect(modal.locator('[data-versi="1"]')).toContainText('Lebih singkat');
+        await expect(modal.locator('#instruksi-saran')).toHaveValue('');
         await page.keyboard.press('Escape');
         await expect(modal).toHaveCount(0);
         await expect(page.locator('#tujuan')).toHaveValue(isianTujuan);

@@ -8,13 +8,19 @@ use App\Support\Kegiatan\PermintaanSaranKalimat;
 
 /**
  * Saran kalimat tiruan untuk tombol "Buat dengan AI" di Kalimat KAK (PRD F23) selama penyedia AI belum tersambung: tiga
- * versi per bagian yang disusun dari nama kegiatan dan bahan bagian itu (sub kegiatan RKTM, output, peserta, IKSK).
+ * versi per bagian yang disusun dari nama kegiatan dan bahan bagian itu (sub kegiatan RKTM, output, peserta, IKSK);
+ * dengan instruksi perbaikan, versi disusun dari teks yang diperbaiki (perbaiki()).
  * Tidak pernah menambah angka, kode, atau nama pejabat. Backend menggantinya dengan driver AI dalam bentuk array sama.
  */
 class StubSaranKalimat implements PenyusunSaranKalimat
 {
     public function sarankan(PermintaanSaranKalimat $permintaan): array
     {
+        // Minta perbaikan: versi baru disusun dari teks yang sedang diperbaiki sesuai instruksi.
+        if ($permintaan->instruksi !== '' && $permintaan->teks !== '') {
+            return self::perbaiki($permintaan->bagian, $permintaan->teks, $permintaan->instruksi);
+        }
+
         $nama = KalimatKak::tanpaAwalanKegiatan($permintaan->namaKegiatan);
         $bahan = $permintaan->bahanBagian;
         $sub = self::setelahKode($bahan['Kode RKTM & sub kegiatan'] ?? null);
@@ -46,6 +52,45 @@ class StubSaranKalimat implements PenyusunSaranKalimat
             ],
             default => [],
         };
+    }
+
+    /**
+     * Perbaikan tiruan: "lebih singkat/ringkas" → kalimat pertama & klausa pertama, "tambahkan X" → dua cara menyisipkan
+     * X, "formal/baku" → kalimat dirapikan; instruksi lain → teks dirapikan apa adanya.
+     *
+     * @return list<array{judul: string, ciri: string, teks: string}>
+     */
+    private static function perbaiki(string $bagian, string $teks, string $instruksi): array
+    {
+        $cover = $bagian === 'nama_cover';
+        $akhir = fn (string $t) => $cover ? mb_strtoupper(rtrim($t, '. ')) : rtrim($t, '. ').'.';
+        $dasar = rtrim(trim(preg_replace('/\s+/u', ' ', $teks)), '. ');
+        $i = mb_strtolower($instruksi);
+        $versi = [];
+
+        if (preg_match('/singkat|ringkas|pendek/u', $i)) {
+            $pertama = rtrim(preg_split('/(?<=[.!?])\s+/u', $dasar)[0], '. ');
+            $klausa = rtrim(preg_split('/,\s+/u', $pertama)[0], '. ');
+            $versi[] = ['ciri' => 'Lebih singkat', 'teks' => $akhir($pertama)];
+            if ($klausa !== $pertama) {
+                $versi[] = ['ciri' => 'Paling ringkas', 'teks' => $akhir($klausa)];
+            }
+        }
+        if (preg_match('/tambah(?:kan)?\s+(.+)/u', $instruksi, $m)) {
+            $tambahan = rtrim(trim($m[1]), '. ');
+            $versi[] = ['ciri' => 'Menambahkan '.$tambahan, 'teks' => $cover ? $akhir("{$dasar} berbasis {$tambahan}") : $akhir("{$dasar}, dengan menjunjung nilai {$tambahan}")];
+            if (! $cover) {
+                $versi[] = ['ciri' => 'Kalimat tambahan', 'teks' => $akhir("{$dasar}. Kegiatan ini juga menguatkan {$tambahan} di lingkungan madrasah")];
+            }
+        }
+        if (preg_match('/formal|baku/u', $i)) {
+            $versi[] = ['ciri' => 'Lebih formal', 'teks' => $akhir(preg_replace(['/\bkita\b/u', '/\bnggak\b/u', '/\bbikin\b/u'], ['madrasah', 'tidak', 'membuat'], $dasar))];
+        }
+        if ($versi === []) {
+            $versi[] = ['ciri' => 'Mengikuti instruksi', 'teks' => $akhir($dasar)];
+        }
+
+        return array_values(array_map(fn (array $v, int $n) => ['judul' => 'Versi '.($n + 1)] + $v, array_slice($versi, 0, 3), array_keys(array_slice($versi, 0, 3))));
     }
 
     /** @return list<array{judul: string, ciri: string, teks: string}> */

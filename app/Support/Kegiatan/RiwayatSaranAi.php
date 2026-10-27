@@ -29,7 +29,7 @@ final class RiwayatSaranAi
         $b = BagianAi::BAGIAN[$permintaan->bagian];
         $baris = [
             "Bagian: {$b['judul']} ({$b['tercetak']})",
-            'Teks saat ini: '.($permintaan->teks !== '' ? $permintaan->teks : '(kosong)'),
+            ($permintaan->instruksi !== '' ? 'Teks yang diperbaiki: ' : 'Teks saat ini: ').($permintaan->teks !== '' ? $permintaan->teks : '(kosong)'),
             'Instruksi: '.($permintaan->instruksi !== '' ? $permintaan->instruksi : '-'),
             'Bahan bagian:',
             ...array_map(fn (string $label, string $nilai) => "- {$label}: {$nilai}", array_keys($permintaan->bahanBagian), $permintaan->bahanBagian),
