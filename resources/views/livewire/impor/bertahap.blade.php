@@ -16,7 +16,8 @@
 
 {{--
     Alur impor bertahap bersama: Unggah → Periksa (pratinjau per baris) → Proses (bilah kemajuan + log) → Laporan.
-    Dipakai komponen turunan App\Livewire\Impor\ImporBertahap.
+    Dipakai komponen turunan App\Livewire\Impor\ImporBertahap. Opsional: $tautanTemplate, $ringkasanTotal (impor RAB),
+    $pratinjauTambahan (partial di bawah tabel pratinjau), $prosesSegera (tombol impor belum aktif).
 --}}
 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="impor-bertahap" data-tahap="{{ $tahap }}">
     <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
@@ -137,6 +138,10 @@
                     </table>
                 </div>
 
+                @if ($pratinjauTambahan ?? null)
+                    @include($pratinjauTambahan)
+                @endif
+
                 @if ($ringkasanTotal ?? null)
                     {{-- Impor rincian RAB: cocokkan total dengan baris TOTAL berkas dan lihat dampaknya pada pagu. --}}
                     @php $selisihBerkas = $ringkasanTotal['berkas'] !== null ? $ringkasanTotal['berkas'] - $ringkasanTotal['siap'] - $ringkasanTotal['dilewati'] : null; @endphp
@@ -176,10 +181,16 @@
 
                 <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button type="button" wire:click="ulangi" class="btn-ghost">Ganti berkas</button>
-                    <button type="button" wire:click="mulaiImpor" class="btn-primary" @disabled($siap === 0) data-testid="mulai-impor">
-                        <x-ui.icon name="upload" class="size-4" />
-                        {{ $siap > 0 ? "Impor {$siap} {$satuan}" : "Tidak ada {$satuan} yang siap diimpor" }}
-                    </button>
+                    @if ($prosesSegera ?? false)
+                        <button type="button" class="btn-primary" disabled data-testid="mulai-impor">
+                            <x-ui.icon name="upload" class="size-4" /> Impor {{ $siap }} {{ $satuan }} <x-ui.segera />
+                        </button>
+                    @else
+                        <button type="button" wire:click="mulaiImpor" class="btn-primary" @disabled($siap === 0) data-testid="mulai-impor">
+                            <x-ui.icon name="upload" class="size-4" />
+                            {{ $siap > 0 ? "Impor {$siap} {$satuan}" : "Tidak ada {$satuan} yang siap diimpor" }}
+                        </button>
+                    @endif
                 </div>
             </div>
         @elseif ($tahap === 'proses')

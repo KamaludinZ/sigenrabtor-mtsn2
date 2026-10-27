@@ -10,8 +10,8 @@
     $pengguna = \App\Support\Stub\StubData::currentUser();
     $pilihanLeading = $pengguna['role'] === 'admin' ? MasterKode::semuaLeading() : array_values(array_filter(MasterKode::semuaLeading(), fn ($l) => in_array($l['kode'], $pengguna['leadings'], true)));
     $kolomPerkin = [
-        ['Kode SK', 'Sasaran Kegiatan Perjanjian Kinerja; diisi otomatis ke kegiatan'],
-        ['Kode IKSK', 'Indikator kinerja di bawah SK tersebut'],
+        ['Kode SK', 'Sasaran Kegiatan Perjanjian Kinerja (SK.n); kosong → diambil dari induk IKSK'],
+        ['Kode IKSK', 'Indikator kinerja di bawah SK tersebut (IKSK n.m); kode yang tidak ada di master TA '.$tahunAktif.' dikosongkan'],
         ['Nama Kegiatan', 'Wajib; nama yang sudah ada di TA '.$tahunAktif.' dilewati'],
         ['Leading', 'Kode leading, mis. 1.6'],
         ['Pagu DIPA / Pagu Komite', 'Minimal salah satu; menjadi sumber dana kegiatan'],
@@ -130,40 +130,28 @@
             </aside>
         </div>
     @else
-        <div class="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]" data-testid="panel-perkin" wire:key="panel-perkin">
-            <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200 sm:p-6" aria-labelledby="judul-unggah-perkin">
-                <h2 id="judul-unggah-perkin" class="text-base font-semibold text-stone-900">Impor dari sheet cascade Perkin</h2>
-                <p class="mt-0.5 text-sm text-stone-500">Unggah berkas Excel berisi sheet Perkin (mis. MASTER {{ $tahunAktif }}.xlsx). Setiap baris kegiatan menjadi draf lengkap dengan kode SK &amp; IKSK dari cascade-nya, leading, pagu, dan bulan pelaksanaan.</p>
+        {{-- Tabel pratinjau impor butuh lebar penuh: kartu samping turun ke bawah sampai layar 2xl. --}}
+        <div class="mt-6 grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]" data-testid="panel-perkin" wire:key="panel-perkin">
+            <div class="min-w-0 space-y-6">
+                <livewire:kegiatan.impor-perkin wire:key="impor-perkin" />
 
-                <ol class="mt-4 grid gap-2 text-xs sm:grid-cols-4" data-testid="langkah-perkin">
-                    @foreach (['Unggah berkas', 'Periksa per baris', 'Proses bertahap', 'Laporan'] as $i => $langkah)
-                        <li class="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2 ring-1 ring-stone-100">
-                            <span class="grid size-5 shrink-0 place-items-center rounded-full bg-white text-[11px] font-semibold text-stone-600 ring-1 ring-stone-200">{{ $i + 1 }}</span>
-                            <span class="font-medium text-stone-700">{{ $langkah }}</span>
-                        </li>
-                    @endforeach
-                </ol>
+                <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200 sm:p-6" aria-labelledby="judul-kolom-perkin">
+                    <h2 id="judul-kolom-perkin" class="text-sm font-semibold text-stone-900">Kolom yang dibaca</h2>
+                    <p class="mt-0.5 text-xs text-stone-500">Sheet bernama Perkin/Cascade dibaca lebih dulu; judul kolom boleh di baris mana pun di 15 baris teratas. Sel Kode SK &amp; IKSK yang digabung berlaku untuk kegiatan di bawahnya.</p>
+                    <table class="mt-2 w-full text-left text-sm" data-testid="kolom-perkin">
+                        <tbody class="divide-y divide-stone-100">
+                            @foreach ($kolomPerkin as [$kolom, $keterangan])
+                                <tr>
+                                    <th scope="row" class="py-2 pr-4 align-top text-xs font-semibold whitespace-nowrap text-stone-800">{{ $kolom }}</th>
+                                    <td class="py-2 text-xs text-stone-500">{{ $keterangan }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </section>
+            </div>
 
-                <div class="mt-4 rounded-xl border-2 border-dashed border-stone-200 px-4 py-10 text-center">
-                    <x-ui.icon name="upload" class="mx-auto size-8 text-stone-300" />
-                    <p class="mt-2 text-sm font-medium text-stone-700">Pilih atau seret berkas Excel (.xlsx)</p>
-                    <button type="button" class="btn-secondary mt-3" disabled><x-ui.icon name="upload" class="size-4" /> Unggah sheet Perkin <x-ui.segera /></button>
-                </div>
-
-                <h3 class="mt-5 text-sm font-semibold text-stone-900">Kolom yang dibaca</h3>
-                <table class="mt-2 w-full text-left text-sm" data-testid="kolom-perkin">
-                    <tbody class="divide-y divide-stone-100">
-                        @foreach ($kolomPerkin as [$kolom, $keterangan])
-                            <tr>
-                                <th scope="row" class="py-2 pr-4 align-top text-xs font-semibold whitespace-nowrap text-stone-800">{{ $kolom }}</th>
-                                <td class="py-2 text-xs text-stone-500">{{ $keterangan }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </section>
-
-            <aside class="space-y-4">
+            <aside class="grid items-start gap-4 sm:grid-cols-2 2xl:grid-cols-1">
                 <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-hasil-perkin">
                     <h2 id="judul-hasil-perkin" class="text-sm font-semibold text-stone-900">Aman diimpor ulang</h2>
                     <p class="mt-1 text-xs text-stone-500">Nama kegiatan yang sudah ada di TA {{ $tahunAktif }} dilewati, jadi berkas yang sama boleh diunggah lagi setelah diperbarui.</p>
