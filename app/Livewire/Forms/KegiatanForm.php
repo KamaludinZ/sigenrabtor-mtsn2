@@ -7,6 +7,7 @@ use App\Support\Format;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\SusunanPanitia;
 use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
@@ -131,14 +132,10 @@ class KegiatanForm extends Form
     public const MAKS_PANITIA = ValidasiKegiatan::MAKS_PANITIA;
 
     /** Saran peran tim; isian tetap bebas. */
-    public const PERAN_PANITIA = [
-        'Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator', 'Anggota', 'Narasumber', 'Pengarah',
-    ];
+    public const PERAN_PANITIA = SusunanPanitia::PERAN;
 
     /** Hierarki peran untuk "Urutkan sesuai peran". */
-    public const URUTAN_PERAN = [
-        'Pengarah', 'Penanggung Jawab', 'Ketua', 'Wakil Ketua', 'Sekretaris', 'Bendahara', 'Koordinator', 'Narasumber', 'Anggota',
-    ];
+    public const URUTAN_PERAN = SusunanPanitia::URUTAN_PERAN;
 
     /**
      * Aturan bersama ValidasiKegiatan untuk isian saat ini, ditambah pagu yang di form masih berupa teks rupiah per sumber.
@@ -283,19 +280,20 @@ class KegiatanForm extends Form
 
     public function tambahPanitia(string $peran = 'Anggota', string $nama = '', string $jabatan = ''): bool
     {
-        if (count($this->panitia) >= self::MAKS_PANITIA) {
+        $baru = SusunanPanitia::tambah($this->panitia, ['key' => (string) Str::uuid(), 'nama' => $nama, 'jabatan' => $jabatan, 'peran' => $peran]);
+
+        if ($baru === null) {
             return false;
         }
 
-        $this->panitia[] = ['key' => (string) Str::uuid(), 'nama' => $nama, 'jabatan' => $jabatan, 'peran' => $peran];
+        $this->panitia = $baru;
 
         return true;
     }
 
     public function hapusPanitia(int $index): void
     {
-        unset($this->panitia[$index]);
-        $this->panitia = array_values($this->panitia);
+        $this->panitia = SusunanPanitia::hapus($this->panitia, $index);
     }
 
     /**
@@ -303,13 +301,7 @@ class KegiatanForm extends Form
      */
     public function geserPanitia(int $index, int $arah): void
     {
-        $tujuan = $index + $arah;
-
-        if (! isset($this->panitia[$index], $this->panitia[$tujuan])) {
-            return;
-        }
-
-        [$this->panitia[$index], $this->panitia[$tujuan]] = [$this->panitia[$tujuan], $this->panitia[$index]];
+        $this->panitia = SusunanPanitia::geser($this->panitia, $index, $arah);
     }
 
     /**
@@ -317,15 +309,7 @@ class KegiatanForm extends Form
      */
     public function pindahkanPanitia(string $key, int $posisi): void
     {
-        $index = array_search($key, array_column($this->panitia, 'key'), true);
-
-        if ($index === false) {
-            return;
-        }
-
-        $anggota = $this->panitia[$index];
-        array_splice($this->panitia, $index, 1);
-        array_splice($this->panitia, max(0, min($posisi, count($this->panitia))), 0, [$anggota]);
+        $this->panitia = SusunanPanitia::pindahkan($this->panitia, $key, $posisi);
     }
 
     /**
@@ -335,7 +319,7 @@ class KegiatanForm extends Form
      */
     public function sisipkanPanitia(int $index, array $anggota): void
     {
-        array_splice($this->panitia, max(0, min($index, count($this->panitia))), 0, [$anggota]);
+        $this->panitia = SusunanPanitia::sisipkan($this->panitia, $index, $anggota);
     }
 
     /**
@@ -344,19 +328,7 @@ class KegiatanForm extends Form
      */
     public function urutkanSesuaiPeran(): void
     {
-        $urutan = array_map('mb_strtolower', self::URUTAN_PERAN);
-        $posisiAnggota = array_search('anggota', $urutan, true);
-
-        $peringkat = function (array $anggota) use ($urutan, $posisiAnggota): float {
-            $i = array_search(mb_strtolower(trim($anggota['peran'])), $urutan, true);
-
-            return $i === false ? $posisiAnggota - 0.5 : $i;
-        };
-
-        $berindeks = array_map(null, array_keys($this->panitia), $this->panitia);
-        usort($berindeks, fn ($a, $b) => [$peringkat($a[1]), $a[0]] <=> [$peringkat($b[1]), $b[0]]);
-
-        $this->panitia = array_column($berindeks, 1);
+        $this->panitia = SusunanPanitia::urutkanSesuaiPeran($this->panitia);
     }
 
     /**
@@ -366,10 +338,7 @@ class KegiatanForm extends Form
      */
     public function panitiaGanda(): array
     {
-        $nama = array_map(fn ($a) => mb_strtolower(preg_replace('/\s+/u', ' ', trim($a['nama']))), $this->panitia);
-        $hitung = array_count_values(array_filter($nama));
-
-        return array_keys(array_filter($nama, fn ($n) => $n !== '' && $hitung[$n] > 1));
+        return SusunanPanitia::ganda($this->panitia);
     }
 
     /**
@@ -381,7 +350,7 @@ class KegiatanForm extends Form
             return;
         }
 
-        foreach (['Ketua', 'Sekretaris', 'Bendahara', 'Anggota'] as $peran) {
+        foreach (SusunanPanitia::SUSUNAN_BAKU as $peran) {
             $this->tambahPanitia($peran);
         }
     }
@@ -451,7 +420,7 @@ class KegiatanForm extends Form
             'lama_hari' => $lama === false ? null : $lama,
             'hari_kerja' => $this->hari_kerja,
             'bulan_pelaksanaan' => $this->bulan_pelaksanaan,
-            'panitia' => array_map(fn ($a) => ['nama' => $a['nama'], 'jabatan' => $a['jabatan'], 'peran' => $a['peran']], $this->panitia),
+            'panitia' => SusunanPanitia::rapikan($this->panitia),
             'leading' => $this->leading ?: null,
             'kode_rktm' => $this->kode_rktm ?: null,
             'kode_sk' => $this->kode_sk ?: null,
@@ -466,6 +435,12 @@ class KegiatanForm extends Form
             'sumber_dana' => $this->sumberDana(),
             'data_pagu_id' => $this->data_pagu_id,
         ];
+    }
+
+    /** Samakan isian panitia di layar dengan yang tersimpan (SusunanPanitia::rapikan), baris tetap berkunci sama. */
+    public function rapikanPanitia(): void
+    {
+        $this->panitia = array_map(fn (array $a, array $rapi) => ['key' => $a['key']] + $rapi, $this->panitia, SusunanPanitia::rapikan($this->panitia));
     }
 
     /**
