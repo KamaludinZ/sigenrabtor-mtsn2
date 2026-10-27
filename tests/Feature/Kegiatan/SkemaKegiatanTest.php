@@ -16,15 +16,10 @@ class SkemaKegiatanTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function pengguna(string $nama = 'Operator'): int
-    {
-        return DB::table('users')->insertGetId(['name' => $nama, 'email' => mb_strtolower($nama).'@example.com', 'password' => 'x']);
-    }
-
     /** @param  array<string, mixed>  $data */
     private function kegiatan(array $data = []): int
     {
-        return DB::table('activities')->insertGetId($data + ['tahun_anggaran_id' => 1, 'nama_kegiatan' => 'Workshop Kurikulum']);
+        return DB::table('activities')->insertGetId($data + ['tahun_anggaran' => 2026, 'nama_kegiatan' => 'Workshop Kurikulum']);
     }
 
     private function ditolak(callable $aksi): void
@@ -42,9 +37,10 @@ class SkemaKegiatanTest extends TestCase
 
     public function test_tabel_menampung_semua_isian_data_kegiatan(): void
     {
-        $kolom = array_diff(array_keys((new KegiatanForm(new class extends Component {}, 'form'))->dataUntukDisimpan()), ['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu', 'sumber_dana', 'panitia']);
+        // Setiap isian form punya kolom; leading → kode_leading, sumber dana & panitia di tabel anak.
+        $kolom = array_diff(array_keys((new KegiatanForm(new class extends Component {}, 'form'))->dataUntukDisimpan()), ['leading', 'sumber_dana', 'panitia']);
 
-        $this->assertTrue(Schema::hasColumns('activities', [...$kolom, 'tahun_anggaran_id', 'leading_id', 'user_id', 'kode_rktm_id', 'kode_sk_id', 'kode_iksk_id', 'kode_edm_id', 'budaya_mutu_id', 'kode_hilang', 'asal', 'duplikat_dari_id', 'status', 'dikunci_pada', 'dikunci_oleh', 'created_at', 'updated_at']));
+        $this->assertTrue(Schema::hasColumns('activities', [...$kolom, 'tahun_anggaran', 'kode_leading', 'user_id', 'kode_hilang', 'riwayat_kode', 'asal', 'duplikat_dari_id', 'status', 'dikunci_pada', 'dikunci_oleh', 'created_at', 'updated_at']));
         $this->assertTrue(Schema::hasColumns('anggaran_kegiatan', ['activity_id', 'sumber_dana', 'pagu', 'total_rab', 'terbilang']));
         $this->assertTrue(Schema::hasColumns('committees', ['activity_id', 'urutan', 'nama', 'jabatan', 'peran']));
         $this->assertTrue(Schema::hasColumns('riwayat_status_kegiatan', ['activity_id', 'aksi', 'status', 'user_id', 'oleh', 'peran', 'catatan', 'sidik', 'created_at']));
@@ -67,9 +63,10 @@ class SkemaKegiatanTest extends TestCase
         $this->ditolak(fn () => $this->kegiatan(['lama_hari' => 0]));
         $this->ditolak(fn () => $this->kegiatan(['lama_hari' => 367]));
         $this->ditolak(fn () => $this->kegiatan(['peserta_jumlah' => 0]));
+        $this->ditolak(fn () => $this->kegiatan(['budaya_mutu' => 0]));
         $this->ditolak(fn () => $this->kegiatan(['bulan_pelaksanaan' => '{"7": true}']));
         $this->ditolak(fn () => $this->kegiatan(['nama_kegiatan' => null]));
-        $this->ditolak(fn () => $this->kegiatan(['tahun_anggaran_id' => null]));
+        $this->ditolak(fn () => $this->kegiatan(['tahun_anggaran' => null]));
     }
 
     public function test_anggaran_satu_baris_per_sumber_dana(): void
@@ -87,23 +84,16 @@ class SkemaKegiatanTest extends TestCase
         $this->ditolak(fn () => DB::table('anggaran_kegiatan')->insert(['activity_id' => 999, 'sumber_dana' => 'DIPA']));
     }
 
-    public function test_hapus_kegiatan_dan_akun(): void
+    public function test_hapus_kegiatan_menghapus_anak_dan_melepas_salinan(): void
     {
-        $pembuat = $this->pengguna();
-        $admin = $this->pengguna('Admin');
-        $sumber = $this->kegiatan(['user_id' => $pembuat]);
-        $salinan = $this->kegiatan(['duplikat_dari_id' => $sumber, 'user_id' => $pembuat, 'status' => 'final', 'dikunci_pada' => now(), 'dikunci_oleh' => $admin]);
+        $sumber = $this->kegiatan();
+        $salinan = $this->kegiatan(['duplikat_dari_id' => $sumber]);
         DB::table('anggaran_kegiatan')->insert(['activity_id' => $sumber, 'sumber_dana' => 'Komite', 'pagu' => 10_000_000]);
         DB::table('committees')->insert(['activity_id' => $sumber, 'urutan' => 1, 'nama' => 'Ahmad Fauzi, S.Pd.', 'peran' => 'Ketua']);
-        DB::table('riwayat_status_kegiatan')->insert(['activity_id' => $sumber, 'aksi' => 'dibuat', 'status' => 'draf', 'user_id' => $pembuat, 'oleh' => 'Operator', 'peran' => 'leading']);
+        DB::table('riwayat_status_kegiatan')->insert(['activity_id' => $sumber, 'aksi' => 'dibuat', 'status' => 'draf', 'oleh' => 'Operator', 'peran' => 'leading']);
         $this->ditolak(fn () => DB::table('committees')->insert(['activity_id' => $sumber, 'urutan' => 1, 'nama' => 'Siti', 'peran' => 'Anggota']));
 
-        // Akun dihapus: kegiatan & riwayat tetap ada tanpa tautan akun, nama pelaku di riwayat tetap terbaca.
-        DB::table('users')->whereIn('id', [$pembuat, $admin])->delete();
-        $this->assertSame([null, null], [DB::table('activities')->find($salinan)->user_id, DB::table('activities')->find($salinan)->dikunci_oleh]);
-        $this->assertSame([null, 'Operator'], [DB::table('riwayat_status_kegiatan')->value('user_id'), DB::table('riwayat_status_kegiatan')->value('oleh')]);
-
-        // Kegiatan dihapus: anggaran, panitia, dan riwayatnya ikut terhapus; salinannya tetap ada tanpa tautan asal.
+        // Anggaran, panitia, dan riwayatnya ikut terhapus; salinannya tetap ada tanpa tautan asal.
         DB::table('activities')->delete($sumber);
         $this->assertSame([0, 0, 0], [DB::table('anggaran_kegiatan')->count(), DB::table('committees')->count(), DB::table('riwayat_status_kegiatan')->count()]);
         $this->assertNull(DB::table('activities')->find($salinan)->duplikat_dari_id);

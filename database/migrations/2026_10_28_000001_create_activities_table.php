@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Kegiatan (PRD §6 activities) — kolom mengikuti isian Data Kegiatan (KegiatanForm::dataUntukDisimpan()) dan kode &
- * klasifikasi. Kolom rujukan ke tabel yang belum ada (tahun_anggaran, leadings, kode_rktm/sk/iksk/edm, budaya_mutu,
- * data_pagu) sudah disiapkan & diindeks; foreign key-nya ditambahkan oleh migrasi yang membuat tabel-tabel itu.
+ * klasifikasi. Tahun, leading, dan kode master disimpan sebagai kunci alaminya (tahun, kode leading, teks kode,
+ * nomor budaya mutu): master kode diganti tiap tahun lewat unggahan Excel dan kode yang tidak ada lagi di master tetap
+ * harus terbaca (KodeHilang), jadi kode master tidak diberi foreign key. FK ke tahun_anggaran(tahun), leadings(kode),
+ * data_pagu, dan users (akun masih tiruan, tabel users belum diisi) ditambahkan oleh migrasi yang menyiapkan tabel itu.
  * Waktu bermikrodetik (timestamptz(6)) karena updated_at dipakai sebagai versi untuk mengenali perubahan di tab lain.
  */
 return new class extends Migration
@@ -18,9 +20,9 @@ return new class extends Migration
         Schema::create('activities', function (Blueprint $table) {
             $table->id();
             // Tahun pemilik dicatat saat dibuat dan tidak berubah (PRD aturan 3); pembuat = operator di rekap Monitoring.
-            $table->foreignId('tahun_anggaran_id');
-            $table->foreignId('leading_id')->nullable()->index();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedSmallInteger('tahun_anggaran');
+            $table->string('kode_leading', 10)->nullable();
+            $table->foreignId('user_id')->nullable()->index();
 
             // Identitas & isi KAK/TOR.
             $table->string('nama_kegiatan');
@@ -44,13 +46,15 @@ return new class extends Migration
             $table->unsignedInteger('peserta_jumlah')->nullable();
             $table->string('peserta_jenis', 150)->nullable();
 
-            // Kode & klasifikasi dari master tahun kegiatan; kode yang dikosongkan dicatat di kode_hilang (KodeHilang).
-            $table->foreignId('kode_rktm_id')->nullable()->index();
-            $table->foreignId('kode_sk_id')->nullable()->index();
-            $table->foreignId('kode_iksk_id')->nullable()->index();
-            $table->foreignId('kode_edm_id')->nullable()->index();
-            $table->foreignId('budaya_mutu_id')->nullable()->index();
-            $table->jsonb('kode_hilang')->nullable();
+            // Kode & klasifikasi dari master tahun kegiatan; kode yang dikosongkan dicatat di kode_hilang (KodeHilang),
+            // perubahan kode terakhir di riwayat_kode (Kode & Klasifikasi) — json (bukan jsonb) agar urutan kunci tetap.
+            $table->string('kode_rktm', 30)->nullable();
+            $table->string('kode_sk', 30)->nullable();
+            $table->string('kode_iksk', 30)->nullable();
+            $table->string('kode_edm', 30)->nullable();
+            $table->unsignedSmallInteger('budaya_mutu')->nullable();
+            $table->json('kode_hilang')->nullable();
+            $table->json('riwayat_kode')->nullable();
 
             // Asal kegiatan: isian manual, impor Excel/cascade Perkin, atau salinan kegiatan tahun lalu.
             $table->enum('asal', ['manual', 'impor_excel', 'impor_perkin'])->default('manual');
@@ -60,15 +64,16 @@ return new class extends Migration
             // Status dokumen (sama dengan App\Enums\StatusKegiatan) dan jejak kunci final.
             $table->enum('status', ['draf', 'diperiksa', 'dikembalikan', 'disetujui', 'final'])->default('draf');
             $table->timestampTz('dikunci_pada', 6)->nullable();
-            $table->foreignId('dikunci_oleh')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('dikunci_oleh')->nullable();
 
             $table->timestampsTz(6);
 
-            $table->index(['tahun_anggaran_id', 'leading_id', 'status']);
+            $table->index(['tahun_anggaran', 'kode_leading', 'status']);
         });
 
         DB::statement('ALTER TABLE activities ADD CONSTRAINT activities_lama_hari_check CHECK (lama_hari BETWEEN 1 AND 366)');
         DB::statement('ALTER TABLE activities ADD CONSTRAINT activities_peserta_jumlah_check CHECK (peserta_jumlah > 0)');
+        DB::statement('ALTER TABLE activities ADD CONSTRAINT activities_budaya_mutu_check CHECK (budaya_mutu > 0)');
         DB::statement("ALTER TABLE activities ADD CONSTRAINT activities_bulan_pelaksanaan_check CHECK (jsonb_typeof(bulan_pelaksanaan) = 'array')");
     }
 

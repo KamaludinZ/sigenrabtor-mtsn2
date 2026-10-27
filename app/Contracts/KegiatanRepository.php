@@ -3,8 +3,8 @@
 namespace App\Contracts;
 
 /**
- * Penyimpanan data kegiatan. Tahap frontend memakai implementasi tiruan (file JSON);
- * backend menggantinya dengan Eloquent tanpa mengubah komponen yang memakainya.
+ * Penyimpanan data kegiatan. Tahap frontend memakai implementasi tiruan (file JSON); backend menggantinya dengan
+ * App\Repositories\EloquentKegiatanRepository (PostgreSQL) tanpa mengubah komponen yang memakainya.
  */
 interface KegiatanRepository
 {
@@ -12,7 +12,10 @@ interface KegiatanRepository
     public const KOLOM_RIWAYAT = ['tempat', 'peserta_jenis'];
 
     /**
-     * Simpan data kegiatan; $id null berarti kegiatan baru. Mengembalikan id kegiatan.
+     * Simpan data kegiatan; $id null (atau id yang tidak ada) berarti kegiatan baru. Mengembalikan id kegiatan.
+     * Pembuat (user_id) & tahun_anggaran dicatat sekali saat dibuat. Tiruan mengganti seluruh record; implementasi
+     * Eloquent hanya mengubah kunci yang dikirim dan menambah entri riwayat_status yang baru — pemanggil sebaiknya
+     * mengirim record utuh (temukan() + perubahan) agar keduanya sama.
      *
      * @param  array<string, mixed>  $data
      */
