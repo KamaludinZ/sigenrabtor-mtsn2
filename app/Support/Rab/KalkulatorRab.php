@@ -2,6 +2,8 @@
 
 namespace App\Support\Rab;
 
+use App\Livewire\Forms\ItemBelanjaForm;
+
 /**
  * Satu-satunya tempat perhitungan RAB (PRD F2 & aturan "Total dihitung, tidak diketik"):
  * jumlah = volume × harga satuan; total = Σ jumlah; total KAK = total RAB = jumlah yang diajukan.
@@ -32,7 +34,7 @@ class KalkulatorRab
             $rincian,
         );
 
-        $perKategori = ['bahan' => 0, 'jasa' => 0, 'lain' => 0];
+        $perKategori = array_fill_keys(array_keys(ItemBelanjaForm::LABEL_KATEGORI), 0);
         $perKode = [];
 
         foreach ($baris as $item) {
@@ -51,5 +53,32 @@ class KalkulatorRab
             perKode: $perKode,
             pagu: $pagu,
         );
+    }
+
+    /**
+     * Rekap gabungan beberapa RAB (mis. satu sumber dana dari banyak kegiatan): rincian disambung berurutan, total,
+     * subtotal per kelompok belanja (urut LABEL_KATEGORI), dan per kode akun (urut kode) dijumlahkan; tanpa pagu.
+     *
+     * @param  iterable<HasilRab>  $hasil
+     */
+    public static function gabung(iterable $hasil): HasilRab
+    {
+        $rincian = [];
+        $perKategori = array_fill_keys(array_keys(ItemBelanjaForm::LABEL_KATEGORI), 0);
+        $perKode = [];
+
+        foreach ($hasil as $h) {
+            array_push($rincian, ...$h->rincian);
+            foreach ($h->perKategori as $kunci => $nilai) {
+                $perKategori[$kunci] = ($perKategori[$kunci] ?? 0) + $nilai;
+            }
+            foreach ($h->perKode as $kunci => $nilai) {
+                $perKode[$kunci] = ($perKode[$kunci] ?? 0) + $nilai;
+            }
+        }
+
+        ksort($perKode, SORT_STRING);
+
+        return new HasilRab($rincian, array_sum(array_column($rincian, 'jumlah')), $perKategori, $perKode);
     }
 }

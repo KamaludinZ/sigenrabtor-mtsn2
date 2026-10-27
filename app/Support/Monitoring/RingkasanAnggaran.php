@@ -10,6 +10,7 @@ use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
+use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\RekapKelompok;
 use App\Support\Rab\StatusPagu;
 use App\Support\Rab\TabelPagu;
@@ -499,26 +500,16 @@ final readonly class RingkasanAnggaran
 
         $gabungan = [];
         foreach ($sumber as $s) {
-            $rincian = [];
-            $perKategori = [];
-            $perKode = [];
+            $hasil = [];
             foreach ($this->kegiatan as $k) {
                 foreach ($k['anggaran'] as $a) {
-                    if ($a->sumber !== $s) {
-                        continue;
-                    }
-                    foreach ($a->hasil->rincian as $item) {
-                        $rincian[] = $item + ['kegiatan_id' => $k['id'], 'kegiatan' => $k['nama']];
-                    }
-                    foreach ($a->hasil->perKategori as $kunci => $nilai) {
-                        $perKategori[$kunci] = ($perKategori[$kunci] ?? 0) + $nilai;
-                    }
-                    foreach ($a->hasil->perKode as $kunci => $nilai) {
-                        $perKode[$kunci] = ($perKode[$kunci] ?? 0) + $nilai;
+                    if ($a->sumber === $s) {
+                        $rincian = array_map(fn (array $item) => $item + ['kegiatan_id' => $k['id'], 'kegiatan' => $k['nama']], $a->hasil->rincian);
+                        $hasil[] = new HasilRab($rincian, $a->hasil->total, $a->hasil->perKategori, $a->hasil->perKode);
                     }
                 }
             }
-            $gabungan[$s] = new HasilRab($rincian, array_sum(array_column($rincian, 'jumlah')), $perKategori, $perKode);
+            $gabungan[$s] = KalkulatorRab::gabung($hasil);
         }
 
         $rekap = RekapKelompok::susun($gabungan);

@@ -70,4 +70,20 @@ class KalkulatorRabTest extends TestCase
         $this->assertSame('sisa', $hasil->statusPagu());
         $this->assertSame(0, $hasil->persenPagu());
     }
+
+    public function test_gabung_beberapa_rab(): void
+    {
+        $a = KalkulatorRab::hitung([
+            ['kode' => '521213', 'kategori' => 'jasa', 'volume' => 6, 'harga_satuan' => 600_000],
+            ['kode' => '521211', 'kategori' => 'bahan', 'volume' => 1.5, 'harga_satuan' => 40_000],
+        ], 10_000_000);
+        $b = KalkulatorRab::hitung([['kode' => '', 'kategori' => 'lain', 'volume' => 1, 'harga_satuan' => 150_000], ['kode' => '521211', 'kategori' => 'bahan', 'volume' => 2, 'harga_satuan' => 5_000]]);
+
+        $gabung = KalkulatorRab::gabung([$a, $b]);
+
+        $this->assertSame([3_820_000, 4, null], [$gabung->total, $gabung->jumlahItem(), $gabung->pagu]);
+        $this->assertSame(['bahan' => 70_000, 'jasa' => 3_600_000, 'lain' => 150_000], $gabung->perKategori);
+        $this->assertSame(['' => 150_000, '521211' => 70_000, '521213' => 3_600_000], $gabung->perKode);
+        $this->assertSame(['bahan' => 0, 'jasa' => 0, 'lain' => 0], KalkulatorRab::gabung([])->perKategori);
+    }
 }
