@@ -28,7 +28,8 @@ test.describe('Simpan & muat kegiatan (data tiruan)', () => {
         await expect(page.getByText('Draf terbaru')).toBeVisible();
         await page.waitForTimeout(250); // tunggu transisi menu selesai sebelum tangkapan layar
         await page.screenshot({ path: `storage/playwright/shots/buka-draf-${test.info().project.name}.png` });
-        const tautanDraf = page.locator('a[href*="/kegiatan/"][href$="/edit"]').filter({ hasNotText: nama });
+        // Hanya tautan yang terlihat: panel notifikasi (tersembunyi) juga memuat tautan ke Data Kegiatan.
+        const tautanDraf = page.locator('a[href*="/kegiatan/"][href$="/edit"]').filter({ hasNotText: nama, visible: true });
         const tujuan = await tautanDraf.first().getAttribute('href');
         await tautanDraf.first().click();
         await expect(page).toHaveURL(tujuan);

@@ -59,6 +59,7 @@ return [
         'leading_file' => env('STUB_LEADING_FILE', 'stub/leading.json'),
         'pengguna_file' => env('STUB_PENGGUNA_FILE', 'stub/pengguna.json'),
         'arsip_file' => env('STUB_ARSIP_FILE', 'stub/arsip-final.json'),
+        'notifikasi_file' => env('STUB_NOTIFIKASI_FILE', 'stub/notifikasi.json'),
     ],
 
     /*

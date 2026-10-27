@@ -111,9 +111,21 @@ test.describe('Pemeriksaan', () => {
         await page.locator('#peserta_jenis').blur();
         await ajukan(page);
 
+        // Admin mendapat notifikasi pengajuan dan membukanya dari lonceng.
         await page.goto('/demo/peran/admin');
         await page.goto('/pemeriksaan');
-        await page.getByTestId('daftar-pemeriksaan').locator(`li[data-kegiatan="${id}"]`).getByRole('link', { name: 'Periksa' }).click();
+        await expect(page.getByTestId('daftar-pemeriksaan').locator(`li[data-kegiatan="${id}"]`).getByRole('link', { name: 'Periksa' })).toBeVisible();
+        const lonceng = page.getByTestId('notifikasi');
+        await expect(lonceng.getByTestId('jumlah-notifikasi')).toBeVisible();
+        await lonceng.getByRole('button', { name: /^Notifikasi/ }).click();
+        const itemAjukan = page.getByTestId('panel-notifikasi').locator(`li[data-kegiatan="${id}"][data-aksi="ajukan"]`);
+        await expect(itemAjukan).toContainText('Pengajuan baru untuk diperiksa');
+        await expect(lonceng.getByTestId('jumlah-notifikasi')).toHaveCount(0);
+        const kotak = await page.getByTestId('panel-notifikasi').boundingBox();
+        expect(kotak.x).toBeGreaterThanOrEqual(0);
+        expect(kotak.x + kotak.width).toBeLessThanOrEqual(page.viewportSize().width);
+        await page.screenshot({ path: `storage/playwright/shots/notifikasi-${testInfo.project.name}.png` });
+        await itemAjukan.getByRole('link').click();
         await expect(page).toHaveURL(new RegExp(`/pemeriksaan/${id}$`));
         const panel = page.getByTestId('panel-keputusan');
         await expect(panel).toHaveAttribute('data-status', 'diperiksa');
@@ -133,6 +145,10 @@ test.describe('Pemeriksaan', () => {
         // Leading memperbaiki data: catatan & bagian yang sudah diubah tampil di Data Kegiatan, lalu ajukan ulang.
         await page.goto('/demo/peran/leading');
         await page.goto(urlKegiatan);
+        await page.getByTestId('notifikasi').getByRole('button', { name: /^Notifikasi/ }).click();
+        await expect(page.getByTestId('panel-notifikasi').locator(`li[data-kegiatan="${id}"][data-aksi="kembalikan"]`)).toContainText('Sasaran belum terukur.');
+        await page.keyboard.press('Escape');
+        await expect(page.getByTestId('panel-notifikasi')).toBeHidden();
         await expect(panelStatus(page).locator('[data-catatan-pemeriksa]').first()).toContainText('Sasaran belum terukur.');
         const banner = page.getByTestId('banner-perbaikan');
         await expect(banner.getByTestId('catatan-perbaikan')).toContainText('Sesuaikan honor narasumber dengan SBM.');
@@ -179,6 +195,13 @@ test.describe('Pemeriksaan', () => {
         await page.goto(`/pemeriksaan/${id}`);
         await expect(panel).toHaveAttribute('data-status', 'final');
         await expect(page.getByTestId('arsip-pemeriksaan').locator('[data-arsip="DIPA"]')).toContainText('Lihat PDF');
+
+        // Pulihkan: buka kunci agar data E2E bersama tidak menyisakan kegiatan Final (tes Monitoring menyaring status final).
+        await page.goto(urlKegiatan);
+        await panelStatus(page).getByRole('button', { name: 'Buka kunci', exact: true }).click();
+        await panelStatus(page).getByRole('button', { name: 'Ya, buka kunci' }).click();
+        await expect(page.getByTestId('banner-perbaikan')).toContainText('Kunci dibuka untuk perbaikan');
+        await expect(page.getByTestId('panel-arsip-final')).toHaveCount(0);
 
         await page.goto('/demo/peran/leading');
     });

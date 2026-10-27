@@ -20,6 +20,8 @@
         <span class="hidden truncate text-sm text-stone-500 md:block">{{ $madrasah['nama'] }}</span>
     </div>
 
+    <livewire:notifikasi />
+
     <div x-data="{ open: false }" class="relative" @click.outside="open = false">
         <button type="button" class="flex items-center gap-x-2 rounded-lg p-1.5 hover:bg-stone-100" @click="open = ! open" :aria-expanded="open">
             <span class="grid size-8 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
