@@ -28,6 +28,17 @@ test.describe('Pratinjau dokumen', () => {
         await page.getByRole('navigation', { name: 'Dokumen' }).getByRole('link', { name: 'RAB' }).click();
         await expect(page.locator('#dok-rab')).toBeInViewport();
 
+        // Rupiah & terbilang: tiap tempat cetak menautkan letaknya di dokumen.
+        const tempat = kaidah.getByTestId('sinkron-dokumen');
+        await expect(tempat.getByTestId('sinkron-dokumen-status')).toHaveText('Sinkron');
+        await tempat.locator('[data-tempat="rab-diajukan"]').getByRole('link').click();
+        await expect(page).toHaveURL(/sumber=Komite#cetak-rab-diajukan$/);
+        await expect(page.locator('#cetak-rab-diajukan')).toBeInViewport();
+        await expect(page.locator('#cetak-rab-diajukan')).toContainText('Rp2.500.000,- (Dua Juta Lima Ratus Ribu Rupiah)');
+        await tempat.locator('[data-tempat="kak-pembiayaan"]').getByRole('link').click();
+        await expect(page.locator('#cetak-kak-pembiayaan')).toBeInViewport();
+        await expect(page.locator('#cetak-kak-pembiayaan')).toContainText('Rp2.500.000,- (Dua Juta Lima Ratus Ribu Rupiah)');
+
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);
         await page.goto('/kegiatan/2/pratinjau?sumber=Komite');
@@ -41,5 +52,14 @@ test.describe('Pratinjau dokumen', () => {
         await expect(pagu).toHaveAttribute('data-status', 'gagal');
         await expect(pagu).toContainText('Melebihi pagu Rp450.000.');
         await expect(page.getByTestId('ringkasan-kaidah')).toContainText('perlu perhatian');
+    });
+
+    test('halaman RAB membuka letak tempat cetak di pratinjau', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/rab');
+        await page.getByTestId('sinkron-dokumen').locator('[data-tempat="rab-total"]').getByRole('link').click();
+        await expect(page).toHaveURL(/\/kegiatan\/1\/pratinjau\?sumber=Komite#cetak-rab-total$/);
+        await expect(page.locator('#cetak-rab-total')).toBeInViewport();
+        await expect(page.locator('#cetak-rab-total')).toContainText('10.000.000');
     });
 });

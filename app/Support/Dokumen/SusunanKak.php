@@ -170,7 +170,8 @@ final readonly class SusunanKak
         $pembiayaan = [match (true) {
             $angka === null => $kosong('sumber dana (bagian Sumber Dana)'),
             ! $angka->adaRincian() => $kosong("rincian RAB {$sumber}"),
-            default => ['jenis' => 'paragraf', 'teks' => $angka->kalimatPembiayaan()],
+            // `tempat` = kunci AngkaDokumen::tempatCetak(): jangkar #cetak-… di pratinjau.
+            default => ['jenis' => 'paragraf', 'teks' => $angka->kalimatPembiayaan(), 'tempat' => 'kak-pembiayaan'],
         }];
         if ($peringatanPagu) {
             $pembiayaan[] = ['jenis' => 'pagu'];

@@ -96,6 +96,11 @@
                         </li>
                     @endforeach
                 </ul>
+
+                {{-- Rupiah & terbilang: tiap tempat cetak total RAB, tautan ke letaknya di dokumen. --}}
+                @if ($this->angka)
+                    <x-dokumen.tempat-cetak :angka="$this->angka" :sumber="$sumberAktif" tautan="" />
+                @endif
             </section>
 
             @php

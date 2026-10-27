@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
@@ -39,10 +40,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka);
         }
     }
 
@@ -68,6 +69,15 @@ class PratinjauDokumen extends Component
     public function rab(): SusunanRab
     {
         return SusunanRab::dari($this->dataKegiatan, $this->sumber ?: null);
+    }
+
+    /** Angka dokumen (nominal & terbilang tiap tempat cetak) RAB sumber dana yang ditampilkan; null tanpa sumber dana. */
+    #[Computed]
+    public function angka(): ?AngkaDokumen
+    {
+        $anggaran = $this->rab->anggaran;
+
+        return $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
     }
 
     /** @return list<array{kunci: string, nomor: int, judul: string, status: string, pesan: string}> */

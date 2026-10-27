@@ -45,7 +45,11 @@
                     @foreach ($isiBagian['isi'] as $blok)
                         @switch($blok['jenis'])
                             @case('paragraf')
-                                <p class="indent-8 sm:text-justify">{{ $blok['teks'] }}</p>
+                                @if (isset($blok['tempat']))
+                                    <p id="cetak-{{ $blok['tempat'] }}" class="scroll-mt-40 indent-8 transition-colors sm:text-justify target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400" data-tempat-cetak="{{ $blok['tempat'] }}">{{ $blok['teks'] }}</p>
+                                @else
+                                    <p class="indent-8 sm:text-justify">{{ $blok['teks'] }}</p>
+                                @endif
                                 @break
                             @case('subjudul')
                                 <p class="font-semibold">{{ $blok['teks'] }}</p>

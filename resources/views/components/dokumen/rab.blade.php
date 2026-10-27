@@ -27,7 +27,8 @@
         <dl class="grid gap-x-3 gap-y-1 text-sm sm:grid-cols-[11rem_minmax(0,1fr)]" data-testid="kepala-rab">
             @foreach ($susunan->kepala as $baris)
                 <dt class="font-semibold sm:font-normal">{{ $baris['label'] }}<span class="hidden sm:inline"> :</span></dt>
-                <dd class="mb-1 sm:mb-0" data-kepala="{{ $baris['label'] }}">
+                <dd @class(['mb-1 sm:mb-0', 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($baris['tempat'])])
+                    data-kepala="{{ $baris['label'] }}" @isset($baris['tempat']) id="cetak-{{ $baris['tempat'] }}" data-tempat-cetak="{{ $baris['tempat'] }}" @endisset>
                     @if ($baris['nilai'] !== null)
                         <span>{{ $baris['nilai'] }}</span>
                         @if ($baris['uraian'])

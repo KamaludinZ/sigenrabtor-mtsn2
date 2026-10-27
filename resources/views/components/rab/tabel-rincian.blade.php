@@ -81,7 +81,7 @@
                 </tbody>
             @endforeach
             <tfoot @class(['font-bold' => $dokumen, 'border-t-2 border-stone-200' => ! $dokumen])>
-                <tr>
+                <tr @if ($dokumen) id="cetak-rab-total" class="scroll-mt-40 transition-colors target:bg-gold-100" data-tempat-cetak="rab-total" @endif>
                     <th scope="row" colspan="{{ $kolom - 1 }}" class="{{ $sel }} text-right uppercase">Total keseluruhan</th>
                     <td class="{{ $sel }} text-right tabular-nums" data-testid="total-tabel-rab">{{ $angka->angkaTabel() }}</td>
                 </tr>

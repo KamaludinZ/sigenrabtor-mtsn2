@@ -25,7 +25,7 @@ final readonly class SusunanRab
     public const VOLUME = '1 Kegiatan';
 
     /**
-     * @param  list<array{label: string, nilai: string|null, uraian: string|null, asal: string|null}>  $kepala  nilai null = belum diisi.
+     * @param  list<array{label: string, nilai: string|null, uraian: string|null, asal: string|null, tempat?: string}>  $kepala  nilai null = belum diisi; tempat = kunci AngkaDokumen::tempatCetak().
      * @param  list<array{label: string, nilai: string}>  $mekanisme  Kosong bila dibayar sekaligus.
      * @param  list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null}>  $pengesahan
      * @param  list<string>  $kurang
@@ -81,7 +81,7 @@ final readonly class SusunanRab
             $baris('5 Budaya Mutu', $nilai['budaya_mutu'], null, 'budaya_mutu'),
             $baris('Volume', self::VOLUME),
             // Kosong selama rincian belum ada; kekurangannya dicatat sebagai rincian belanja di bawah.
-            ['label' => 'Jumlah yang diajukan', 'nilai' => $angka?->nominalDanTerbilang(), 'uraian' => $angka?->sebutanSumber(), 'asal' => NilaiVariabel::ASAL['total']],
+            ['label' => 'Jumlah yang diajukan', 'nilai' => $angka?->nominalDanTerbilang(), 'uraian' => $angka?->sebutanSumber(), 'asal' => NilaiVariabel::ASAL['total'], 'tempat' => 'rab-diajukan'],
         ];
 
         if ($anggaran === null) {

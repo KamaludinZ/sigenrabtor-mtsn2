@@ -243,7 +243,7 @@
                         </div>
                     @endif
 
-                    @include('livewire.kegiatan.partials.sinkron-dokumen')
+                    <x-dokumen.tempat-cetak :angka="$angkaDokumen" :sumber="$sumber" :tautan="route('kegiatan.pratinjau', ['kegiatan' => $kegiatanId, 'sumber' => $sumber])" />
 
                     @if ($hasil->jumlahItem() > 0)
                         <div class="mt-4 border-t border-stone-100 pt-3">

@@ -84,6 +84,23 @@ class PratinjauDokumenTest extends TestCase
         );
     }
 
+    public function test_rupiah_dan_terbilang_tercetak_dengan_jangkar_dokumen(): void
+    {
+        Livewire::test(PratinjauDokumen::class, ['kegiatan' => 1])
+            ->assertSeeHtml('id="cetak-kak-pembiayaan"')
+            ->assertSeeHtml('id="cetak-rab-diajukan"')
+            ->assertSeeHtml('id="cetak-rab-total"')
+            ->assertSeeHtml('data-testid="sinkron-dokumen"')
+            ->assertSeeHtml('href="#cetak-kak-pembiayaan"')
+            ->assertSeeHtml('href="#cetak-rab-total"')
+            ->assertSee('“Rp10.000.000,- (Sepuluh Juta Rupiah)”', false)
+            ->assertSee('“10.000.000”', false);
+
+        // Halaman RAB menautkan tiap tempat cetak ke letaknya di pratinjau.
+        $this->get(route('kegiatan.rab', ['kegiatan' => 1]))
+            ->assertSeeHtml('href="'.route('kegiatan.pratinjau', ['kegiatan' => 1, 'sumber' => 'Komite']).'#cetak-rab-diajukan"');
+    }
+
     public function test_aturan_kaidah(): void
     {
         $kegiatan = app(KegiatanRepository::class)->temukan(2);
