@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: terbilang total RAB yang tersimpan di database kini dijamin selalu sesuai totalnya — kosong bila total Rp0 dan selalu bisa disusun (total RAB dan nominal termin dibatasi di bawah 1.000 triliun) — dan salinan lama dihitung ulang dari rinciannya saat migrasi.
 - Rekap anggaran per kelompok belanja (bahan, jasa, lain-lain) dan per kode akun kini disusun dengan satu logika yang sama untuk halaman RAB satu kegiatan dan rekap Monitoring seluruh kegiatan, dan dipastikan sama persis dengan penjumlahan di database untuk sumber dana yang dipilih.
 - Fondasi backend: halaman yang menampilkan anggaran banyak kegiatan (Monitoring, Dashboard, tabel Data Kegiatan, antrean Pemeriksaan, daftar Duplikat) kini mengambil rincian & termin RAB seluruh kegiatan sekaligus, sehingga tetap cepat setelah data dipindah ke database.
 - Fondasi backend: **penyimpanan RAB di database** — tambah, ubah, hapus beserta urungkan, salin, geser urutan, dan pindah item antar-sumber dana, serta termin pembayaran, kini tersedia di PostgreSQL dengan hasil yang sama persis dengan data tiruan; total RAB dan terbilang tiap sumber dana ikut diperbarui setiap kali rincian berubah. Layar masih memakai data tiruan sampai penyimpanan dialihkan.

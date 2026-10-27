@@ -185,7 +185,7 @@ class EloquentRabRepository implements RabRepository
     {
         $this->dimuat = [];
         $total = (int) $anggaran->rincian()->sum('jumlah');
-        $anggaran->fill(['total_rab' => $total, 'terbilang' => $total > 0 ? Terbilang::rupiah($total) : null])->touch();
+        $anggaran->fill(['total_rab' => $total, 'terbilang' => Terbilang::tampil($total)])->touch();
     }
 
     /**
