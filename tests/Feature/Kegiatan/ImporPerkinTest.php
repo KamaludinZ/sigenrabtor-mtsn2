@@ -122,6 +122,10 @@ class ImporPerkinTest extends TestCase
         Livewire::withQueryParams(['tab' => 'perkin'])->test(SalinImpor::class)
             ->assertSeeLivewire(ImporPerkin::class)
             ->assertSeeHtml('data-testid="kolom-perkin"');
+        // Tab lain: panel Perkin tetap dirender (tersembunyi) agar pratinjau tidak hilang saat berganti tab.
+        Livewire::withQueryParams(['tab' => 'duplikat'])->test(SalinImpor::class)
+            ->assertSeeLivewire(ImporPerkin::class)
+            ->assertSeeHtml('2xl:grid-cols-[minmax(0,1fr)_20rem] hidden" data-testid="panel-perkin"');
 
         Livewire::test(ImporPerkin::class)
             ->assertSee('Unggah sheet cascade Perkin')
@@ -145,7 +149,7 @@ class ImporPerkinTest extends TestCase
             ->assertSeeHtml('data-testid="mulai-impor"')
             ->assertSee('Impor 4 kegiatan')
             ->call('mulaiImpor')
-            ->assertSet('tahap', 'periksa', 'Proses impor masih Segera.')
+            ->assertSet('tahap', 'periksa', 'Impor hanya berjalan setelah dikonfirmasi.')
             ->call('ulangi')
             ->assertSet('tahap', 'unggah')
             ->assertSet('lembar', '');
@@ -165,5 +169,72 @@ class ImporPerkinTest extends TestCase
             ->set('berkas', UploadedFile::fake()->createWithContent('master.xlsx', (string) file_get_contents(base_path('tests/fixtures/master-kode-contoh.xlsx'))))
             ->assertSet('tahap', 'unggah')
             ->assertSeeHtml('data-testid="galat-impor"');
+    }
+
+    public function test_konfirmasi_pembatalan_dan_proses_impor(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $jumlah = count($repo->semua());
+        $unggah = fn () => UploadedFile::fake()->createWithContent('MASTER 2026.xlsx', (string) file_get_contents(base_path(self::CONTOH)));
+
+        $komponen = Livewire::test(ImporPerkin::class)
+            ->assertSeeHtml('x-on:livewire:navigate.document')
+            ->set('berkas', $unggah())
+            // Batalkan dengan baris siap: konfirmasi inline dulu.
+            ->call('batalkan')
+            ->assertSet('konfirmasiBatal', true)
+            ->assertSeeHtml('data-testid="konfirmasi-batal-perkin"')
+            ->assertSee('Pratinjau 4 kegiatan siap dibuang')
+            ->call('lanjutkanPratinjau')
+            ->assertSet('konfirmasiBatal', false)
+            ->assertSet('tahap', 'periksa')
+            ->call('batalkan')
+            ->call('batalkan')
+            ->assertSet('tahap', 'unggah')
+            ->assertSet('baris', [])
+            ->assertDispatched('notify', message: 'Impor dibatalkan — tidak ada kegiatan yang dibuat.', type: 'info');
+        $this->assertCount($jumlah, $repo->semua());
+
+        $komponen->set('berkas', $unggah())
+            ->call('mintaKonfirmasi')
+            ->assertSet('konfirmasiImpor', true)
+            ->assertSeeHtml('data-testid="konfirmasi-impor-perkin"')
+            ->assertSee('Buat 4 draf kegiatan TA 2026?')
+            ->assertSee('Rp12.500.000')
+            ->assertSeeHtml('data-testid="konfirmasi-kode-kosong"')
+            ->assertSee('1 baris dilewati dan 4 baris gagal')
+            ->call('batalKonfirmasi')
+            ->assertSet('konfirmasiImpor', false)
+            ->call('mintaKonfirmasi')
+            ->call('mulaiImpor')
+            ->assertSet('tahap', 'proses')
+            ->assertSet('konfirmasiImpor', false);
+        $this->assertSame(['kegiatan' => 4, 'pagu' => ['DIPA' => 12_500_000, 'Komite' => 2_500_000], 'dilewati' => 1, 'gagal' => 4, 'kode_kosong' => 1], $komponen->instance()->ringkasanKonfirmasi());
+
+        // Kegiatan bernama sama dibuat di tab lain selama proses → dilewati saat disimpan.
+        $repo->simpan(['nama_kegiatan' => 'Pemeliharaan Sarana Kelas', 'leading' => '1.6']);
+        // Empat baris siap < satu kelompok (ImporBertahap::UKURAN_KELOMPOK): satu panggilan menuntaskan semuanya.
+        $komponen->call('lanjutkanImpor')
+            ->assertSet('tahap', 'selesai')
+            ->assertDispatched('kegiatan-diimpor', jumlah: 3)
+            ->assertSee('Kegiatan dengan nama ini sudah ada di TA 2026.');
+        $this->assertSame(3, $komponen->instance()->jumlahHasil('berhasil'));
+
+        $baru = collect($repo->semua())->keyBy('nama_kegiatan');
+        $this->assertCount($jumlah + 4, $repo->semua());
+        $pelatihan = $baru['Pelatihan Guru Pendidikan Inklusif'];
+        $this->assertSame(['draf', 2026, 'SK.9', 'IKSK 9.1', 'impor_perkin', [7]], [$pelatihan['status'], $pelatihan['tahun_anggaran'], $pelatihan['kode_sk'], $pelatihan['kode_iksk'], $pelatihan['asal'], $pelatihan['bulan_pelaksanaan']]);
+        $this->assertSame('Diimpor dari cascade Perkin (MASTER 2026.xlsx, sheet Cascade Perkin).', $pelatihan['riwayat_status'][0]['catatan']);
+        $this->assertSame(['SK.8', null], [$baru['Bimbingan Olimpiade Sains']['kode_sk'], $baru['Bimbingan Olimpiade Sains']['kode_iksk']]);
+
+        // Berkas yang sama diunggah lagi: tidak ada yang siap → tidak ada konfirmasi, batal langsung.
+        $komponen->call('ulangi')
+            ->set('berkas', $unggah())
+            ->assertSee('Tidak ada kegiatan yang siap diimpor')
+            ->call('mintaKonfirmasi')
+            ->assertSet('konfirmasiImpor', false)
+            ->call('batalkan')
+            ->assertSet('konfirmasiBatal', false)
+            ->assertSet('tahap', 'unggah');
     }
 }

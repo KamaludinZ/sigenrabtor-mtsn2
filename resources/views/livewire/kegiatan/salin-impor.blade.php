@@ -129,39 +129,42 @@
                 </ul>
             </aside>
         </div>
-    @else
-        {{-- Tabel pratinjau impor butuh lebar penuh: kartu samping turun ke bawah sampai layar 2xl. --}}
-        <div class="mt-6 grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]" data-testid="panel-perkin" wire:key="panel-perkin">
-            <div class="min-w-0 space-y-6">
-                <livewire:kegiatan.impor-perkin wire:key="impor-perkin" />
-
-                <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200 sm:p-6" aria-labelledby="judul-kolom-perkin">
-                    <h2 id="judul-kolom-perkin" class="text-sm font-semibold text-stone-900">Kolom yang dibaca</h2>
-                    <p class="mt-0.5 text-xs text-stone-500">Sheet bernama Perkin/Cascade dibaca lebih dulu; judul kolom boleh di baris mana pun di 15 baris teratas. Sel Kode SK &amp; IKSK yang digabung berlaku untuk kegiatan di bawahnya.</p>
-                    <table class="mt-2 w-full text-left text-sm" data-testid="kolom-perkin">
-                        <tbody class="divide-y divide-stone-100">
-                            @foreach ($kolomPerkin as [$kolom, $keterangan])
-                                <tr>
-                                    <th scope="row" class="py-2 pr-4 align-top text-xs font-semibold whitespace-nowrap text-stone-800">{{ $kolom }}</th>
-                                    <td class="py-2 text-xs text-stone-500">{{ $keterangan }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </section>
-            </div>
-
-            <aside class="grid items-start gap-4 sm:grid-cols-2 2xl:grid-cols-1">
-                <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-hasil-perkin">
-                    <h2 id="judul-hasil-perkin" class="text-sm font-semibold text-stone-900">Aman diimpor ulang</h2>
-                    <p class="mt-1 text-xs text-stone-500">Nama kegiatan yang sudah ada di TA {{ $tahunAktif }} dilewati, jadi berkas yang sama boleh diunggah lagi setelah diperbarui.</p>
-                </section>
-                <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-sederhana">
-                    <h2 id="judul-template-sederhana" class="text-sm font-semibold text-stone-900">Tidak memakai sheet Perkin?</h2>
-                    <p class="mt-1 text-xs text-stone-500">Gunakan template sederhana (nama kegiatan, leading, pagu, bulan) dari Data Kegiatan › Impor dari Excel.</p>
-                    <a href="{{ route('kegiatan.index') }}" wire:navigate class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800">Buka Data Kegiatan <x-ui.icon name="chevron-right" class="size-3.5" /></a>
-                </section>
-            </aside>
-        </div>
     @endif
+
+    {{--
+        Panel Perkin selalu dirender (disembunyikan di tab lain) agar pratinjau impor yang sedang dibuka tidak hilang saat
+        berganti tab. Tabel pratinjau butuh lebar penuh: kartu samping turun ke bawah sampai layar 2xl.
+    --}}
+    <div @class(['mt-6 grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]', 'hidden' => $tab !== 'perkin']) data-testid="panel-perkin" wire:key="panel-perkin">
+        <div class="min-w-0 space-y-6">
+            <livewire:kegiatan.impor-perkin wire:key="impor-perkin" />
+
+            <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200 sm:p-6" aria-labelledby="judul-kolom-perkin">
+                <h2 id="judul-kolom-perkin" class="text-sm font-semibold text-stone-900">Kolom yang dibaca</h2>
+                <p class="mt-0.5 text-xs text-stone-500">Sheet bernama Perkin/Cascade dibaca lebih dulu; judul kolom boleh di baris mana pun di 15 baris teratas. Sel Kode SK &amp; IKSK yang digabung berlaku untuk kegiatan di bawahnya.</p>
+                <table class="mt-2 w-full text-left text-sm" data-testid="kolom-perkin">
+                    <tbody class="divide-y divide-stone-100">
+                        @foreach ($kolomPerkin as [$kolom, $keterangan])
+                            <tr>
+                                <th scope="row" class="py-2 pr-4 align-top text-xs font-semibold whitespace-nowrap text-stone-800">{{ $kolom }}</th>
+                                <td class="py-2 text-xs text-stone-500">{{ $keterangan }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <aside class="grid items-start gap-4 sm:grid-cols-2 2xl:grid-cols-1">
+            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-hasil-perkin">
+                <h2 id="judul-hasil-perkin" class="text-sm font-semibold text-stone-900">Aman diimpor ulang</h2>
+                <p class="mt-1 text-xs text-stone-500">Nama kegiatan yang sudah ada di TA {{ $tahunAktif }} dilewati, jadi berkas yang sama boleh diunggah lagi setelah diperbarui.</p>
+            </section>
+            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-sederhana">
+                <h2 id="judul-template-sederhana" class="text-sm font-semibold text-stone-900">Tidak memakai sheet Perkin?</h2>
+                <p class="mt-1 text-xs text-stone-500">Gunakan template sederhana (nama kegiatan, leading, pagu, bulan) dari Data Kegiatan › Impor dari Excel.</p>
+                <a href="{{ route('kegiatan.index') }}" wire:navigate class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800">Buka Data Kegiatan <x-ui.icon name="chevron-right" class="size-3.5" /></a>
+            </section>
+        </aside>
+    </div>
 </div>

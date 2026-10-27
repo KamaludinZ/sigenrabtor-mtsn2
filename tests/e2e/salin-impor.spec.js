@@ -60,13 +60,47 @@ test.describe('Duplikat & impor cascade Perkin', () => {
         await expect(cascade.locator('[data-sk]')).toHaveCount(2);
         await expect(cascade.locator('[data-sk="SK.9"] [data-iksk]')).toHaveCount(2);
         await expect(cascade.locator('[data-sk="SK.9"]')).toContainText('3 kegiatan');
-        await expect(impor.getByTestId('mulai-impor')).toBeDisabled();
+        await expect(impor.getByTestId('mulai-impor')).toBeEnabled();
 
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/impor-perkin-${testInfo.project.name}.png`, fullPage: true });
 
-        await impor.getByRole('button', { name: 'Ganti berkas' }).click();
+        // Konfirmasi impor: ringkasan draf yang akan dibuat; Esc kembali ke pratinjau. (E2E tidak mengimpor: data
+        // kegiatan dipakai bersama proyek mobile — proses & simpan diuji di PHPUnit.)
+        await impor.getByTestId('mulai-impor').click();
+        const konfirmasi = impor.getByTestId('konfirmasi-impor-perkin');
+        await expect(konfirmasi).toContainText('Buat 4 draf kegiatan TA 2026?');
+        await expect(konfirmasi).toContainText('1 baris dilewati dan 4 baris gagal');
+        await expect(impor.getByTestId('ya-impor-perkin')).toBeFocused();
+        await konfirmasi.screenshot({ path: `storage/playwright/shots/konfirmasi-impor-perkin-${testInfo.project.name}.png` });
+        await page.keyboard.press('Escape');
+        await expect(konfirmasi).toHaveCount(0);
+
+        // Berganti tab tidak membuang pratinjau.
+        await page.getByTestId('tab-salin-impor').locator('[data-tab="duplikat"]').click();
+        await expect(page.getByTestId('panel-duplikat')).toBeVisible();
+        await expect(page.getByTestId('panel-perkin')).toBeHidden();
+        await page.getByTestId('tab-salin-impor').locator('[data-tab="perkin"]').click();
+        await expect(impor).toHaveAttribute('data-tahap', 'periksa');
+
+        // Meninggalkan halaman selama pratinjau meminta konfirmasi; ditolak → tetap di sini.
+        page.once('dialog', async (dialog) => {
+            expect(dialog.message()).toContain('Pratinjau impor belum diimpor');
+            await dialog.dismiss();
+        });
+        await page.getByTestId('panel-perkin').getByRole('link', { name: 'Buka Data Kegiatan' }).click();
+        await expect(page).toHaveURL(/\/kegiatan\/salin-impor/);
+        await expect(impor).toHaveAttribute('data-tahap', 'periksa');
+
+        // Batalkan: konfirmasi inline, lalu pratinjau dibuang tanpa membuat kegiatan.
+        await impor.getByTestId('batalkan-impor-perkin').click();
+        await expect(impor.getByTestId('konfirmasi-batal-perkin')).toContainText('Pratinjau 4 kegiatan siap dibuang');
+        await impor.getByRole('button', { name: 'Lanjutkan pratinjau' }).click();
+        await expect(impor.getByTestId('konfirmasi-batal-perkin')).toHaveCount(0);
+        await impor.getByTestId('batalkan-impor-perkin').click();
+        await impor.getByTestId('ya-batal-perkin').click();
         await expect(impor).toHaveAttribute('data-tahap', 'unggah');
+        await expect(page.getByText('Impor dibatalkan — tidak ada kegiatan yang dibuat.')).toBeVisible();
     });
 });

@@ -18,9 +18,16 @@
     Alur impor bertahap bersama: Unggah → Periksa (pratinjau per baris) → Proses (bilah kemajuan + log) → Laporan.
     Dipakai komponen turunan App\Livewire\Impor\ImporBertahap. Opsional: $tautanTemplate, $ringkasanTotal (impor RAB),
     $tabelPratinjau (partial pengganti tabel pratinjau; di dalam x-data `saring`), $pratinjauTambahan (partial di bawah
-    tabel pratinjau), $prosesSegera (tombol impor belum aktif).
+    tabel pratinjau), $aksiPeriksa (partial pengganti tombol Ganti berkas/Impor), $jagaHalaman (konfirmasi saat
+    meninggalkan halaman selama periksa/proses).
 --}}
 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="impor-bertahap" data-tahap="{{ $tahap }}">
+    @if ($jagaHalaman ?? false)
+        {{-- Pratinjau/proses hilang bila halaman ditinggalkan: minta konfirmasi (tutup tab & pindah halaman wire:navigate). --}}
+        <div class="hidden" x-data
+             x-on:beforeunload.window="if (['periksa', 'proses'].includes($wire.tahap)) { $event.preventDefault(); $event.returnValue = ''; }"
+             x-on:livewire:navigate.document="if (['periksa', 'proses'].includes($wire.tahap) && ! confirm($wire.tahap === 'proses' ? 'Impor sedang berjalan dan akan berhenti di tengah. Tinggalkan halaman ini?' : 'Pratinjau impor belum diimpor dan akan dibuang. Tinggalkan halaman ini?')) $event.preventDefault()"></div>
+    @endif
     <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
         <div class="min-w-0">
             <h2 class="text-base font-semibold text-stone-900">{{ $judul }}</h2>
@@ -184,19 +191,17 @@
                     </p>
                 @endif
 
-                <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <button type="button" wire:click="ulangi" class="btn-ghost">Ganti berkas</button>
-                    @if ($prosesSegera ?? false)
-                        <button type="button" class="btn-primary" disabled data-testid="mulai-impor">
-                            <x-ui.icon name="upload" class="size-4" /> Impor {{ $siap }} {{ $satuan }} <x-ui.segera />
-                        </button>
-                    @else
+                @if ($aksiPeriksa ?? null)
+                    @include($aksiPeriksa)
+                @else
+                    <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button type="button" wire:click="ulangi" class="btn-ghost">Ganti berkas</button>
                         <button type="button" wire:click="mulaiImpor" class="btn-primary" @disabled($siap === 0) data-testid="mulai-impor">
                             <x-ui.icon name="upload" class="size-4" />
                             {{ $siap > 0 ? "Impor {$siap} {$satuan}" : "Tidak ada {$satuan} yang siap diimpor" }}
                         </button>
-                    @endif
-                </div>
+                    </div>
+                @endif
             </div>
         @elseif ($tahap === 'proses')
             {{-- Klien memanggil lanjutkanImpor() berulang; tiap panggilan memproses beberapa baris lalu layar diperbarui. --}}
