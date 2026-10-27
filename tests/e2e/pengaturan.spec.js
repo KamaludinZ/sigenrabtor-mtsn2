@@ -844,6 +844,22 @@ test.describe('Pengaturan admin', () => {
         expect(overflow).toBeLessThanOrEqual(0);
         await panel.screenshot({ path: `storage/playwright/shots/master-unggah-${testInfo.project.name}.png` });
 
+        // Pratinjau SK: dibandingkan dengan master TA 2026 sebelum disimpan.
+        await panel.getByRole('button', { name: 'Lanjut ke pratinjau' }).click();
+        const pratinjau = panel.getByTestId('pratinjau-master');
+        await expect(pratinjau.getByRole('tab', { name: /^SK/ })).toHaveAttribute('aria-selected', 'true');
+        const ringkasan = pratinjau.getByTestId('ringkasan-pratinjau');
+        await expect(ringkasan.locator('[data-status="tetap"]')).toContainText('Tetap 3');
+        await expect(pratinjau.locator('li[data-kode="SK.11"]')).toContainText('padahal dipakai 1 kegiatan TA 2026');
+        await ringkasan.locator('[data-status="hilang"]').click();
+        await expect(pratinjau.locator('li[data-status="tetap"]')).toHaveCount(0);
+        await expect(pratinjau.locator('li[data-status="hilang"]').first()).toBeVisible();
+        await pratinjau.screenshot({ path: `storage/playwright/shots/master-pratinjau-sk-${testInfo.project.name}.png` });
+        await pratinjau.getByRole('tab', { name: /IKSK/ }).click();
+        await expect(pratinjau.getByTestId('pratinjau-menyusul')).toContainText('Sheet Perkin sudah dikenali');
+        await panel.getByRole('button', { name: 'Kembali' }).click();
+        await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
+
         // Satu jenis: hanya jenis itu yang diperiksa.
         await panel.getByTestId('cakupan-unggah').getByText('EDM', { exact: true }).click();
         await expect(sheet.locator('[data-jenis]')).toHaveCount(1);

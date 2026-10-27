@@ -7,6 +7,7 @@ use App\Contracts\TahunAnggaranRepository;
 use App\Support\Impor\GagalBacaImpor;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\Impor\BerkasMaster;
+use App\Support\Master\Impor\PratinjauMaster;
 use App\Support\Master\JenisKode;
 use App\Support\Stub\StubData;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +19,8 @@ use Livewire\WithFileUploads;
 /**
  * Formulir unggah berkas master kode (PRD §14) untuk satu tahun anggaran: pilih cakupan (berkas master lengkap atau
  * satu jenis), pilih/seret berkas Excel, lalu sheet tiap jenis dikenali dari namanya (BerkasMaster). Berkas sementara
- * disimpan sampai dibatalkan atau diteruskan ke pratinjau. Khusus admin; tahun terkunci tidak bisa diunggah.
+ * disimpan sampai dibatalkan. *Lanjut ke pratinjau* membaca isi tiap sheet (PratinjauMaster) dan membandingkannya dengan
+ * master tahun ini per jenis (tab, saringan status). Khusus admin; tahun terkunci tidak bisa diunggah.
  */
 class UnggahMaster extends Component
 {
@@ -38,6 +40,20 @@ class UnggahMaster extends Component
 
     #[Locked]
     public ?string $galat = null;
+
+    /** 'unggah' | 'pratinjau' */
+    #[Locked]
+    public string $tahap = 'unggah';
+
+    /** @var array<string, array<string, mixed>> Hasil PratinjauMaster::susun() per jenis. */
+    #[Locked]
+    public array $pratinjau = [];
+
+    /** Jenis yang sedang dilihat di pratinjau. */
+    public string $tabPratinjau = '';
+
+    /** Saringan status baris pratinjau: 'semua' atau kunci PratinjauMaster::STATUS. */
+    public string $saring = 'semua';
 
     public function mount(int $tahun): void
     {
@@ -95,11 +111,72 @@ class UnggahMaster extends Component
         }
     }
 
+    /** Baca isi berkas per jenis lalu tampilkan pratinjau perbandingannya dengan master tahun ini. */
+    public function lanjut(): void
+    {
+        $this->pastikanBoleh();
+        if (! $this->siapDiperiksa()) {
+            return;
+        }
+        if (! $this->berkas instanceof TemporaryUploadedFile || ! is_file($this->berkas->getRealPath())) {
+            $this->reset('terpilih');
+            $this->galat = 'Berkas sementara sudah tidak ada. Pilih berkasnya lagi.';
+
+            return;
+        }
+
+        try {
+            $this->pratinjau = PratinjauMaster::susun($this->berkas->getRealPath(), $this->terpilih['nama'], array_filter($this->sheetDikenali()), $this->tahun);
+        } catch (GagalBacaImpor $e) {
+            $this->galat = $e->getMessage();
+
+            return;
+        }
+        $this->tahap = 'pratinjau';
+        $this->tabPratinjau = (string) array_key_first($this->pratinjau);
+        $this->saring = 'semua';
+    }
+
+    /** Kembali ke pilihan berkas (berkas & cakupan tetap). */
+    public function kembali(): void
+    {
+        $this->reset('pratinjau', 'tabPratinjau', 'saring');
+        $this->tahap = 'unggah';
+    }
+
+    public function updatedTabPratinjau(): void
+    {
+        if (! isset($this->pratinjau[$this->tabPratinjau])) {
+            $this->tabPratinjau = (string) array_key_first($this->pratinjau);
+        }
+        $this->saring = 'semua';
+    }
+
+    public function updatedSaring(): void
+    {
+        if ($this->saring !== 'semua' && ! array_key_exists($this->saring, PratinjauMaster::STATUS)) {
+            $this->saring = 'semua';
+        }
+    }
+
+    /**
+     * Baris pratinjau jenis yang dilihat setelah saringan status.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function barisPratinjau(): array
+    {
+        $baris = $this->pratinjau[$this->tabPratinjau]['baris'] ?? [];
+
+        return $this->saring === 'semua' ? $baris : array_values(array_filter($baris, fn (array $b) => $b['status'] === $this->saring));
+    }
+
     /** Buang berkas terpilih dan mulai lagi (cakupan tetap). */
     public function gantiBerkas(): void
     {
         $this->buangBerkas();
-        $this->reset('terpilih', 'galat');
+        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring');
+        $this->tahap = 'unggah';
     }
 
     public function tutup(): void
