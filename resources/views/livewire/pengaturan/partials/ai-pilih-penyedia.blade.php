@@ -50,7 +50,7 @@
                                 <span class="block font-medium text-stone-900">{{ $p['nama'] }}</span>
                                 <span class="block text-xs {{ $siap ? 'text-stone-500' : 'text-gold-700' }}">
                                     @if (! $siap)
-                                        Perlu {{ implode(', ', $kesiapan[$kunci]['kurang']) }}{{ $p['butuh_kunci'] ? ' — konfigurasi API cloud menyusul' : ' — atur di kartu Server sekolah' }}
+                                        Perlu {{ implode(', ', $kesiapan[$kunci]['kurang']) }}{{ $p['butuh_kunci'] ? ' — atur di kartu API cloud' : ' — atur di kartu Server sekolah' }}
                                     @elseif ($dipakaiLain)
                                         Dipilih sebagai {{ $peran === 'aktif' ? 'cadangan' : 'aktif' }} — memilihnya di sini akan ditolak
                                     @else

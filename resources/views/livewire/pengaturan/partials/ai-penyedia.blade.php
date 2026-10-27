@@ -60,6 +60,8 @@
 
         @include('livewire.pengaturan.partials.ai-lokal', ['ai' => $ai])
 
+        @include('livewire.pengaturan.partials.ai-cloud', ['ai' => $ai])
+
         <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pilihan-penyedia" data-testid="pilihan-penyedia-ai">
             <header class="border-b border-stone-100 px-5 py-4">
                 <h2 id="judul-pilihan-penyedia" class="text-sm font-semibold text-stone-900">Pilihan penyedia</h2>

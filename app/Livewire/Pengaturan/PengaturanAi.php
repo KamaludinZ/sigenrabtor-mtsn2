@@ -11,6 +11,7 @@ use App\Support\Pengaturan\PromptAi;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
+use Illuminate\Support\Facades\Crypt;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -23,7 +24,8 @@ use RuntimeException;
  * (prompt per bagian & gaya bahasa baku — PromptAi), dan `pemakaian` (batas harian BatasAi, pemakaian hari ini per akun,
  * ringkasan riwayat saran AI). Konfigurasi server sekolah (Ollama) lewat formulir bukaLokal() → simpanLokal()
  * (AturanPenyediaAi, PengaturanAiRepository, riwayat `ubah_penyedia_ai`); pemilihan penyedia aktif & cadangan lewat
- * bukaPilihan() → simpanPilihan() (hanya penyedia yang siap); penyedia cloud & prompt menyusul.
+ * bukaPilihan() → simpanPilihan() (hanya penyedia yang siap); penyedia cloud lewat bukaCloud() → simpanCloud() (kunci API
+ * terenkripsi, tidak pernah ditampilkan lagi); prompt & batas menyusul.
  */
 #[Layout('layouts.app')]
 class PengaturanAi extends Component
@@ -38,6 +40,17 @@ class PengaturanAi extends Component
 
     /** @var array{base_url: string, model: string, batas_waktu: int|string|null, peran: string} */
     public array $isianLokal = ['base_url' => '', 'model' => '', 'batas_waktu' => 60, 'peran' => 'tidak'];
+
+    /** Penyedia cloud yang formulirnya terbuka (kunci PenyediaAi). */
+    #[Locked]
+    public ?string $cloudTerbuka = null;
+
+    /** @var array{model: string, kunci: string, hapus_kunci: bool, base_url: string, peran: string} Kunci API tidak pernah diisi dari data tersimpan. */
+    public array $isianCloud = ['model' => '', 'kunci' => '', 'hapus_kunci' => false, 'base_url' => '', 'peran' => 'tidak'];
+
+    /** @var list<string> Peringatan isian cloud yang perlu dikonfirmasi ("Tetap simpan"). */
+    #[Locked]
+    public array $peringatanCloud = [];
 
     /** Pemilihan penyedia aktif & cadangan terbuka. */
     public bool $pilihTerbuka = false;
@@ -85,6 +98,7 @@ class PengaturanAi extends Component
         $this->versi = $ai['diperbarui_pada'];
         $this->resetErrorBag();
         $this->pilihTerbuka = false;
+        $this->cloudTerbuka = null;
         $this->lokalTerbuka = true;
     }
 
@@ -126,6 +140,89 @@ class PengaturanAi extends Component
         $this->dispatch('notify', message: $naik ? 'Konfigurasi server sekolah tersimpan — belum ada penyedia aktif, jadi server sekolah dipakai sebagai penyedia aktif.' : 'Konfigurasi server sekolah tersimpan.', type: 'success');
     }
 
+    /** Buka formulir satu penyedia cloud; kunci API tersimpan tidak pernah dimuat ke formulir. */
+    public function bukaCloud(string $penyedia): void
+    {
+        abort_unless((PenyediaAi::DAFTAR[$penyedia]['jenis'] ?? null) === 'cloud', 404);
+        $ai = app(PengaturanAiRepository::class)->ambil();
+        $konfigurasi = $ai['penyedia'][$penyedia] ?? [];
+        $this->isianCloud = [
+            'model' => (string) ($konfigurasi['model'] ?? ''), 'kunci' => '', 'hapus_kunci' => false,
+            'base_url' => (string) ($konfigurasi['base_url'] ?? ''), 'peran' => AturanPenyediaAi::peranDari($ai, $penyedia),
+        ];
+        $this->versi = $ai['diperbarui_pada'];
+        $this->peringatanCloud = [];
+        $this->resetErrorBag();
+        $this->lokalTerbuka = false;
+        $this->pilihTerbuka = false;
+        $this->cloudTerbuka = $penyedia;
+    }
+
+    public function batalCloud(): void
+    {
+        $this->cloudTerbuka = null;
+        $this->isianCloud['kunci'] = '';
+        $this->peringatanCloud = [];
+        $this->resetErrorBag();
+    }
+
+    /** Kunci yang diketik berubah → peringatan sebelumnya perlu dinilai ulang. */
+    public function updatedIsianCloud(mixed $nilai, ?string $kunci = null): void
+    {
+        if ($kunci === 'kunci') {
+            $this->peringatanCloud = [];
+        }
+    }
+
+    /**
+     * Simpan konfigurasi penyedia cloud: model, alamat API opsional, peran, dan kunci API (baru → disimpan terenkripsi,
+     * hanya 4 karakter terakhir yang tampil; kosong → kunci lama tetap; hapus → dibuang). Peringatan (mis. awalan kunci
+     * tidak lazim) harus dikonfirmasi dengan menyimpan sekali lagi.
+     */
+    public function simpanCloud(): void
+    {
+        $penyedia = $this->cloudTerbuka;
+        abort_unless($penyedia !== null, 404);
+        $this->resetErrorBag();
+
+        $lama = app(PengaturanAiRepository::class)->ambil();
+        $tersimpan = $lama['penyedia'][$penyedia] ?? [];
+        ['data' => $data, 'galat' => $galat, 'peringatan' => $peringatan] = AturanPenyediaAi::cloud($penyedia, $this->isianCloud, $tersimpan);
+        if ($galat !== []) {
+            foreach ($galat as $kolom => $pesan) {
+                $this->addError("isianCloud.{$kolom}", $pesan);
+            }
+
+            return;
+        }
+        if ($peringatan !== [] && $this->peringatanCloud === []) {
+            $this->peringatanCloud = $peringatan;
+
+            return;
+        }
+
+        $konfigurasi = ['model' => $data['model'], 'base_url' => $data['base_url']] + $tersimpan;
+        $catatanKunci = null;
+        if ($data['kunci'] !== null) {
+            $konfigurasi = ['ada_kunci' => true, 'kunci_akhir' => mb_substr($data['kunci'], -4), 'kunci_terenkripsi' => Crypt::encryptString($data['kunci'])] + $konfigurasi;
+            $catatanKunci = 'Kunci API: '.(($tersimpan['ada_kunci'] ?? false) ? 'diganti' : 'diisi');
+        } elseif ($data['hapus_kunci'] && ($tersimpan['ada_kunci'] ?? false)) {
+            $konfigurasi = ['ada_kunci' => false, 'kunci_akhir' => null, 'kunci_terenkripsi' => null] + $konfigurasi;
+            $catatanKunci = 'Kunci API: dihapus';
+        }
+
+        $baru = AturanPenyediaAi::terapkanPeran($lama, $penyedia, $data['peran']);
+        $baru['penyedia'][$penyedia] = $konfigurasi;
+        $ringkas = fn (array $p) => ['model' => $p['penyedia'][$penyedia]['model'] ?? '', 'base_url' => ($p['penyedia'][$penyedia]['base_url'] ?? '') ?: 'alamat resmi'] + self::ringkasPeran($p);
+        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['model' => 'Model', 'base_url' => 'Alamat API'], PenyediaAi::nama($penyedia).' — ', $catatanKunci)) {
+            return;
+        }
+
+        $this->batalCloud();
+        $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === $penyedia;
+        $this->dispatch('notify', message: 'Konfigurasi '.PenyediaAi::nama($penyedia).' tersimpan'.($naik ? ' — belum ada penyedia aktif, jadi dipakai sebagai penyedia aktif.' : '.'), type: 'success');
+    }
+
     /** Buka pemilihan penyedia aktif & cadangan berisi pilihan tersimpan. */
     public function bukaPilihan(): void
     {
@@ -134,6 +231,7 @@ class PengaturanAi extends Component
         $this->versi = $ai['diperbarui_pada'];
         $this->resetErrorBag();
         $this->lokalTerbuka = false;
+        $this->cloudTerbuka = null;
         $this->pilihTerbuka = true;
     }
 
@@ -194,8 +292,9 @@ class PengaturanAi extends Component
      * @param  array<string, mixed>  $baru
      * @param  \Closure(array<string, mixed>): array<string, mixed>  $ringkas
      * @param  array<string, string>  $label
+     * @param  string|null  $tambahan  Catatan riwayat tambahan (mis. "Kunci API: diganti").
      */
-    private function simpanPengaturan(array $lama, array $baru, \Closure $ringkas, array $label, string $awalan): bool
+    private function simpanPengaturan(array $lama, array $baru, \Closure $ringkas, array $label, string $awalan, ?string $tambahan = null): bool
     {
         if ($lama['diperbarui_pada'] !== $this->versi) {
             $this->versi = $lama['diperbarui_pada'];
@@ -206,6 +305,8 @@ class PengaturanAi extends Component
 
         unset($baru['diperbarui_pada']);
         $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), $label + ['aktif' => 'Penyedia aktif', 'cadangan' => 'Penyedia cadangan']);
+        // Kunci API tidak pernah ikut dicatat; hanya keterangan diisi/diganti/dihapus.
+        $perubahan = implode('; ', array_filter([$perubahan, $tambahan])) ?: null;
         try {
             app(PengaturanAiRepository::class)->simpan($baru);
         } catch (RuntimeException $e) {

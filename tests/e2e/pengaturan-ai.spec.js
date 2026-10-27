@@ -93,4 +93,32 @@ test.describe('Pengaturan AI', () => {
         await lokal.getByTestId('simpan-lokal').click();
         await expect(lokal.getByTestId('ringkasan-lokal')).toContainText('Belum diisi');
     });
+
+    test('API cloud: kunci tersimpan hanya tampil 4 karakter terakhir, tidak dimuat ulang, lalu pulihkan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai');
+        const claude = page.getByTestId('penyedia-cloud').locator('[data-cloud="claude"]');
+        await expect(claude.getByTestId('status-kunci-claude')).toContainText('belum ada');
+
+        await claude.getByTestId('atur-claude').click();
+        const formulir = claude.getByTestId('formulir-claude');
+        await formulir.getByLabel('Model').fill('claude-sonnet-5-5');
+        const kunci = formulir.locator('#cloud-kunci');
+        await kunci.fill('sk-ant-contoh-e2e-fiktif-0000WXYZ');
+        await expect(kunci).toHaveAttribute('type', 'password');
+        await formulir.getByRole('button', { name: 'Tampilkan kunci yang sedang diketik' }).click();
+        await expect(kunci).toHaveAttribute('type', 'text');
+        await formulir.getByTestId('simpan-cloud').click();
+        await expect(page.getByText('Konfigurasi Claude (Anthropic) tersimpan.')).toBeVisible();
+        await expect(claude.getByTestId('status-kunci-claude')).toContainText('•••• WXYZ');
+        await expect(page.locator('body')).not.toContainText('sk-ant-contoh-e2e-fiktif');
+
+        // Dibuka lagi: kunci tidak dimuat ke isian. Pulihkan: hapus kunci & model.
+        await claude.getByTestId('atur-claude').click();
+        await expect(formulir.locator('#cloud-kunci')).toHaveValue('');
+        await formulir.getByLabel('Model').fill('');
+        await formulir.getByTestId('hapus-kunci').check();
+        await formulir.getByTestId('simpan-cloud').click();
+        await expect(claude.getByTestId('status-kunci-claude')).toContainText('belum ada');
+    });
 });

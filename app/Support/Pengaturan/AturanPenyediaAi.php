@@ -109,6 +109,56 @@ final class AturanPenyediaAi
         return ['pengaturan' => ['provider_aktif' => $aktif, 'provider_cadangan' => $cadangan] + $pengaturan, 'galat' => $galat];
     }
 
+    /** Awalan kunci API yang lazim per penyedia cloud (hanya untuk peringatan salah tempel). */
+    public const AWALAN_KUNCI = ['claude' => 'sk-ant-', 'openai' => 'sk-', 'gemini' => 'AIza'];
+
+    /**
+     * Rapikan & periksa isian penyedia cloud. Kunci API kosong = tetap memakai kunci tersimpan (bila ada); `hapus_kunci`
+     * membuang kunci tersimpan. Kunci tidak pernah dikembalikan dalam bentuk utuh selain di `data.kunci` untuk disimpan.
+     *
+     * @param  array{model?: mixed, kunci?: mixed, hapus_kunci?: mixed, base_url?: mixed, peran?: mixed}  $isian
+     * @param  array<string, mixed>  $tersimpan  Konfigurasi penyedia ini yang tersimpan.
+     * @return array{data: array{model: string, kunci: string|null, hapus_kunci: bool, base_url: string, peran: string}, galat: array<string, string>, peringatan: list<string>}
+     */
+    public static function cloud(string $penyedia, array $isian, array $tersimpan): array
+    {
+        $data = [
+            'model' => trim((string) ($isian['model'] ?? '')),
+            'kunci' => trim((string) ($isian['kunci'] ?? '')) ?: null,
+            'hapus_kunci' => (bool) ($isian['hapus_kunci'] ?? false),
+            'base_url' => rtrim(trim((string) ($isian['base_url'] ?? '')), '/'),
+            'peran' => (string) ($isian['peran'] ?? 'tidak'),
+        ];
+        $galat = [];
+        $peringatan = [];
+        $dipakai = $data['peran'] !== 'tidak';
+
+        if ($data['model'] === '' && $dipakai) {
+            $galat['model'] = 'Nama model wajib diisi bila penyedia ini dipakai.';
+        } elseif ($data['model'] !== '' && (mb_strlen($data['model']) > 100 || ! preg_match('/^[a-z0-9][a-z0-9._:\/-]*$/i', $data['model']))) {
+            $galat['model'] = 'Nama model hanya huruf, angka, titik, titik dua, garis miring, dan tanda hubung.';
+        }
+
+        $adaKunci = $data['kunci'] !== null || (! $data['hapus_kunci'] && ($tersimpan['ada_kunci'] ?? false));
+        if ($data['kunci'] !== null && (preg_match('/\s/', $data['kunci']) || mb_strlen($data['kunci']) < 20 || mb_strlen($data['kunci']) > 300)) {
+            $galat['kunci'] = 'Kunci API 20–300 karakter tanpa spasi — salin utuh dari dasbor penyedia.';
+        } elseif (! $adaKunci && $dipakai) {
+            $galat['kunci'] = 'Kunci API wajib diisi bila penyedia ini dipakai.';
+        } elseif ($data['kunci'] !== null && isset(self::AWALAN_KUNCI[$penyedia]) && ! str_starts_with($data['kunci'], self::AWALAN_KUNCI[$penyedia])) {
+            $peringatan[] = 'Kunci '.PenyediaAi::nama($penyedia).' biasanya diawali "'.self::AWALAN_KUNCI[$penyedia].'" — pastikan tidak tertukar dengan penyedia lain.';
+        }
+
+        $url = parse_url($data['base_url']);
+        if ($data['base_url'] !== '' && (! is_array($url) || ($url['scheme'] ?? '') !== 'https' || blank($url['host'] ?? null) || isset($url['query']))) {
+            $galat['base_url'] = 'Alamat API harus https://…, atau kosongkan untuk memakai alamat resmi penyedia.';
+        }
+        if (! array_key_exists($data['peran'], self::PERAN)) {
+            $galat['peran'] = 'Pilih peran penyedia.';
+        }
+
+        return ['data' => $data, 'galat' => $galat, 'peringatan' => $peringatan];
+    }
+
     /** Peran $penyedia dalam pengaturan: aktif, cadangan, atau tidak. */
     public static function peranDari(array $pengaturan, string $penyedia): string
     {
