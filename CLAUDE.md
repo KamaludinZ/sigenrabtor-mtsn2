@@ -10,6 +10,7 @@ Nama & versi tampilan diatur di `config/sigenrabtor.php` (`aplikasi.nama`, `apli
 
 ## Perintah
 - Jalankan: `php artisan serve` + `npm run dev` (atau `npm run build`).
+- Migrasi: `php artisan migrate` (PostgreSQL harus berjalan; `migrate:reset` lalu `migrate` diuji `SkemaKegiatanTest` — setiap migrasi wajib punya `down()` yang bersih).
 - Tes: `php artisan test` · E2E: `npm run test:e2e` (Playwright, channel chrome, server port 8010) · Format: `vendor/bin/pint`.
 
 ## Konvensi

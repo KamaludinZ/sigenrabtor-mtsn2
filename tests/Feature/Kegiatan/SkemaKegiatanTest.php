@@ -109,6 +109,19 @@ class SkemaKegiatanTest extends TestCase
         $this->assertNull(DB::table('activities')->find($salinan)->duplikat_dari_id);
     }
 
+    public function test_migrasi_bisa_dibatalkan_dan_dijalankan_ulang(): void
+    {
+        $tabel = ['activities', 'anggaran_kegiatan', 'committees', 'riwayat_status_kegiatan'];
+        $ada = fn () => array_values(array_filter($tabel, Schema::hasTable(...)));
+
+        // DDL PostgreSQL ikut transaksi tes, jadi basis data tes kembali utuh sesudahnya.
+        $this->artisan('migrate:reset')->assertSuccessful();
+        $this->assertSame([], $ada());
+
+        $this->artisan('migrate')->assertSuccessful();
+        $this->assertSame($tabel, $ada());
+    }
+
     public function test_waktu_bermikrodetik_untuk_versi(): void
     {
         $id = $this->kegiatan(['updated_at' => '2026-01-03 08:00:00.123456+07']);
