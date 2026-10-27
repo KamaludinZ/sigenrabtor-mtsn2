@@ -57,7 +57,7 @@ class KeputusanPemeriksaanTest extends TestCase
             ->assertDispatched('notify', message: 'Kegiatan dikembalikan ke leading beserta catatan perbaikannya.')
             ->assertSee('Menunggu perbaikan')
             ->assertDontSee('Catatan untuk leading')
-            ->assertSeeInOrder(['Riwayat status', 'Dikembalikan untuk perbaikan', 'Koordinator PUSKOM', 'Sasaran belum terukur.', 'Sesuaikan honor narasumber.']);
+            ->assertSeeInOrder(['Riwayat pemeriksaan', 'Dikembalikan untuk perbaikan', 'Koordinator PUSKOM', 'Sasaran belum terukur.', 'Sesuaikan honor narasumber.']);
 
         $kegiatan = app(KegiatanRepository::class)->temukan($id);
         $this->assertSame('dikembalikan', $kegiatan['status']);
@@ -156,7 +156,7 @@ class KeputusanPemeriksaanTest extends TestCase
             ->call('putuskan', 'buka_kunci')
             ->assertDispatched('notify', message: 'Kunci dibuka — leading dapat memperbaiki data lalu mengajukan ulang.')
             ->assertSee('Menunggu perbaikan')
-            ->assertSeeInOrder(['Riwayat status', 'Kunci dibuka', 'Koordinator PUSKOM', 'Nama narasumber pada RAB Komite salah ketik.']);
+            ->assertSeeInOrder(['Riwayat pemeriksaan', 'Kunci dibuka', 'Koordinator PUSKOM', 'Nama narasumber pada RAB Komite salah ketik.']);
 
         $terakhir = end(app(KegiatanRepository::class)->temukan($id)['riwayat_status']);
         $this->assertSame(['buka_kunci', 'dikembalikan', 'Koordinator PUSKOM', 'Nama narasumber pada RAB Komite salah ketik.'], [$terakhir['aksi'], $terakhir['status'], $terakhir['oleh'], $terakhir['catatan']]);

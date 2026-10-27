@@ -100,7 +100,7 @@ class PeriksaDokumenTest extends TestCase
             ->assertSee('Diajukan 4 Mar 2026, 09.00 oleh Muslimin, M.Pd.')
             ->assertSee('Keputusan pemeriksaan')
             ->assertSee('Catatan untuk leading')
-            ->assertSeeInOrder(['Riwayat status', 'Diajukan untuk diperiksa', 'Draf dibuat']);
+            ->assertSeeInOrder(['Riwayat pemeriksaan', 'Diajukan untuk diperiksa', 'Draf dibuat']);
 
         Livewire::test(Periksa::class, ['kegiatan' => 1])
             ->assertDontSeeHtml('data-testid="posisi-antrean"')

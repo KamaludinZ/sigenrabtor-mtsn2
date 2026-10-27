@@ -5,6 +5,7 @@ namespace App\Livewire\Pemeriksaan;
 use App\Contracts\KegiatanRepository;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
+use App\Support\Pemeriksaan\RiwayatPemeriksaan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -13,8 +14,9 @@ use Livewire\Component;
 
 /**
  * Pemeriksaan (PRD Fase 6 §16, F17–F18): daftar kegiatan tahun aktif per status alur mutu — tab di `?status=` (bawaan
- * Perlu diperiksa), cari nama di `?cari=`, saringan leading di `?leading=`. Panel periksa (catatan, setujui/kembalikan),
- * arsip final, dan buka kunci menyusul. Khusus admin.
+ * Perlu diperiksa), cari nama di `?cari=`, saringan leading di `?leading=` — atau, dengan `?tampilan=riwayat`, log
+ * riwayat pemeriksaan semua kegiatan (RiwayatPemeriksaan::log, saringan aksi `?aksi=`). Detail & keputusan per kegiatan
+ * di `Pemeriksaan\Periksa`. Khusus admin.
  */
 #[Layout('layouts.app')]
 class Daftar extends Component
@@ -28,9 +30,56 @@ class Daftar extends Component
     #[Url(except: '')]
     public string $leading = '';
 
+    /** Tampilan halaman: antrean per status, atau log riwayat pemeriksaan semua kegiatan. */
+    #[Url(except: 'antrean')]
+    public string $tampilan = 'antrean';
+
+    /** Saringan aksi log riwayat (kunci RiwayatPemeriksaan::AKSI). */
+    #[Url(except: '')]
+    public string $aksi = '';
+
+    /** Jumlah baris log yang ditampilkan ("Tampilkan lebih banyak" menambah PER_HALAMAN). */
+    public int $batas = self::PER_HALAMAN;
+
+    public const PER_HALAMAN = 30;
+
     public function mount(): void
     {
         $this->updatedTab();
+        $this->updatedTampilan();
+        $this->updatedAksi();
+    }
+
+    public function updatedTampilan(): void
+    {
+        if (! in_array($this->tampilan, ['antrean', 'riwayat'], true)) {
+            $this->tampilan = 'antrean';
+        }
+        $this->batas = self::PER_HALAMAN;
+    }
+
+    public function updatedAksi(): void
+    {
+        if (! array_key_exists($this->aksi, RiwayatPemeriksaan::AKSI)) {
+            $this->aksi = '';
+        }
+        $this->batas = self::PER_HALAMAN;
+    }
+
+    public function tampilkanLebih(): void
+    {
+        $this->batas += self::PER_HALAMAN;
+    }
+
+    /**
+     * Log riwayat pemeriksaan tahun aktif tersaring (cari, leading, aksi), terbaru dulu.
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function log(): array
+    {
+        return RiwayatPemeriksaan::log(app(KegiatanRepository::class)->semua(), StubData::tahunAktif()['tahun'], ['aksi' => $this->aksi, 'leading' => $this->leading, 'cari' => $this->cari]);
     }
 
     public function updatedTab(): void
@@ -77,7 +126,7 @@ class Daftar extends Component
 
     public function hapusSaringan(): void
     {
-        $this->reset('cari', 'leading');
+        $this->reset('cari', 'leading', 'aksi', 'batas');
     }
 
     public function render()

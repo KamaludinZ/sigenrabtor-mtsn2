@@ -11,7 +11,6 @@
     $susunan = $dokumen === 'rab' ? $rab : $kak;
     $sumberAktif = $kak->sumber;
     $antrean = $this->antrean();
-    $riwayat = $this->riwayat();
     $waktu = fn (string $pada) => Carbon::parse($pada)->locale('id')->translatedFormat('j M Y, H.i');
     $status = $r['status'];
 @endphp
@@ -165,27 +164,7 @@
         {{-- Keputusan pemeriksaan --}}
         @include('livewire.pemeriksaan.partials.panel-keputusan')
 
-        {{-- Riwayat status --}}
-        <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:col-start-2 lg:row-start-3" aria-labelledby="judul-riwayat" data-testid="riwayat-pemeriksaan">
-            <h2 id="judul-riwayat" class="text-sm font-semibold text-stone-900">Riwayat status</h2>
-            @if ($riwayat === [])
-                <p class="mt-2 text-xs text-stone-500">Belum ada perubahan status.</p>
-            @else
-                <ol class="mt-2 space-y-3">
-                    @foreach ($riwayat as $jejak)
-                        <li class="flex gap-2 text-xs">
-                            <span @class(['mt-1 size-2 shrink-0 rounded-full', 'bg-brand-600' => $loop->first, 'bg-stone-300' => ! $loop->first])></span>
-                            <span class="min-w-0">
-                                <span class="font-medium text-stone-800">{{ StatusKegiatan::labelRiwayat($jejak['aksi']) }}</span>
-                                <span class="block text-stone-500">{{ $jejak['oleh'] }} · {{ $waktu($jejak['pada']) }}</span>
-                                @if ($jejak['catatan'])
-                                    <span class="mt-1 block rounded-lg bg-stone-50 px-2 py-1 whitespace-pre-line text-stone-700 ring-1 ring-stone-100">{{ $jejak['catatan'] }}</span>
-                                @endif
-                            </span>
-                        </li>
-                    @endforeach
-                </ol>
-            @endif
-        </section>
+        {{-- Riwayat pemeriksaan per putaran --}}
+        @include('livewire.pemeriksaan.partials.riwayat-putaran', ['putaran' => $this->putaran])
     </div>
 </div>

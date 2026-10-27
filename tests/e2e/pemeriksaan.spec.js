@@ -220,6 +220,27 @@ test.describe('Pemeriksaan', () => {
         await expect(page.getByTestId('banner-perbaikan').getByTestId('catatan-perbaikan')).toContainText('Nama kegiatan di cover salah ketik.');
         await expect(page.getByTestId('panel-arsip-final')).toHaveCount(0);
 
+        // Riwayat pemeriksaan: per putaran di detail, lalu log semua kegiatan di halaman Pemeriksaan.
+        await page.goto('/demo/peran/admin');
+        await page.goto(`/pemeriksaan/${id}`);
+        const riwayat = page.getByTestId('riwayat-pemeriksaan');
+        await expect(riwayat.getByTestId('jumlah-putaran')).toHaveText('2× diajukan');
+        await expect(riwayat.locator('[data-putaran="2"]')).toHaveAttribute('data-hasil', 'dibuka');
+        await expect(riwayat.locator('[data-putaran="1"]')).toHaveAttribute('data-hasil', 'dikembalikan');
+        await expect(riwayat.locator('[data-putaran="2"] [data-aksi="unggah_arsip"]')).toContainText('Arsip final RAB DIPA diunggah');
+
+        await page.goto('/pemeriksaan');
+        await page.getByTestId('tampilan-pemeriksaan').getByRole('button', { name: 'Riwayat' }).click();
+        await expect(page).toHaveURL(/tampilan=riwayat/);
+        const log = page.getByTestId('log-riwayat');
+        await log.getByLabel('Aksi').selectOption('buka_kunci');
+        await log.getByRole('searchbox', { name: 'Cari riwayat' }).fill(`Kegiatan Pemeriksaan ${testInfo.project.name}`);
+        await expect(page).toHaveURL(/aksi=buka_kunci/);
+        await expect(log.locator(`li[data-kegiatan="${id}"][data-aksi="buka_kunci"]`)).toContainText('Nama kegiatan di cover salah ketik.');
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/riwayat-pemeriksaan-${testInfo.project.name}.png`, fullPage: true });
+
         await page.goto('/demo/peran/leading');
     });
 });

@@ -12,6 +12,7 @@ use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
+use App\Support\Pemeriksaan\RiwayatPemeriksaan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Stub\StubData;
@@ -151,19 +152,14 @@ class Periksa extends Component
     }
 
     /**
-     * Riwayat status terbaru lebih dulu.
+     * Riwayat pemeriksaan per putaran pengajuan (terbaru dulu), termasuk unggahan arsip final.
      *
-     * @return list<array{aksi: string, oleh: string, peran: string|null, pada: string, catatan: string|null}>
+     * @return list<array<string, mixed>>
      */
-    public function riwayat(): array
+    #[Computed]
+    public function putaran(): array
     {
-        return array_reverse(array_map(fn (array $r) => [
-            'aksi' => (string) ($r['aksi'] ?? ''),
-            'oleh' => (string) ($r['oleh'] ?? ''),
-            'peran' => $r['peran'] ?? null,
-            'pada' => (string) ($r['pada'] ?? ''),
-            'catatan' => filled($r['catatan'] ?? null) ? (string) $r['catatan'] : null,
-        ], array_values((array) ($this->dataKegiatan['riwayat_status'] ?? []))));
+        return RiwayatPemeriksaan::putaran($this->dataKegiatan, app(ArsipFinalRepository::class)->untukKegiatan($this->kegiatanId));
     }
 
     /**
@@ -242,7 +238,7 @@ class Periksa extends Component
         app(KegiatanRepository::class)->simpan($data, $this->kegiatanId);
 
         $this->catatan = '';
-        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan);
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan, $this->putaran);
         $this->dispatch('notify', message: match ($aksi) {
             'setujui' => 'Kegiatan disetujui — leading dapat mencetak dan menandatangani dokumennya.',
             'buka_kunci' => 'Kunci dibuka — leading dapat memperbaiki data lalu mengajukan ulang.',
@@ -267,7 +263,7 @@ class Periksa extends Component
 
     private function berubahDiTempatLain(): bool
     {
-        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan);
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan, $this->putaran);
         if ($this->sidik() === $this->versi) {
             return false;
         }
