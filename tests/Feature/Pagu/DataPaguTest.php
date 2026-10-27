@@ -65,7 +65,7 @@ class DataPaguTest extends TestCase
 
         session(['stub_role' => 'admin']);
         Livewire::test(Daftar::class)
-            ->assertSeeHtmlInOrder(['data-testid="ringkasan-pagu"', 'Data', '6', 'Belum jadi kegiatan', '3'])
+            ->assertSeeHtmlInOrder(['data-testid="ringkasan-pagu"', 'data-stat="jumlah"', 'Data pagu', '6', '3 sudah jadi kegiatan', 'data-stat="belum"', '3', 'data-stat="DIPA"', 'Rp', 'data-stat="Komite"', 'Rp', 'data-testid="daftar-pagu"'])
             ->assertSeeHtml('href="'.route('kegiatan.create', ['pagu' => self::PAGU_BARU]).'"')
             ->set('pemakaian', 'belum')
             ->assertDontSee('Review RKJM dan Penyusunan RKTM')

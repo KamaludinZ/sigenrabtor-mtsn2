@@ -99,20 +99,24 @@ class Daftar extends Component
     }
 
     /**
-     * Jumlah & total pagu per sumber dana dari data tersaring.
+     * Stats overview dari data tersaring: jumlah data, yang belum/sudah jadi kegiatan, total pagu & banyaknya data berpagu
+     * per sumber dana.
      *
-     * @return array{jumlah: int, belum: int, pagu: array<string, int>}
+     * @return array{jumlah: int, belum: int, sudah: int, pagu: array<string, int>, berpagu: array<string, int>}
      */
     public function ringkasan(): array
     {
         $pagu = array_fill_keys(SumberDana::urutan(), 0);
+        $berpagu = $pagu;
         foreach ($this->terfilter as $p) {
             foreach ($p['pagu'] as $s => $v) {
                 $pagu[$s] += (int) $v;
+                $berpagu[$s] += (int) $v > 0 ? 1 : 0;
             }
         }
+        $belum = count(array_filter($this->terfilter, fn ($p) => $this->dipakai[$p['id']] === null));
 
-        return ['jumlah' => count($this->terfilter), 'belum' => count(array_filter($this->terfilter, fn ($p) => $this->dipakai[$p['id']] === null)), 'pagu' => $pagu];
+        return ['jumlah' => count($this->terfilter), 'belum' => $belum, 'sudah' => count($this->terfilter) - $belum, 'pagu' => $pagu, 'berpagu' => $berpagu];
     }
 
     public function tambah(): void

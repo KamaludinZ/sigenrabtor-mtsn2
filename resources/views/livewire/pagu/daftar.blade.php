@@ -78,15 +78,33 @@
         </form>
     @endif
 
+    {{-- Stats overview: mengikuti saringan daftar di bawahnya. --}}
+    <section class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" aria-label="Ringkasan data pagu" data-testid="ringkasan-pagu">
+        <article class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:p-5" data-stat="jumlah">
+            <h2 class="text-xs font-semibold text-stone-500">Data pagu</h2>
+            <p class="mt-1 text-2xl font-bold text-stone-900 tabular-nums">{{ Format::angka($ringkas['jumlah']) }}</p>
+            <p class="mt-2 text-xs text-stone-500">{{ $ringkas['sudah'] }} sudah jadi kegiatan</p>
+        </article>
+        <article class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:p-5" data-stat="belum">
+            <h2 class="text-xs font-semibold text-stone-500">Belum jadi kegiatan</h2>
+            <p class="mt-1 text-2xl font-bold text-stone-900 tabular-nums">{{ Format::angka($ringkas['belum']) }}</p>
+            <p class="mt-2 text-xs text-stone-500">Siap dibuat kegiatan</p>
+        </article>
+        @foreach ($ringkas['pagu'] as $s => $total)
+            <article class="col-span-2 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:col-span-1 sm:p-5" data-stat="{{ $s }}">
+                <h2 class="flex items-center gap-1.5 text-xs font-semibold text-stone-500">Pagu <x-rab.lencana-sumber :sumber="$s" class="text-[10px]" /></h2>
+                <p class="mt-1 text-2xl font-bold text-stone-900 tabular-nums"><x-ui.uang :nilai="$total" /></p>
+                <p class="mt-2 text-xs text-stone-500">{{ $ringkas['berpagu'][$s] }} data berpagu {{ $s }}</p>
+            </article>
+        @endforeach
+    </section>
+
     <section class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-label="Daftar data pagu" data-testid="daftar-pagu">
         <div class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-            <dl class="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="ringkasan-pagu">
-                <div class="flex gap-1.5"><dt class="text-stone-500">Data</dt><dd class="font-semibold text-stone-900 tabular-nums">{{ $ringkas['jumlah'] }}</dd></div>
-                <div class="flex gap-1.5"><dt class="text-stone-500">Belum jadi kegiatan</dt><dd class="font-semibold text-stone-900 tabular-nums">{{ $ringkas['belum'] }}</dd></div>
-                @foreach ($ringkas['pagu'] as $s => $total)
-                    <div class="flex items-center gap-1.5"><dt><x-rab.lencana-sumber :sumber="$s" class="text-[10px]" /></dt><dd class="font-semibold text-stone-900 tabular-nums">{{ Format::rupiah($total) }}</dd></div>
-                @endforeach
-            </dl>
+            <div class="min-w-0">
+                <h2 class="text-base font-semibold text-stone-900">Daftar data pagu</h2>
+                <p class="mt-0.5 text-xs text-stone-500">{{ $adaSaringan ? 'Menampilkan '.count($baris).' dari '.count($this->semua).' data sesuai saringan.' : count($baris).' data TA '.$tahun.'.' }}</p>
+            </div>
             <div class="grid gap-2 sm:grid-cols-3 lg:w-[38rem]">
                 <label class="sm:col-span-1">
                     <span class="sr-only">Cari nama kegiatan</span>
