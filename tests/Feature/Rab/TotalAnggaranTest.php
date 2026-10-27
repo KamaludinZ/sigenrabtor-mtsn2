@@ -8,8 +8,10 @@ use App\Repositories\EloquentKegiatanRepository;
 use App\Repositories\EloquentRabRepository;
 use App\Support\Stub\StubKegiatanRepository;
 use App\Support\Stub\StubRab;
+use App\Support\Terbilang;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TotalAnggaranTest extends TestCase
@@ -34,7 +36,34 @@ class TotalAnggaranTest extends TestCase
             ->assertJsonPath('sumber.1.sumber', 'Komite');
 
         $this->assertSame($respons->json('sumber.0.total') + $respons->json('sumber.1.total'), $respons->json('total'));
-        $this->assertSame(['jumlah', 'total', 'status', 'keterangan'], array_keys($respons->json('sumber.1.termin')));
+        $this->assertSame(['jumlah', 'total', 'status', 'keterangan', 'baris'], array_keys($respons->json('sumber.1.termin')));
+    }
+
+    public function test_terbilang_setiap_nominal_dari_layanan_terbilang(): void
+    {
+        $this->getJson(route('kegiatan.total_anggaran', ['kegiatan' => 1]))
+            ->assertOk()
+            ->assertJsonPath('dokumen', 'Rp10.000.000,- (Sepuluh Juta Rupiah)')
+            ->assertJsonPath('sumber.0.pagu_terbilang', 'Sepuluh Juta Rupiah')
+            ->assertJsonPath('sumber.0.termin.status', 'pas')
+            ->assertJsonPath('sumber.0.termin.baris.0', ['nomor' => 1, 'tanggal' => '2026-06-17', 'nominal' => 7_680_000, 'terbilang' => 'Tujuh Juta Enam Ratus Delapan Puluh Ribu Rupiah', 'dokumen' => 'Rp7.680.000,- (Tujuh Juta Enam Ratus Delapan Puluh Ribu Rupiah)', 'persen' => 76.8])
+            ->assertJsonPath('sumber.0.termin.baris.1.terbilang', 'Dua Juta Tiga Ratus Dua Puluh Ribu Rupiah');
+
+        // Setiap pasangan nominal–terbilang di respons memakai Terbilang yang sama dengan layar & dokumen.
+        foreach ([1, 2, 3] as $id) {
+            $json = $this->getJson(route('kegiatan.total_anggaran', ['kegiatan' => $id]))->json();
+            $pasangan = [[$json['total'], $json['terbilang']]];
+            foreach ($json['sumber'] as $s) {
+                $pasangan[] = [$s['total'], $s['terbilang']];
+                $pasangan[] = [$s['pagu'], $s['pagu_terbilang']];
+                foreach ($s['termin']['baris'] as $b) {
+                    $pasangan[] = [$b['nominal'], $b['terbilang']];
+                }
+            }
+            foreach ($pasangan as [$nominal, $terbilang]) {
+                $this->assertSame(Terbilang::tampil($nominal), $terbilang, "Kegiatan {$id}: {$nominal}");
+            }
+        }
     }
 
     public function test_hak_akses_dan_kegiatan_tidak_ada(): void
@@ -64,6 +93,11 @@ class TotalAnggaranTest extends TestCase
             app(RabRepository::class)->simpanTermin($id, $sumber, StubRab::termin(2, $sumber));
         }
 
-        $this->assertSame(Arr::except($tiruan, 'kegiatan_id'), Arr::except($this->getJson(route('kegiatan.total_anggaran', ['kegiatan' => $id]))->assertOk()->json(), 'kegiatan_id'));
+        $basisData = $this->getJson(route('kegiatan.total_anggaran', ['kegiatan' => $id]))->assertOk()->json();
+        $this->assertSame(Arr::except($tiruan, 'kegiatan_id'), Arr::except($basisData, 'kegiatan_id'));
+
+        // Terbilang tersimpan di anggaran_kegiatan sama dengan yang dikirim endpoint.
+        $tersimpan = DB::table('anggaran_kegiatan')->where('activity_id', $id)->where('dipilih', true)->pluck('terbilang', 'sumber_dana')->all();
+        $this->assertSame(array_column($basisData['sumber'], 'terbilang', 'sumber'), $tersimpan);
     }
 }
