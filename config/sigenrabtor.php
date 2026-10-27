@@ -62,6 +62,7 @@ return [
         'notifikasi_file' => env('STUB_NOTIFIKASI_FILE', 'stub/notifikasi.json'),
         'buku_file' => env('STUB_BUKU_FILE', 'stub/buku-dokumen.json'),
         'pemakaian_ai_file' => env('STUB_PEMAKAIAN_AI_FILE', 'stub/pemakaian-ai.json'),
+        'riwayat_saran_ai_file' => env('STUB_RIWAYAT_SARAN_AI_FILE', 'stub/riwayat-saran-ai.json'),
     ],
 
     /*

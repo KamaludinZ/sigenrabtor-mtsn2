@@ -14,6 +14,7 @@ use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\PermintaanSaranKalimat;
+use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\TombolAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
@@ -73,6 +74,10 @@ class KalimatAi extends Component
 
     /** Teks versi terpilih yang sedang disunting di modal (state klien, terkirim bersama aksi berikutnya). */
     public string $suntingSaran = '';
+
+    /** @var array<string, string> Id permintaan terakhir di riwayat saran AI per bagian (RiwayatSaranAi). */
+    #[Locked]
+    public array $permintaanAi = [];
 
     /** @var array<string, string> Teks isian sebelum saran AI dipakai (bagian → teks), untuk Urungkan. */
     #[Locked]
@@ -250,6 +255,7 @@ class KalimatAi extends Component
         }
 
         $this->saran[$bagian] = $saran;
+        $this->permintaanAi[$bagian] = RiwayatSaranAi::catat($this->kegiatanId, $bagian, RiwayatSaranAi::prompt($permintaan), $permintaan->instruksi, $saran, $pengguna);
         $this->bukaSaran($bagian);
     }
 
@@ -296,6 +302,9 @@ class KalimatAi extends Component
             return;
         }
 
+        if (isset($this->permintaanAi[$bagian])) {
+            RiwayatSaranAi::putuskan($this->permintaanAi[$bagian], $this->versiDipilih, $teks);
+        }
         $this->teksSebelum[$bagian] ??= (string) $this->form->{$kolom};
         $this->form->{$kolom} = $teks;
         if ($kolom === 'nama_kegiatan_cover') {
@@ -333,7 +342,10 @@ class KalimatAi extends Component
     {
         $bagian = $this->saranTerbuka;
         abort_unless($bagian !== null, 404);
-        unset($this->saran[$bagian]);
+        if (isset($this->permintaanAi[$bagian])) {
+            RiwayatSaranAi::putuskan($this->permintaanAi[$bagian], null);
+        }
+        unset($this->saran[$bagian], $this->permintaanAi[$bagian]);
         $this->saranTerbuka = null;
         $this->dispatch('notify', message: 'Saran AI ditolak — isian tidak berubah.', type: 'info');
     }

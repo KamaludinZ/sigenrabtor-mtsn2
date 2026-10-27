@@ -216,7 +216,9 @@
                 <ul class="mt-2 space-y-1.5 text-xs text-stone-600">
                     <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> Angka, kode, dan nama pejabat tidak pernah diubah AI.</li>
                     <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> NIP dan nama pejabat tidak dikirim ke penyedia AI.</li>
-                    <li class="flex items-start gap-2"><x-ui.icon name="history" class="mt-px size-3.5 shrink-0 text-stone-400" /> Setiap saran tercatat di riwayat saran AI.</li>
+                    <li class="flex items-start gap-2"><x-ui.icon name="history" class="mt-px size-3.5 shrink-0 text-stone-400" />
+                        <span>Setiap saran tercatat — <a href="{{ route('saran_ai.index', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800" data-testid="tautan-riwayat-saran">lihat riwayat saran AI kegiatan ini</a>.</span>
+                    </li>
                     <li class="flex items-start gap-2"><x-ui.icon name="info" class="mt-px size-3.5 shrink-0 text-stone-400" />
                         {{ $ringkasan['penyedia'] ? 'Penyedia: '.$ringkasan['penyedia'].'.' : 'Penyedia AI belum dipilih admin — saran memakai contoh tiruan.' }}
                     </li>

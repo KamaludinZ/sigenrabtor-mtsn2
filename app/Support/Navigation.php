@@ -27,6 +27,7 @@ class Navigation
                     ['label' => 'Data Pagu', 'icon' => 'wallet', 'route' => 'pagu.index', 'active' => 'pagu.*'],
                     ['label' => 'Riwayat Dokumen', 'icon' => 'history', 'route' => 'dokumen.index', 'active' => 'dokumen.*'],
                     ['label' => 'Buku Dokumen', 'icon' => 'book', 'route' => 'buku.index', 'active' => 'buku.*'],
+                    ['label' => 'Riwayat Saran AI', 'icon' => 'sparkles', 'route' => 'saran_ai.index', 'active' => 'saran_ai.*'],
                 ],
             ],
             [

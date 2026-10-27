@@ -34,6 +34,7 @@ use App\Livewire\Pengaturan\ProfilMadrasah as PengaturanProfilMadrasah;
 use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
+use App\Livewire\SaranAi\Riwayat as SaranAiRiwayat;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +54,7 @@ Route::get('/data-pagu/template', UnduhTemplateDataPagu::class)->middleware(Hany
 Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegiatan')->name('kegiatan.edit');
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
 Route::get('/kegiatan/{kegiatan}/kalimat', KegiatanKalimatAi::class)->whereNumber('kegiatan')->name('kegiatan.kalimat');
+Route::get('/riwayat-saran-ai', SaranAiRiwayat::class)->name('saran_ai.index');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');

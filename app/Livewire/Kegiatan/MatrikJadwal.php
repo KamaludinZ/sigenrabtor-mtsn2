@@ -11,10 +11,12 @@ use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
+use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\PermintaanUsulanJadwal;
+use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
@@ -86,6 +88,10 @@ class MatrikJadwal extends Component
 
     /** Panel "Usulkan dengan AI" (PRD F10 Usul Jadwal AI): permintaan → 2–3 versi usulan → pakai salah satu atau tolak. */
     public bool $usulTerbuka = false;
+
+    /** Id permintaan usulan terakhir di riwayat saran AI (RiwayatSaranAi). */
+    #[Locked]
+    public ?string $permintaanUsulan = null;
 
     /** Jenis kegiatan acuan usulan (kunci KonteksAi::jenisKegiatan()); ditebak dari nama kegiatan saat panel dibuka. */
     public string $usulJenis = '';
@@ -329,6 +335,15 @@ class MatrikJadwal extends Component
             return;
         }
         BatasAi::catat($pengguna, 'usul_jadwal');
+        if ($this->usulan !== []) {
+            $tahun = StubData::tahunAktif()['tahun'];
+            $versi = array_map(fn (array $u) => [
+                'judul' => $u['judul'], 'ciri' => $u['ciri'],
+                'teks' => implode("\n", array_map(fn (array $b) => $b['uraian'].' — '.(JadwalPelaksanaan::teksBulan($b['mulai'] ? range($b['mulai'], $b['sampai'] ?? $b['mulai']) : [], $tahun) ?? 'bulan belum diisi'), $u['baris'])),
+            ], $this->usulan);
+            $prompt = implode("\n", ['Bagian: Jadwal kegiatan (Bagian 7 · Jadwal Kegiatan)', 'Jenis kegiatan: '.(KonteksAi::jenisKegiatan()[$permintaan->jenis] ?? $permintaan->jenis), 'Instruksi: '.($permintaan->instruksi ?: '-'), 'Bahan kegiatan:', $permintaan->bahan]);
+            $this->permintaanUsulan = RiwayatSaranAi::catat($this->kegiatanId, 'jadwal', $prompt, $permintaan->instruksi, $versi, $pengguna);
+        }
 
         if ($this->usulan === []) {
             $this->usulGagal = 'AI tidak memberi usulan yang bisa dipakai. Coba lagi atau ubah instruksi.';
@@ -345,6 +360,10 @@ class MatrikJadwal extends Component
         }
 
         $dipakai = $this->usulan[$versi];
+        if ($this->permintaanUsulan !== null) {
+            RiwayatSaranAi::putuskan($this->permintaanUsulan, $versi);
+            $this->permintaanUsulan = null;
+        }
         $sebelum = $this->jadwal;
         $this->jadwal = $dipakai['baris'];
         $this->jadwalSebelum = ['jadwal' => $sebelum, 'pesan' => "Jadwal diganti dengan usulan AI ({$dipakai['judul']}) — periksa lalu simpan."];
@@ -357,6 +376,10 @@ class MatrikJadwal extends Component
     /** Tolak semua versi lalu kembali ke permintaan (jenis & instruksi tetap, bisa diubah lalu dibuat ulang). */
     public function tolakUsulan(): void
     {
+        if ($this->permintaanUsulan !== null) {
+            RiwayatSaranAi::putuskan($this->permintaanUsulan, null);
+            $this->permintaanUsulan = null;
+        }
         $this->usulan = [];
     }
 
