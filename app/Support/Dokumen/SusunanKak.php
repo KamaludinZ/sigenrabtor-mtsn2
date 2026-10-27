@@ -83,7 +83,7 @@ final readonly class SusunanKak
         if (filled($kegiatan['latar_belakang'] ?? null)) {
             $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang'])];
         }
-        $latar[] = $nama === '…' ? $kosong('nama kegiatan') : ['jenis' => 'paragraf', 'teks' => KalimatKak::latarBelakangKegiatan($nama)];
+        $latar[] = $nama === '…' ? $kosong('nama kegiatan') : ['jenis' => 'paragraf', 'teks' => KalimatKak::latarBelakangKegiatan($nama, $tahun)];
         $bagian[] = ['nomor' => 1, 'judul' => 'Latar Belakang', 'isi' => $latar];
 
         $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [['jenis' => 'daftar', 'bernomor' => true, 'butir' => StubData::dasarHukum($tahun)]]];

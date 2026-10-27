@@ -13,6 +13,7 @@ export const E2E_RIWAYAT_FILE = 'stub/riwayat-pengaturan-e2e.json';
 export const E2E_PROFIL_FILE = 'stub/profil-madrasah-e2e.json';
 export const E2E_PEJABAT_FILE = 'stub/pejabat-e2e.json';
 export const E2E_DATA_PAGU_FILE = 'stub/data-pagu-e2e.json';
+export const E2E_DASAR_HUKUM_FILE = 'stub/dasar-hukum-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -59,6 +60,7 @@ export default defineConfig({
             STUB_PROFIL_FILE: E2E_PROFIL_FILE,
             STUB_PEJABAT_FILE: E2E_PEJABAT_FILE,
             STUB_DATA_PAGU_FILE: E2E_DATA_PAGU_FILE,
+            STUB_DASAR_HUKUM_FILE: E2E_DASAR_HUKUM_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },

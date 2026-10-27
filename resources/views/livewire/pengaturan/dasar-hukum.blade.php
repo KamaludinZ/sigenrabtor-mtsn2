@@ -8,6 +8,7 @@
     $tahunAktif = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $contoh = \App\Support\Kegiatan\KalimatKak::tanpaAwalanKegiatan($this->contohKegiatan());
     $kesiapan = $this->kesiapan();
+    $pengaturan = $this->pengaturan;
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -47,7 +48,12 @@
                         </button>
                     @endforeach
                 </div>
-                <p class="text-xs text-stone-500">Dokumen tahun aktif memakai dasar hukum TA {{ $tahunAktif }}.</p>
+                <p class="text-xs text-stone-500">
+                    Dokumen tahun aktif memakai dasar hukum TA {{ $tahunAktif }}.
+                    @if ($pengaturan['diperbarui_pada'])
+                        <span class="text-stone-400">· TA {{ $ta }} diperbarui {{ \App\Support\Format::tanggal($pengaturan['diperbarui_pada']) }}</span>
+                    @endif
+                </p>
             </div>
 
             @if ($this->tahunTerkunci())
@@ -68,13 +74,18 @@
                     </div>
                 </header>
                 @if ($dasarHukum === [])
-                    <p class="px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="dasar-hukum-kosong">Belum ada dasar hukum TA {{ $ta }}.</p>
+                    <p class="px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="dasar-hukum-kosong">
+                        Belum ada dasar hukum TA {{ $ta }}.
+                        @unless ($pengaturan['diatur'])
+                            <span class="block text-xs">Tahun ini belum diatur — paragraf latar belakang memakai teks bawaan.</span>
+                        @endunless
+                    </p>
                 @else
                     <ol class="divide-y divide-stone-100">
                         @foreach ($dasarHukum as $i => $butir)
-                            <li class="flex items-start gap-3 px-5 py-3 sm:px-6" data-butir="{{ $i + 1 }}">
+                            <li class="flex items-start gap-3 px-5 py-3 sm:px-6" data-butir="{{ $i + 1 }}" data-id="{{ $butir['id'] }}" wire:key="butir-{{ $butir['id'] }}">
                                 <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-600 tabular-nums" aria-hidden="true">{{ $i + 1 }}</span>
-                                <p class="min-w-0 flex-1 text-sm text-stone-800">{{ $butir }}</p>
+                                <p class="min-w-0 flex-1 text-sm text-stone-800">{{ $butir['teks'] }}</p>
                             </li>
                         @endforeach
                     </ol>
@@ -100,7 +111,7 @@
                     <div>
                         <h3 class="text-xs font-semibold text-stone-500">Kalimat penutup tiap kegiatan</h3>
                         <p class="mt-1 rounded-lg bg-stone-50 px-3 py-2 text-sm leading-relaxed text-stone-800 ring-1 ring-stone-200" data-testid="kalimat-sisip">
-                            {{ $sisip['sebelum'] }}<mark class="rounded bg-brand-100 px-1 font-medium text-brand-900">nama kegiatan</mark>{{ $sisip['sesudah'] }}
+                            {{ $sisip['sebelum'] }}@if ($sisip['sesudah'] !== null)<mark class="rounded bg-brand-100 px-1 font-medium text-brand-900">nama kegiatan</mark>{{ $sisip['sesudah'] }}@endif
                         </p>
                         <p class="mt-1 text-xs text-stone-500">Nama kegiatan disisipkan otomatis (tanpa awalan "Kegiatan"). Di antara paragraf baku dan kalimat ini, leading dapat menambah paragraf khusus kegiatannya.</p>
                     </div>
@@ -118,13 +129,13 @@
                         <p class="font-bold">1. Latar Belakang</p>
                         <p class="mt-1 text-justify indent-4">{{ $latar }}</p>
                         <p class="mt-1 text-justify indent-4 text-stone-400 italic">[Paragraf khusus kegiatan, bila diisi leading]</p>
-                        <p class="mt-1 text-justify indent-4">{{ \App\Support\Kegiatan\KalimatKak::latarBelakangKegiatan($contoh) }}</p>
+                        <p class="mt-1 text-justify indent-4">{{ \App\Support\Kegiatan\KalimatKak::latarBelakangKegiatan($contoh, $ta) }}</p>
                     </div>
                     <div>
                         <p class="font-bold">2. Dasar Hukum</p>
                         <ol class="mt-1 list-decimal space-y-0.5 pl-5">
                             @foreach ($dasarHukum as $butir)
-                                <li>{{ $butir }}</li>
+                                <li>{{ $butir['teks'] }}</li>
                             @endforeach
                         </ol>
                     </div>

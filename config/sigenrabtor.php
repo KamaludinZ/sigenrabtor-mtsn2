@@ -55,6 +55,7 @@ return [
         'profil_file' => env('STUB_PROFIL_FILE', 'stub/profil-madrasah.json'),
         'pejabat_file' => env('STUB_PEJABAT_FILE', 'stub/pejabat.json'),
         'data_pagu_file' => env('STUB_DATA_PAGU_FILE', 'stub/data-pagu.json'),
+        'dasar_hukum_file' => env('STUB_DASAR_HUKUM_FILE', 'stub/dasar-hukum.json'),
     ],
 
     /*

@@ -4,6 +4,8 @@ namespace App\Support\Kegiatan;
 
 use App\Enums\SumberDana;
 use App\Support\Format;
+use App\Support\Pengaturan\TeksBaku;
+use App\Support\Stub\StubData;
 use App\Support\Terbilang;
 use Carbon\CarbonImmutable;
 
@@ -20,11 +22,15 @@ class KalimatKak
         return trim(preg_replace('/^kegiatan\s+/iu', '', trim($nama)));
     }
 
-    /** Bagian 1: kalimat penghubung kegiatan dengan Perjanjian Kinerja kepala madrasah. */
-    public static function latarBelakangKegiatan(string $nama): string
+    /**
+     * Bagian 1: kalimat penutup latar belakang yang menghubungkan kegiatan dengan Perjanjian Kinerja kepala madrasah —
+     * template per tahun dari Pengaturan › Dasar hukum & latar belakang ($tahun null = tahun aktif).
+     */
+    public static function latarBelakangKegiatan(string $nama, ?int $tahun = null): string
     {
-        return 'Salah satu kegiatan yang relevan dan mendukung program Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan '
-            .self::tanpaAwalanKegiatan($nama).'.';
+        $tahun ??= StubData::tahunAktif()['tahun'];
+
+        return TeksBaku::isi(StubData::kalimatPenutupLatar($tahun), $tahun, $nama);
     }
 
     /** Bagian 3A "Tujuan": "Kegiatan {nama} bertujuan {tujuan}". */

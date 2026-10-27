@@ -2,10 +2,11 @@
 
 namespace App\Livewire\Pengaturan;
 
+use App\Contracts\DasarHukumRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
-use App\Support\Kegiatan\KalimatKak;
 use App\Support\Pengaturan\KesiapanPengaturan;
+use App\Support\Pengaturan\TeksBaku;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -15,8 +16,8 @@ use Livewire\Component;
 /**
  * Pengaturan › Profil & Pejabat › Dasar hukum & latar belakang (PRD Fase 6 §13, F9): daftar dasar hukum per tahun
  * anggaran (tercetak bernomor di bagian 2 KAK) dan paragraf latar belakang baku (bagian 1) beserta kalimat penutup yang
- * menyisipkan nama kegiatan. Tahun yang dilihat di `?ta=` ('' = tahun aktif); pratinjau memakai susunan yang sama dengan
- * dokumen (SusunanKak, KalimatKak).
+ * menyisipkan nama kegiatan, tersimpan lewat DasarHukumRepository (teks mentah, penanda diisi TeksBaku). Tahun yang dilihat
+ * di `?ta=` ('' = tahun aktif); pratinjau memakai susunan yang sama dengan dokumen (SusunanKak, KalimatKak).
  */
 #[Layout('layouts.app')]
 class DasarHukum extends Component
@@ -32,7 +33,7 @@ class DasarHukum extends Component
     public function updatedTahun(): void
     {
         $this->rapikanTahun();
-        unset($this->dasarHukum, $this->latarBelakang);
+        unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
     }
 
     /**
@@ -56,34 +57,45 @@ class DasarHukum extends Component
     }
 
     /**
-     * Butir dasar hukum tahun yang dilihat, urut cetak.
+     * Pengaturan tersimpan tahun yang dilihat (teks mentah).
      *
-     * @return list<string>
+     * @return array{dasar_hukum: list<array{id: string, teks: string}>, latar_belakang: string, kalimat_penutup: string, diatur: bool, diperbarui_pada: string|null}
+     */
+    #[Computed]
+    public function pengaturan(): array
+    {
+        return app(DasarHukumRepository::class)->untukTahun($this->tahunDilihat());
+    }
+
+    /**
+     * Butir dasar hukum tahun yang dilihat, urut cetak (penanda tahun terisi).
+     *
+     * @return list<array{id: string, teks: string}>
      */
     #[Computed]
     public function dasarHukum(): array
     {
-        return StubData::dasarHukum($this->tahunDilihat());
+        return array_map(fn (array $butir) => ['id' => $butir['id'], 'teks' => TeksBaku::isi($butir['teks'], $this->tahunDilihat())], $this->pengaturan['dasar_hukum']);
     }
 
     /** Paragraf latar belakang baku tahun yang dilihat (tahun anggaran sudah tersisip). */
     #[Computed]
     public function latarBelakang(): string
     {
-        return StubData::latarBelakangBaku($this->tahunDilihat());
+        return TeksBaku::isi($this->pengaturan['latar_belakang'], $this->tahunDilihat());
     }
 
     /**
-     * Kalimat penutup latar belakang per kegiatan, dipecah di tempat sisip nama kegiatan.
+     * Kalimat penutup latar belakang per kegiatan tahun yang dilihat, dipecah di tempat sisip nama kegiatan (`sesudah`
+     * null bila templatenya tanpa penanda).
      *
-     * @return array{sebelum: string, sesudah: string}
+     * @return array{sebelum: string, sesudah: string|null}
      */
     public function kalimatSisip(): array
     {
-        $penanda = '§NAMA§';
-        [$sebelum, $sesudah] = explode($penanda, KalimatKak::latarBelakangKegiatan($penanda), 2);
+        $bagian = explode(TeksBaku::NAMA_KEGIATAN, TeksBaku::isi($this->pengaturan['kalimat_penutup'], $this->tahunDilihat()), 2);
 
-        return ['sebelum' => $sebelum, 'sesudah' => $sesudah];
+        return ['sebelum' => $bagian[0], 'sesudah' => $bagian[1] ?? null];
     }
 
     /** Nama contoh kegiatan untuk pratinjau (kegiatan terbaru), atau contoh baku bila belum ada. */

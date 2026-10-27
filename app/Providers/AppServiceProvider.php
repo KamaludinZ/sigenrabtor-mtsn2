@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\DaftarIsiRepository;
+use App\Contracts\DasarHukumRepository;
 use App\Contracts\DataPaguRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MasterKodeRepository;
@@ -19,6 +20,7 @@ use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Stub\StubDaftarIsiRepository;
+use App\Support\Stub\StubDasarHukumRepository;
 use App\Support\Stub\StubDataPaguRepository;
 use App\Support\Stub\StubKegiatanRepository;
 use App\Support\Stub\StubMasterKodeRepository;
@@ -58,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProfilMadrasahRepository::class, StubProfilMadrasahRepository::class);
         $this->app->singleton(PejabatRepository::class, StubPejabatRepository::class);
         $this->app->singleton(DataPaguRepository::class, StubDataPaguRepository::class);
+        $this->app->singleton(DasarHukumRepository::class, StubDasarHukumRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         $this->app->singleton(PenyusunUsulanJadwal::class, StubUsulanJadwal::class);
 

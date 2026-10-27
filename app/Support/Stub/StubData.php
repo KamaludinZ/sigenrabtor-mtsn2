@@ -2,9 +2,11 @@
 
 namespace App\Support\Stub;
 
+use App\Contracts\DasarHukumRepository;
 use App\Contracts\PejabatRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Pengaturan\TeksBaku;
 
 /**
  * Data tiruan untuk tahap frontend.
@@ -75,30 +77,29 @@ class StubData
     }
 
     /**
-     * Paragraf baku Latar Belakang KAK (master per tahun, diatur admin).
+     * Paragraf baku Latar Belakang KAK tahun $tahun (DasarHukumRepository, diatur admin), penanda tahun sudah terisi.
      */
     public static function latarBelakangBaku(int $tahun): string
     {
-        return 'Madrasah Tsanawiyah Negeri 2 Kota Malang, sebagai lembaga pendidikan Islam, berkomitmen memberikan kontribusi yang besar bagi masyarakat '
-            .'sebagai penerus perjuangan dalam rangka syiar agama Islam. Dengan memperhatikan kebutuhan tersebut, MTsN 2 Kota Malang terus berusaha '
-            .'memberikan layanan terbaik kepada peserta didik, masyarakat, dan pengguna layanan lainnya sesuai dengan visi madrasah. Peningkatan '
-            .'pelayanan dan kualitas pendidikan perlu terus diupayakan melalui pembinaan dan evaluasi yang berkesinambungan, sehingga penyelenggaraan '
-            ."pendidikan pada Tahun Anggaran {$tahun} memerlukan kegiatan-kegiatan yang selaras dengan situasi dan kondisi madrasah.";
+        return TeksBaku::isi(app(DasarHukumRepository::class)->untukTahun($tahun)['latar_belakang'], $tahun);
     }
 
     /**
-     * Dasar hukum KAK (master per tahun, diatur admin).
+     * Kalimat penutup latar belakang tahun $tahun, mentah (penanda `{nama_kegiatan}` diisi KalimatKak).
+     */
+    public static function kalimatPenutupLatar(int $tahun): string
+    {
+        return app(DasarHukumRepository::class)->untukTahun($tahun)['kalimat_penutup'];
+    }
+
+    /**
+     * Dasar hukum KAK tahun $tahun (DasarHukumRepository, diatur admin), urut cetak, penanda tahun sudah terisi.
      *
      * @return list<string>
      */
     public static function dasarHukum(int $tahun): array
     {
-        return [
-            'Undang-Undang Republik Indonesia Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;',
-            'Peraturan Menteri Agama Nomor 10 Tahun 2010 tentang Organisasi dan Tata Kerja Kementerian Agama;',
-            'Peraturan Menteri Agama Nomor 90 Tahun 2013 tentang Penyelenggaraan Pendidikan Madrasah;',
-            "Surat Keputusan Kepala MTsN 2 Kota Malang tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun {$tahun}.",
-        ];
+        return array_map(fn (array $butir) => TeksBaku::isi($butir['teks'], $tahun), app(DasarHukumRepository::class)->untukTahun($tahun)['dasar_hukum']);
     }
 
     /**
