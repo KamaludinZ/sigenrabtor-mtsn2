@@ -69,6 +69,18 @@ class SkemaKegiatanTest extends TestCase
         $this->ditolak(fn () => $this->kegiatan(['tahun_anggaran' => null]));
     }
 
+    public function test_kode_klasifikasi_dicari_per_tahun_dan_iksk_bersama_sk(): void
+    {
+        $this->kegiatan(['kode_sk' => 'SK.10', 'kode_iksk' => 'IKSK 10.6']);
+        $this->kegiatan(['kode_sk' => 'SK.10']);
+        $this->ditolak(fn () => $this->kegiatan(['kode_iksk' => 'IKSK 10.6']));
+
+        $indeks = collect(DB::select("SELECT indexdef FROM pg_indexes WHERE tablename = 'activities'"))->pluck('indexdef')->implode("\n");
+        foreach (['kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu'] as $kolom) {
+            $this->assertStringContainsString("(tahun_anggaran, {$kolom})", $indeks, $kolom);
+        }
+    }
+
     public function test_anggaran_satu_baris_per_sumber_dana(): void
     {
         $id = $this->kegiatan();

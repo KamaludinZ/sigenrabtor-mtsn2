@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: data kode & klasifikasi kegiatan di database kini dicari cepat per tahun anggaran dan kode (untuk jumlah pemakaian kode di Master Kode dan penanda kode yang hilang), dan IKSK tidak bisa tersimpan tanpa SK induknya.
 - Fondasi backend: **skema database master kode** per tahun anggaran — SK, IKSK (wajib milik SK tahun yang sama), RKTM, EDM beserta nama komponennya, dan 5 Budaya Mutu — dengan kode unik per tahun dan urutan sesuai berkas Excel, siap menampung penggantian master satu tahun sekaligus.
 - Perbaikan: mengetik atau menempelkan angka yang sangat besar (lebih dari 999 triliun) di isian rupiah — pagu, harga satuan, atau nominal termin — tidak lagi membuat halaman gagal dimuat; terbilangnya dikosongkan dan isian ditolak dengan pesan "terlalu besar" saat disimpan. Pemeriksa terbilang dokumen juga melaporkan nominal seperti itu alih-alih gagal.
 - Layanan terbilang di server kini berbagi kasus uji yang sama persis dengan terbilang di browser, dan menyediakan satu format pasangan nominal–terbilang bergaya dokumen ("Rp10.000.000,- (Sepuluh Juta Rupiah)").
