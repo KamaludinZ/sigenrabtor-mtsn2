@@ -103,9 +103,9 @@ class ImporPerkinTest extends TestCase
 
         // SK kosong diisi dari induk IKSK; kode di luar master SK dikosongkan.
         $lain = PemeriksaPerkin::periksa([
-            ['baris' => 2, 'nilai' => ['kode_sk' => null, 'kode_iksk' => 'iksk 10-2', 'nama_kegiatan' => 'A', 'leading' => '1.6']],
-            ['baris' => 3, 'nilai' => ['kode_sk' => 'SK 99', 'kode_iksk' => null, 'nama_kegiatan' => 'B', 'leading' => '1.6']],
-            ['baris' => 4, 'nilai' => ['kode_sk' => null, 'kode_iksk' => null, 'nama_kegiatan' => 'C', 'leading' => '1.6']],
+            ['baris' => 2, 'nilai' => ['kode_sk' => null, 'kode_iksk' => 'iksk 10-2', 'nama_kegiatan' => 'Kegiatan A', 'leading' => '1.6']],
+            ['baris' => 3, 'nilai' => ['kode_sk' => 'SK 99', 'kode_iksk' => null, 'nama_kegiatan' => 'Kegiatan B', 'leading' => '1.6']],
+            ['baris' => 4, 'nilai' => ['kode_sk' => null, 'kode_iksk' => null, 'nama_kegiatan' => 'Kegiatan C', 'leading' => '1.6']],
         ], [], $leading, MasterKode::leadings());
         $this->assertSame([['SK.10', 'IKSK 10.2'], [null, null], [null, null]], array_map(fn ($b) => [$b['kode_sk'], $b['kode_iksk']], $lain));
         $this->assertSame(['induk', ['SK.99']], [$lain[0]['asal_sk'], $lain[1]['dikosongkan']]);

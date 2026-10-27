@@ -6,6 +6,7 @@ use App\Enums\SumberDana;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Format;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\ValidasiKegiatan;
 
 /**
  * Memeriksa baris impor satu per satu dan menjelaskan kondisinya kepada pengguna:
@@ -63,6 +64,14 @@ final class PemeriksaImporKegiatan
             [$bulan, $pesanBulan] = self::bulan($nilai['bulan'] ?? null);
             if ($pesanBulan) {
                 $pesan[] = $pesanBulan;
+            }
+
+            // Aturan isian yang sama dengan form Data Kegiatan (mis. nama minimal 5 karakter); leading sudah diperiksa di atas.
+            if ($pesan === []) {
+                array_push($pesan, ...ValidasiKegiatan::galat(
+                    self::dataKegiatan(['nama' => $nama, 'leading' => $leading['kode'] ?? null, 'sumber_dana' => $sumber, 'bulan' => $bulan ?? []]),
+                    kecuali: ['leading'],
+                ));
             }
 
             $status = $pesan === [] ? 'siap' : 'gagal';

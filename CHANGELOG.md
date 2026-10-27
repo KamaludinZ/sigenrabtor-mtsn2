@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- **Validasi sisi server yang seragam** untuk data kegiatan: Data Kegiatan, Kode & Klasifikasi, Kalimat KAK, serta impor Excel dan cascade Perkin kini memakai aturan dan pesan yang sama. Akibatnya baris impor yang nama kegiatannya kurang dari 5 karakter kini ditandai gagal di pratinjau (sebelumnya baru ditolak saat disunting), dan setiap baris diperiksa ulang tepat sebelum disimpan — mis. bila leading-nya dinonaktifkan selama pratinjau terbuka, baris itu gagal dengan alasannya alih-alih tersimpan.
 - Fondasi backend: **penyimpanan kegiatan di database** — membuat, membuka, mengubah, dan mendaftar kegiatan (beserta sumber dana & pagu, pelaksana & panitia, riwayat status, dan jejak kunci final) kini tersedia di PostgreSQL dengan bentuk data yang sama persis dengan data tiruan. Skema kegiatan disesuaikan: tahun, leading, dan kode master disimpan sebagai kodenya sehingga kode yang tidak ada lagi di master tetap terbaca. Layar masih memakai data tiruan sampai penyimpanan dialihkan.
 - Migrasi database kegiatan siap dijalankan (`php artisan migrate`) dan bisa dibatalkan lalu dijalankan ulang tanpa sisa; keduanya kini diperiksa otomatis oleh tes.
 - Fondasi backend: **skema database kegiatan** (PostgreSQL) — tabel kegiatan, sumber dana & pagu, pelaksana & panitia, serta riwayat status, lengkap dengan batasan isian (status, sumber dana, lama hari, jumlah peserta, pagu tidak negatif) dan penghapusan berantai. Aplikasi masih memakai data tiruan sampai penyimpanan dialihkan ke database.

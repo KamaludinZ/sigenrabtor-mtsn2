@@ -3,18 +3,17 @@
 namespace App\Livewire\Forms;
 
 use App\Contracts\KegiatanRepository;
-use App\Rules\KalimatUtuh;
 use App\Support\Format;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Livewire\Form;
 
 /**
@@ -50,7 +49,7 @@ class KegiatanForm extends Form
     public const BATAS_WAJAR = ['lama_hari' => 31, 'peserta_jumlah' => 2000];
 
     /** Batas pagu per sumber dana (Rp) untuk menolak salah ketik digit berlebih. */
-    public const MAKS_PAGU = 100_000_000_000;
+    public const MAKS_PAGU = ValidasiKegiatan::MAKS_PAGU;
 
     // Identitas Kegiatan
     public string $nama_kegiatan = '';
@@ -129,7 +128,7 @@ class KegiatanForm extends Form
     public array $panitia = [];
 
     /** Batas jumlah anggota tim agar tabel KAK tetap wajar. */
-    public const MAKS_PANITIA = 50;
+    public const MAKS_PANITIA = ValidasiKegiatan::MAKS_PANITIA;
 
     /** Saran peran tim; isian tetap bebas. */
     public const PERAN_PANITIA = [
@@ -142,44 +141,20 @@ class KegiatanForm extends Form
     ];
 
     /**
+     * Aturan bersama ValidasiKegiatan untuk isian saat ini, ditambah pagu yang di form masih berupa teks rupiah per sumber.
+     *
      * @return array<string, mixed>
      */
     protected function rules(): array
     {
-        $tahun = StubData::tahunAktif()['tahun'];
+        $bersama = ValidasiKegiatan::aturan($this->dataUntukDisimpan(), StubData::currentUser(), $this->leadingTersimpan());
 
         return [
-            'nama_kegiatan' => ['required', 'string', 'min:5', 'max:255'],
-            'nama_kegiatan_cover' => ['required', 'string', 'max:255'],
-            'latar_belakang' => ['nullable', 'string', 'max:5000', new KalimatUtuh],
-            'tujuan' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
-            'sasaran' => ['nullable', 'string', 'max:2000', new KalimatUtuh],
-            'tanggal_dokumen' => ['nullable', 'date', 'after_or_equal:'.($tahun - 1).'-01-01', "before_or_equal:{$tahun}-12-31", $this->aturanDokumenSebelumMulai()],
-            'tanggal_laporan' => ['nullable', 'date', 'after_or_equal:tanggal_dokumen', $this->aturanLaporanSetelahSelesai()],
-            'tanggal_mulai' => ['nullable', 'date', "after_or_equal:{$tahun}-01-01", "before_or_equal:{$tahun}-12-31"],
-            'lama_hari' => ['nullable', 'integer', 'min:1', 'max:366', $this->aturanSelesaiDalamTahun($tahun)],
-            'hari_kerja' => ['boolean'],
-            'bulan_pelaksanaan' => ['array', 'max:12', $this->aturanBulanMencakupTanggal()],
-            'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
-            'leading' => ['nullable', Rule::in(array_column(MasterKode::pilihanLeading(StubData::currentUser(), $this->leadingTersimpan()), 'kode'))],
-            'kode_rktm' => ['nullable', Rule::in(array_column(MasterKode::kodeRktm(), 'kode'))],
-            'kode_sk' => ['nullable', Rule::in(array_column(MasterKode::kodeSk(), 'kode'))],
-            'kode_iksk' => ['nullable', Rule::in(array_column(MasterKode::kodeIksk(), 'kode')), $this->aturanIkskSesuaiSk()],
-            'kode_edm' => ['nullable', Rule::in(array_column(MasterKode::kodeEdm(), 'kode'))],
-            'budaya_mutu' => ['nullable', Rule::in(array_column(MasterKode::budayaMutu(), 'nomor'))],
-            'tempat' => ['nullable', 'string', 'max:255'],
-            'peserta_jumlah' => ['nullable', 'integer', 'min:1', 'max:100000'],
-            'peserta_jenis' => ['nullable', 'string', 'max:150'],
-            'uraian_pelaksanaan' => ['nullable', 'string', 'max:3000', new KalimatUtuh],
-            'konteks' => ['nullable', 'string', 'max:3000'],
+            ...array_diff_key($bersama, array_flip(['sumber_dana', 'sumber_dana.*.sumber', 'sumber_dana.*.pagu', 'data_pagu_id', 'status', 'asal'])),
             'dana_dipa' => ['boolean'],
             'dana_komite' => ['boolean'],
             'pagu_dipa' => $this->aturanPagu($this->dana_dipa),
             'pagu_komite' => $this->aturanPagu($this->dana_komite),
-            'panitia' => ['array', 'max:'.self::MAKS_PANITIA],
-            'panitia.*.nama' => ['required', 'string', 'max:150'],
-            'panitia.*.jabatan' => ['nullable', 'string', 'max:150'],
-            'panitia.*.peran' => ['required', 'string', 'max:100'],
         ];
     }
 
@@ -188,34 +163,7 @@ class KegiatanForm extends Form
      */
     protected function validationAttributes(): array
     {
-        return [
-            'nama_kegiatan' => 'nama kegiatan',
-            'nama_kegiatan_cover' => 'nama kegiatan (cover)',
-            'latar_belakang' => 'latar belakang',
-            'tujuan' => 'tujuan',
-            'sasaran' => 'sasaran',
-            'tanggal_dokumen' => 'tanggal dokumen',
-            'tanggal_laporan' => 'tanggal pelaporan',
-            'tanggal_mulai' => 'tanggal mulai',
-            'lama_hari' => 'lama kegiatan',
-            'bulan_pelaksanaan' => 'bulan pelaksanaan',
-            'leading' => 'leading',
-            'kode_rktm' => 'kode RKTM',
-            'kode_sk' => 'kode SK',
-            'kode_iksk' => 'kode IKSK',
-            'kode_edm' => 'kode EDM',
-            'budaya_mutu' => '5 Budaya Mutu',
-            'tempat' => 'tempat',
-            'peserta_jumlah' => 'jumlah peserta',
-            'peserta_jenis' => 'jenis peserta',
-            'uraian_pelaksanaan' => 'uraian pelaksanaan',
-            'konteks' => 'konteks kegiatan',
-            'pagu_dipa' => 'pagu DIPA',
-            'pagu_komite' => 'pagu Komite',
-            'panitia.*.nama' => 'nama anggota',
-            'panitia.*.jabatan' => 'jabatan anggota',
-            'panitia.*.peran' => 'peran anggota',
-        ];
+        return ValidasiKegiatan::atribut() + ['pagu_dipa' => 'pagu DIPA', 'pagu_komite' => 'pagu Komite'];
     }
 
     /**
@@ -223,34 +171,7 @@ class KegiatanForm extends Form
      */
     protected function messages(): array
     {
-        $tahun = StubData::tahunAktif()['tahun'];
-        $diTahunAnggaran = "Tanggal mulai harus di Tahun Anggaran {$tahun}.";
-        $rentangDokumen = 'Tanggal dokumen harus antara 1 Januari '.($tahun - 1)." dan 31 Desember {$tahun}.";
-
-        return [
-            'required' => 'Kolom :attribute wajib diisi.',
-            'min' => 'Kolom :attribute minimal :min karakter.',
-            'max' => 'Kolom :attribute maksimal :max karakter.',
-            'date' => 'Kolom :attribute harus berupa tanggal yang valid.',
-            'integer' => 'Kolom :attribute harus berupa angka bulat.',
-            'lama_hari.integer' => 'Lama kegiatan harus angka bulat (jumlah hari), mis. 3.',
-            'peserta_jumlah.integer' => 'Jumlah peserta harus angka bulat tanpa titik atau koma, mis. 56.',
-            'array' => 'Kolom :attribute tidak valid.',
-            'bulan_pelaksanaan.max' => 'Bulan pelaksanaan paling banyak 12.',
-            'bulan_pelaksanaan.*.integer' => 'Bulan pelaksanaan tidak valid.',
-            'bulan_pelaksanaan.*.between' => 'Bulan pelaksanaan harus antara Januari dan Desember.',
-            'tanggal_laporan.after_or_equal' => 'Tanggal pelaporan tidak boleh sebelum tanggal dokumen.',
-            'tanggal_dokumen.after_or_equal' => $rentangDokumen,
-            'tanggal_dokumen.before_or_equal' => $rentangDokumen,
-            'tanggal_mulai.after_or_equal' => $diTahunAnggaran,
-            'tanggal_mulai.before_or_equal' => $diTahunAnggaran,
-            'lama_hari.min' => 'Lama kegiatan minimal 1 hari.',
-            'lama_hari.max' => 'Lama kegiatan maksimal 366 hari.',
-            'panitia.max' => 'Susunan tim maksimal :max orang.',
-            'in' => 'Pilihan :attribute tidak ada di master tahun aktif.',
-            'peserta_jumlah.min' => 'Jumlah peserta minimal 1 orang.',
-            'peserta_jumlah.max' => 'Jumlah peserta maksimal 100.000 orang.',
-        ];
+        return ValidasiKegiatan::pesan();
     }
 
     /**
@@ -358,69 +279,6 @@ class KegiatanForm extends Form
         if ($this->laporan_otomatis) {
             $this->sinkronJadwal();
         }
-    }
-
-    private function aturanSelesaiDalamTahun(int $tahun): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) use ($tahun) {
-            $selesai = $this->tanggalSelesai();
-
-            if ($selesai && $selesai->year > $tahun) {
-                $fail('Kegiatan selesai '.self::teksTanggal($selesai).", melewati akhir Tahun Anggaran {$tahun}.");
-            }
-        };
-    }
-
-    private function aturanLaporanSetelahSelesai(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) {
-            $selesai = $this->tanggalSelesai();
-
-            if ($selesai && strtotime((string) $value) && CarbonImmutable::parse($value)->lt($selesai)) {
-                $fail('Tanggal pelaporan tidak boleh sebelum kegiatan selesai ('.self::teksTanggal($selesai).').');
-            }
-        };
-    }
-
-    /**
-     * KAK adalah rencana: tanggal pengesahannya tidak boleh setelah kegiatan dimulai.
-     */
-    private function aturanDokumenSebelumMulai(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) {
-            $mulai = $this->tanggalMulai();
-
-            if ($mulai && strtotime((string) $value) && CarbonImmutable::parse($value)->gt($mulai)) {
-                $fail('Tanggal dokumen harus sebelum atau sama dengan tanggal mulai kegiatan ('.self::teksTanggal($mulai).').');
-            }
-        };
-    }
-
-    /**
-     * Bulan pelaksanaan boleh lebih luas (mis. bulan persiapan) tetapi wajib mencakup bulan kegiatan berlangsung.
-     */
-    private function aturanBulanMencakupTanggal(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) {
-            $mulai = $this->tanggalMulai();
-            $selesai = $this->tanggalSelesai();
-
-            if (! $mulai || ! $selesai || ! is_array($value) || $value === []) {
-                return;
-            }
-
-            $kurang = array_diff(JadwalPelaksanaan::bulanTercakup($mulai, $selesai), array_map('intval', $value));
-
-            if ($kurang !== []) {
-                $nama = implode(', ', array_map(fn ($b) => JadwalPelaksanaan::NAMA_BULAN[$b], $kurang));
-                $fail("Bulan pelaksanaan belum mencakup bulan kegiatan berlangsung: {$nama}.");
-            }
-        };
-    }
-
-    private static function teksTanggal(CarbonImmutable $tanggal): string
-    {
-        return $tanggal->locale('id')->translatedFormat('j F Y');
     }
 
     public function tambahPanitia(string $peran = 'Anggota', string $nama = '', string $jabatan = ''): bool
@@ -770,27 +628,6 @@ class KegiatanForm extends Form
                 $fail('Pagu terlalu besar (maksimal '.Format::rupiah(self::MAKS_PAGU).'). Periksa jumlah digit.');
             }
         }];
-    }
-
-    private function aturanIkskSesuaiSk(): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) {
-            if (blank($value)) {
-                return;
-            }
-
-            if (blank($this->kode_sk)) {
-                $fail('Pilih kode SK terlebih dahulu.');
-
-                return;
-            }
-
-            $iksk = MasterKode::cari(MasterKode::kodeIksk(), $value);
-
-            if ($iksk !== null && $iksk['kode_sk'] !== $this->kode_sk) {
-                $fail("{$value} bukan indikator dari {$this->kode_sk}.");
-            }
-        };
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Support\Kegiatan\Impor\PemeriksaPerkin;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
+use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Locked;
@@ -155,6 +156,11 @@ class ImporPerkin extends ImporBertahap
             if (TahunKegiatan::dari($kegiatan) === $tahun && PemeriksaImporKegiatan::kunciNama((string) ($kegiatan['nama_kegiatan'] ?? '')) === $kunci) {
                 return ['status' => 'dilewati', 'pesan' => "Kegiatan dengan nama ini sudah ada di TA {$tahun}."];
             }
+        }
+
+        // Pemeriksaan akhir sisi server: leading atau master bisa saja berubah sejak pratinjau.
+        if ($galat = ValidasiKegiatan::galat($data)) {
+            return ['status' => 'gagal', 'pesan' => implode(' ', $galat)];
         }
 
         $id = $repo->simpan($data + [

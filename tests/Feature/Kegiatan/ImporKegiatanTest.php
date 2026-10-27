@@ -3,6 +3,7 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\LeadingRepository;
 use App\Livewire\Kegiatan\Daftar;
 use App\Livewire\Kegiatan\ImporKegiatan;
 use App\Support\Impor\GagalBacaImpor;
@@ -156,8 +157,8 @@ class ImporKegiatanTest extends TestCase
         $milik = [collect($semua)->firstWhere('kode', '===', '1.6')];
 
         $hasil = PemeriksaImporKegiatan::periksa([
-            ['baris' => 2, 'nilai' => ['nama_kegiatan' => 'A', 'leading' => 'Waka Kurikulum']],
-            ['baris' => 3, 'nilai' => ['nama_kegiatan' => 'B']],
+            ['baris' => 2, 'nilai' => ['nama_kegiatan' => 'Rapat Kurikulum', 'leading' => 'Waka Kurikulum']],
+            ['baris' => 3, 'nilai' => ['nama_kegiatan' => 'Rapat Penjaminan Mutu']],
         ], [], $milik, $semua, '1.6');
 
         $this->assertSame(['Leading "1.1 – Waka Kurikulum" bukan leading akun Anda.'], $hasil[0]['pesan']);
@@ -218,6 +219,25 @@ class ImporKegiatanTest extends TestCase
             ->call('mulaiImpor')
             ->assertSet('tahap', 'periksa');
         $this->assertCount($awal + 2, $repo->semua());
+    }
+
+    public function test_baris_diperiksa_ulang_saat_disimpan(): void
+    {
+        session(['stub_role' => 'admin']);
+        $komponen = Livewire::test(ImporKegiatan::class)
+            ->set('berkas', $this->unggahan([$this->judul(), [1, 'Lomba Kebersihan Kelas', '1.2', '', 1500000, 'Agustus']]))
+            ->assertSee('Siap (1)')
+            ->call('mulaiImpor');
+
+        // Leading dinonaktifkan admin lain selama pratinjau terbuka: baris gagal saat disimpan, kegiatan tidak dibuat.
+        $repo = app(LeadingRepository::class);
+        $repo->simpan(['is_active' => false] + collect($repo->semua())->firstWhere('kode', '===', '1.2'), '1.2');
+        while ($komponen->get('tahap') === 'proses') {
+            $komponen->call('lanjutkanImpor');
+        }
+
+        $this->assertSame([['gagal', 'Pilihan leading tidak ada di master tahun aktif.']], array_map(fn ($h) => [$h['status'], $h['pesan']], $komponen->get('hasil')));
+        $this->assertNull(collect(app(KegiatanRepository::class)->semua())->firstWhere('nama_kegiatan', 'Lomba Kebersihan Kelas'));
     }
 
     public function test_berkas_salah_ditolak_dengan_pesan(): void

@@ -8,6 +8,7 @@ use App\Support\Format;
 use App\Support\Kegiatan\Impor\PembacaImporKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 
@@ -61,6 +62,11 @@ class ImporKegiatan extends ImporBertahap
             if (PemeriksaImporKegiatan::kunciNama((string) ($kegiatan['nama_kegiatan'] ?? '')) === $kunci) {
                 return ['status' => 'dilewati', 'pesan' => 'Kegiatan dengan nama ini sudah ada di aplikasi.'];
             }
+        }
+
+        // Pemeriksaan akhir sisi server: leading atau master bisa saja berubah sejak pratinjau.
+        if ($galat = ValidasiKegiatan::galat($data)) {
+            return ['status' => 'gagal', 'pesan' => implode(' ', $galat)];
         }
 
         $id = $repo->simpan($data);
