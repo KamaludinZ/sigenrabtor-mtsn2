@@ -7,6 +7,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\MasterKodeDb;
 use Tests\TestCase;
 
 class SkemaMasterKodeTest extends TestCase
@@ -29,18 +30,9 @@ class SkemaMasterKodeTest extends TestCase
         $this->fail('Seharusnya ditolak database.');
     }
 
-    /** Isi tabel master satu tahun dari master tiruan. */
     private function muat(int $tahun): void
     {
-        $repo = new StubMasterKodeRepository;
-        $urut = fn (array $baris) => array_map(fn (array $b, int $i) => ['tahun_anggaran' => $tahun, 'urutan' => $i + 1] + $b, $baris, array_keys($baris));
-
-        DB::table('kode_sk')->insert($urut($repo->kodeSk($tahun)));
-        DB::table('kode_iksk')->insert($urut($repo->kodeIksk($tahun)));
-        DB::table('kode_rktm')->insert($urut($repo->kodeRktm($tahun)));
-        DB::table('kode_edm')->insert($urut($repo->kodeEdm($tahun)));
-        DB::table('komponen_edm')->insert(array_map(fn (string $huruf, string $nama) => ['tahun_anggaran' => $tahun, 'huruf' => $huruf, 'nama' => $nama], array_keys($repo->komponenEdm($tahun)), $repo->komponenEdm($tahun)));
-        DB::table('budaya_mutu')->insert(array_map(fn (array $b) => ['tahun_anggaran' => $tahun] + $b, $repo->budayaMutu($tahun)));
+        MasterKodeDb::muat($tahun);
     }
 
     public function test_seluruh_master_tiruan_muat_di_tabel(): void

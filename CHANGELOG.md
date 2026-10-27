@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: master kode per tahun anggaran kini bisa dibaca dari database dengan hasil yang sama persis dengan master tiruan, dan tersedia endpoint master kode per jenis (`/master-kode/{jenis}`, JSON) dengan pilihan tahun anggaran, pencarian, dan penyaring IKSK per SK.
 - Endpoint total anggaran kini menyertakan terbilang untuk setiap nominal yang dikirim — total, pagu, dan tiap termin pembayaran (beserta tanggal, persen, dan tulisan dokumennya) — memakai layanan terbilang yang sama dengan layar dan dokumen cetak.
 - Fondasi backend: data kode & klasifikasi kegiatan di database kini dicari cepat per tahun anggaran dan kode (untuk jumlah pemakaian kode di Master Kode dan penanda kode yang hilang), dan IKSK tidak bisa tersimpan tanpa SK induknya.
 - Fondasi backend: **skema database master kode** per tahun anggaran — SK, IKSK (wajib milik SK tahun yang sama), RKTM, EDM beserta nama komponennya, dan 5 Budaya Mutu — dengan kode unik per tahun dan urutan sesuai berkas Excel, siap menampung penggantian master satu tahun sekaligus.

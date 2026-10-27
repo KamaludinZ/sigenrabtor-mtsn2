@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\PenggunaRepository;
+use App\Http\Controllers\AmbilMasterKode;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
@@ -37,6 +38,7 @@ use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use App\Livewire\SaranAi\Riwayat as SaranAiRiwayat;
+use App\Support\Master\JenisKode;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
 
@@ -76,6 +78,7 @@ Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('k
 
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
 Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');
+Route::get('/master-kode/{jenis}', AmbilMasterKode::class)->whereIn('jenis', array_keys(JenisKode::DAFTAR))->name('master.kode');
 
 // Logo kop madrasah: tampil di kop & pratinjau dokumen semua pengguna.
 Route::get('/madrasah/logo', LogoMadrasah::class)->name('madrasah.logo');
