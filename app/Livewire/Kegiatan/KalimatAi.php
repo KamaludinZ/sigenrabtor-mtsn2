@@ -30,7 +30,8 @@ use Livewire\Component;
  * bahan dari data kegiatan untuk AI, tempat tercetak, dan pratinjau bagian KAK. Kolom yang disunting hanya
  * BagianAi::KOLOM (+ cover_manual) dan disimpan dengan menggabungkan record tersimpan; jadwal disunting di Matrik & Jadwal.
  * Tombol "Buat dengan AI" (<x-ai.tombol-buat>, keadaan TombolAi) meminta 2–3 versi ke PenyusunSaranKalimat dalam batas
- * harian BatasAi; versi tampil di panel saran bagiannya (memakai versi menyusul).
+ * harian BatasAi; versi tampil di modal saran (pilih versi, sunting, pakai → isian belum tersimpan + Urungkan di kartu,
+ * atau tolak).
  */
 #[Layout('layouts.app')]
 class KalimatAi extends Component
@@ -62,9 +63,20 @@ class KalimatAi extends Component
     #[Locked]
     public array $galatAi = [];
 
-    /** Bagian yang panel sarannya terbuka. */
+    /** Bagian yang modal sarannya terbuka. */
     #[Locked]
     public ?string $saranTerbuka = null;
+
+    /** Indeks versi saran yang dipilih di modal. */
+    #[Locked]
+    public int $versiDipilih = 0;
+
+    /** Teks versi terpilih yang sedang disunting di modal (state klien, terkirim bersama aksi berikutnya). */
+    public string $suntingSaran = '';
+
+    /** @var array<string, string> Teks isian sebelum saran AI dipakai (bagian → teks), untuk Urungkan. */
+    #[Locked]
+    public array $teksSebelum = [];
 
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
@@ -238,14 +250,92 @@ class KalimatAi extends Component
         }
 
         $this->saran[$bagian] = $saran;
-        $this->saranTerbuka = $bagian;
+        $this->bukaSaran($bagian);
     }
 
-    /** Buka/tutup panel saran satu bagian. */
+    /** Buka modal saran satu bagian pada versi pertama. */
     public function bukaSaran(string $bagian): void
     {
         abort_unless(isset($this->saran[$bagian]), 404);
-        $this->saranTerbuka = $this->saranTerbuka === $bagian ? null : $bagian;
+        $this->saranTerbuka = $bagian;
+        $this->pilihVersi(0);
+    }
+
+    /** Pilih versi saran; suntingan versi sebelumnya dibuang. */
+    public function pilihVersi(int $versi): void
+    {
+        $daftar = $this->saran[$this->saranTerbuka ?? ''] ?? [];
+        abort_unless(isset($daftar[$versi]), 404);
+        $this->versiDipilih = $versi;
+        $this->suntingSaran = $daftar[$versi]['teks'];
+        $this->resetErrorBag('suntingSaran');
+    }
+
+    /** Kembalikan teks versi terpilih seperti saran AI aslinya. */
+    public function kembalikanTeksAi(): void
+    {
+        $this->pilihVersi($this->versiDipilih);
+    }
+
+    /**
+     * Pakai versi terpilih (beserta suntingannya) sebagai isian bagian: belum tersimpan sampai "Simpan" dan bisa
+     * diurungkan dari kartu bagiannya.
+     */
+    public function pakaiSaran(): void
+    {
+        $this->pastikanDapatDiedit();
+        $bagian = $this->saranTerbuka;
+        abort_unless($bagian !== null && isset($this->saran[$bagian]), 404);
+
+        $kolom = BagianAi::BAGIAN[$bagian]['kolom'];
+        $teks = self::rapikanSaran($bagian, [['teks' => $this->suntingSaran]])[0]['teks'] ?? '';
+        $this->resetErrorBag('suntingSaran');
+        if ($teks === '') {
+            $this->addError('suntingSaran', 'Teks saran tidak boleh kosong.');
+
+            return;
+        }
+
+        $this->teksSebelum[$bagian] ??= (string) $this->form->{$kolom};
+        $this->form->{$kolom} = $teks;
+        if ($kolom === 'nama_kegiatan_cover') {
+            $this->form->setNamaCoverManual();
+        }
+        $this->adaPerubahan = $this->isianBerubah() !== [];
+        $this->saranTerbuka = null;
+        try {
+            $this->form->validateOnly($kolom);
+        } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+        }
+
+        $this->dispatch('notify', message: 'Saran AI dipakai untuk '.mb_strtolower(BagianAi::BAGIAN[$bagian]['judul']).' — periksa lalu simpan.', type: 'success');
+    }
+
+    /** Kembalikan isian bagian seperti sebelum saran AI dipakai. */
+    public function urungkanSaran(string $bagian): void
+    {
+        $this->pastikanDapatDiedit();
+        abort_unless(isset($this->teksSebelum[$bagian]), 404);
+
+        $kolom = BagianAi::BAGIAN[$bagian]['kolom'];
+        $this->form->{$kolom} = $this->teksSebelum[$bagian];
+        if ($kolom === 'nama_kegiatan_cover') {
+            $this->form->setNamaCoverManual();
+        }
+        unset($this->teksSebelum[$bagian]);
+        $this->adaPerubahan = $this->isianBerubah() !== [];
+        $this->resetErrorBag('form.'.$kolom);
+    }
+
+    /** Tolak seluruh saran bagian yang terbuka: saran dibuang, isian tidak berubah. */
+    public function tolakSaran(): void
+    {
+        $bagian = $this->saranTerbuka;
+        abort_unless($bagian !== null, 404);
+        unset($this->saran[$bagian]);
+        $this->saranTerbuka = null;
+        $this->dispatch('notify', message: 'Saran AI ditolak — isian tidak berubah.', type: 'info');
     }
 
     public function tutupSaran(): void
@@ -352,6 +442,7 @@ class KalimatAi extends Component
         $this->teksDimuat = self::baku($data);
         $this->adaPerubahan = false;
         $this->bentrok = null;
+        $this->teksSebelum = [];
         $this->resetValidation();
         unset($this->jadwal);
     }

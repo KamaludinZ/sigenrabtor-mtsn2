@@ -87,6 +87,25 @@ final class BagianAi
     }
 
     /**
+     * Teks pengapit saat bagian tercetak (pratinjau modal saran): [awalan, keterangan] — mis. tujuan tercetak
+     * "Kegiatan {nama} bertujuan {teks}" (KalimatKak::tujuan), sasaran "Terwujudnya {teks}".
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    public static function cetakan(string $bagian, string $nama): array
+    {
+        $nama = KalimatKak::tanpaAwalanKegiatan($nama);
+
+        return match ($bagian) {
+            'nama_cover' => ['Kegiatan ', 'Tercetak di cover dan judul KAK/TOR.'],
+            'tujuan' => ["Kegiatan {$nama} bertujuan ", null],
+            'sasaran' => ['Terwujudnya ', null],
+            'pelaksanaan' => ['', 'Disambung setelah kalimat waktu & peserta pelaksanaan; huruf pertamanya dikapitalkan.'],
+            default => ['', 'Paragraf khusus di antara paragraf baku dan kalimat penutup latar belakang.'],
+        };
+    }
+
+    /**
      * Bagian sudah berisi teks (jadwal: ada baris berisi uraian & bulan).
      *
      * @param  array<string, mixed>  $kegiatan

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Kalimat KAK (bantuan AI)', () => {
-    test('layout enam bagian: tab ruang kerja, bahan AI, pratinjau tercetak, suntingan bisa dibatalkan, tombol Buat dengan AI', async ({ page }, testInfo) => {
+    test('layout enam bagian: tab ruang kerja, bahan AI, pratinjau tercetak, suntingan bisa dibatalkan, tombol & modal saran AI', async ({ page }, testInfo) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/1/edit');
         await page.getByRole('navigation', { name: 'Bagian kegiatan' }).getByRole('link', { name: 'Kalimat KAK' }).click();
@@ -30,19 +30,35 @@ test.describe('Kalimat KAK (bantuan AI)', () => {
         await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
         await expect(sasaran).toHaveValue(awal);
 
-        // Buat dengan AI: 2–3 versi saran tampil di kartu bagiannya; teks isian belum berubah.
+        // Buat dengan AI → modal saran: pilih versi, sunting (pratinjau tercetak ikut), Esc menutup tanpa mengubah isian.
         const isianTujuan = await page.locator('#tujuan').inputValue();
         await page.getByTestId('buat-ai-tujuan').click();
-        const saran = page.getByTestId('saran-tujuan');
-        await expect(saran.locator('[data-versi]')).toHaveCount(3);
+        const modal = page.getByTestId('modal-saran-tujuan');
+        await expect(modal.locator('[data-versi]')).toHaveCount(3);
         await expect(page.getByTestId('buat-ai-tujuan')).toHaveText(/Lihat saran \(3\)/);
         await expect(page.getByTestId('sisa-ai')).toContainText(/Sisa \d+ dari 20 permintaan AI hari ini/);
+        await modal.locator('[data-versi="2"]').click();
+        await expect(modal.locator('[data-versi="2"]')).toHaveAttribute('aria-checked', 'true');
+        const sunting = modal.getByTestId('sunting-saran');
+        await sunting.fill('meningkatkan mutu pembelajaran yang berpihak pada murid.');
+        await expect(modal.getByTestId('saran-diedit')).toBeVisible();
+        await expect(modal.getByTestId('cetak-saran')).toContainText('bertujuan meningkatkan mutu pembelajaran yang berpihak pada murid.');
+        await modal.screenshot({ path: `storage/playwright/shots/modal-saran-ai-${testInfo.project.name}.png` });
+        await page.keyboard.press('Escape');
+        await expect(modal).toHaveCount(0);
         await expect(page.locator('#tujuan')).toHaveValue(isianTujuan);
-        await saran.screenshot({ path: `storage/playwright/shots/saran-ai-${testInfo.project.name}.png` });
-        await saran.getByRole('button', { name: 'Tutup' }).click();
-        await expect(saran).toHaveCount(0);
+
+        // Pakai versi ini → isian berubah (belum disimpan) dengan Urungkan.
         await page.getByTestId('buat-ai-tujuan').click();
-        await expect(page.getByTestId('saran-tujuan')).toBeVisible();
+        await expect(modal).toBeVisible();
+        const versi1 = await modal.getByTestId('sunting-saran').inputValue();
+        await modal.getByTestId('pakai-saran').click();
+        await expect(modal).toHaveCount(0);
+        await expect(page.locator('#tujuan')).toHaveValue(versi1);
+        await expect(page.getByTestId('belum-disimpan')).toBeVisible();
+        await page.getByTestId('saran-dipakai-tujuan').getByRole('button', { name: 'Urungkan' }).click();
+        await expect(page.locator('#tujuan')).toHaveValue(isianTujuan);
+        await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
 
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);

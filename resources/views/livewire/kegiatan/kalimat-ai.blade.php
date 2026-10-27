@@ -21,7 +21,7 @@
 
 {{--
     Kalimat KAK (PRD §20): enam bagian yang bisa dibantu AI dalam urutan dokumen. Tiap kartu: isian (jadwal: ringkasan +
-    tautan Matrik & Jadwal), tombol Buat dengan AI (<x-ai.tombol-buat>) + panel saran, bahan dari data kegiatan untuk AI,
+    tautan Matrik & Jadwal), tombol Buat dengan AI (<x-ai.tombol-buat>) + modal saran, bahan dari data kegiatan untuk AI,
     apa yang dihasilkan AI, dan pratinjau bagian KAK.
 --}}
 <div class="mx-auto max-w-7xl"
@@ -112,8 +112,11 @@
                             <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $galatAi[$kunci] }}
                         </p>
                     @endif
-                    @if ($saranTerbuka === $kunci && ($saran[$kunci] ?? []) !== [])
-                        @include('livewire.kegiatan.partials.saran-kalimat')
+                    @if (isset($teksSebelum[$kunci]))
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-stone-800 px-3 py-2 text-xs text-white" role="status" data-testid="saran-dipakai-{{ $kunci }}">
+                            <span class="flex items-center gap-1.5"><x-ui.icon name="sparkles" class="size-3.5" /> Saran AI dipakai — periksa lalu simpan.</span>
+                            <button type="button" wire:click="urungkanSaran('{{ $kunci }}')" class="font-semibold text-gold-300 hover:text-gold-200">Urungkan</button>
+                        </div>
                     @endif
 
                     @switch($kunci)
@@ -164,6 +167,10 @@
                 </x-ui.form-section>
             @endforeach
         </fieldset>
+
+        @if ($saranTerbuka !== null && ($saran[$saranTerbuka] ?? []) !== [])
+            @include('livewire.kegiatan.partials.modal-saran-kalimat', ['kunci' => $saranTerbuka, 'b' => BagianAi::BAGIAN[$saranTerbuka]])
+        @endif
 
         {{-- Panel samping --}}
         <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">

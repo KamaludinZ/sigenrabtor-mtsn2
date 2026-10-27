@@ -38,7 +38,7 @@ class BuatDenganAiTest extends TestCase
         $this->assertSame(['siap', 'Buat dengan AI', 'Sisa 3 permintaan AI hari ini.'], array_slice(array_values(TombolAi::keadaan('tujuan', $nama, true, 3)), 0, 3));
     }
 
-    public function test_buat_dengan_ai_menampilkan_saran_dan_menghitung_batas(): void
+    public function test_buat_dengan_ai_membuka_modal_saran_dan_menghitung_batas(): void
     {
         $halaman = Livewire::test(KalimatAi::class, ['kegiatan' => 1])
             ->assertSeeHtml('data-tombol-ai="tujuan" data-keadaan="siap"')
@@ -46,28 +46,91 @@ class BuatDenganAiTest extends TestCase
             ->assertSee('Sisa 20 dari 20 permintaan AI hari ini.')
             ->call('mintaSaran', 'tujuan')
             ->assertSet('saranTerbuka', 'tujuan')
-            ->assertSeeHtml('data-testid="saran-tujuan"')
+            ->assertSet('versiDipilih', 0)
+            ->assertSeeHtml('data-testid="modal-saran-tujuan"')
+            ->assertSee('Saran AI · Tujuan')
+            ->assertSee('Pilih versi (3)')
             ->assertSeeHtml('data-tombol-ai="tujuan" data-keadaan="ada"')
             ->assertSee('Lihat saran (3)')
-            ->assertSee('3 saran AI untuk tujuan')
             ->assertSee('Sisa 19 dari 20 permintaan AI hari ini.');
 
-        $this->assertCount(3, $halaman->get('saran')['tujuan']);
+        $saran = $halaman->get('saran')['tujuan'];
+        $this->assertCount(3, $saran);
+        $this->assertSame($saran[0]['teks'], $halaman->get('suntingSaran'));
         $this->assertSame(1, BatasAi::terpakai(StubData::currentUser()));
         // Teks di layar tidak berubah sebelum saran dipakai.
         $this->assertSame(app(KegiatanRepository::class)->temukan(1)['tujuan'], $halaman->get('form.tujuan'));
 
-        $halaman->call('bukaSaran', 'tujuan')
+        $halaman->call('pilihVersi', 2)
+            ->assertSet('versiDipilih', 2)
+            ->assertSet('suntingSaran', $saran[2]['teks']);
+
+        $halaman->call('tutupSaran')
             ->assertSet('saranTerbuka', null)
-            ->assertDontSeeHtml('data-testid="saran-tujuan"')
+            ->assertDontSeeHtml('data-testid="modal-saran-tujuan"')
             ->call('bukaSaran', 'tujuan')
             ->assertSet('saranTerbuka', 'tujuan')
-            ->call('tutupSaran')
-            ->assertSet('saranTerbuka', null)
+            ->assertSet('versiDipilih', 0)
             ->call('bukaSaran', 'sasaran')
             ->assertNotFound();
 
         Livewire::test(KalimatAi::class, ['kegiatan' => 1])->call('mintaSaran', 'jadwal')->assertNotFound();
+        Livewire::test(KalimatAi::class, ['kegiatan' => 1])->call('mintaSaran', 'tujuan')->call('pilihVersi', 7)->assertNotFound();
+    }
+
+    public function test_pakai_sunting_urungkan_dan_tolak_saran(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $id = $repo->simpan(['nama_kegiatan' => 'Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran', 'nama_kegiatan_cover' => 'WORKSHOP PENYUSUNAN KURIKULUM MADRASAH DAN PERANGKAT PEMBELAJARAN', 'leading' => '1.6', 'tujuan' => 'lama.']);
+
+        $halaman = Livewire::test(KalimatAi::class, ['kegiatan' => $id])
+            ->call('mintaSaran', 'tujuan')
+            ->assertSee('Kegiatan Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran bertujuan')
+            ->call('pilihVersi', 1)
+            ->set('suntingSaran', '  meningkatkan mutu   pembelajaran.  ')
+            ->call('pakaiSaran')
+            ->assertSet('form.tujuan', 'meningkatkan mutu pembelajaran.')
+            ->assertSet('saranTerbuka', null)
+            ->assertSet('adaPerubahan', true)
+            ->assertSet('teksSebelum', ['tujuan' => 'lama.'])
+            ->assertSeeHtml('data-testid="saran-dipakai-tujuan"')
+            ->assertDispatched('notify', message: 'Saran AI dipakai untuk tujuan — periksa lalu simpan.', type: 'success');
+        $this->assertSame('lama.', $repo->temukan($id)['tujuan'], 'Belum tersimpan sampai Simpan.');
+
+        // Pakai lagi versi lain lalu urungkan → kembali ke teks sebelum saran pertama dipakai.
+        $halaman->call('bukaSaran', 'tujuan')
+            ->call('pakaiSaran')
+            ->call('urungkanSaran', 'tujuan')
+            ->assertSet('form.tujuan', 'lama.')
+            ->assertSet('teksSebelum', [])
+            ->assertSet('adaPerubahan', false);
+
+        // Teks kosong ditolak; nama cover dikapitalkan dan menjadi manual; simpan menetapkan saran.
+        $halaman->call('mintaSaran', 'nama_cover')
+            ->set('suntingSaran', '   ')
+            ->call('pakaiSaran')
+            ->assertHasErrors('suntingSaran')
+            ->assertSet('saranTerbuka', 'nama_cover')
+            ->call('pilihVersi', 2)
+            ->assertHasNoErrors('suntingSaran')
+            ->call('pakaiSaran')
+            ->assertSet('form.nama_kegiatan_cover', 'WORKSHOP PENYUSUNAN KURIKULUM MADRASAH')
+            ->assertSet('form.cover_manual', true)
+            ->call('simpan')
+            ->assertSet('teksSebelum', []);
+        $this->assertSame('WORKSHOP PENYUSUNAN KURIKULUM MADRASAH', $repo->temukan($id)['nama_kegiatan_cover']);
+
+        // Tolak: saran dibuang, isian tetap.
+        $halaman->call('mintaSaran', 'sasaran')
+            ->call('tolakSaran')
+            ->assertSet('saranTerbuka', null)
+            ->assertDispatched('notify', message: 'Saran AI ditolak — isian tidak berubah.', type: 'info')
+            ->assertSeeHtml('data-tombol-ai="sasaran" data-keadaan="siap"');
+        $this->assertArrayNotHasKey('sasaran', $halaman->get('saran'));
+
+        Livewire::test(KalimatAi::class, ['kegiatan' => $id])->call('urungkanSaran', 'tujuan')->assertNotFound();
+        $repo->simpan(['status' => 'final'] + $repo->temukan($id), $id);
+        Livewire::test(KalimatAi::class, ['kegiatan' => $id])->call('urungkanSaran', 'tujuan')->assertForbidden();
     }
 
     public function test_penyedia_gagal_batas_habis_dan_kegiatan_terkunci(): void
