@@ -856,7 +856,10 @@ test.describe('Pengaturan admin', () => {
         await expect(pratinjau.locator('li[data-status="hilang"]').first()).toBeVisible();
         await pratinjau.screenshot({ path: `storage/playwright/shots/master-pratinjau-sk-${testInfo.project.name}.png` });
         await pratinjau.getByRole('tab', { name: /IKSK/ }).click();
-        await expect(pratinjau.getByTestId('pratinjau-menyusul')).toContainText('Sheet Perkin sudah dikenali');
+        await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText('SK induk: SK.10');
+        await expect(pratinjau.locator('li[data-kode="IKSK 10.2"]')).toContainText('dipakai 1 kegiatan');
+        await pratinjau.getByRole('tab', { name: /RKTM/ }).click();
+        await expect(pratinjau.getByTestId('pratinjau-menyusul')).toContainText('Sheet SNP sudah dikenali');
         await panel.getByRole('button', { name: 'Kembali' }).click();
         await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
 

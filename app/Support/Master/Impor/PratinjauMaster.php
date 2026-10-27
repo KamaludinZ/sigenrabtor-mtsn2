@@ -18,8 +18,14 @@ final class PratinjauMaster
     /** Urutan & label status pratinjau. */
     public const STATUS = ['baru' => 'Baru', 'berubah' => 'Berubah', 'tetap' => 'Tetap', 'hilang' => 'Hilang', 'gagal' => 'Gagal'];
 
+    /** Jenis → kolom tampil (kolom pertama = teks utama baris) beserta labelnya. */
+    public const KOLOM = [
+        'sk' => ['uraian' => 'Uraian'],
+        'iksk' => ['uraian' => 'Uraian', 'kode_sk' => 'SK induk'],
+    ];
+
     /** Jenis → pembaca sheet (jenis lain menyusul). */
-    private const PEMBACA = ['sk' => PemeriksaSk::class];
+    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class];
 
     /**
      * @param  array<string, string>  $sheet  Jenis → nama sheet yang dikenali.
@@ -41,14 +47,48 @@ final class PratinjauMaster
                 } catch (GagalPratinjauMaster $e) {
                     $item['galat'] = $e->getMessage();
                 }
-                foreach ($item['baris'] as $b) {
-                    $item['ringkasan'][$b['status']]++;
-                }
             }
             $hasil[$jenis] = $item;
         }
 
+        if (isset($hasil['iksk']) && $hasil['iksk']['galat'] === null) {
+            $hasil['iksk']['baris'] = self::periksaInduk($hasil['iksk']['baris'], $hasil['sk'] ?? null, $tahun);
+        }
+        foreach ($hasil as &$item) {
+            foreach ($item['baris'] as $b) {
+                $item['ringkasan'][$b['status']]++;
+            }
+        }
+        unset($item);
+
         return $hasil;
+    }
+
+    /**
+     * IKSK yang SK induknya tidak akan ada setelah disimpan menjadi gagal: dibandingkan dengan SK berkas ini (bila sheet
+     * SK ikut diunggah dan terbaca, tanpa yang gagal/hilang) atau master SK tahun itu.
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @param  array<string, mixed>|null  $sk  Hasil pratinjau SK berkas yang sama.
+     * @return list<array<string, mixed>>
+     */
+    public static function periksaInduk(array $baris, ?array $sk, int $tahun): array
+    {
+        $dariBerkas = $sk !== null && $sk['galat'] === null;
+        $induk = $dariBerkas
+            ? array_column(array_filter($sk['baris'], fn (array $b) => ! in_array($b['status'], ['gagal', 'hilang'], true)), 'kode')
+            : array_column(JenisKode::baris('sk', $tahun), 'kode');
+        $asal = $dariBerkas ? 'SK berkas ini' : "master SK TA {$tahun}";
+
+        return array_map(function (array $b) use ($induk, $asal) {
+            if (! in_array($b['status'], ['gagal', 'hilang'], true) && ! in_array($b['tampil']['kode_sk'], $induk, true)) {
+                $b['status'] = 'gagal';
+                $b['lama'] = null;
+                $b['pesan'][] = "SK induk {$b['tampil']['kode_sk']} tidak ada di {$asal}.";
+            }
+
+            return $b;
+        }, $baris);
     }
 
     /**

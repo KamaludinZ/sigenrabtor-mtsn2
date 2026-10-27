@@ -8,6 +8,9 @@
 @php
     $item = $pratinjau[$tabPratinjau] ?? null;
     $baris = $this->barisPratinjau();
+    $kolom = PratinjauMaster::KOLOM[$tabPratinjau] ?? [];
+    $utama = array_key_first($kolom);
+    $kolomLain = array_slice($kolom, 1, null, true);
     $gayaStatus = [
         'baru' => ['bg-brand-50 text-brand-800 ring-brand-200', 'plus'],
         'berubah' => ['bg-sky-50 text-sky-800 ring-sky-200', 'pencil'],
@@ -78,9 +81,20 @@
                                 <p class="text-[11px] text-stone-500">{{ $b['baris'] === [] ? 'Master lama' : 'Baris '.implode(', ', array_slice($b['baris'], 0, 4)).(count($b['baris']) > 4 ? ', …' : '') }}</p>
                             </div>
                             <div class="min-w-0 text-sm">
-                                <p @class(['text-stone-800', 'text-stone-500' => $b['status'] === 'hilang'])>{{ $b['tampil']['uraian'] ?? '' }}</p>
+                                <p @class(['text-stone-800', 'text-stone-500' => $b['status'] === 'hilang'])>{{ $b['tampil'][$utama] ?? '' }}</p>
+                                @if ($kolomLain !== [])
+                                    <p class="mt-0.5 text-xs text-stone-600">
+                                        @foreach ($kolomLain as $k => $label)
+                                            <span class="mr-2 inline-block" data-kolom="{{ $k }}">{{ $label }}: <span class="font-medium">{{ ($b['tampil'][$k] ?? '') !== '' ? $b['tampil'][$k] : '—' }}</span></span>
+                                        @endforeach
+                                    </p>
+                                @endif
                                 @if ($b['lama'])
-                                    <p class="mt-0.5 text-xs text-stone-500"><span class="font-medium">Sebelumnya:</span> <del>{{ $b['lama']['uraian'] ?? '' }}</del></p>
+                                    @foreach ($kolom as $k => $label)
+                                        @if (($b['lama'][$k] ?? '') !== ($b['tampil'][$k] ?? ''))
+                                            <p class="mt-0.5 text-xs text-stone-500" data-lama="{{ $k }}"><span class="font-medium">{{ $label }} sebelumnya:</span> <del>{{ $b['lama'][$k] }}</del></p>
+                                        @endif
+                                    @endforeach
                                 @endif
                                 @foreach ($b['pesan'] as $pesan)
                                     <p @class(['mt-0.5 text-xs', 'text-red-700' => $b['status'] === 'gagal', 'text-gold-800' => $b['status'] !== 'gagal'])>{{ $pesan }}</p>
