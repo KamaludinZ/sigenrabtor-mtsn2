@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- **Batas pagu ditegakkan**: kegiatan yang RAB sumber dananya melebihi pagu kini tidak bisa diajukan (pesan tampil di isian pagu sumber dana itu, mis. "RAB Komite Rp7.950.000 melebihi pagu Rp7.500.000 sebesar Rp450.000") dan tidak bisa disetujui pemeriksa — tetap bisa dikembalikan. Selama masih disusun, kondisi pagu tetap berupa peringatan, dan checklist isian di Pratinjau Dokumen menandainya sebagai syarat pengajuan.
 - RAB: menghapus rincian, mengurungkan hapus, memindah item ke RAB sumber dana lain, dan mengurungkan pemindahan kini juga lewat layanan server yang sama — ditolak bila RAB sudah terkunci, dan urungkan yang terkirim dua kali tidak membuat item ganda.
 - RAB: menambah dan mengubah rincian belanja kini lewat satu layanan di server yang merapikan isian (volume "1,5", harga berformat rupiah, spasi berlebih, kelompok belanja ditebak dari uraian bila belum dipilih), memeriksa ulang aturan item, dan menolak perubahan bila RAB kegiatan sudah terkunci atau sumber dananya tidak dikenal.
 - Fondasi backend: **endpoint RAB lengkap** per kegiatan (`/kegiatan/{id}/rab-lengkap`, JSON) — setiap sumber dana dengan rincian belanja bernomor urut cetak beserta nama akun dan jumlahnya, subtotal per kelompok belanja dan per kode akun, pagu & status pagu, termin, terbilang, serta total kegiatan; RAB sumber dana yang sempat tidak dicentang tetap terlihat (ditandai tidak dipilih) tanpa ikut dijumlahkan.

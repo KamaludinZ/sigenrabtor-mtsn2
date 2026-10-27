@@ -11,6 +11,7 @@ use App\Support\Kegiatan\KelengkapanKode;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Pengaturan\PenandaTangan;
 use App\Support\Rab\AnggaranKegiatan;
+use App\Support\Rab\BatasPagu;
 use App\Support\Rab\MekanismePembayaran;
 use App\Support\Stub\StubData;
 
@@ -82,6 +83,9 @@ final class ChecklistIsian
         $butirAnggaran = [$butir('sumber_dana', 'Sumber dana dipilih', $anggaran !== [])];
         foreach ($anggaran as $a) {
             $butirAnggaran[] = $butir("pagu_{$a->sumber}", "Pagu {$a->sumber}", $a->pagu() !== null);
+            if ($a->keteranganPagu()->melebihi()) {
+                $butirAnggaran[] = $butir("batas_pagu_{$a->sumber}", "RAB {$a->sumber} tidak melebihi pagu", false, true, BatasPagu::pesan($a));
+            }
             $butirAnggaran[] = $butir("rincian_{$a->sumber}", "Rincian RAB {$a->sumber} (minimal 1 baris)", $a->jumlahItem() > 0);
             if ($a->adaTermin()) {
                 $mekanisme = MekanismePembayaran::dari($a);

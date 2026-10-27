@@ -120,6 +120,9 @@
         @error('catatan')
             <p id="catatan-pemeriksaan-error" class="mt-1 text-xs text-red-600">{{ $message }}</p>
         @enderror
+        @error('keputusan')
+            <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-keputusan">{{ $message }}</p>
+        @enderror
 
         @if ($konfirmasi && isset($pilihan[$konfirmasi]))
             <div class="mt-3 rounded-lg bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="konfirmasi-keputusan" wire:key="konfirmasi-{{ $konfirmasi }}">

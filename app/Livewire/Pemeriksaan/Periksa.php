@@ -15,7 +15,9 @@ use App\Support\Pemeriksaan\AntreanPemeriksaan;
 use App\Support\Pemeriksaan\RiwayatPemeriksaan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\BatasPagu;
 use App\Support\Stub\StubData;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -202,6 +204,7 @@ class Periksa extends Component
         }
 
         $this->validasiCatatan($aksi);
+        $this->pastikanDalamPagu($aksi);
         $this->konfirmasi = $aksi;
     }
 
@@ -226,6 +229,7 @@ class Periksa extends Component
         }
 
         $this->validasiCatatan($aksi);
+        $this->pastikanDalamPagu($aksi);
 
         $data = $this->dataKegiatan;
         $data['status'] = $definisi['ke']->value;
@@ -253,6 +257,14 @@ class Periksa extends Component
         $kegiatan = array_values(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['status'] ?? null) === 'diperiksa' && (int) $k['id'] !== $this->kegiatanId && TahunKegiatan::dari($k) === $tahun));
 
         return AntreanPemeriksaan::untukTab(AntreanPemeriksaan::baris($kegiatan), 'diperiksa')[0]['id'] ?? null;
+    }
+
+    /** RAB yang melebihi pagu tidak bisa disetujui (PRD aturan 5, BatasPagu); dikembalikan tetap boleh. */
+    private function pastikanDalamPagu(string $aksi): void
+    {
+        if ($aksi === 'setujui' && ($terlampaui = BatasPagu::terlampaui(AnggaranKegiatan::untuk($this->dataKegiatan)))) {
+            throw ValidationException::withMessages(['keputusan' => implode(' ', $terlampaui)]);
+        }
     }
 
     private function validasiCatatan(string $aksi): void

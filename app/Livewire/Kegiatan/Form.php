@@ -22,6 +22,7 @@ use App\Support\Pagu\DataPagu;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\BatasPagu;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\MekanismePembayaran;
 use App\Support\Stub\StubData;
@@ -768,7 +769,7 @@ class Form extends Component
             try {
                 $this->form->validate();
 
-                if ($wajib = $this->form->wajibPengajuanKosong() + $this->terminTidakPas()) {
+                if ($wajib = $this->form->wajibPengajuanKosong() + $this->terminTidakPas() + $this->paguTerlampaui()) {
                     throw ValidationException::withMessages($wajib);
                 }
             } catch (ValidationException $e) {
@@ -847,6 +848,21 @@ class Form extends Component
             if ($pesan = TerminPembayaran::pesanTidakPas(MekanismePembayaran::dari($anggaran), $sumber)) {
                 $galat['form.termin_'.mb_strtolower($sumber)] = $pesan.' Sesuaikan di halaman RAB › Termin pembayaran.';
             }
+        }
+
+        return $galat;
+    }
+
+    /**
+     * RAB yang melebihi pagu menghalangi pengajuan (PRD aturan 5, BatasPagu); galat di isian pagu sumber dananya.
+     *
+     * @return array<string, string>
+     */
+    public function paguTerlampaui(): array
+    {
+        $galat = [];
+        foreach (BatasPagu::terlampaui($this->anggaranRab) as $sumber => $pesan) {
+            $galat['form.pagu_'.mb_strtolower($sumber)] = $pesan;
         }
 
         return $galat;
