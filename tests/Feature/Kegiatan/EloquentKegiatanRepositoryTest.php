@@ -87,12 +87,17 @@ class EloquentKegiatanRepositoryTest extends TestCase
         $this->assertSame(['Supervisi Akademik', 'impor_excel', ['id' => $sumber, 'tahun' => 2025], 2, 2], [$k['nama_kegiatan'], $k['asal'], $k['duplikat_dari'], count($k['sumber_dana']), count($k['panitia'])]);
         $this->assertSame('Guru', $k['peserta_jenis']);
 
-        // Sumber dana & panitia dikirim → diganti seluruhnya; sumber yang tidak dipilih lagi dihapus barisnya.
+        // Sumber dana & panitia dikirim → diganti seluruhnya; sumber yang tidak dipilih lagi hanya ditandai (RAB-nya tetap).
         $this->repo->simpan(['sumber_dana' => [['sumber' => 'Komite', 'pagu' => 3_000_000]], 'panitia' => [['nama' => 'Siti Aminah, S.Pd.', 'jabatan' => '', 'peran' => 'Ketua']]], $id);
         $k = $this->repo->temukan($id);
         $this->assertSame([['sumber' => 'Komite', 'pagu' => 3_000_000]], $k['sumber_dana']);
         $this->assertSame([['nama' => 'Siti Aminah, S.Pd.', 'jabatan' => '', 'peran' => 'Ketua']], $k['panitia']);
-        $this->assertSame(1, DB::table('anggaran_kegiatan')->where('activity_id', $id)->count());
+        $this->assertSame([['DIPA', false, null], ['Komite', true, 3_000_000]], DB::table('anggaran_kegiatan')->where('activity_id', $id)->orderBy('sumber_dana')->get()->map(fn ($a) => [$a->sumber_dana, $a->dipilih, $a->pagu])->all());
+
+        // Dipilih lagi: baris yang sama dipakai kembali.
+        $this->repo->simpan(['sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000], ['sumber' => 'Komite', 'pagu' => 3_000_000]]], $id);
+        $this->assertSame([['sumber' => 'DIPA', 'pagu' => 1_000_000], ['sumber' => 'Komite', 'pagu' => 3_000_000]], $this->repo->temukan($id)['sumber_dana']);
+        $this->assertSame(2, DB::table('anggaran_kegiatan')->where('activity_id', $id)->count());
     }
 
     public function test_riwayat_hanya_ditambah_dan_jejak_kunci_final(): void

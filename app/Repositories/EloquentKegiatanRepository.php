@@ -171,7 +171,8 @@ class EloquentKegiatanRepository implements KegiatanRepository
     }
 
     /**
-     * Satu baris per sumber dana terpilih; sumber yang tidak dipilih lagi dihapus barisnya.
+     * Satu baris anggaran per sumber dana; sumber yang tidak dipilih lagi hanya ditandai `dipilih = false` (pagu
+     * dikosongkan seperti di form) agar rincian & termin RAB-nya tetap tersimpan (RabRepository::sumberTersimpan).
      *
      * @param  array<int, array{sumber?: string, pagu?: int|null}>  $sumberDana
      */
@@ -182,9 +183,9 @@ class EloquentKegiatanRepository implements KegiatanRepository
             $pagu[(string) ($baris['sumber'] ?? '')] = filled($baris['pagu'] ?? null) ? (int) $baris['pagu'] : null;
         }
 
-        $kegiatan->anggaran()->whereNotIn('sumber_dana', array_keys($pagu))->delete();
+        $kegiatan->anggaran()->whereNotIn('sumber_dana', array_keys($pagu))->update(['dipilih' => false, 'pagu' => null]);
         foreach ($pagu as $sumber => $nilai) {
-            $kegiatan->anggaran()->updateOrCreate(['sumber_dana' => $sumber], ['pagu' => $nilai]);
+            $kegiatan->anggaran()->updateOrCreate(['sumber_dana' => $sumber], ['dipilih' => true, 'pagu' => $nilai]);
         }
     }
 
@@ -251,7 +252,7 @@ class EloquentKegiatanRepository implements KegiatanRepository
         $anggaran = $kegiatan->anggaran->keyBy('sumber_dana');
         $data['sumber_dana'] = [];
         foreach (SumberDana::cases() as $sumber) {
-            if ($baris = $anggaran->get($sumber->value)) {
+            if (($baris = $anggaran->get($sumber->value)) && $baris->dipilih) {
                 $data['sumber_dana'][] = ['sumber' => $sumber->value, 'pagu' => $baris->pagu];
             }
         }
