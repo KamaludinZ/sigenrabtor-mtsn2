@@ -9,6 +9,7 @@ use App\Livewire\Kegiatan\PratinjauDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Dokumen\TanggalDokumen;
 use App\Support\Dokumen\TeksCover;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
@@ -79,7 +80,7 @@ class PratinjauDokumenTest extends TestCase
             ->assertSee('Pagu belum diisi.');
 
         $this->assertSame(
-            ['total' => 'lulus', 'terbilang' => 'lulus', 'tahun' => 'lulus', 'pagu' => 'lulus', 'termin' => 'lulus', 'kode' => 'lulus', 'format' => 'info'],
+            ['total' => 'lulus', 'terbilang' => 'lulus', 'tahun' => 'lulus', 'pagu' => 'lulus', 'termin' => 'lulus', 'kode' => 'lulus', 'format' => 'lulus'],
             array_diff_key($this->statusKaidah(app(KegiatanRepository::class)->temukan(1)), array_flip(['penanda_tangan', 'kelengkapan'])),
         );
     }
@@ -99,6 +100,39 @@ class PratinjauDokumenTest extends TestCase
         // Halaman RAB menautkan tiap tempat cetak ke letaknya di pratinjau.
         $this->get(route('kegiatan.rab', ['kegiatan' => 1]))
             ->assertSeeHtml('href="'.route('kegiatan.pratinjau', ['kegiatan' => 1, 'sumber' => 'Komite']).'#cetak-rab-diajukan"');
+    }
+
+    public function test_tanggal_indonesia_tercetak_dan_diperiksa(): void
+    {
+        $kegiatan = app(KegiatanRepository::class)->temukan(1);
+        $tanggal = collect(TanggalDokumen::dari($kegiatan, 'Komite'));
+
+        $this->assertSame(
+            ['kak-pelaksanaan', 'kak-pelaporan', 'kak-pengesahan', 'rab-pengesahan', 'rab-mekanisme', 'rab-mekanisme'],
+            $tanggal->pluck('kunci')->all(),
+        );
+        $this->assertSame('14 Juli 2026', $tanggal->firstWhere('kunci', 'kak-pelaksanaan')['teks']);
+        $this->assertSame('Malang, 3 Januari 2026', $tanggal->firstWhere('kunci', 'rab-pengesahan')['teks']);
+        $this->assertSame(['17/06/2026', '19/06/2026'], $tanggal->where('kunci', 'rab-mekanisme')->pluck('teks')->values()->all());
+        $this->assertTrue($tanggal->every(fn ($t) => $t['temuan'] === []));
+
+        // Batas laporan sebelum selesai, tanggal dokumen sesudah mulai, dan tahun lain → peringatan.
+        $janggal = ['tanggal_laporan' => '2026-07-10', 'tanggal_dokumen' => '2027-01-02'] + $kegiatan;
+        $tanggal = TanggalDokumen::dari($janggal, 'Komite');
+        $this->assertSame(['KAK · 4c. Pelaporan: Batas laporan sebelum kegiatan selesai (14 Juli 2026).', 'KAK · Lembar pengesahan: Tanggal dokumen sesudah kegiatan dimulai (14 Juli 2026).', 'RAB · Lembar pengesahan: Tanggal dokumen sesudah kegiatan dimulai (14 Juli 2026).'], TanggalDokumen::temuan($tanggal, 'urutan'));
+        $status = $this->statusKaidah($janggal, 'Komite');
+        $this->assertSame(['peringatan', 'peringatan'], [$status['tahun'], $status['format']]);
+
+        Livewire::test(PratinjauDokumen::class, ['kegiatan' => 1])
+            ->assertSeeHtml('data-testid="tanggal-cetak"')
+            ->assertSeeHtml('href="#cetak-kak-pelaksanaan"')
+            ->assertSeeHtml('id="cetak-kak-pelaksanaan"')
+            ->assertSeeHtml('id="cetak-kak-pelaporan"')
+            ->assertSeeHtml('id="cetak-kak-pengesahan"')
+            ->assertSeeHtml('id="cetak-rab-pengesahan"')
+            ->assertSeeHtml('id="cetak-rab-mekanisme"')
+            ->assertSee('“Malang, 3 Januari 2026”', false)
+            ->assertSee('Sesuai');
     }
 
     public function test_aturan_kaidah(): void

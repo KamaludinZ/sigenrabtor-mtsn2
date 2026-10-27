@@ -9,6 +9,7 @@ use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Dokumen\TanggalDokumen;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -40,10 +41,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal);
         }
     }
 
@@ -78,6 +79,13 @@ class PratinjauDokumen extends Component
         $anggaran = $this->rab->anggaran;
 
         return $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
+    }
+
+    /** @return list<array<string, mixed>> Tempat tanggal tercetak (TanggalDokumen) dokumen sumber dana yang ditampilkan. */
+    #[Computed]
+    public function tanggal(): array
+    {
+        return TanggalDokumen::dari($this->dataKegiatan, $this->kak->sumber);
     }
 
     /** @return list<array{kunci: string, nomor: int, judul: string, status: string, pesan: string}> */

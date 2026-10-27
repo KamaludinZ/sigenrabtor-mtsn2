@@ -56,7 +56,7 @@
         @endif
 
         @if ($susunan->mekanisme)
-            <dl class="grid max-w-md grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-sm" data-testid="mekanisme-rab">
+            <dl class="grid max-w-md scroll-mt-40 grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-sm transition-colors target:bg-gold-100" data-testid="mekanisme-rab" id="cetak-rab-mekanisme" data-tempat-cetak="rab-mekanisme">
                 @foreach ($susunan->mekanisme as $baris)
                     <dt>{{ $baris['label'] }} :</dt>
                     <dd class="text-right tabular-nums">{{ $baris['nilai'] }}</dd>
@@ -69,6 +69,6 @@
             @endif
         @endif
 
-        <x-dokumen.pengesahan :kolom="$susunan->pengesahan" data-testid="pengesahan-rab" />
+        <x-dokumen.pengesahan :kolom="$susunan->pengesahan" data-testid="pengesahan-rab" id="cetak-rab-pengesahan" class="scroll-mt-40 transition-colors target:bg-gold-100" data-tempat-cetak="rab-pengesahan" />
     </div>
 </article>

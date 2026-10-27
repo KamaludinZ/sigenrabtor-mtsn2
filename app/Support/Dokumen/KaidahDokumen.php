@@ -68,11 +68,15 @@ final class KaidahDokumen
             $tambah('terbilang', $salahEja === [] ? 'lulus' : 'gagal', $salahEja === [] ? '“'.$angka->terbilang().'”.' : count($salahEja).' terbilang tidak sesuai nominalnya.');
         }
 
-        // 3. Tahun dokumen = tahun anggaran aktif; kegiatan milik tahun lain diberi peringatan.
+        // 3. Tahun dokumen = tahun anggaran aktif; kegiatan milik tahun lain atau tanggal di luar TA diberi peringatan.
+        $tanggal = TanggalDokumen::dari($kegiatan, $kak->sumber, $tahun);
         $tahunKegiatan = TahunKegiatan::dari($kegiatan);
-        $tambah('tahun', $tahunKegiatan === $tahun ? 'lulus' : 'peringatan', $tahunKegiatan === $tahun
-            ? "Cover, judul, dasar hukum, jadwal, dan RAB memakai TA {$tahun}."
-            : "Kegiatan tercatat di TA {$tahunKegiatan}, tetapi dokumen dicetak dengan TA aktif {$tahun}.");
+        $luarTahun = array_values(array_unique(array_map(fn (array $t) => "{$t['dokumen']} · {$t['bagian']}", array_filter($tanggal, fn (array $t) => collect($t['temuan'])->contains('jenis', 'tahun')))));
+        $tambah('tahun', $tahunKegiatan === $tahun && $luarTahun === [] ? 'lulus' : 'peringatan', match (true) {
+            $tahunKegiatan !== $tahun => "Kegiatan tercatat di TA {$tahunKegiatan}, tetapi dokumen dicetak dengan TA aktif {$tahun}.",
+            $luarTahun !== [] => "Tanggal di luar TA {$tahun}: ".implode(', ', $luarTahun).'.',
+            default => "Cover, judul, dasar hukum, jadwal, tanggal, dan RAB memakai TA {$tahun}.",
+        });
 
         // 4. Nama penanda tangan dari pejabat tahun aktif.
         $kosong = array_values(array_map(fn (array $k) => rtrim($k['peran'], ','), array_filter($rab->pengesahan, fn (array $k) => blank($k['nama']))));
@@ -118,8 +122,14 @@ final class KaidahDokumen
             ? 'Semua isian KAK/TOR & RAB lengkap.'
             : count($kurang).' isian belum lengkap — dokumen dicetak dengan cap DRAF.');
 
-        // 10. Format Indonesia dijamin Format/Terbilang.
-        $tambah('format', 'info', 'Rupiah dengan titik ribuan (Rp10.000.000,-) dan tanggal seperti “23 Desember 2026”.');
+        // 10. Format Indonesia dijamin Format/Terbilang; urutan tanggal yang janggal diberi peringatan.
+        $tercetak = array_values(array_filter(array_column($tanggal, 'teks')));
+        $urutan = TanggalDokumen::temuan($tanggal, 'urutan');
+        $tambah('format', $urutan !== [] ? 'peringatan' : ($tercetak === [] ? 'info' : 'lulus'), match (true) {
+            $urutan !== [] => implode(' ', $urutan),
+            $tercetak === [] => 'Rupiah dengan titik ribuan (Rp10.000.000,-) dan tanggal seperti “23 Desember '.$tahun.'”.',
+            default => 'Rupiah dengan titik ribuan; '.count($tercetak).' tanggal ditulis lengkap, mis. “'.$tercetak[0].'”.',
+        });
 
         return $hasil;
     }

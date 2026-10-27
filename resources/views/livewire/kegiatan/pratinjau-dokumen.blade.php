@@ -101,6 +101,9 @@
                 @if ($this->angka)
                     <x-dokumen.tempat-cetak :angka="$this->angka" :sumber="$sumberAktif" tautan="" />
                 @endif
+
+                {{-- Tanggal Indonesia: tiap tanggal yang tercetak, tautan ke letaknya. --}}
+                <x-dokumen.tanggal-cetak :tanggal="$this->tanggal" />
             </section>
 
             @php

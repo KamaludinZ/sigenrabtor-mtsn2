@@ -39,6 +39,14 @@ test.describe('Pratinjau dokumen', () => {
         await expect(page.locator('#cetak-kak-pembiayaan')).toBeInViewport();
         await expect(page.locator('#cetak-kak-pembiayaan')).toContainText('Rp2.500.000,- (Dua Juta Lima Ratus Ribu Rupiah)');
 
+        // Tanggal Indonesia: teks persis tercetak, tautan ke lembar pengesahan.
+        const tanggal = kaidah.getByTestId('tanggal-cetak');
+        await expect(tanggal.locator('[data-tanggal="kak-pelaksanaan"] [data-teks-cetak]')).toHaveText(/^“\d{1,2}( – \d{1,2})? \S+( – \d{1,2} \S+)? 2026”$/);
+        await expect(tanggal.locator('[data-tanggal="rab-pengesahan"] [data-teks-cetak]')).toHaveText(/^“Malang, \d{1,2} \S+ 2026”$/);
+        await tanggal.locator('[data-tanggal="rab-pengesahan"]').getByRole('link').click();
+        await expect(page.locator('#cetak-rab-pengesahan')).toBeInViewport();
+        await expect(page.locator('#cetak-rab-pengesahan')).toContainText(/Malang, \d{1,2} \S+ 2026/);
+
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);
         await page.goto('/kegiatan/2/pratinjau?sumber=Komite');

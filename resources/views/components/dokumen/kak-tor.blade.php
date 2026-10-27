@@ -55,7 +55,8 @@
                                 <p class="font-semibold">{{ $blok['teks'] }}</p>
                                 @break
                             @case('daftar')
-                                <ol @class(['space-y-1 pl-6', 'list-decimal' => $blok['bernomor'], 'list-disc' => ! $blok['bernomor']])>
+                                <ol @class(['space-y-1 pl-6', 'list-decimal' => $blok['bernomor'], 'list-disc' => ! $blok['bernomor'], 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($blok['tempat'])])
+                                    @isset($blok['tempat']) id="cetak-{{ $blok['tempat'] }}" data-tempat-cetak="{{ $blok['tempat'] }}" @endisset>
                                     @foreach ($blok['butir'] as $butir)
                                         <li class="sm:text-justify">{{ $butir }}</li>
                                     @endforeach
@@ -143,7 +144,7 @@
                                 </p>
                                 @break
                             @case('pengesahan')
-                                <x-dokumen.pengesahan :kolom="$blok['kolom']" />
+                                <x-dokumen.pengesahan :kolom="$blok['kolom']" id="cetak-kak-pengesahan" class="scroll-mt-40 transition-colors target:bg-gold-100" data-tempat-cetak="kak-pengesahan" />
                                 @break
                         @endswitch
                     @endforeach

@@ -134,9 +134,9 @@ final readonly class SusunanKak
             ['jenis' => 'subjudul', 'teks' => 'a. Persiapan'],
             ['jenis' => 'daftar', 'bernomor' => true, 'butir' => KalimatKak::persiapan($nama)],
             ['jenis' => 'subjudul', 'teks' => 'b. Pelaksanaan'],
-            $isi($pelaksanaan->kalimatPelaksanaan($nama), 'tanggal mulai & lama kegiatan'),
+            ['tempat' => 'kak-pelaksanaan'] + $isi($pelaksanaan->kalimatPelaksanaan($nama), 'tanggal mulai & lama kegiatan'),
             ['jenis' => 'subjudul', 'teks' => 'c. Pelaporan'],
-            ['jenis' => 'daftar', 'bernomor' => true, 'butir' => array_values(array_filter([
+            ['jenis' => 'daftar', 'bernomor' => true, 'tempat' => 'kak-pelaporan', 'butir' => array_values(array_filter([
                 KalimatKak::analisisHasil($nama),
                 $batasLaporan ? KalimatKak::pelaporan($nama, $batasLaporan) : null,
             ]))],
