@@ -26,9 +26,7 @@
             <button type="button" role="tab" wire:click="$set('tabPratinjau', '{{ $jenis }}')" aria-selected="{{ $jenis === $tabPratinjau ? 'true' : 'false' }}" data-jenis="{{ $jenis }}"
                     @class(['-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm', 'border-brand-700 font-semibold text-brand-800' => $jenis === $tabPratinjau, 'border-transparent font-medium text-stone-500 hover:border-stone-300 hover:text-stone-800' => $jenis !== $tabPratinjau])>
                 {{ JenisKode::DAFTAR[$jenis]['label'] }}
-                @if (! $p['dibaca'])
-                    <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-500 uppercase">segera</span>
-                @elseif ($p['galat'] || $p['ringkasan']['gagal'] > 0)
+                @if ($p['galat'] || $p['ringkasan']['gagal'] > 0)
                     <x-ui.icon name="alert" class="size-3.5 text-red-600" /><span class="sr-only">(ada galat)</span>
                 @else
                     <span class="rounded-full bg-stone-100 px-1.5 py-0.5 text-[11px] font-semibold text-stone-600 tabular-nums">{{ count($p['baris']) }}</span>
@@ -44,11 +42,7 @@
                 <p class="text-xs text-stone-500">Dari sheet {{ $item['sheet'] }} · dibandingkan dengan master TA {{ $tahun }}</p>
             </div>
 
-            @if (! $item['dibaca'])
-                <p class="rounded-lg bg-stone-50 px-4 py-6 text-center text-sm text-stone-500 ring-1 ring-stone-200" data-testid="pratinjau-menyusul">
-                    Sheet {{ $item['sheet'] }} sudah dikenali. Pratinjau {{ JenisKode::DAFTAR[$tabPratinjau]['label'] }} sedang disiapkan.
-                </p>
-            @elseif ($item['galat'])
+            @if ($item['galat'])
                 <p class="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-pratinjau">
                     <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> {{ $item['galat'] }}
                 </p>
@@ -68,6 +62,12 @@
                         @endif
                     @endforeach
                 </div>
+
+                @foreach ($item['peringatan'] as $peringatan)
+                    <p class="flex items-start gap-2 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-800 ring-1 ring-gold-200" data-testid="peringatan-pratinjau">
+                        <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $peringatan }}
+                    </p>
+                @endforeach
 
                 @if ($item['ringkasan']['gagal'] > 0)
                     <p class="text-xs text-red-700">{{ $item['ringkasan']['gagal'] }} baris gagal tidak ikut disimpan — perbaiki berkasnya lalu unggah ulang bila perlu.</p>

@@ -12,7 +12,7 @@ use App\Support\MasterKode;
 /**
  * Pratinjau sebelum simpan (PRD §14): tiap jenis dalam berkas dibaca dari sheet-nya, diperiksa per baris, lalu
  * dibandingkan dengan master tahun itu — status baru/berubah/tetap/gagal, ditambah kode master yang hilang dari berkas
- * (beserta jumlah kegiatan pemakainya). Jenis yang belum punya pembaca ditandai `dibaca` false.
+ * (beserta jumlah kegiatan pemakainya). `peringatan` = catatan tingkat jenis (mis. jumlah 5 Budaya Mutu).
  */
 final class PratinjauMaster
 {
@@ -25,14 +25,15 @@ final class PratinjauMaster
         'iksk' => ['uraian' => 'Uraian', 'kode_sk' => 'SK induk'],
         'rktm' => ['sub_kegiatan' => 'Sub kegiatan', 'kegiatan' => 'Kegiatan', 'snp' => 'Standar (SNP)'],
         'edm' => ['uraian' => 'Uraian', 'komponen' => 'Komponen'],
+        'budaya' => ['nama' => 'Budaya mutu'],
     ];
 
-    /** Jenis → pembaca sheet (jenis lain menyusul). */
-    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class, 'rktm' => PemeriksaRktm::class, 'edm' => PemeriksaEdm::class];
+    /** Jenis → pembaca sheet. */
+    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class, 'rktm' => PemeriksaRktm::class, 'edm' => PemeriksaEdm::class, 'budaya' => PemeriksaBudayaMutu::class];
 
     /**
      * @param  array<string, string>  $sheet  Jenis → nama sheet yang dikenali.
-     * @return array<string, array{jenis: string, sheet: string, dibaca: bool, galat: string|null, baris: list<array<string, mixed>>, ringkasan: array<string, int>}>
+     * @return array<string, array{jenis: string, sheet: string, galat: string|null, peringatan: list<string>, baris: list<array<string, mixed>>, ringkasan: array<string, int>}>
      *
      * @throws GagalBacaImpor Berkas tidak bisa dibuka.
      */
@@ -42,15 +43,16 @@ final class PratinjauMaster
         $hasil = [];
 
         foreach ($sheet as $jenis => $namaSheet) {
-            $item = ['jenis' => $jenis, 'sheet' => $namaSheet, 'dibaca' => isset(self::PEMBACA[$jenis]), 'galat' => null, 'baris' => [], 'ringkasan' => array_fill_keys(array_keys(self::STATUS), 0)];
-            if ($item['dibaca']) {
-                try {
-                    $lembar = LembarExcel::buka($path, $namaAsli, $namaSheet);
-                    $baca = $jenis === 'edm' ? PemeriksaEdm::baca($lembar, MasterKode::komponenEdm($tahun)) : self::PEMBACA[$jenis]::baca($lembar);
-                    $item['baris'] = self::bandingkan($baca, $jenis, $tahun, JenisKode::pemakaian($jenis, $kegiatan));
-                } catch (GagalPratinjauMaster $e) {
-                    $item['galat'] = $e->getMessage();
+            $item = ['jenis' => $jenis, 'sheet' => $namaSheet, 'galat' => null, 'peringatan' => [], 'baris' => [], 'ringkasan' => array_fill_keys(array_keys(self::STATUS), 0)];
+            try {
+                $lembar = LembarExcel::buka($path, $namaAsli, $namaSheet);
+                $baca = $jenis === 'edm' ? PemeriksaEdm::baca($lembar, MasterKode::komponenEdm($tahun)) : self::PEMBACA[$jenis]::baca($lembar);
+                $item['baris'] = self::bandingkan($baca, $jenis, $tahun, JenisKode::pemakaian($jenis, $kegiatan));
+                if ($jenis === 'budaya') {
+                    $item['peringatan'] = array_values(array_filter([PemeriksaBudayaMutu::peringatanJumlah(count(array_filter($baca, fn (array $b) => $b['status'] !== 'gagal')))]));
                 }
+            } catch (GagalPratinjauMaster $e) {
+                $item['galat'] = $e->getMessage();
             }
             $hasil[$jenis] = $item;
         }

@@ -107,8 +107,7 @@ class PratinjauSkTest extends TestCase
             ->assertSet('tahap', 'pratinjau')
             ->assertSet('tabPratinjau', 'sk')
             ->assertSet('pratinjau.sk.sheet', 'Perkin')
-            ->assertSet('pratinjau.sk.dibaca', true)
-            ->assertSet('pratinjau.budaya.dibaca', false)
+            ->assertSet('pratinjau.sk.galat', null)
             // Berkas contoh memuat SK.8, SK.9, SK.10 (uraian sama dengan master); SK lain hilang.
             ->assertSet('pratinjau.sk.ringkasan', ['baru' => 0, 'berubah' => 0, 'tetap' => 3, 'hilang' => $jumlahSk - 3, 'gagal' => 0])
             ->assertSeeHtml('data-testid="pratinjau-master"')
@@ -120,8 +119,7 @@ class PratinjauSkTest extends TestCase
             ->set('saring', 'ngawur')
             ->assertSet('saring', 'semua')
             ->set('tabPratinjau', 'budaya')
-            ->assertSeeHtml('data-testid="pratinjau-menyusul"')
-            ->assertSee('Sheet 5 Budaya Mutu sudah dikenali. Pratinjau 5 Budaya Mutu sedang disiapkan.')
+            ->assertSeeHtml('data-kode="1" data-status="tetap"')
             ->set('tabPratinjau', 'tidak-ada')
             ->assertSet('tabPratinjau', 'sk');
         $this->assertCount(3 + $jumlahSk - 3, $komponen->instance()->barisPratinjau());

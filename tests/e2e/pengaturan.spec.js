@@ -865,7 +865,8 @@ test.describe('Pengaturan admin', () => {
         await expect(pratinjau.locator('li[data-kode="A1"]')).toContainText('Komponen: Kedisiplinan');
         await expect(pratinjau.locator('li[data-kode="A7"]')).toContainText('padahal dipakai 1 kegiatan TA 2026');
         await pratinjau.getByRole('tab', { name: /Budaya/ }).click();
-        await expect(pratinjau.getByTestId('pratinjau-menyusul')).toContainText('Sheet 5 Budaya Mutu sudah dikenali');
+        await expect(pratinjau.locator('li[data-status="tetap"]')).toHaveCount(5);
+        await expect(pratinjau.locator('li[data-kode="2"]')).toContainText('dipakai 3 kegiatan');
         await panel.getByRole('button', { name: 'Kembali' }).click();
         await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
 
