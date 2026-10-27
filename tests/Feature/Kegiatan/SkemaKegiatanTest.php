@@ -101,7 +101,7 @@ class SkemaKegiatanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan_dan_dijalankan_ulang(): void
     {
-        $tabel = ['activities', 'anggaran_kegiatan', 'committees', 'riwayat_status_kegiatan'];
+        $tabel = ['activities', 'anggaran_kegiatan', 'committees', 'riwayat_status_kegiatan', 'matrik_tahapan', 'schedules'];
         $ada = fn () => array_values(array_filter($tabel, Schema::hasTable(...)));
 
         // DDL PostgreSQL ikut transaksi tes, jadi basis data tes kembali utuh sesudahnya.
