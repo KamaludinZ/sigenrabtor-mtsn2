@@ -9,6 +9,7 @@ use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\KunciDokumen;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\DaftarDasarHukum;
@@ -43,6 +44,7 @@ final readonly class SusunanKak
      * @param  PeringatanPagu|null  $peringatanPagu  Peringatan batas pagu RAB sumber ini; null bila tepat pagu / RAB kosong.
      * @param  array<string, string|null>  $statusPagu  Sumber → status pagu RAB-nya (null bila RAB belum berisi), untuk tab dokumen.
      * @param  array<int, list<string>>  $kurangPerBagian  Nomor bagian → isian yang belum lengkap di bagian itu (pratinjau sebagian).
+     * @param  KunciDokumen|null  $kunci  Jejak kunci selama kegiatan Final (cap "Final · terkunci" di pratinjau).
      */
     public function __construct(
         public array $cover,
@@ -54,6 +56,7 @@ final readonly class SusunanKak
         public ?PeringatanPagu $peringatanPagu = null,
         public array $statusPagu = [],
         public array $kurangPerBagian = [],
+        public ?KunciDokumen $kunci = null,
     ) {}
 
     /**
@@ -196,6 +199,7 @@ final readonly class SusunanKak
             $peringatanPagu,
             array_map(fn (AnggaranSumber $a) => $a->jumlahItem() > 0 ? $a->statusPagu() : null, $anggaran),
             array_map(fn (array $daftar) => array_values(array_unique($daftar)), $kurangPerBagian),
+            KunciDokumen::dari($kegiatan),
         );
     }
 

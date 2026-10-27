@@ -4,6 +4,7 @@ namespace App\Support\Dokumen;
 
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\KunciDokumen;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\MekanismePembayaran;
@@ -42,6 +43,7 @@ final readonly class SusunanRab
         public ?string $sumber,
         public array $daftarSumber,
         public ?PeringatanPagu $peringatanPagu = null,
+        public ?KunciDokumen $kunci = null,
     ) {}
 
     /**
@@ -115,6 +117,7 @@ final readonly class SusunanRab
             $sumber,
             $daftarSumber,
             $peringatanPagu,
+            KunciDokumen::dari($kegiatan),
         );
     }
 }

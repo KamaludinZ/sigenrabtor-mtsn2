@@ -101,12 +101,7 @@
         </div>
     @endif
 
-    @unless ($bisaUbah)
-        <p class="mt-4 flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200" role="status" data-testid="banner-terkunci">
-            <x-ui.icon name="lock" class="size-4 shrink-0" />
-            Kode terkunci karena kegiatan berstatus {{ $this->status()->label() }}.
-        </p>
-    @endunless
+    <x-kegiatan.banner-kunci :kegiatan-id="$kegiatanId" :status="$this->status()->value" subjek="Kode" class="mt-4" />
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <fieldset @disabled(! $bisaUbah) class="min-w-0 space-y-6">

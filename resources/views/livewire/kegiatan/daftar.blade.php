@@ -254,7 +254,14 @@
                                         <span class="block text-[11px] text-stone-400">{{ $b['item'] }} item</span>
                                     @endif
                                 </td>
-                                <td class="px-3 py-3"><x-ui.status-badge :status="$b['status']->value" /></td>
+                                <td class="px-3 py-3">
+                                    <x-ui.status-badge :status="$b['status']->value" />
+                                    @if ($b['kunci'])
+                                        <span class="mt-1 block text-[11px] whitespace-nowrap text-stone-500" title="{{ $b['kunci']->kalimat() }}" data-testid="jejak-kunci-baris">
+                                            {{ $b['kunci']->pada ? 'Terkunci '.Carbon::parse($b['kunci']->pada)->locale('id')->translatedFormat('j M Y') : 'Terkunci' }}
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3 whitespace-nowrap text-xs text-stone-600">
                                     @if ($b['diperbarui'])
                                         @php $waktu = Carbon::parse($b['diperbarui'])->locale('id'); @endphp

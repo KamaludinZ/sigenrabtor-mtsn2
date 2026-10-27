@@ -187,13 +187,19 @@ test.describe('Pemeriksaan', () => {
 
         await panelStatus(page).getByRole('button', { name: 'Tandai final', exact: true }).click();
         await panelStatus(page).getByRole('button', { name: 'Ya, tandai final' }).click();
-        await expect(page.getByTestId('banner-terkunci')).toContainText('status Final');
+        const bannerKunci = page.getByTestId('banner-terkunci');
+        await expect(bannerKunci).toContainText('Isian terkunci — status Final');
+        await expect(bannerKunci.getByTestId('jejak-kunci')).toContainText(/^Dikunci \d{1,2} \S+ 2026, \d{2}\.\d{2} oleh Muslimin, M\.Pd\./);
+        await expect(bannerKunci.getByRole('link', { name: 'RAB DIPA' })).toBeVisible();
+        await page.screenshot({ path: `storage/playwright/shots/tanda-kunci-${testInfo.project.name}.png` });
         await expect(arsip).toContainText('Data terkunci; hanya admin yang dapat membuka kunci.');
         await expect(arsip.getByTestId('input-arsip-dipa')).toHaveCount(0);
 
         await page.goto('/demo/peran/admin');
         await page.goto(`/pemeriksaan/${id}`);
         await expect(panel).toHaveAttribute('data-status', 'final');
+        await expect(panel.getByTestId('jejak-kunci')).toContainText('oleh Muslimin, M.Pd.');
+        await expect(page.getByTestId('pratinjau-kak').getByTestId('cap-final')).toBeVisible();
         await expect(page.getByTestId('arsip-pemeriksaan').locator('[data-arsip="DIPA"]')).toContainText('Lihat PDF');
 
         // Pulihkan: buka kunci agar data E2E bersama tidak menyisakan kegiatan Final (tes Monitoring menyaring status final).

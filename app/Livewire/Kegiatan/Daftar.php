@@ -7,6 +7,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\KunciDokumen;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -112,6 +113,7 @@ class Daftar extends Component
                 'item' => array_sum(array_map(fn ($a) => $a->jumlahItem(), $anggaran)),
                 'status_pagu' => self::statusPaguKegiatan($anggaran),
                 'status' => StatusKegiatan::tryFrom($k['status'] ?? '') ?? StatusKegiatan::Draf,
+                'kunci' => KunciDokumen::dari($k),
                 'diperbarui' => $k['diperbarui_pada'] ?? null,
                 'asal' => ($k['asal'] ?? null) === 'impor_excel' ? 'impor' : 'manual',
             ];

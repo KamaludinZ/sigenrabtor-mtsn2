@@ -110,19 +110,7 @@
                 @include('livewire.kegiatan.partials.status-panel')
             </div>
 
-            @unless ($this->dapatDiedit())
-                <div @class([
-                        'flex items-start gap-3 rounded-xl px-4 py-3 text-sm ring-1',
-                        'bg-brand-900 text-brand-50 ring-brand-900' => $status === 'final',
-                        'bg-sky-50 text-sky-900 ring-sky-200' => $status !== 'final',
-                     ]) role="status" data-testid="banner-terkunci">
-                    <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" />
-                    <div>
-                        <p class="font-semibold">Isian terkunci — status {{ $this->statusKegiatan()->label() }}</p>
-                        <p class="mt-0.5 opacity-90">{{ $this->statusKegiatan()->deskripsi() }}</p>
-                    </div>
-                </div>
-            @endunless
+            <x-kegiatan.banner-kunci :kegiatan-id="$kegiatanId" :status="$status" />
 
             @include('livewire.kegiatan.partials.banner-perbaikan')
 

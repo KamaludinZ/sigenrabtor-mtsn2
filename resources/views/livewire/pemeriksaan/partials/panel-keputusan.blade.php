@@ -31,6 +31,9 @@
         {{ $keadaan[0] }}
     </h2>
     <p class="mt-0.5 text-xs text-stone-500">{{ $keadaan[1] }}</p>
+    @if ($status === StatusKegiatan::Final && ($kunci = \App\Support\Kegiatan\KunciDokumen::dari($this->dataKegiatan)))
+        <p class="mt-1 text-xs font-medium text-stone-700" data-testid="jejak-kunci">{{ $kunci->kalimat() }}</p>
+    @endif
 
     @if ($ulang)
         {{-- Pengajuan ulang: catatan sebelumnya & bagian data yang berubah sejak dikembalikan (PerbaikanKegiatan). --}}

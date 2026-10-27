@@ -98,7 +98,7 @@ class HalamanKlasifikasiTest extends TestCase
         $repo->simpan(['status' => 'diperiksa'] + $repo->temukan(1), 1);
 
         Livewire::test(Klasifikasi::class, ['kegiatan' => 1])
-            ->assertSee('Kode terkunci karena kegiatan berstatus Diperiksa.')
+            ->assertSee('Kode terkunci — status Diperiksa')
             ->assertDontSee('Simpan &amp; lanjut ke RAB', false)
             ->set('form.kode_edm', 'A1')
             ->assertForbidden();

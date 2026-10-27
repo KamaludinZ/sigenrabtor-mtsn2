@@ -7,6 +7,9 @@
 --}}
 <article {{ $attributes->class(['relative mx-auto w-full max-w-[210mm] overflow-hidden bg-white font-serif text-[15px] leading-relaxed text-stone-900 shadow-sm ring-1 ring-stone-200']) }}
          data-testid="pratinjau-rab">
+    @if ($susunan->kunci)
+        <x-dokumen.cap-final :kunci="$susunan->kunci" />
+    @endif
     @if ($susunan->draf)
         <div class="pointer-events-none absolute inset-0 flex items-start justify-center overflow-hidden pt-64 select-none" aria-hidden="true">
             <span class="-rotate-30 text-[7rem] font-bold tracking-[0.2em] text-stone-900/[0.06]">DRAF</span>

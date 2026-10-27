@@ -67,12 +67,7 @@
         <x-kegiatan.workspace-tabs active="matrik" :kegiatan-id="$kegiatanId" />
     </div>
 
-    @unless ($bisaUbah)
-        <p class="mt-6 flex items-start gap-3 rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200" role="status" data-testid="banner-terkunci">
-            <x-ui.icon name="lock" class="mt-0.5 size-4 shrink-0" />
-            Matrik &amp; jadwal terkunci — status {{ $this->status()->label() }}.
-        </p>
-    @endunless
+    <x-kegiatan.banner-kunci :kegiatan-id="$kegiatanId" :status="$this->status()->value" subjek="Matrik & jadwal" class="mt-6" />
 
     {{-- Acuan waktu dari Data Kegiatan --}}
     <div id="acuan" class="mt-6 flex scroll-mt-24 flex-wrap items-center gap-x-6 gap-y-2 rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600 ring-1 ring-stone-200" data-testid="acuan-pelaksanaan">

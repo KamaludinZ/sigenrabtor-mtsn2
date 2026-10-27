@@ -30,6 +30,8 @@
         <x-kegiatan.workspace-tabs active="rab" :kegiatan-id="$kegiatanId" />
     </div>
 
+    <x-kegiatan.banner-kunci :kegiatan-id="$kegiatanId" :status="$this->status()->value" subjek="RAB" class="mt-6" />
+
     @if ($this->tampilan->mode === 'tanpa_sumber')
         <div class="mt-6 rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-12 text-center" data-testid="rab-tanpa-sumber">
             <x-ui.icon name="wallet" class="mx-auto size-10 text-stone-300" />

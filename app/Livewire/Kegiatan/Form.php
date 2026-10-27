@@ -179,7 +179,7 @@ class Form extends Component
     public function susunanKak(): SusunanKak
     {
         return SusunanKak::dari(
-            $this->form->dataUntukDisimpan() + ['id' => $this->kegiatanId, 'status' => $this->status],
+            $this->form->dataUntukDisimpan() + ['id' => $this->kegiatanId, 'status' => $this->status, 'riwayat_status' => $this->riwayatStatus],
             $this->pratinjauSumber ?: null,
         );
     }
