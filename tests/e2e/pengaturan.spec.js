@@ -1045,4 +1045,25 @@ test.describe('Pengaturan admin', () => {
         await expect(form).toHaveCount(0);
         await expect(page.getByTestId('daftar-akun').locator('[data-akun="3"]').filter({ visible: true })).not.toContainText(jabatan);
     });
+
+    test('leading: panel tautan akun — tautkan akun leading lalu lepas lagi', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading');
+        await page.getByRole('button', { name: 'Tautkan akun ke leading 1.3' }).filter({ visible: true }).click();
+        const panel = page.getByTestId('panel-tautan-leading').filter({ visible: true });
+        await expect(panel).toContainText('Belum ada akun');
+        await panel.getByLabel('Pilih akun untuk 1.3').selectOption({ label: 'Ahmad Fauzan, S.Pd. — 1.2, 1.4' });
+        await panel.getByRole('button', { name: 'Tautkan' }).click();
+        await expect(page.getByText('Akun Ahmad Fauzan, S.Pd. ditautkan ke 1.3 Waka Sarpras.')).toBeVisible();
+        await expect(panel.locator('[data-tautan-akun="4"]')).toContainText('juga 1.2, 1.4');
+        await expect(page.getByTestId('leading-tanpa-akun')).not.toContainText('1.3 Waka Sarpras');
+        await panel.screenshot({ path: `storage/playwright/shots/leading-tautan-${testInfo.project.name}.png` });
+
+        // Pulihkan (proyek mobile memakai data yang sama).
+        await panel.getByRole('button', { name: 'Lepas Ahmad Fauzan, S.Pd. dari 1.3' }).click();
+        await expect(page.getByText('Akun Ahmad Fauzan, S.Pd. dilepas dari 1.3 Waka Sarpras.')).toBeVisible();
+        await expect(panel).toContainText('Belum ada akun');
+        await panel.getByRole('button', { name: 'Tutup panel tautan 1.3' }).click();
+        await expect(page.getByTestId('panel-tautan-leading').filter({ visible: true })).toHaveCount(0);
+    });
 });

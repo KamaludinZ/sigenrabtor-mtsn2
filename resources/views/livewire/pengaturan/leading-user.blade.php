@@ -166,6 +166,7 @@
                                             <td class="py-3 pr-5 pl-3 text-right sm:pr-6">
                                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
                                                 <span class="mt-1.5 flex justify-end gap-0.5">
+                                                    <button type="button" wire:click="bukaTautan(@js($l['kode']))" @class(['rounded-md p-1 hover:bg-stone-100 hover:text-stone-800', 'text-brand-700' => $tautanLeading === $l['kode'], 'text-stone-500' => $tautanLeading !== $l['kode']]) title="Tautkan akun" aria-label="Tautkan akun ke leading {{ $l['kode'] }}" aria-expanded="{{ $tautanLeading === $l['kode'] ? 'true' : 'false' }}"><x-ui.icon name="users" class="size-4" /></button>
                                                     <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="Ubah" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-4" /></button>
                                                     <button type="button" wire:click="ubahStatusLeading(@js($l['kode']))" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }}" aria-label="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} leading {{ $l['kode'] }}"><x-ui.icon :name="$l['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
                                                 </span>
@@ -173,6 +174,9 @@
                                         </tr>
                                         @if ($konfirmasiNonaktif === $l['kode'])
                                             @include('livewire.pengaturan.partials.konfirmasi-nonaktif-leading', ['l' => $l, 'kolom' => 5])
+                                        @endif
+                                        @if ($tautanLeading === $l['kode'])
+                                            @include('livewire.pengaturan.partials.tautan-leading', ['l' => $l, 'kolom' => 5])
                                         @endif
                                     @endforeach
                                 </tbody>
@@ -195,12 +199,16 @@
                                     <p class="text-xs text-stone-500">{{ $l['jabatan_penanda_tangan'] }} · {{ $kegiatan[$l['kode']] ?? 0 }} kegiatan</p>
                                     <p class="mt-1 text-xs text-stone-600">Pejabat: {{ $p && $p['nama'] ? $p['nama'] : 'belum diisi' }}</p>
                                     <p class="text-xs text-stone-600">Akun: {{ $tertaut === [] ? 'belum ada' : implode(', ', array_map(fn ($a) => $a['name'].($a['is_active'] ? '' : ' (nonaktif)'), $tertaut)) }}</p>
-                                    <span class="mt-1.5 flex gap-1">
+                                    <span class="mt-1.5 flex flex-wrap gap-1">
+                                        <button type="button" wire:click="bukaTautan(@js($l['kode']))" class="btn-ghost px-2 py-1 text-xs" aria-label="Tautkan akun ke leading {{ $l['kode'] }}" aria-expanded="{{ $tautanLeading === $l['kode'] ? 'true' : 'false' }}"><x-ui.icon name="users" class="size-3.5" /> Akun</button>
                                         <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="btn-ghost px-2 py-1 text-xs" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
                                         <button type="button" wire:click="ubahStatusLeading(@js($l['kode']))" class="btn-ghost px-2 py-1 text-xs" aria-label="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} leading {{ $l['kode'] }}"><x-ui.icon :name="$l['is_active'] ? 'lock' : 'check-circle'" class="size-3.5" /> {{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }}</button>
                                     </span>
                                     @if ($konfirmasiNonaktif === $l['kode'])
                                         @include('livewire.pengaturan.partials.konfirmasi-nonaktif-leading', ['l' => $l, 'kolom' => null])
+                                    @endif
+                                    @if ($tautanLeading === $l['kode'])
+                                        @include('livewire.pengaturan.partials.tautan-leading', ['l' => $l, 'kolom' => null])
                                     @endif
                                 </li>
                             @endforeach

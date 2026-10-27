@@ -24,7 +24,8 @@ use RuntimeException;
  * menampilkan pejabat penanda tangan tahun aktif. Leading ditambah/diubah lewat formulir inline (aturan AturanLeading,
  * kode yang dipakai kegiatan/akun terkunci, riwayat tambah_leading/ubah_leading) dan dinonaktifkan/diaktifkan
  * (`ubahStatusLeading`, konfirmasi beserta dampaknya, minimal satu tetap aktif). Akun ditambah/diubah lewat formulir
- * inline (aturan AturanAkun: surel unik, peran, tautan leading, NIP; riwayat tambah_akun/ubah_akun).
+ * inline (aturan AturanAkun: surel unik, peran, tautan leading, NIP; riwayat tambah_akun/ubah_akun). Tautan akun dikelola
+ * juga dari sisi leading lewat panel per baris (`bukaTautan`, `tautkanAkun`, `lepasTautan`; riwayat ubah_tautan_leading).
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -64,6 +65,12 @@ class LeadingUser extends Component
 
     /** Kode leading yang menunggu konfirmasi dinonaktifkan. */
     public ?string $konfirmasiNonaktif = null;
+
+    /** Kode leading yang panel tautan akunnya terbuka. */
+    public ?string $tautanLeading = null;
+
+    /** Id akun (teks) yang dipilih untuk ditautkan di panel. */
+    public string $akunDitautkan = '';
 
     /** Kunci urut tabel akun → arah bawaan. */
     public const URUT_AKUN = ['nama' => 'asc', 'masuk' => 'desc', 'kegiatan' => 'desc'];
@@ -339,6 +346,7 @@ class LeadingUser extends Component
         }
         $this->batalLeading();
         $this->batalAkun();
+        $this->tutupTautan();
     }
 
     public function tambahLeading(): void
@@ -425,6 +433,97 @@ class LeadingUser extends Component
         unset($this->leading);
         $this->batalLeading();
         $this->dispatch('notify', message: 'Leading '.$baru['kode'].' '.$baru['nama_unit'].($lama === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
+    }
+
+    public function bukaTautan(string $kode): void
+    {
+        if (collect($this->leading)->firstWhere('kode', '===', $kode) === null) {
+            return;
+        }
+
+        $this->batalLeading();
+        $this->konfirmasiNonaktif = null;
+        $this->tautanLeading = $this->tautanLeading === $kode ? null : $kode;
+        $this->akunDitautkan = '';
+    }
+
+    public function tutupTautan(): void
+    {
+        $this->reset('tautanLeading', 'akunDitautkan');
+    }
+
+    /**
+     * Akun leading yang bisa ditautkan ke leading $kode: berperan leading, belum tertaut, aktif lebih dulu.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function calonTautan(string $kode): array
+    {
+        return collect($this->akun)
+            ->filter(fn (array $a) => $a['role'] === 'leading' && ! in_array($kode, $a['leadings'], true))
+            ->sortBy([['is_active', 'desc'], ['name', 'asc']])
+            ->values()
+            ->all();
+    }
+
+    /** Tautkan akun terpilih ke leading yang panelnya terbuka (hanya leading aktif & akun berperan leading). */
+    public function tautkanAkun(PenggunaRepository $repo): void
+    {
+        $kode = $this->tautanLeading;
+        $leading = $kode === null ? null : collect($this->leading)->firstWhere('kode', '===', $kode);
+        $akun = collect($this->calonTautan((string) $kode))->firstWhere('id', (int) $this->akunDitautkan);
+        if ($leading === null || $akun === null) {
+            $this->addError('akunDitautkan', 'Pilih akun leading yang akan ditautkan.');
+
+            return;
+        }
+        if (! $leading['is_active']) {
+            $this->addError('akunDitautkan', 'Leading nonaktif tidak bisa diberi tautan baru.');
+
+            return;
+        }
+
+        $this->simpanTautan($repo, $akun, [...$akun['leadings'], $kode], "Akun {$akun['name']} ditautkan ke {$kode} {$leading['nama_unit']}");
+        $this->akunDitautkan = '';
+    }
+
+    /** Lepas tautan akun $id dari leading yang panelnya terbuka. */
+    public function lepasTautan(int $id, PenggunaRepository $repo): void
+    {
+        $kode = $this->tautanLeading;
+        $akun = collect($this->akun)->firstWhere('id', $id);
+        if ($kode === null || $akun === null || ! in_array($kode, $akun['leadings'], true)) {
+            return;
+        }
+
+        $sisa = array_values(array_diff($akun['leadings'], [$kode]));
+        $leading = collect($this->leading)->firstWhere('kode', '===', $kode);
+        $this->simpanTautan($repo, $akun, $sisa, "Akun {$akun['name']} dilepas dari {$kode} ".($leading['nama_unit'] ?? ''));
+        if ($sisa === [] && $akun['is_active']) {
+            $this->dispatch('notify', message: "{$akun['name']} kini belum tertaut ke leading mana pun — akun ini belum bisa membuat kegiatan.", type: 'info');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $akun
+     * @param  list<string>  $leadings
+     */
+    private function simpanTautan(PenggunaRepository $repo, array $akun, array $leadings, string $keterangan): void
+    {
+        $this->resetErrorBag('akunDitautkan');
+        $urutan = array_column($this->leading, 'kode');
+        try {
+            $repo->simpan(['leadings' => array_values(array_intersect($urutan, $leadings))], $akun['id']);
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: 'Tautan akun gagal disimpan — coba lagi.', type: 'error');
+
+            return;
+        }
+
+        RiwayatPengaturan::catat('ubah_tautan_leading', $keterangan);
+        unset($this->akun);
+        $this->dispatch('notify', message: $keterangan.'.', type: 'success');
     }
 
     /** Nonaktifkan meminta konfirmasi dulu (dampaknya ditampilkan); mengaktifkan kembali langsung. */
