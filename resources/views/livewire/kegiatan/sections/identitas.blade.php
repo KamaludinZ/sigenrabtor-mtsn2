@@ -55,7 +55,27 @@
 
     <x-ui.uraian class="sm:col-span-2" id="latar_belakang" label="Latar belakang (paragraf khusus)" model="form.latar_belakang"
                  :max="5000" :rows="4" placeholder="Alasan khusus kegiatan ini diselenggarakan (opsional)."
-                 hint="Paragraf baku visi madrasah dan kalimat “…adalah kegiatan {nama}” ditambahkan otomatis di atas paragraf ini." />
+                 hint="Tercetak di antara paragraf baku visi madrasah dan kalimat penutup kegiatan — keduanya diatur admin per tahun anggaran." />
+
+    {{-- Susunan bagian 1 KAK: paragraf baku & kalimat penutup dari Pengaturan › Dasar hukum, terisi data kegiatan ini. --}}
+    @php
+        $latarKak = $this->susunanLatar;
+    @endphp
+    <details class="-mt-3 rounded-lg bg-stone-50 ring-1 ring-stone-200 sm:col-span-2" data-testid="susunan-latar">
+        <summary class="cursor-pointer px-3 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900">Susunan latar belakang di KAK/TOR</summary>
+        <div class="space-y-1.5 border-t border-stone-200 px-3 py-2.5 font-serif text-[13px] leading-relaxed text-stone-700">
+            <p class="line-clamp-2 text-stone-500" title="{{ $latarKak['baku'] }}" data-latar="baku">{{ $latarKak['baku'] }}</p>
+            <p data-latar="khusus" x-text="($wire.form.latar_belakang ?? '').trim() || '[Paragraf khusus di atas — opsional]'"
+               x-bind:class="{ 'text-stone-400 italic': ! ($wire.form.latar_belakang ?? '').trim() }">{{ trim((string) $form->latar_belakang) ?: '[Paragraf khusus di atas — opsional]' }}</p>
+            <p class="text-stone-900" data-latar="penutup">{{ $latarKak['penutup'] }}</p>
+        </div>
+        @if ($latarKak['kosong'] !== [])
+            <p class="flex items-start gap-1.5 px-3 pb-1 text-xs text-gold-700" data-testid="latar-kosong">
+                <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> Lengkapi {{ mb_strtolower(implode(', ', $latarKak['kosong'])) }} agar kalimat penutup tercetak utuh.
+            </p>
+        @endif
+        <p class="px-3 pb-2 text-xs text-stone-500">Paragraf baku &amp; kalimat penutup diatur admin di Pengaturan › Profil &amp; Pejabat › Dasar hukum.</p>
+    </details>
 
     <x-ui.uraian class="sm:col-span-2" id="tujuan" label="Tujuan" model="form.tujuan" :max="2000"
                  :warning="$peringatan['tujuan'] ?? null"

@@ -42,6 +42,7 @@ final readonly class SusunanKak
      * @param  list<string>  $daftarSumber
      * @param  PeringatanPagu|null  $peringatanPagu  Peringatan batas pagu RAB sumber ini; null bila tepat pagu / RAB kosong.
      * @param  array<string, string|null>  $statusPagu  Sumber → status pagu RAB-nya (null bila RAB belum berisi), untuk tab dokumen.
+     * @param  array<int, list<string>>  $kurangPerBagian  Nomor bagian → isian yang belum lengkap di bagian itu (pratinjau sebagian).
      */
     public function __construct(
         public array $cover,
@@ -52,14 +53,15 @@ final readonly class SusunanKak
         public array $daftarSumber,
         public ?PeringatanPagu $peringatanPagu = null,
         public array $statusPagu = [],
+        public array $kurangPerBagian = [],
     ) {}
 
     /**
      * @param  array<string, mixed>  $kegiatan  Data kegiatan (bentuk penyimpanan; boleh belum tersimpan).
      */
-    public static function dari(array $kegiatan, ?string $sumber = null, ?MatrikTahapan $matrik = null, ?JadwalKegiatan $jadwal = null): self
+    public static function dari(array $kegiatan, ?string $sumber = null, ?MatrikTahapan $matrik = null, ?JadwalKegiatan $jadwal = null, ?int $tahun = null): self
     {
-        $tahun = StubData::tahunAktif()['tahun'];
+        $tahun ??= StubData::tahunAktif()['tahun'];
         $id = filter_var($kegiatan['id'] ?? null, FILTER_VALIDATE_INT) ?: null;
         $matrik ??= $id ? app(MatrikJadwalRepository::class)->matrik($id) : MatrikTahapan::dari($kegiatan);
         $jadwal ??= $id ? app(MatrikJadwalRepository::class)->jadwal($id) : JadwalKegiatan::dari($kegiatan);
@@ -71,8 +73,15 @@ final readonly class SusunanKak
         $daftarSumber = array_keys($anggaran);
         $sumber = in_array($sumber, $daftarSumber, true) ? $sumber : ($daftarSumber[0] ?? null);
 
-        $kosong = function (string $apa) use (&$kurang): array {
+        // Kekurangan dicatat juga per bagian ($nomor = bagian yang sedang disusun) untuk pratinjau sebagian.
+        $nomor = 0;
+        $kurangPerBagian = [];
+        $catat = function (string $apa) use (&$kurang, &$kurangPerBagian, &$nomor): void {
             $kurang[] = $apa;
+            $kurangPerBagian[$nomor][] = $apa;
+        };
+        $kosong = function (string $apa) use ($catat): array {
+            $catat($apa);
 
             return ['jenis' => 'kosong', 'pesan' => 'Lengkapi '.$apa.'.'];
         };
@@ -81,6 +90,7 @@ final readonly class SusunanKak
         // Bagian disusun berurutan supaya $kurang mengikuti urutan dokumen.
         $bagian = [];
 
+        $nomor = 1;
         $latar = [['jenis' => 'paragraf', 'teks' => StubData::latarBelakangBaku($tahun)]];
         if (filled($kegiatan['latar_belakang'] ?? null)) {
             $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang'])];
@@ -89,17 +99,22 @@ final readonly class SusunanKak
             $latar[] = $kosong('nama kegiatan');
         } else {
             foreach (TeksBaku::kosong(StubData::kalimatPenutupLatar($tahun), TeksBaku::nilaiKegiatan($kegiatan)) as $label) {
-                $kurang[] = mb_strtolower($label).' (kalimat penutup latar belakang)';
+                $catat(mb_strtolower($label).' (kalimat penutup latar belakang)');
             }
             $latar[] = ['jenis' => 'paragraf', 'teks' => KalimatKak::latarBelakangKegiatan($kegiatan, $tahun)];
         }
         $bagian[] = ['nomor' => 1, 'judul' => 'Latar Belakang', 'isi' => $latar];
 
+        $nomor = 2;
+        $dasarHukum = StubData::dasarHukum($tahun);
         if (DaftarDasarHukum::skKurang(StubData::dasarHukumMentah($tahun), $tahun)) {
-            $kurang[] = 'nomor & tanggal SK RKTM/RKAM (Pengaturan › Dasar hukum)';
+            $catat('nomor & tanggal SK RKTM/RKAM (Pengaturan › Dasar hukum)');
         }
-        $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [['jenis' => 'daftar', 'bernomor' => true, 'butir' => StubData::dasarHukum($tahun)]]];
+        $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [$dasarHukum === []
+            ? $kosong('dasar hukum TA '.$tahun.' (Pengaturan › Dasar hukum)')
+            : ['jenis' => 'daftar', 'bernomor' => true, 'butir' => $dasarHukum]]];
 
+        $nomor = 3;
         $bagian[] = ['nomor' => 3, 'judul' => 'Tujuan dan Sasaran', 'isi' => [
             ['jenis' => 'subjudul', 'teks' => 'A. Tujuan'],
             $isi(filled($kegiatan['tujuan'] ?? null) ? KalimatKak::tujuan($nama, $kegiatan['tujuan']) : null, 'tujuan kegiatan'),
@@ -108,6 +123,7 @@ final readonly class SusunanKak
         ]];
 
         // 4. Tahapan: pelaksanaan & pelaporan bergantung pada jadwal.
+        $nomor = 4;
         $pelaksanaan = DataPelaksanaan::dari($kegiatan);
         $batasLaporan = self::tanggal($kegiatan['tanggal_laporan'] ?? null);
 
@@ -128,10 +144,12 @@ final readonly class SusunanKak
         $tahapan = [...$tahapan, ...self::blokMatrik($matrik, $tahun, $kosong)];
         $bagian[] = ['nomor' => 4, 'judul' => 'Tahapan Kegiatan', 'isi' => $tahapan];
 
+        $nomor = 5;
         $bagian[] = ['nomor' => 5, 'judul' => 'Tempat Pelaksanaan', 'isi' => [
             $isi($pelaksanaan->kalimatTempat($nama), 'tempat pelaksanaan'),
         ]];
 
+        $nomor = 6;
         $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);
         $bagian[] = ['nomor' => 6, 'judul' => 'Penyelenggara Kegiatan', 'isi' => [
             ['jenis' => 'subjudul', 'teks' => 'a. Pelaksana'],
@@ -140,8 +158,10 @@ final readonly class SusunanKak
             ['jenis' => 'paragraf', 'teks' => KalimatKak::pengarah($nama, $madrasah['nama'])],
         ]];
 
+        $nomor = 7;
         $bagian[] = ['nomor' => 7, 'judul' => 'Jadwal Kegiatan', 'isi' => self::blokJadwal($jadwal, $tahun, $kosong)];
 
+        $nomor = 8;
         $angka = $sumber ? AngkaDokumen::dari($anggaran[$sumber]->hasil, $sumber, $tahun, $madrasah['nama_singkat']) : null;
         $peringatanPagu = $sumber ? PeringatanPagu::untuk($sumber, $anggaran[$sumber]->hasil) : null;
         $pembiayaan = [match (true) {
@@ -154,6 +174,7 @@ final readonly class SusunanKak
         }
         $bagian[] = ['nomor' => 8, 'judul' => 'Pembiayaan', 'isi' => $pembiayaan];
 
+        $nomor = 9;
         $bagian[] = ['nomor' => 9, 'judul' => 'Lembar Pengesahan', 'isi' => [self::pengesahan($kegiatan, $sumber, $madrasah['kota'], $kosong)]];
 
         $status = StatusKegiatan::tryFrom($kegiatan['status'] ?? '') ?? StatusKegiatan::Draf;
@@ -174,6 +195,7 @@ final readonly class SusunanKak
             $daftarSumber,
             $peringatanPagu,
             array_map(fn (AnggaranSumber $a) => $a->jumlahItem() > 0 ? $a->statusPagu() : null, $anggaran),
+            array_map(fn (array $daftar) => array_values(array_unique($daftar)), $kurangPerBagian),
         );
     }
 

@@ -57,7 +57,7 @@
     </x-ui.field>
 
     <div class="rounded-xl bg-stone-50 p-4 ring-1 ring-stone-200" data-testid="pratinjau-latar" aria-live="polite">
-        <p class="text-xs font-semibold text-stone-500">Pratinjau saat mengetik · TA {{ $ta }} · contoh: {{ $contoh }}</p>
+        <p class="text-xs font-semibold text-stone-500">Pratinjau saat mengetik · TA {{ $ta }} · contoh: {{ $namaContoh }}</p>
         <div class="mt-2 space-y-1.5 font-serif text-[13px] leading-relaxed text-stone-800">
             <p class="text-justify indent-6" data-pratinjau="paragraf"><template x-for="(b, i) in bagian($wire.isianLatar.latar_belakang)" :key="i"><span :class="{ 'rounded bg-brand-100 px-0.5 text-brand-900': b.penanda }" x-text="b.teks"></span></template></p>
             <p class="text-justify indent-6 text-stone-400 italic">[Paragraf khusus kegiatan, bila diisi leading]</p>

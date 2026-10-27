@@ -10,9 +10,11 @@ use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
 use App\Support\Kegiatan\FormSections;
+use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\SaranPelaksanaan;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
+use App\Support\Pengaturan\TeksBaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
@@ -176,6 +178,25 @@ class Form extends Component
             $this->form->dataUntukDisimpan() + ['id' => $this->kegiatanId, 'status' => $this->status],
             $this->pratinjauSumber ?: null,
         );
+    }
+
+    /**
+     * Susunan bagian 1 (Latar Belakang) dari isian saat ini: paragraf baku & kalimat penutup tahun aktif (diatur admin di
+     * Pengaturan › Dasar hukum) yang mengapit paragraf khusus, serta variabel kegiatan penutup yang belum diisi.
+     *
+     * @return array{baku: string, penutup: string, kosong: list<string>}
+     */
+    #[Computed]
+    public function susunanLatar(): array
+    {
+        $data = $this->form->dataUntukDisimpan();
+        $tahun = StubData::tahunAktif()['tahun'];
+
+        return [
+            'baku' => StubData::latarBelakangBaku($tahun),
+            'penutup' => KalimatKak::latarBelakangKegiatan($data, $tahun),
+            'kosong' => TeksBaku::kosong(StubData::kalimatPenutupLatar($tahun), TeksBaku::nilaiKegiatan($data)),
+        ];
     }
 
     /**

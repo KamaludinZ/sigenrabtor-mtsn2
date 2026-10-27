@@ -8,7 +8,9 @@
     $tahunAktif = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $kegiatanContoh = $this->contohKegiatan();
     $nilaiContoh = \App\Support\Pengaturan\TeksBaku::nilaiKegiatan($kegiatanContoh);
-    $contoh = $nilaiContoh[\App\Support\Pengaturan\TeksBaku::NAMA_KEGIATAN];
+    $namaContoh = $nilaiContoh[\App\Support\Pengaturan\TeksBaku::NAMA_KEGIATAN];
+    $susunan = $this->susunanPratinjau();
+    $kurangPratinjau = [...($susunan->kurangPerBagian[1] ?? []), ...($susunan->kurangPerBagian[2] ?? [])];
     $kesiapan = $this->kesiapan();
     $pengaturan = $this->pengaturan;
     $bolehUbah = ! $this->tahunTerkunci();
@@ -231,31 +233,46 @@
                 </div>
                 @endif
             </section>
+
+            {{-- Pratinjau dokumen hasil otomatis: susunan & komponen yang sama dengan pratinjau Data Kegiatan (SusunanKak). --}}
+            <section id="pratinjau-dokumen" class="scroll-mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pratinjau-dasar" data-testid="pratinjau-dasar-hukum">
+                <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+                    <div class="min-w-0">
+                        <h2 id="judul-pratinjau-dasar" class="text-base font-semibold text-stone-900">Pratinjau dokumen</h2>
+                        <p class="mt-0.5 text-sm text-stone-500">Bagian 1–2 KAK/TOR yang dihasilkan otomatis untuk {{ $namaContoh }} · TA {{ $ta }}.</p>
+                    </div>
+                    <label class="w-full shrink-0 sm:w-72">
+                        <span class="form-label">Contoh kegiatan</span>
+                        <select wire:model.live="contoh" class="form-input py-1.5" data-testid="pilih-contoh">
+                            <option value="">Otomatis — data terlengkap</option>
+                            @foreach ($this->opsiContoh() as $opsi)
+                                <option value="{{ $opsi['id'] }}">{{ $opsi['nama'] }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </header>
+                @if ($kurangPratinjau !== [])
+                    <div class="space-y-1 border-b border-gold-200 bg-gold-50 px-5 py-2 text-xs text-stone-700 sm:px-6" data-testid="pratinjau-dasar-kurang">
+                        @foreach ($kurangPratinjau as $apa)
+                            <p class="flex items-start gap-1.5"><x-ui.icon name="alert" class="mt-px size-3.5 shrink-0 text-gold-600" /> Lengkapi {{ $apa }}</p>
+                        @endforeach
+                    </div>
+                @endif
+                <div class="rounded-b-2xl bg-stone-50 p-3 sm:p-6" wire:loading.class="opacity-60" wire:target="contoh">
+                    <x-dokumen.kak-tor :susunan="$susunan" :bagian="[1, 2]" />
+                    <p class="mx-auto mt-3 max-w-[210mm] text-center text-xs text-stone-500">
+                        Paragraf khusus di antara paragraf baku dan kalimat penutup diisi leading di Data Kegiatan; pratinjau lengkap ada di tombol <em>Pratinjau</em> tiap kegiatan.
+                    </p>
+                </div>
+            </section>
         </div>
 
         <aside class="min-w-0 space-y-6">
-            {{-- Pratinjau bagian 1–2 KAK dengan contoh kegiatan: susunan sama dengan SusunanKak. --}}
-            <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pratinjau-dasar" data-testid="pratinjau-dasar-hukum">
-                <h2 id="judul-pratinjau-dasar" class="text-sm font-semibold text-stone-900">Tercetak di KAK/TOR</h2>
-                <p class="mt-0.5 text-xs text-stone-500">Contoh: {{ $contoh }} · TA {{ $ta }}.</p>
-                <div class="mt-4 space-y-3 rounded-lg bg-white p-3 font-serif text-[11px] leading-snug text-stone-800 shadow-xs ring-1 ring-stone-200">
-                    <div>
-                        <p class="font-bold">1. Latar Belakang</p>
-                        <p class="mt-1 text-justify indent-4">{{ $latar }}</p>
-                        <p class="mt-1 text-justify indent-4 text-stone-400 italic">[Paragraf khusus kegiatan, bila diisi leading]</p>
-                        <p class="mt-1 text-justify indent-4">{{ \App\Support\Kegiatan\KalimatKak::latarBelakangKegiatan($kegiatanContoh, $ta) }}</p>
-                    </div>
-                    <div>
-                        <p class="font-bold">2. Dasar Hukum</p>
-                        <ol class="mt-1 list-decimal space-y-0.5 pl-5">
-                            @foreach ($dasarHukum as $butir)
-                                <li>{{ $butir['teks'] }}</li>
-                            @endforeach
-                        </ol>
-                    </div>
-                </div>
+            <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-variabel-dasar" data-testid="variabel-dasar-hukum">
+                <h2 id="judul-variabel-dasar" class="text-sm font-semibold text-stone-900">Tercetak di KAK/TOR</h2>
+                <p class="mt-0.5 text-xs text-stone-500">Bagian 1–2 setiap KAK/TOR, juga lewat variabel master template. <a href="#pratinjau-dokumen" class="font-semibold text-brand-700 hover:text-brand-800">Lihat pratinjau dokumen</a></p>
                 <dl class="mt-4 space-y-1.5 text-xs" aria-label="Variabel template">
-                    @foreach (['latar_belakang' => 'Paragraf baku + kalimat penutup', 'dasar_hukum' => 'Daftar bernomor'] as $variabel => $arti)
+                    @foreach (['latar_belakang' => 'Paragraf baku + paragraf khusus + kalimat penutup', 'dasar_hukum' => 'Daftar bernomor'] as $variabel => $arti)
                         <div class="flex items-baseline justify-between gap-2">
                             <dt><code class="rounded bg-stone-100 px-1 py-0.5 font-mono text-[11px] text-stone-700">${{ '{'.$variabel.'}' }}</code></dt>
                             <dd class="text-right text-stone-500">{{ $arti }}</dd>

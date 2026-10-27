@@ -5,7 +5,9 @@ namespace App\Livewire\Pengaturan;
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
+use App\Support\Kegiatan\KalimatKak;
 use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\LatarBelakangBaku;
@@ -35,6 +37,10 @@ class DasarHukum extends Component
 {
     #[Url(as: 'ta', except: '')]
     public string $tahun = '';
+
+    /** Id kegiatan contoh pratinjau dokumen; '' = otomatis (variabel kegiatan terlengkap). */
+    #[Url(as: 'contoh', except: '')]
+    public string $contoh = '';
 
     /** Butir yang sedang disunting: id butir, 'baru' (tambah), atau null. */
     public ?string $suntingButir = null;
@@ -66,6 +72,12 @@ class DasarHukum extends Component
     public function mount(): void
     {
         $this->rapikanTahun();
+        $this->rapikanContoh();
+    }
+
+    public function updatedContoh(): void
+    {
+        $this->rapikanContoh();
     }
 
     public function updatedTahun(): void
@@ -453,16 +465,39 @@ class DasarHukum extends Component
     }
 
     /**
-     * Contoh kegiatan untuk pratinjau: kegiatan bernama dengan variabel kegiatan terlengkap, atau contoh baku bila belum ada.
+     * Contoh kegiatan untuk pratinjau: pilihan `?contoh=`, atau kegiatan bernama dengan variabel kegiatan terlengkap, atau
+     * contoh baku bila belum ada.
      *
      * @return array<string, mixed>
      */
     public function contohKegiatan(): array
     {
+        $bernama = collect(app(KegiatanRepository::class)->semua())->filter(fn (array $k) => filled($k['nama_kegiatan'] ?? null));
+
+        return ($this->contoh !== '' ? $bernama->firstWhere('id', (int) $this->contoh) : null)
+            ?? $bernama->sortByDesc(fn (array $k) => count(array_filter(TeksBaku::nilaiKegiatan($k))))->first()
+            ?? ['nama_kegiatan' => 'Workshop Penyusunan Kurikulum Madrasah'];
+    }
+
+    /**
+     * Pilihan contoh kegiatan pratinjau (kegiatan bernama, urut nama).
+     *
+     * @return list<array{id: int, nama: string}>
+     */
+    public function opsiContoh(): array
+    {
         return collect(app(KegiatanRepository::class)->semua())
             ->filter(fn (array $k) => filled($k['nama_kegiatan'] ?? null))
-            ->sortByDesc(fn (array $k) => count(array_filter(TeksBaku::nilaiKegiatan($k))))
-            ->first() ?? ['nama_kegiatan' => 'Workshop Penyusunan Kurikulum Madrasah'];
+            ->map(fn (array $k) => ['id' => (int) $k['id'], 'nama' => KalimatKak::tanpaAwalanKegiatan($k['nama_kegiatan'])])
+            ->sortBy('nama', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    /** Pratinjau dokumen hasil otomatis (SusunanKak, sama dengan pratinjau Data Kegiatan) untuk contoh & tahun yang dilihat. */
+    public function susunanPratinjau(): SusunanKak
+    {
+        return SusunanKak::dari($this->contohKegiatan(), tahun: $this->tahunDilihat());
     }
 
     /**
@@ -536,6 +571,13 @@ class DasarHukum extends Component
         $this->pengumuman = 'Butir '.($dari + 1).' dipindah ke nomor '.($ke + 1).'.';
 
         return true;
+    }
+
+    private function rapikanContoh(): void
+    {
+        if ($this->contoh !== '' && ! in_array((int) $this->contoh, array_column($this->opsiContoh(), 'id'), true)) {
+            $this->contoh = '';
+        }
     }
 
     private function rapikanTahun(): void

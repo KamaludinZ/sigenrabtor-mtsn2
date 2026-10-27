@@ -764,4 +764,30 @@ test.describe('Pengaturan admin', () => {
         await expect(daftarA.locator('li[data-butir]')).toHaveCount(4);
         await expect(daftarA.locator('li[data-butir="4"]')).toContainText('Tahun 2026.');
     });
+
+    test('pratinjau dokumen: bagian 1–2 hasil otomatis per contoh kegiatan, susunan latar di Data Kegiatan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        const pratinjau = page.getByTestId('pratinjau-dasar-hukum');
+        const dokumen = pratinjau.getByTestId('pratinjau-kak');
+        await expect(dokumen.locator('[data-bagian]')).toHaveCount(2);
+        await expect(dokumen.locator('[data-bagian="2"] ol li')).toHaveCount(4);
+
+        const pilih = pratinjau.getByTestId('pilih-contoh');
+        const opsi = pilih.locator('option').nth(1);
+        const namaOpsi = (await opsi.textContent()).trim();
+        await pilih.selectOption({ index: 1 });
+        await expect(page).toHaveURL(/contoh=\d+/);
+        await expect(pratinjau).toContainText(`dihasilkan otomatis untuk ${namaOpsi}`);
+        await expect(dokumen.locator('[data-bagian="1"]')).toContainText(`adalah kegiatan ${namaOpsi}.`);
+        await pratinjau.scrollIntoViewIfNeeded();
+        await pratinjau.screenshot({ path: `storage/playwright/shots/dasar-hukum-pratinjau-${testInfo.project.name}.png` });
+
+        // Data Kegiatan: susunan latar belakang memakai paragraf baku & kalimat penutup dari pengaturan.
+        await page.goto('/kegiatan/1/edit');
+        const susunan = page.getByTestId('susunan-latar');
+        await susunan.locator('summary').click();
+        await expect(susunan.locator('[data-latar="baku"]')).toContainText('Madrasah Tsanawiyah Negeri 2 Kota Malang');
+        await expect(susunan.locator('[data-latar="penutup"]')).toContainText('Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan');
+    });
 });
