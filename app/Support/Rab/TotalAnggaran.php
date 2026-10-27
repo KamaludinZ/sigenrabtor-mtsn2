@@ -19,37 +19,7 @@ final class TotalAnggaran
      */
     public static function untuk(array $kegiatan): array
     {
-        $sumber = array_map(function (AnggaranSumber $a) {
-            $pagu = $a->keteranganPagu();
-            $termin = MekanismePembayaran::dari($a);
-
-            return [
-                'sumber' => $a->sumber,
-                'total' => $a->total(),
-                'terbilang' => $a->terbilang(),
-                'dokumen' => $a->terbilang() === null ? null : Terbilang::denganAngka($a->total()),
-                'jumlah_item' => $a->jumlahItem(),
-                'pagu' => $a->pagu(),
-                'pagu_terbilang' => Terbilang::tampil($a->pagu()),
-                'status_pagu' => $pagu->status,
-                'selisih_pagu' => $pagu->selisih,
-                'keterangan_pagu' => $pagu->teks(),
-                'termin' => [
-                    'jumlah' => count($a->termin),
-                    'total' => $a->totalTermin(),
-                    'status' => $termin->status(),
-                    'keterangan' => $termin->teksStatus(),
-                    'baris' => array_map(fn (array $b) => [
-                        'nomor' => $b['nomor'],
-                        'tanggal' => $b['tanggal']?->toDateString(),
-                        'nominal' => $b['nominal'],
-                        'terbilang' => $b['terbilang'],
-                        'dokumen' => $b['terbilang'] === null ? null : Terbilang::denganAngka($b['nominal']),
-                        'persen' => $b['persen'],
-                    ], $termin->barisTabel()),
-                ],
-            ];
-        }, AnggaranKegiatan::untuk($kegiatan));
+        $sumber = array_map(self::sumber(...), AnggaranKegiatan::untuk($kegiatan));
 
         $total = array_sum(array_column($sumber, 'total'));
 
@@ -60,6 +30,44 @@ final class TotalAnggaran
             'terbilang' => Terbilang::tampil($total),
             'dokumen' => $total === 0 ? null : Terbilang::denganAngka($total),
             'sumber' => $sumber,
+        ];
+    }
+
+    /**
+     * Ringkasan satu sumber dana (dipakai juga RabLengkap).
+     *
+     * @return array<string, mixed>
+     */
+    public static function sumber(AnggaranSumber $a): array
+    {
+        $pagu = $a->keteranganPagu();
+        $termin = MekanismePembayaran::dari($a);
+
+        return [
+            'sumber' => $a->sumber,
+            'total' => $a->total(),
+            'terbilang' => $a->terbilang(),
+            'dokumen' => $a->terbilang() === null ? null : Terbilang::denganAngka($a->total()),
+            'jumlah_item' => $a->jumlahItem(),
+            'pagu' => $a->pagu(),
+            'pagu_terbilang' => Terbilang::tampil($a->pagu()),
+            'status_pagu' => $pagu->status,
+            'selisih_pagu' => $pagu->selisih,
+            'keterangan_pagu' => $pagu->teks(),
+            'termin' => [
+                'jumlah' => count($a->termin),
+                'total' => $a->totalTermin(),
+                'status' => $termin->status(),
+                'keterangan' => $termin->teksStatus(),
+                'baris' => array_map(fn (array $b) => [
+                    'nomor' => $b['nomor'],
+                    'tanggal' => $b['tanggal']?->toDateString(),
+                    'nominal' => $b['nominal'],
+                    'terbilang' => $b['terbilang'],
+                    'dokumen' => $b['terbilang'] === null ? null : Terbilang::denganAngka($b['nominal']),
+                    'persen' => $b['persen'],
+                ], $termin->barisTabel()),
+            ],
         ];
     }
 }

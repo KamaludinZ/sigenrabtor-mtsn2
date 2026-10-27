@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **endpoint RAB lengkap** per kegiatan (`/kegiatan/{id}/rab-lengkap`, JSON) — setiap sumber dana dengan rincian belanja bernomor urut cetak beserta nama akun dan jumlahnya, subtotal per kelompok belanja dan per kode akun, pagu & status pagu, termin, terbilang, serta total kegiatan; RAB sumber dana yang sempat tidak dicentang tetap terlihat (ditandai tidak dipilih) tanpa ikut dijumlahkan.
 - Fondasi backend: rangkuman **RAB per sumber dana** di database — pagu, total RAB dari rinciannya, jumlah item, termin, status pagu (sesuai/sisa/melebihi/pagu belum diisi), dan status termin tiap kegiatan × sumber dana — dengan aturan yang sama persis dengan yang tampil di layar, siap dipakai laporan dan rekap.
 - Data Kegiatan: isian pelaksanaan kini disimpan dengan aturan yang sama dengan penerima data pelaksanaan di server — spasi berlebih pada tempat, jenis peserta, dan uraian dirapikan saat disimpan (langsung terlihat di layar), serta bulan pelaksanaan dan tanggal pelaporan otomatis diturunkan dari jadwal dengan satu aturan yang sama di layar dan di server.
 - Fondasi backend: **penerima data pelaksanaan** di server — jadwal, bulan, tempat, peserta, dan uraian pelaksanaan bisa disimpan tersendiri tanpa menyentuh isian lain, dirapikan seperti di form (bulan mengikuti jadwal bila belum dipilih, tanggal pelaporan otomatis 10 hari setelah selesai) dan diperiksa dengan aturan yang sama, termasuk konsistensi jadwal dengan bulan dan tanggal pelaporan.
