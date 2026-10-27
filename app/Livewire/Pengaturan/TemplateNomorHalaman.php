@@ -127,7 +127,7 @@ class TemplateNomorHalaman extends Component
         $konfigurasi = $daftarIsi->khusus($this->tahun())["{$leading}|{$sumber}"] ?? $daftarIsi->bawaan($this->tahun());
 
         return [
-            'nama' => (MasterKode::cari(MasterKode::leadings(), $leading)['nama_unit'] ?? $leading).' · '.$sumber,
+            'nama' => (MasterKode::leading($leading)['nama_unit'] ?? $leading).' · '.$sumber,
             'kegiatan' => array_column(array_slice(DaftarIsi::baris($semua, $leading, $sumber, $konfigurasi['urutan']), 0, 3), 'nama_kegiatan'),
         ];
     }

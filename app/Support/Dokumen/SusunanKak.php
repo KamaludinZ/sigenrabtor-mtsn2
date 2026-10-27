@@ -150,7 +150,7 @@ final readonly class SusunanKak
         ]];
 
         $nomor = 6;
-        $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);
+        $leading = MasterKode::leading($kegiatan['leading'] ?? null);
         $bagian[] = ['nomor' => 6, 'judul' => 'Penyelenggara Kegiatan', 'isi' => [
             ['jenis' => 'subjudul', 'teks' => 'a. Pelaksana'],
             $isi($leading ? KalimatKak::pelaksana($nama, $leading['jabatan_penanda_tangan']) : null, 'leading penanggung jawab (Kode & Klasifikasi)'),

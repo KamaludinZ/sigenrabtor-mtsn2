@@ -39,7 +39,7 @@ final readonly class SaringanMonitoring
 
         return new self(
             tahun: self::tahunLain($tahun) ? $tahun : '',
-            leading: MasterKode::cari(MasterKode::leadings(), $leading) ? $leading : '',
+            leading: MasterKode::leading($leading) ? $leading : '',
             sumber: in_array($sumber, SumberDana::urutan(), true) ? $sumber : '',
             status: StatusKegiatan::tryFrom($status) ? $status : '',
             dari: self::tanggalSah($dari) ? $dari : '',
@@ -92,7 +92,7 @@ final readonly class SaringanMonitoring
 
         return array_filter([
             'tahun' => $this->tahun !== '' ? "TA {$this->tahun}" : null,
-            'leading' => MasterKode::cari(MasterKode::leadings(), $this->leading)['nama_unit'] ?? null,
+            'leading' => MasterKode::leading($this->leading)['nama_unit'] ?? null,
             'sumber' => $this->sumber !== '' ? "Dana {$this->sumber}" : null,
             'status' => StatusKegiatan::tryFrom($this->status)?->label(),
             'tanggal' => match (true) {

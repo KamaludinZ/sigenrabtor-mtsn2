@@ -38,6 +38,44 @@ class MasterKode
     }
 
     /**
+     * Semua leading termasuk yang nonaktif — untuk nama/jabatan data yang sudah ada (kegiatan, dokumen, rekap, saringan).
+     *
+     * @return list<array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, is_active: bool}>
+     */
+    public static function semuaLeading(): array
+    {
+        return StubData::semuaLeading();
+    }
+
+    /**
+     * Satu leading menurut kode (perbandingan ketat), termasuk yang nonaktif.
+     *
+     * @return array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, is_active: bool}|null
+     */
+    public static function leading(string|int|null $kode): ?array
+    {
+        return self::cari(self::semuaLeading(), $kode);
+    }
+
+    /**
+     * Pilihan leading isian kegiatan: leadingsUntuk() ditambah leading yang sudah tersimpan bila kini nonaktif, agar
+     * tidak hilang dari pilihan (ditandai is_active false).
+     *
+     * @param  array{role: string, leadings: list<string>}  $pengguna
+     * @return list<array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, is_active: bool}>
+     */
+    public static function pilihanLeading(array $pengguna, ?string $tersimpan): array
+    {
+        $pilihan = array_map(fn (array $l) => $l + ['is_active' => true], self::leadingsUntuk($pengguna));
+        $lama = self::leading($tersimpan);
+        if ($lama !== null && ! $lama['is_active'] && self::cari($pilihan, $lama['kode']) === null) {
+            $pilihan[] = $lama;
+        }
+
+        return $pilihan;
+    }
+
+    /**
      * Leading yang boleh dipilih pengguna: admin semua, akun leading hanya leading-nya.
      *
      * @param  array{role: string, leadings: list<string>}  $pengguna

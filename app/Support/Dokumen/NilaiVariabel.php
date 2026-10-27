@@ -57,7 +57,7 @@ final class NilaiVariabel
         $iksk = $kode(MasterKode::kodeIksk(), 'kode_iksk');
         $edm = $kode(MasterKode::kodeEdm(), 'kode_edm');
         $budaya = $kode(MasterKode::budayaMutu(), 'budaya_mutu', 'nomor');
-        $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);
+        $leading = MasterKode::leading($kegiatan['leading'] ?? null);
 
         $anggaran = $sumber ? (AnggaranKegiatan::perSumber($kegiatan)[$sumber] ?? null) : null;
         $angka = $anggaran ? AngkaDokumen::dari($anggaran->hasil, $sumber, $tahun, $madrasah['nama_singkat']) : null;

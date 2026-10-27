@@ -110,7 +110,7 @@ final class KonteksAi
     {
         $tahun = StubData::tahunAktif()['tahun'];
         $pelaksanaan = DataPelaksanaan::dari($kegiatan);
-        $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);
+        $leading = MasterKode::leading($kegiatan['leading'] ?? null);
         $rktm = MasterKode::cari(MasterKode::kodeRktm(), $kegiatan['kode_rktm'] ?? null);
         $peserta = trim(($pelaksanaan->pesertaJumlah ? $pelaksanaan->pesertaJumlah.' orang ' : '').$pelaksanaan->pesertaJenis);
         $sumber = array_map(

@@ -167,10 +167,13 @@
                                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
                                                 <span class="mt-1.5 flex justify-end gap-0.5">
                                                     <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="Ubah" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-4" /></button>
-                                                    <button type="button" class="rounded-md p-1 text-stone-400" disabled title="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} — sedang disiapkan" aria-label="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} leading {{ $l['kode'] }} (sedang disiapkan)"><x-ui.icon :name="$l['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
+                                                    <button type="button" wire:click="ubahStatusLeading(@js($l['kode']))" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }}" aria-label="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} leading {{ $l['kode'] }}"><x-ui.icon :name="$l['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
                                                 </span>
                                             </td>
                                         </tr>
+                                        @if ($konfirmasiNonaktif === $l['kode'])
+                                            @include('livewire.pengaturan.partials.konfirmasi-nonaktif-leading', ['l' => $l, 'kolom' => 5])
+                                        @endif
                                     @endforeach
                                 </tbody>
                             </table>
@@ -192,7 +195,13 @@
                                     <p class="text-xs text-stone-500">{{ $l['jabatan_penanda_tangan'] }} · {{ $kegiatan[$l['kode']] ?? 0 }} kegiatan</p>
                                     <p class="mt-1 text-xs text-stone-600">Pejabat: {{ $p && $p['nama'] ? $p['nama'] : 'belum diisi' }}</p>
                                     <p class="text-xs text-stone-600">Akun: {{ $tertaut === [] ? 'belum ada' : implode(', ', array_map(fn ($a) => $a['name'].($a['is_active'] ? '' : ' (nonaktif)'), $tertaut)) }}</p>
-                                    <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="btn-ghost mt-1.5 px-2 py-1 text-xs" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                    <span class="mt-1.5 flex gap-1">
+                                        <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="btn-ghost px-2 py-1 text-xs" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                        <button type="button" wire:click="ubahStatusLeading(@js($l['kode']))" class="btn-ghost px-2 py-1 text-xs" aria-label="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} leading {{ $l['kode'] }}"><x-ui.icon :name="$l['is_active'] ? 'lock' : 'check-circle'" class="size-3.5" /> {{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }}</button>
+                                    </span>
+                                    @if ($konfirmasiNonaktif === $l['kode'])
+                                        @include('livewire.pengaturan.partials.konfirmasi-nonaktif-leading', ['l' => $l, 'kolom' => null])
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>
@@ -226,7 +235,11 @@
                                     @else
                                         <span class="flex flex-wrap gap-1">
                                             @foreach ($a['leadings'] as $kode)
-                                                <span class="rounded-md bg-stone-50 px-1.5 py-0.5 font-medium text-stone-700 ring-1 ring-stone-200" title="{{ $namaLeading[$kode] ?? 'Leading tidak terdaftar' }}">{{ $kode }} {{ $namaLeading[$kode] ?? '' }}</span>
+                                                @php
+                                                    $leadingAktif = collect($this->leading)->firstWhere('kode', '===', $kode)['is_active'] ?? false;
+                                                @endphp
+                                                <span @class(['rounded-md px-1.5 py-0.5 font-medium ring-1', 'bg-stone-50 text-stone-700 ring-stone-200' => $leadingAktif, 'bg-stone-50 text-stone-400 ring-stone-200 line-through' => ! $leadingAktif])
+                                                      title="{{ ($namaLeading[$kode] ?? 'Leading tidak terdaftar').($leadingAktif ? '' : ' — nonaktif') }}">{{ $kode }} {{ $namaLeading[$kode] ?? '' }}</span>
                                             @endforeach
                                         </span>
                                     @endif

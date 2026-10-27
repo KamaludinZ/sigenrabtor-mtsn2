@@ -106,7 +106,7 @@ class LeadingUserTest extends TestCase
             ->assertSeeHtml('aria-sort="descending"');
     }
 
-    public function test_kolom_pejabat_tahun_aktif_dan_aksi_segera(): void
+    public function test_kolom_pejabat_tahun_aktif_dan_tombol_aksi(): void
     {
         session(['stub_role' => 'admin']);
         app(PejabatRepository::class)->simpan(2026, 'leading', '1.1', ['jabatan' => 'Wakil Kepala Bidang Kurikulum', 'nama' => 'Siti Rohmah, M.Pd.', 'nip' => null]);
@@ -117,6 +117,7 @@ class LeadingUserTest extends TestCase
             ->assertSeeHtmlInOrder(['data-leading="1.2"', 'data-kolom="pejabat"', 'Pejabat belum diisi'])
             ->assertSeeHtml('href="'.route('pengaturan.madrasah.index', ['tab' => 'pejabat']).'"')
             ->assertSeeHtml('aria-label="Ubah leading 1.1"')
-            ->assertSeeHtml('aria-label="Aktifkan leading 1.9 (sedang disiapkan)"');
+            ->assertSeeHtml('aria-label="Aktifkan leading 1.9"')
+            ->assertSeeHtml('aria-label="Nonaktifkan leading 1.1"');
     }
 }

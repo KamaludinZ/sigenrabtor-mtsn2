@@ -90,7 +90,7 @@ class Daftar extends Component
     public function semuaBaris(): array
     {
         $tahun = StubData::tahunAktif()['tahun'];
-        $leading = array_column(MasterKode::leadings(), 'nama_unit', 'kode');
+        $leading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
 
         return array_map(function (array $k) use ($tahun, $leading) {
             $anggaran = AnggaranKegiatan::untuk($k);
@@ -277,7 +277,7 @@ class Daftar extends Component
      */
     public function filterAktif(): array
     {
-        $leading = array_column(MasterKode::leadings(), 'nama_unit', 'kode') + ['belum' => 'Leading belum dipilih'];
+        $leading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode') + ['belum' => 'Leading belum dipilih'];
 
         return array_filter([
             'cari' => $this->cari !== '' ? "Cari: “{$this->cari}”" : null,

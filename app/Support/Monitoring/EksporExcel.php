@@ -213,7 +213,7 @@ final class EksporExcel
      */
     private static function operator(Worksheet $lembar, RingkasanAnggaran $ringkasan, array $pengguna): void
     {
-        $namaLeading = array_column(MasterKode::leadings(), 'nama_unit', 'kode');
+        $namaLeading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
         $status = StatusKegiatan::cases();
         $kepala = ['Operator', 'Peran', 'Leading', 'Kegiatan', ...array_map(fn (StatusKegiatan $s) => $s->label(), $status), 'Pagu', 'Total RAB', 'RAB melebihi pagu', 'RAB belum berpagu', 'Terakhir mengubah'];
         $isi = array_map(fn (array $o) => [

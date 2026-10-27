@@ -80,7 +80,7 @@ final class DataPagu
     /** "1.6 · DIPA Rp6.000.000 · Komite Rp2.500.000" untuk pilihan & ringkasan. */
     public static function keterangan(array $dataPagu): string
     {
-        $leading = $dataPagu['leading'] ? MasterKode::cari(MasterKode::leadings(), $dataPagu['leading']) : null;
+        $leading = $dataPagu['leading'] ? MasterKode::leading($dataPagu['leading']) : null;
 
         return implode(' · ', array_filter([
             $leading ? $leading['kode'].' '.$leading['nama_unit'] : 'Tanpa leading',

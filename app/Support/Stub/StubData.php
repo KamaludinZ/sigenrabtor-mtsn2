@@ -66,8 +66,21 @@ class StubData
     {
         return array_values(array_map(
             fn (array $l) => ['kode' => $l['kode'], 'nama_unit' => $l['nama_unit'], 'jabatan_penanda_tangan' => $l['jabatan_penanda_tangan']],
-            array_filter(app(LeadingRepository::class)->semua(), fn (array $l) => $l['is_active']),
+            array_filter(self::semuaLeading(), fn (array $l) => $l['is_active']),
         ));
+    }
+
+    /**
+     * Semua leading termasuk yang nonaktif (untuk membaca data yang sudah ada), urut `urutan`.
+     *
+     * @return list<array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, is_active: bool}>
+     */
+    public static function semuaLeading(): array
+    {
+        return array_map(
+            fn (array $l) => ['kode' => $l['kode'], 'nama_unit' => $l['nama_unit'], 'jabatan_penanda_tangan' => $l['jabatan_penanda_tangan'], 'is_active' => $l['is_active']],
+            app(LeadingRepository::class)->semua(),
+        );
     }
 
     /**

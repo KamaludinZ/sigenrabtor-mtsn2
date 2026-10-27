@@ -68,7 +68,7 @@ final class DaftarIsi
     /** Subjudul dengan penanda {leading}, {sumber}, {tahun} terisi. */
     public static function subjudul(string $subjudul, string $leading, string $sumber): string
     {
-        $unit = MasterKode::cari(MasterKode::leadings(), $leading)['nama_unit'] ?? $leading;
+        $unit = MasterKode::leading($leading)['nama_unit'] ?? $leading;
 
         return strtr($subjudul, ['{leading}' => $unit, '{sumber}' => $sumber, '{tahun}' => (string) StubData::tahunAktif()['tahun']]);
     }

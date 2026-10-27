@@ -32,6 +32,7 @@ final class RiwayatPengaturan
         'ubah_sk_rktm' => ['Ubah SK RKTM/RKAM', 'madrasah'],
         'tambah_leading' => ['Tambah leading', 'leading'],
         'ubah_leading' => ['Ubah leading', 'leading'],
+        'ubah_status_leading' => ['Ubah status leading', 'leading'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

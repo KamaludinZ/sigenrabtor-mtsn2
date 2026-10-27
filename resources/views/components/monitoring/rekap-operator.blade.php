@@ -11,7 +11,7 @@
 --}}
 @php
     $maks = max([1, ...array_column($operator, 'total')]);
-    $namaLeading = array_column(MasterKode::leadings(), 'nama_unit', 'kode');
+    $namaLeading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
     $jumlahKegiatan = array_sum(array_column($operator, 'jumlah'));
     $jumlahTotal = array_sum(array_column($operator, 'total'));
     $peran = ['admin' => 'Admin', 'leading' => 'Leading'];

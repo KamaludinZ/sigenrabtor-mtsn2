@@ -94,7 +94,7 @@ final class TeksCover
         $tahun = StubData::tahunAktif()['tahun'];
         $madrasah = StubData::madrasah();
         $nama = trim((string) ($kegiatan['nama_kegiatan_cover'] ?? '')) ?: trim((string) ($kegiatan['nama_kegiatan'] ?? ''));
-        $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);
+        $leading = MasterKode::leading($kegiatan['leading'] ?? null);
 
         return [
             'kop' => mb_strtoupper($madrasah['nama']),

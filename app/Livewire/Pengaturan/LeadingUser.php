@@ -20,7 +20,8 @@ use RuntimeException;
  * akun tertaut, kegiatan tahun aktif) dan tab Akun (peran admin/leading, tautan leading, status, terakhir masuk). Tab di
  * `?tab=`. Tabel leading bisa dicari, disaring status, dan diurutkan (URL `cari_leading`/`status_leading`/`urut_leading`/`arah_leading`) serta
  * menampilkan pejabat penanda tangan tahun aktif. Leading ditambah/diubah lewat formulir inline (aturan AturanLeading,
- * kode yang dipakai kegiatan/akun terkunci, riwayat tambah_leading/ubah_leading); nonaktifkan & akun menyusul.
+ * kode yang dipakai kegiatan/akun terkunci, riwayat tambah_leading/ubah_leading) dan dinonaktifkan/diaktifkan
+ * (`ubahStatusLeading`, konfirmasi beserta dampaknya, minimal satu tetap aktif). Kelola akun menyusul.
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -57,6 +58,9 @@ class LeadingUser extends Component
 
     /** @var array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, urutan: string} */
     public array $isianLeading = ['kode' => '', 'nama_unit' => '', 'jabatan_penanda_tangan' => '', 'urutan' => ''];
+
+    /** Kode leading yang menunggu konfirmasi dinonaktifkan. */
+    public ?string $konfirmasiNonaktif = null;
 
     public function mount(): void
     {
@@ -143,6 +147,7 @@ class LeadingUser extends Component
     public function tambahLeading(): void
     {
         $this->batalLeading();
+        $this->konfirmasiNonaktif = null;
         $this->tab = 'leading';
         $this->suntingLeading = 'baru';
         $this->isianLeading['urutan'] = (string) (max([0, ...array_column($this->leading, 'urutan')]) + 1);
@@ -223,6 +228,56 @@ class LeadingUser extends Component
         unset($this->leading);
         $this->batalLeading();
         $this->dispatch('notify', message: 'Leading '.$baru['kode'].' '.$baru['nama_unit'].($lama === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
+    }
+
+    /** Nonaktifkan meminta konfirmasi dulu (dampaknya ditampilkan); mengaktifkan kembali langsung. */
+    public function ubahStatusLeading(string $kode, LeadingRepository $repo): void
+    {
+        $leading = collect($this->leading)->firstWhere('kode', '===', $kode);
+        if ($leading === null) {
+            return;
+        }
+        if ($leading['is_active'] && $this->konfirmasiNonaktif !== $kode) {
+            $this->batalLeading();
+            $this->konfirmasiNonaktif = $kode;
+
+            return;
+        }
+        if ($leading['is_active'] && count(array_filter($this->leading, fn (array $l) => $l['is_active'])) === 1) {
+            $this->konfirmasiNonaktif = null;
+            $this->dispatch('notify', message: 'Minimal satu leading harus tetap aktif.', type: 'error');
+
+            return;
+        }
+
+        $aktif = ! $leading['is_active'];
+        try {
+            $repo->simpan(['is_active' => $aktif] + $leading, $kode);
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: 'Status leading gagal disimpan — coba lagi.', type: 'error');
+
+            return;
+        }
+
+        $label = "Leading {$kode} {$leading['nama_unit']}";
+        RiwayatPengaturan::catat('ubah_status_leading', $label.($aktif ? ' diaktifkan kembali' : ' dinonaktifkan'));
+        unset($this->leading);
+        $this->konfirmasiNonaktif = null;
+        $this->dispatch('notify', message: $label.($aktif ? ' aktif kembali — bisa dipilih untuk kegiatan.' : ' dinonaktifkan — tidak bisa dipilih untuk kegiatan baru.'), type: 'success');
+    }
+
+    /**
+     * Dampak menonaktifkan leading: kegiatan semua tahun yang memakainya dan akun aktif yang hanya tertaut ke leading ini.
+     *
+     * @return array{kegiatan: int, akun: list<string>}
+     */
+    public function dampakNonaktif(string $kode): array
+    {
+        $kegiatan = count(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['leading'] ?? null) === $kode));
+        $akun = array_values(array_column(array_filter($this->akun, fn (array $a) => $a['is_active'] && $a['leadings'] === [$kode]), 'name'));
+
+        return ['kegiatan' => $kegiatan, 'akun' => $akun];
     }
 
     /** Banyaknya kegiatan (semua tahun) & akun yang memakai kode leading — kode yang terpakai tidak bisa diganti. */

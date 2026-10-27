@@ -116,7 +116,7 @@
             <div id="filter-kegiatan" class="hidden grid-cols-2 gap-3 sm:grid-cols-3 lg:grid lg:grid-cols-6" x-bind:class="{ 'grid': filterTerbuka, 'hidden': ! filterTerbuka }" data-testid="filter-kegiatan">
                 @php
                     $pilihan = [
-                        'leading' => ['Leading', ['belum' => 'Belum dipilih'] + array_column(MasterKode::leadings(), 'nama_unit', 'kode')],
+                        'leading' => ['Leading', ['belum' => 'Belum dipilih'] + collect(MasterKode::semuaLeading())->mapWithKeys(fn ($l) => [$l['kode'] => $l['nama_unit'].($l['is_active'] ? '' : ' (nonaktif)')])->all()],
                         'sumber' => ['Sumber dana', Daftar::SUMBER],
                         'status' => ['Status', collect(StatusKegiatan::cases())->mapWithKeys(fn ($s) => [$s->value => $s->label()])->all()],
                         'bulan' => ['Bulan pelaksanaan', JadwalPelaksanaan::NAMA_BULAN],

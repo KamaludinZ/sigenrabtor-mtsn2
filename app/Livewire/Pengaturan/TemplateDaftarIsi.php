@@ -200,7 +200,7 @@ class TemplateDaftarIsi extends Component
         $leading ??= $this->leading;
         $sumber ??= $this->sumber;
 
-        return (MasterKode::cari(MasterKode::leadings(), $leading)['nama_unit'] ?? $leading).' · '.$sumber;
+        return (MasterKode::leading($leading)['nama_unit'] ?? $leading).' · '.$sumber;
     }
 
     public function tahun(): int

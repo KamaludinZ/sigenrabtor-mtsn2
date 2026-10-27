@@ -7,14 +7,14 @@
 @php
     $tahunMaster = $this->tahunAktif['tahun'];
     $masterTersedia = MasterKode::tersedia();
-    $opsiLeading = MasterKode::leadingsUntuk(StubData::currentUser());
+    $opsiLeading = MasterKode::pilihanLeading(StubData::currentUser(), $form->leadingTersimpan());
     $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
     $skTerpilih = MasterKode::cari(MasterKode::kodeSk(), $form->kode_sk);
     $opsiIksk = $form->kode_sk ? MasterKode::kodeIksk($form->kode_sk) : [];
     $opsiIkskCari = array_map(fn ($i) => ['nilai' => $i['kode'], 'label' => $i['uraian'], 'keterangan' => null, 'grup' => null], $opsiIksk);
     $ikskTerpilih = MasterKode::cari(MasterKode::kodeIksk(), $form->kode_iksk);
     $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm(), $form->kode_edm);
-    $leadingTerpilih = MasterKode::cari(MasterKode::leadings(), $form->leading);
+    $leadingTerpilih = MasterKode::leading($form->leading);
     $bisaUbah = $this->dapatDiedit();
     $opsiRktmCari = array_map(fn ($r) => ['nilai' => $r['kode'], 'label' => $r['sub_kegiatan'], 'keterangan' => null, 'grup' => $r['snp'].' — '.$r['kegiatan']], MasterKode::kodeRktm());
     $komponenEdm = MasterKode::komponenEdm();
@@ -114,6 +114,11 @@
             <x-ui.form-section id="kode-leading" :number="1" title="Leading penanggung jawab" icon="users"
                                description="Unit penerima mandat; menentukan penanda tangan pembuat dan buku dokumen."
                                :kelengkapan="$this->kelengkapan['leading']">
+                @if ($leadingTerpilih && ! $leadingTerpilih['is_active'])
+                    <p class="mb-3 rounded-lg bg-stone-100 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200" role="status" data-testid="leading-nonaktif">
+                        Leading tersimpan ({{ $leadingTerpilih['kode'] }} · {{ $leadingTerpilih['nama_unit'] }}) sudah dinonaktifkan admin. Kegiatan ini tetap memakainya; leading nonaktif tidak bisa dipilih untuk kegiatan lain.
+                    </p>
+                @endif
                 @if ($form->leading && ! collect($opsiLeading)->contains('kode', $form->leading))
                     <p class="mb-3 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700 ring-1 ring-gold-200" role="status">
                         Leading tersimpan ({{ $leadingTerpilih['kode'] ?? $form->leading }} · {{ $leadingTerpilih['nama_unit'] ?? 'tidak dikenal' }}) bukan milik akun Anda.

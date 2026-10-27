@@ -975,4 +975,29 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByTestId('daftar-leading').locator('[data-leading="1.7"]').filter({ visible: true })).not.toContainText(jabatan);
         await expect(form).toHaveCount(0);
     });
+
+    test('leading: nonaktifkan dengan konfirmasi dampak, penanda di saringan lain, lalu aktifkan kembali', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading');
+        const daftar = page.getByTestId('daftar-leading');
+        const baris = daftar.locator('[data-leading="1.7"]').filter({ visible: true });
+        await page.getByRole('button', { name: 'Nonaktifkan leading 1.7', exact: true }).filter({ visible: true }).click();
+        const konfirmasi = daftar.getByTestId('konfirmasi-nonaktif-leading').filter({ visible: true });
+        await expect(konfirmasi).toContainText('Nonaktifkan 1.7 Mahad?');
+        await konfirmasi.screenshot({ path: `storage/playwright/shots/leading-nonaktif-${testInfo.project.name}.png` });
+        await konfirmasi.getByRole('button', { name: 'Nonaktifkan' }).click();
+        await expect(page.getByText('Leading 1.7 Mahad dinonaktifkan')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Aktifkan leading 1.7', exact: true }).filter({ visible: true })).toBeVisible();
+
+        // Saringan lain menandai leading nonaktif.
+        await page.goto('/monitoring');
+        await expect(page.locator('select[wire\\:model\\.live="leading"] option[value="1.7"]')).toHaveText('1.7 · Mahad (nonaktif)');
+
+        // Pulihkan (proyek mobile memakai data yang sama).
+        await page.goto('/pengaturan/leading');
+        await page.getByRole('button', { name: 'Aktifkan leading 1.7', exact: true }).filter({ visible: true }).click();
+        await expect(page.getByText('Leading 1.7 Mahad aktif kembali')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Nonaktifkan leading 1.7', exact: true }).filter({ visible: true })).toBeVisible();
+        await expect(baris).toBeVisible();
+    });
 });

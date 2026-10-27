@@ -128,7 +128,7 @@ class Klasifikasi extends Component
     #[Computed]
     public function pratinjauHeader(): array
     {
-        $leading = MasterKode::cari(MasterKode::leadings(), $this->form->leading);
+        $leading = MasterKode::leading($this->form->leading);
         $rktm = MasterKode::cari(MasterKode::kodeRktm(), $this->form->kode_rktm);
         $sk = MasterKode::cari(MasterKode::kodeSk(), $this->form->kode_sk);
         $iksk = MasterKode::cari(MasterKode::kodeIksk(), $this->form->kode_iksk);

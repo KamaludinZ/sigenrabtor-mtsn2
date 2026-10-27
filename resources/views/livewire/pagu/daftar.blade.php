@@ -7,7 +7,7 @@
     $ringkas = $this->ringkasan();
     $kelola = $this->bolehKelola();
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
-    $namaLeading = array_column(MasterKode::leadings(), 'nama_unit', 'kode');
+    $namaLeading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
     $adaSaringan = $cari !== '' || $leading !== '' || $pemakaian !== '';
 @endphp
 
@@ -115,8 +115,8 @@
                     <select wire:model.live="leading" class="form-input py-1.5" aria-label="Leading">
                         <option value="">Semua leading</option>
                         <option value="tanpa">Tanpa leading</option>
-                        @foreach (MasterKode::leadings() as $l)
-                            <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}</option>
+                        @foreach (MasterKode::semuaLeading() as $l)
+                            <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}{{ $l['is_active'] ? '' : ' (nonaktif)' }}</option>
                         @endforeach
                     </select>
                 </label>

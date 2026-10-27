@@ -32,7 +32,11 @@
                             'bg-stone-100 text-stone-600' => ! $aktif,
                         ])>{{ $leading['kode'] }}</span>
                     <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-semibold text-stone-800">{{ $leading['nama_unit'] }}</span>
+                        <span class="block text-sm font-semibold text-stone-800">{{ $leading['nama_unit'] }}
+                            @if (! ($leading['is_active'] ?? true))
+                                <span class="ml-1 rounded bg-stone-200 px-1 text-[10px] font-semibold text-stone-600 uppercase">nonaktif</span>
+                            @endif
+                        </span>
                         <span class="block text-xs text-stone-500" id="leading-jabatan-{{ str_replace('.', '-', $leading['kode']) }}">
                             Penanda tangan: {{ $leading['jabatan_penanda_tangan'] }}
                         </span>

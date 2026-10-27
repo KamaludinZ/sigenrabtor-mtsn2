@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Contracts\KegiatanRepository;
 use App\Rules\KalimatUtuh;
 use App\Support\Format;
 use App\Support\Kegiatan\DataPelaksanaan;
@@ -160,7 +161,7 @@ class KegiatanForm extends Form
             'hari_kerja' => ['boolean'],
             'bulan_pelaksanaan' => ['array', 'max:12', $this->aturanBulanMencakupTanggal()],
             'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
-            'leading' => ['nullable', Rule::in(array_column(MasterKode::leadingsUntuk(StubData::currentUser()), 'kode'))],
+            'leading' => ['nullable', Rule::in(array_column(MasterKode::pilihanLeading(StubData::currentUser(), $this->leadingTersimpan()), 'kode'))],
             'kode_rktm' => ['nullable', Rule::in(array_column(MasterKode::kodeRktm(), 'kode'))],
             'kode_sk' => ['nullable', Rule::in(array_column(MasterKode::kodeSk(), 'kode'))],
             'kode_iksk' => ['nullable', Rule::in(array_column(MasterKode::kodeIksk(), 'kode')), $this->aturanIkskSesuaiSk()],
@@ -255,6 +256,16 @@ class KegiatanForm extends Form
     /**
      * State Pelaksanaan ternormalkan dari isian saat ini — dipakai bersama pratinjau KAK dan susunan dokumen.
      */
+    /**
+     * Leading yang tersimpan untuk kegiatan ini (dibaca dari penyimpanan, bukan isian) — tetap sah walau kini nonaktif.
+     */
+    public function leadingTersimpan(): ?string
+    {
+        $id = $this->getComponent()->kegiatanId ?? null;
+
+        return $id ? (app(KegiatanRepository::class)->temukan((int) $id)['leading'] ?? null) : null;
+    }
+
     public function pelaksanaan(): DataPelaksanaan
     {
         return DataPelaksanaan::dari([

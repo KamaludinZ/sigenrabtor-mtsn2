@@ -27,7 +27,7 @@ class RingkasanKode
      */
     public static function susun(array $kode): array
     {
-        $leading = MasterKode::cari(MasterKode::leadings(), $kode['leading'] ?? null);
+        $leading = MasterKode::leading($kode['leading'] ?? null);
         $rktm = MasterKode::cari(MasterKode::kodeRktm(), $kode['kode_rktm'] ?? null);
         $sk = MasterKode::cari(MasterKode::kodeSk(), $kode['kode_sk'] ?? null);
         $iksk = MasterKode::cari(MasterKode::kodeIksk(), $kode['kode_iksk'] ?? null);

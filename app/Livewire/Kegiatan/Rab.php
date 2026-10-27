@@ -642,7 +642,7 @@ class Rab extends Component
     #[Computed]
     public function header(): array
     {
-        $leading = MasterKode::cari(MasterKode::leadings(), $this->dataKegiatan['leading'] ?? null);
+        $leading = MasterKode::leading($this->dataKegiatan['leading'] ?? null);
 
         return [
             'leading' => $leading['nama_unit'] ?? '—',

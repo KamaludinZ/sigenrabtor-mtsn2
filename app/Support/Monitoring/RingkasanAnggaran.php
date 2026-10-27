@@ -288,8 +288,10 @@ final readonly class RingkasanAnggaran
         $kosong = fn (?string $kode, string $nama) => ['kode' => $kode, 'nama_unit' => $nama, 'jumlah' => 0, 'perStatus' => array_fill_keys(array_column(StatusKegiatan::cases(), 'value'), 0)]
             + $nol + ['sumber' => array_fill_keys(SumberDana::urutan(), $nol)];
         $hasil = [];
-        foreach (MasterKode::leadings() as $l) {
+        $nonaktif = [];
+        foreach (MasterKode::semuaLeading() as $l) {
             $hasil[$l['kode']] = $kosong($l['kode'], $l['nama_unit']);
+            $nonaktif[$l['kode']] = ! $l['is_active'];
         }
 
         foreach ($this->kegiatan as $k) {
@@ -314,7 +316,8 @@ final readonly class RingkasanAnggaran
 
         $lengkap = [];
         foreach ($hasil as $b) {
-            if ($semua || $b['jumlah'] > 0) {
+            // Leading nonaktif hanya tampil bila masih punya kegiatan.
+            if (($semua && ! ($nonaktif[$b['kode'] ?? ''] ?? false)) || $b['jumlah'] > 0) {
                 $b['sumber'] = array_map(fn (array $s) => self::sel($s), $b['sumber']);
                 $lengkap[] = self::sel($b);
             }
@@ -390,7 +393,7 @@ final readonly class RingkasanAnggaran
      */
     private static function posisiLeading(): array
     {
-        return array_flip(array_column(MasterKode::leadings(), 'kode'));
+        return array_flip(array_column(MasterKode::semuaLeading(), 'kode'));
     }
 
     /**
@@ -428,7 +431,7 @@ final readonly class RingkasanAnggaran
     {
         $urut = isset(self::URUT_RINCIAN[$urut]) ? $urut : 'total';
         $arah = in_array($arah, ['asc', 'desc'], true) ? $arah : self::URUT_RINCIAN[$urut][1];
-        $namaLeading = array_column(MasterKode::leadings(), 'nama_unit', 'kode');
+        $namaLeading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
 
         $baris = array_map(function (array $k) use ($namaLeading) {
             $rab = array_map(fn (AnggaranSumber $a) => [

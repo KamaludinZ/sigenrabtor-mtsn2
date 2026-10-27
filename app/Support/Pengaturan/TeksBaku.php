@@ -55,7 +55,7 @@ class TeksBaku
         $rktm = MasterKode::cari(MasterKode::kodeRktm(), $kegiatan['kode_rktm'] ?? null);
         $sk = MasterKode::cari(MasterKode::kodeSk(), $kegiatan['kode_sk'] ?? null);
         $iksk = MasterKode::cari(MasterKode::kodeIksk(), $kegiatan['kode_iksk'] ?? null);
-        $leading = MasterKode::cari(MasterKode::leadings(), $kegiatan['leading'] ?? null);
+        $leading = MasterKode::leading($kegiatan['leading'] ?? null);
 
         return [
             self::NAMA_KEGIATAN => $nama === '' ? null : KalimatKak::tanpaAwalanKegiatan($nama),

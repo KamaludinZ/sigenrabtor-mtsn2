@@ -20,7 +20,7 @@ final class PenandaTangan
     public static function pembuat(array $kegiatan): ?array
     {
         $kode = $kegiatan['leading'] ?? null;
-        $leading = MasterKode::cari(MasterKode::leadings(), $kode);
+        $leading = MasterKode::leading($kode);
         if ($leading === null) {
             return null;
         }

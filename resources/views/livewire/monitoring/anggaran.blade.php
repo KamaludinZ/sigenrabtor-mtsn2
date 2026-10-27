@@ -52,8 +52,8 @@
                 <span class="form-label">Leading</span>
                 <select wire:model.live="leading" class="form-input">
                     <option value="">Semua leading</option>
-                    @foreach (MasterKode::leadings() as $l)
-                        <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}</option>
+                    @foreach (MasterKode::semuaLeading() as $l)
+                        <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}{{ $l['is_active'] ? '' : ' (nonaktif)' }}</option>
                     @endforeach
                 </select>
             </label>

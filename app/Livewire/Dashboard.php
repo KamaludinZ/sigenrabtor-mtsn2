@@ -42,7 +42,7 @@ class Dashboard extends Component
             return 'Semua leading';
         }
 
-        return implode(', ', array_map(fn (string $kode) => $kode.' · '.(MasterKode::cari(MasterKode::leadings(), $kode)['nama_unit'] ?? $kode), $this->cakupan));
+        return implode(', ', array_map(fn (string $kode) => $kode.' · '.(MasterKode::leading($kode)['nama_unit'] ?? $kode), $this->cakupan));
     }
 
     public function render()
