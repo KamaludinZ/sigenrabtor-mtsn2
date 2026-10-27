@@ -11,10 +11,11 @@ use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\BatasAmanSaran;
-use App\Support\Kegiatan\GagalUsulanAi;
+use App\Support\Kegiatan\GagalPenyediaAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\PermintaanSaranKalimat;
+use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Kegiatan\TombolAi;
@@ -68,6 +69,10 @@ class KalimatAi extends Component
     /** @var array<string, string> Pesan gagal permintaan AI terakhir per bagian. */
     #[Locked]
     public array $galatAi = [];
+
+    /** @var array<string, string|null> Catatan penyedia per bagian (mis. dijawab penyedia cadangan). */
+    #[Locked]
+    public array $catatanPenyedia = [];
 
     /** Bagian yang modal sarannya terbuka. */
     #[Locked]
@@ -294,12 +299,14 @@ class KalimatAi extends Component
         );
 
         try {
-            $saran = self::rapikanSaran($bagian, $penyusun->sarankan($permintaan));
-        } catch (GagalUsulanAi $e) {
-            $this->galatAi[$bagian] = $e->getMessage();
+            $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->sarankan($permintaan));
+        } catch (GagalPenyediaAi $e) {
+            $this->galatAi[$bagian] = $e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : '');
 
             return false;
         }
+        $saran = self::rapikanSaran($bagian, $jalan['hasil']);
+        $this->catatanPenyedia[$bagian] = RantaiPenyediaAi::catatan($jalan);
 
         BatasAi::catat($pengguna, $bagian);
         if ($saran === []) {
@@ -309,7 +316,7 @@ class KalimatAi extends Component
         }
 
         $this->saran[$bagian] = $saran;
-        $this->permintaanAi[$bagian] = RiwayatSaranAi::catat($this->kegiatanId, $bagian, RiwayatSaranAi::prompt($permintaan), $permintaan->instruksi, $saran, $pengguna);
+        $this->permintaanAi[$bagian] = RiwayatSaranAi::catat($this->kegiatanId, $bagian, RiwayatSaranAi::prompt($permintaan), $permintaan->instruksi, $saran, $pengguna, $jalan['penyedia']);
         $this->bukaSaran($bagian);
 
         return true;

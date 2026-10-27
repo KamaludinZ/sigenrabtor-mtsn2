@@ -9,6 +9,7 @@ use App\Contracts\PromptAiRepository;
 use App\Contracts\RiwayatPengaturanRepository;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
+use App\Support\Kegiatan\KegagalanAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
 use App\Support\Pengaturan\ParameterAi;
@@ -96,6 +97,9 @@ class PengaturanAi extends Component
     public ?int $khususTerbuka = null;
 
     public int|string $isianKhusus = '';
+
+    /** @var array{jenis: string, cakupan: string} Simulasi kegagalan penyedia ('' = tidak ada). */
+    public array $isianSimulasi = ['jenis' => '', 'cakupan' => 'aktif'];
 
     /** @var array{bagian: string, pesan: string}|null Kegagalan simpan terakhir, tampil di formulir bagiannya (Coba lagi). */
     #[Locked]
@@ -399,6 +403,43 @@ class PengaturanAi extends Component
     {
         $this->ubahBatasKhusus($id, null);
         $this->khususTerbuka = null;
+    }
+
+    /**
+     * Simpan simulasi kegagalan penyedia: jenis KegagalanAi + cakupan (`aktif` = hanya penyedia aktif, menguji cadangan;
+     * `semua` = semua penyedia gagal). Jenis kosong = simulasi dimatikan.
+     */
+    public function simpanSimulasi(): void
+    {
+        $this->bagianSimpan = 'simulasi';
+        $this->resetErrorBag();
+        $jenis = (string) ($this->isianSimulasi['jenis'] ?? '');
+        $cakupan = (string) ($this->isianSimulasi['cakupan'] ?? 'aktif');
+        if ($jenis !== '' && ! isset(KegagalanAi::JENIS[$jenis])) {
+            $this->addError('isianSimulasi.jenis', 'Pilih jenis kegagalan.');
+
+            return;
+        }
+        if (! in_array($cakupan, ['aktif', 'semua'], true)) {
+            $this->addError('isianSimulasi.cakupan', 'Pilih cakupan simulasi.');
+
+            return;
+        }
+
+        $lama = app(PengaturanAiRepository::class)->ambil();
+        $baru = ['simulasi_gagal' => $jenis === '' ? null : ['jenis' => $jenis, 'cakupan' => $cakupan]] + $lama;
+        $this->versi = $lama['diperbarui_pada'];
+        $ringkas = fn (array $p) => ['simulasi' => ($p['simulasi_gagal'] ?? null) ? KegagalanAi::judul($p['simulasi_gagal']['jenis']).' ('.($p['simulasi_gagal']['cakupan'] === 'semua' ? 'semua penyedia' : 'penyedia aktif').')' : 'mati'];
+        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['simulasi' => 'Simulasi kegagalan'], '', null, 'ubah_simulasi_ai')) {
+            return;
+        }
+        $this->dispatch('notify', message: $jenis === '' ? 'Simulasi kegagalan dimatikan — permintaan AI kembali normal.' : 'Simulasi kegagalan aktif: '.KegagalanAi::judul($jenis).'. Coba tombol “Buat dengan AI” lalu matikan setelah selesai.', type: $jenis === '' ? 'success' : 'info');
+    }
+
+    public function matikanSimulasi(): void
+    {
+        $this->isianSimulasi['jenis'] = '';
+        $this->simpanSimulasi();
     }
 
     /** Muat daftar model penyedia (DaftarModelAi); kegagalan tampil di kartu modelnya. */
@@ -774,6 +815,7 @@ class PengaturanAi extends Component
         $this->isianParameter = ParameterAi::dari($ai);
         $this->versiParameter = $ai['diperbarui_pada'];
         $this->isianBatas = (int) $ai['batas_per_user_per_hari'];
+        $this->isianSimulasi = ['jenis' => (string) ($ai['simulasi_gagal']['jenis'] ?? ''), 'cakupan' => (string) ($ai['simulasi_gagal']['cakupan'] ?? 'aktif')];
         $this->versiBatas = $ai['diperbarui_pada'];
     }
 

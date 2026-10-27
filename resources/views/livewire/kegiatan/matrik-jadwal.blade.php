@@ -613,6 +613,11 @@
                                 {{ count($usulan) }} versi untuk <strong class="font-semibold text-stone-900">{{ $jenisKegiatan[$usulJenis] ?? 'kegiatan ini' }}</strong>@if (trim($usulInstruksi) !== '') dengan instruksi “{{ Str::limit(trim($usulInstruksi), 120) }}”@endif.
                                 Pilih satu untuk mengisi tabel jadwal, lalu sesuaikan bila perlu.
                             </p>
+                            @if ($catatanPenyedia)
+                                <p class="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200" role="status" data-testid="catatan-penyedia-jadwal">
+                                    <x-ui.icon name="info" class="mt-px size-3.5 shrink-0 text-stone-400" /> {{ $catatanPenyedia }}
+                                </p>
+                            @endif
                             @if ($jadwalTerisi > 0)
                                 <p class="flex items-start gap-2 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700 ring-1 ring-gold-200" data-testid="usul-ganti-jadwal">
                                     <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" />

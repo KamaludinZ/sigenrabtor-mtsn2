@@ -9,13 +9,14 @@ use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\DataPelaksanaan;
-use App\Support\Kegiatan\GagalUsulanAi;
+use App\Support\Kegiatan\GagalPenyediaAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\PermintaanUsulanJadwal;
+use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Pengaturan\PromptAi;
@@ -90,6 +91,10 @@ class MatrikJadwal extends Component
 
     /** Panel "Usulkan dengan AI" (PRD F10 Usul Jadwal AI): permintaan → 2–3 versi usulan → pakai salah satu atau tolak. */
     public bool $usulTerbuka = false;
+
+    /** Catatan penyedia usulan terakhir (mis. dijawab penyedia cadangan). */
+    #[Locked]
+    public ?string $catatanPenyedia = null;
 
     /** Id permintaan usulan terakhir di riwayat saran AI (RiwayatSaranAi). */
     #[Locked]
@@ -335,13 +340,15 @@ class MatrikJadwal extends Component
         );
 
         try {
-            $this->usulan = self::rapikanUsulan($penyusun->usulkan($permintaan));
-        } catch (GagalUsulanAi $e) {
+            $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->usulkan($permintaan));
+        } catch (GagalPenyediaAi $e) {
             $this->usulan = [];
-            $this->usulGagal = $e->getMessage();
+            $this->usulGagal = $e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : '');
 
             return;
         }
+        $this->usulan = self::rapikanUsulan($jalan['hasil']);
+        $this->catatanPenyedia = RantaiPenyediaAi::catatan($jalan);
         BatasAi::catat($pengguna, 'usul_jadwal');
         if ($this->usulan !== []) {
             $tahun = StubData::tahunAktif()['tahun'];
@@ -350,7 +357,7 @@ class MatrikJadwal extends Component
                 'teks' => implode("\n", array_map(fn (array $b) => $b['uraian'].' — '.(JadwalPelaksanaan::teksBulan($b['mulai'] ? range($b['mulai'], $b['sampai'] ?? $b['mulai']) : [], $tahun) ?? 'bulan belum diisi'), $u['baris'])),
             ], $this->usulan);
             $prompt = implode("\n", ['Bagian: Jadwal kegiatan (Bagian 7 · Jadwal Kegiatan)', 'Jenis kegiatan: '.(KonteksAi::jenisKegiatan()[$permintaan->jenis] ?? $permintaan->jenis), 'Instruksi: '.($permintaan->instruksi ?: '-'), 'Bahan kegiatan:', $permintaan->bahan]);
-            $this->permintaanUsulan = RiwayatSaranAi::catat($this->kegiatanId, 'jadwal', $prompt, $permintaan->instruksi, $versi, $pengguna);
+            $this->permintaanUsulan = RiwayatSaranAi::catat($this->kegiatanId, 'jadwal', $prompt, $permintaan->instruksi, $versi, $pengguna, $jalan['penyedia']);
         }
 
         if ($this->usulan === []) {

@@ -26,6 +26,16 @@
         </x-slot:tab>
     </x-pengaturan.kepala>
 
+    @php $simulasi = $this->pengaturan()['simulasi_gagal'] ?? null; @endphp
+    @if ($simulasi)
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gold-50 px-4 py-3 text-sm text-gold-700 ring-1 ring-gold-200" role="status" data-testid="banner-simulasi">
+            <span class="flex items-start gap-2"><x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
+                Simulasi kegagalan aktif: {{ \App\Support\Kegiatan\KegagalanAi::judul($simulasi['jenis']) }} ({{ $simulasi['cakupan'] === 'semua' ? 'semua penyedia' : 'penyedia aktif' }}). Permintaan AI semua pengguna terpengaruh — matikan setelah selesai mencoba.
+            </span>
+            <button type="button" wire:click="matikanSimulasi" class="btn-secondary px-2.5 py-1.5 text-xs">Matikan</button>
+        </div>
+    @endif
+
     <div wire:key="tab-ai-{{ $tab }}">
         @include('livewire.pengaturan.partials.ai-'.$tab)
     </div>

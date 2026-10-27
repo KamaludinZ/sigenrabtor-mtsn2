@@ -47,6 +47,7 @@ class StubPengaturanAiRepository implements PengaturanAiRepository
             'parameter' => ParameterAi::BAWAAN,
             'batas_per_user_per_hari' => 20,
             'batas_khusus' => [],
+            'simulasi_gagal' => null,
             'diperbarui_pada' => null,
         ];
     }

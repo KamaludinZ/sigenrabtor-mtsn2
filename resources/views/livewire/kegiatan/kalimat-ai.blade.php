@@ -109,7 +109,12 @@
 
                     @if ($galatAi[$kunci] ?? null)
                         <p class="mb-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 ring-1 ring-red-200" role="alert" data-testid="galat-ai-{{ $kunci }}">
-                            <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $galatAi[$kunci] }}
+                            <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" />
+                            <span>{{ $galatAi[$kunci] }}
+                                @if (\App\Support\Stub\StubData::currentUser()['role'] === 'admin')
+                                    <a href="{{ route('pengaturan.ai.index') }}" wire:navigate class="font-semibold underline">Buka Pengaturan AI</a>
+                                @endif
+                            </span>
                         </p>
                     @endif
                     @if (isset($teksSebelum[$kunci]))

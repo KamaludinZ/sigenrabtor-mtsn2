@@ -234,4 +234,28 @@ test.describe('Pengaturan AI', () => {
         await expect(parameter.locator('[data-preset="seimbang"]')).toHaveAttribute('aria-checked', 'true');
         await expect(parameter.getByTestId('belum-disimpan-parameter')).toBeHidden();
     });
+
+    test('simulasi kegagalan: pesan tampil di Kalimat KAK, banner peringatan, lalu dimatikan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai');
+        const simulasi = page.getByTestId('simulasi-ai');
+        await simulasi.getByLabel('Jenis kegagalan').selectOption('tidak_terhubung');
+        await expect(simulasi.getByTestId('pratinjau-pesan-gagal')).toContainText('Server AI tidak bisa dihubungi');
+        await simulasi.getByText('Semua penyedia').click();
+        await simulasi.getByTestId('simpan-simulasi').click();
+        await expect(page.getByTestId('banner-simulasi')).toContainText('Server AI tidak bisa dihubungi (semua penyedia)');
+
+        await page.goto('/kegiatan/1/kalimat');
+        await page.getByTestId('buat-ai-tujuan').click();
+        await expect(page.getByTestId('galat-ai-tujuan')).toContainText('Server AI tidak bisa dihubungi. Coba lagi beberapa saat lagi.');
+        await expect(page.getByTestId('galat-ai-tujuan')).toContainText('(simulasi kegagalan dari Pengaturan AI)');
+        await expect(page.getByTestId('buat-ai-tujuan')).toHaveText(/Coba lagi/);
+
+        // Matikan simulasi (dipakai bersama tes lain).
+        await page.getByTestId('galat-ai-tujuan').getByRole('link', { name: 'Buka Pengaturan AI' }).click();
+        await expect(page).toHaveURL(/\/pengaturan\/ai$/);
+        await page.getByTestId('banner-simulasi').getByRole('button', { name: 'Matikan' }).click();
+        await expect(page.getByTestId('banner-simulasi')).toHaveCount(0);
+        await expect(page.getByTestId('status-simulasi')).toHaveText('Mati');
+    });
 });

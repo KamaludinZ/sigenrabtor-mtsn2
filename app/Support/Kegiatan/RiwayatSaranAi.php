@@ -50,12 +50,16 @@ final class RiwayatSaranAi
      *
      * @param  list<array{judul: string, ciri: string, teks: string}>  $versi
      * @param  array{id: int}  $pengguna
+     * @param  string|null  $penyedia  Penyedia yang menjawab (null = penyedia aktif).
      */
-    public static function catat(int $kegiatanId, string $bagian, string $prompt, string $instruksi, array $versi, array $pengguna): string
+    public static function catat(int $kegiatanId, string $bagian, string $prompt, string $instruksi, array $versi, array $pengguna, ?string $penyedia = null): string
     {
+        // Penyedia yang benar-benar menjawab (mis. cadangan); "tiruan" = belum ada penyedia.
+        $penyedia ??= StubPengaturan::pengaturanAi()['provider_aktif'];
+
         return app(RiwayatSaranAiRepository::class)->catat([
             'kegiatan_id' => $kegiatanId, 'bagian' => $bagian, 'prompt' => $prompt, 'instruksi' => $instruksi,
-            'penyedia' => StubPengaturan::pengaturanAi()['provider_aktif'], 'user_id' => (int) $pengguna['id'], 'versi' => $versi,
+            'penyedia' => $penyedia === 'tiruan' ? null : $penyedia, 'user_id' => (int) $pengguna['id'], 'versi' => $versi,
         ]);
     }
 

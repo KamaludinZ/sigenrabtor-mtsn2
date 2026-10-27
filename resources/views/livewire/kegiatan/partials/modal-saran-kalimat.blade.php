@@ -33,6 +33,11 @@
         </header>
 
         <div class="flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6">
+            @if ($catatanPenyedia[$kunci] ?? null)
+                <p class="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200" role="status" data-testid="catatan-penyedia">
+                    <x-ui.icon name="info" class="mt-px size-3.5 shrink-0 text-stone-400" /> {{ $catatanPenyedia[$kunci] }}
+                </p>
+            @endif
             @if ($galatAi[$kunci] ?? null)
                 <p class="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 ring-1 ring-red-200" role="alert" data-testid="galat-modal-saran">
                     <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $galatAi[$kunci] }}
