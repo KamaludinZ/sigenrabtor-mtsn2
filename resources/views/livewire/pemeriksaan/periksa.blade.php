@@ -14,12 +14,6 @@
     $riwayat = $this->riwayat();
     $waktu = fn (string $pada) => Carbon::parse($pada)->locale('id')->translatedFormat('j M Y, H.i');
     $status = $r['status'];
-    $keputusan = [
-        'draf' => ['Belum diajukan', 'Leading masih menyusun kegiatan ini. Pemeriksaan dibuka setelah diajukan.'],
-        'dikembalikan' => ['Menunggu perbaikan', 'Leading sedang memperbaiki data sesuai catatan, lalu mengajukan ulang.'],
-        'disetujui' => ['Menunggu arsip final', 'Dokumen siap dicetak dan ditandatangani; leading mengunggah PDF bertanda tangan per sumber dana.'],
-        'final' => ['Terkunci', 'Arsip final tersimpan dan data dikunci. Hanya admin yang dapat membuka kunci (tercatat siapa & kapan).'],
-    ];
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -168,29 +162,8 @@
             </div>
         </section>
 
-        {{-- Keputusan pemeriksaan (menyusul). --}}
-        <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:col-start-2 lg:row-start-1" aria-labelledby="judul-keputusan" data-testid="panel-keputusan">
-            @if ($status === StatusKegiatan::Diperiksa)
-                <h2 id="judul-keputusan" class="text-sm font-semibold text-stone-900">Keputusan pemeriksaan</h2>
-                <p class="mt-0.5 text-xs text-stone-500">Kembalikan bila ada yang perlu diperbaiki — leading memperbaiki data, bukan file Word.</p>
-                <label class="mt-3 block">
-                    <span class="text-xs font-medium text-stone-600">Catatan untuk leading</span>
-                    <textarea rows="3" class="form-input mt-1 text-sm" placeholder="Mis. Sasaran belum terukur; sesuaikan honor narasumber dengan SBM." disabled></textarea>
-                </label>
-                <div class="mt-3 grid grid-cols-2 gap-2">
-                    <button type="button" class="btn-ghost justify-center text-sm ring-1 ring-stone-200" disabled>Kembalikan <x-ui.segera /></button>
-                    <button type="button" class="btn-primary justify-center text-sm" disabled>Setujui <x-ui.segera /></button>
-                </div>
-            @else
-                <h2 id="judul-keputusan" class="flex items-center gap-1.5 text-sm font-semibold text-stone-900">
-                    @if ($status === StatusKegiatan::Final)
-                        <x-ui.icon name="lock" class="size-4 text-brand-700" />
-                    @endif
-                    {{ $keputusan[$status->value][0] }}
-                </h2>
-                <p class="mt-0.5 text-xs text-stone-500">{{ $keputusan[$status->value][1] }}</p>
-            @endif
-        </section>
+        {{-- Keputusan pemeriksaan --}}
+        @include('livewire.pemeriksaan.partials.panel-keputusan')
 
         {{-- Riwayat status --}}
         <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 lg:col-start-2 lg:row-start-3" aria-labelledby="judul-riwayat" data-testid="riwayat-pemeriksaan">

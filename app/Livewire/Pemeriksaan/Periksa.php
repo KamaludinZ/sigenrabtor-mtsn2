@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
 use App\Support\Rab\AnggaranKegiatan;
@@ -20,12 +21,17 @@ use Livewire\Component;
 /**
  * Detail dokumen satu kegiatan untuk pemeriksaan admin (PRD §16, F17): pratinjau KAK/TOR atau RAB per sumber dana
  * (`?dokumen=kak|rab`, `?sumber=`), kelengkapan tiap dokumen, ringkasan anggaran & termin, riwayat status, dan posisi di
- * antrean Perlu diperiksa. Catatan & keputusan (setujui/kembalikan) menyusul. Khusus admin.
+ * antrean Perlu diperiksa. Keputusan admin (PRD F17): Setujui (catatan opsional) atau Kembalikan (catatan wajib) dengan
+ * konfirmasi di tempat; tercatat di riwayat_status (RiwayatStatus::entri, siapa/kapan/catatan). Bila kegiatan berubah di
+ * tempat lain sejak halaman dimuat (mis. pengajuan ditarik), keputusan ditolak dan tampilan dimuat ulang. Khusus admin.
  */
 #[Layout('layouts.app')]
 class Periksa extends Component
 {
     public const DOKUMEN = ['kak' => 'KAK/TOR', 'rab' => 'RAB'];
+
+    /** Aksi alur status yang diputuskan di halaman ini. */
+    public const KEPUTUSAN = ['kembalikan', 'setujui'];
 
     #[Locked]
     public int $kegiatanId;
@@ -37,6 +43,16 @@ class Periksa extends Component
     #[Url(except: '')]
     public string $sumber = '';
 
+    /** Catatan pemeriksa untuk leading (terkirim bersama aksi, tanpa request per ketukan). */
+    public string $catatan = '';
+
+    /** Keputusan yang sedang menunggu konfirmasi: null, 'setujui', atau 'kembalikan'. */
+    public ?string $konfirmasi = null;
+
+    /** Sidik status & riwayat kegiatan saat halaman terakhir dirender (deteksi perubahan di tempat lain). */
+    #[Locked]
+    public string $versi = '';
+
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
         $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
@@ -44,7 +60,12 @@ class Periksa extends Component
         $this->rapikanPilihan();
     }
 
-    public function updated(): void
+    public function updatedDokumen(): void
+    {
+        $this->rapikanPilihan();
+    }
+
+    public function updatedSumber(): void
     {
         $this->rapikanPilihan();
     }
@@ -140,6 +161,100 @@ class Periksa extends Component
         return $i === false ? null : ['posisi' => $i + 1, 'jumlah' => count($id), 'sebelum' => $id[$i - 1] ?? null, 'sesudah' => $id[$i + 1] ?? null];
     }
 
+    /**
+     * Keputusan yang tersedia dari status kegiatan saat ini untuk peran pengguna.
+     *
+     * @return array<string, array{label: string, ke: StatusKegiatan, konfirmasi: string}>
+     */
+    public function keputusan(): array
+    {
+        return array_intersect_key($this->ringkasan['status']->aksiUntuk(StubData::currentUser()['role']), array_flip(self::KEPUTUSAN));
+    }
+
+    /** Buka konfirmasi keputusan; catatan diperiksa lebih dulu agar kesalahan tampil sebelum konfirmasi. */
+    public function minta(string $aksi): void
+    {
+        $this->resetErrorBag();
+        if (! isset($this->keputusan()[$aksi])) {
+            $this->dispatch('notify', message: 'Keputusan ini tidak tersedia untuk status kegiatan saat ini.', type: 'error');
+
+            return;
+        }
+
+        $this->validasiCatatan($aksi);
+        $this->konfirmasi = $aksi;
+    }
+
+    public function batalKonfirmasi(): void
+    {
+        $this->konfirmasi = null;
+    }
+
+    public function putuskan(string $aksi): void
+    {
+        $this->konfirmasi = null;
+        $this->resetErrorBag();
+        if ($this->berubahDiTempatLain()) {
+            return;
+        }
+
+        $definisi = $this->keputusan()[$aksi] ?? null;
+        if ($definisi === null) {
+            $this->dispatch('notify', message: 'Keputusan ini tidak tersedia untuk status kegiatan saat ini.', type: 'error');
+
+            return;
+        }
+
+        $this->validasiCatatan($aksi);
+
+        $data = $this->dataKegiatan;
+        $data['status'] = $definisi['ke']->value;
+        $data['riwayat_status'] = [...array_values((array) ($data['riwayat_status'] ?? [])), RiwayatStatus::entri($aksi, $definisi['ke'], StubData::currentUser(), $this->catatan)];
+        app(KegiatanRepository::class)->simpan($data, $this->kegiatanId);
+
+        $this->catatan = '';
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan);
+        $this->dispatch('notify', message: $aksi === 'setujui' ? 'Kegiatan disetujui — leading dapat mencetak dan menandatangani dokumennya.' : 'Kegiatan dikembalikan ke leading beserta catatan perbaikannya.');
+    }
+
+    /** Pengajuan terlama yang masih menunggu diperiksa selain kegiatan ini (tautan setelah memutuskan). */
+    public function berikutnya(): ?int
+    {
+        $tahun = StubData::tahunAktif()['tahun'];
+        $kegiatan = array_values(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['status'] ?? null) === 'diperiksa' && (int) $k['id'] !== $this->kegiatanId && TahunKegiatan::dari($k) === $tahun));
+
+        return AntreanPemeriksaan::untukTab(AntreanPemeriksaan::baris($kegiatan), 'diperiksa')[0]['id'] ?? null;
+    }
+
+    private function validasiCatatan(string $aksi): void
+    {
+        $this->catatan = RiwayatStatus::rapikanCatatan($this->catatan);
+        $this->validate(
+            ['catatan' => [$aksi === 'kembalikan' ? 'required' : 'nullable', 'string', 'max:'.RiwayatStatus::MAKS_CATATAN]],
+            [
+                'catatan.required' => 'Tulis catatan perbaikan agar leading tahu apa yang harus diubah.',
+                'catatan.max' => 'Catatan paling banyak '.RiwayatStatus::MAKS_CATATAN.' karakter.',
+            ],
+        );
+    }
+
+    private function berubahDiTempatLain(): bool
+    {
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan);
+        if ($this->sidik() === $this->versi) {
+            return false;
+        }
+
+        $this->dispatch('notify', message: 'Kegiatan ini baru saja berubah di tempat lain (mis. pengajuan ditarik). Tampilan sudah dimuat ulang — periksa lagi sebelum memutuskan.', type: 'error');
+
+        return true;
+    }
+
+    private function sidik(): string
+    {
+        return md5(json_encode([$this->dataKegiatan['status'] ?? null, $this->dataKegiatan['riwayat_status'] ?? [], $this->dataKegiatan['diperbarui_pada'] ?? null]));
+    }
+
     private function rapikanPilihan(): void
     {
         if (! array_key_exists($this->dokumen, self::DOKUMEN)) {
@@ -149,6 +264,11 @@ class Periksa extends Component
             $this->sumber = '';
         }
         unset($this->kak, $this->rab);
+    }
+
+    public function rendering(): void
+    {
+        $this->versi = $this->sidik();
     }
 
     public function render()

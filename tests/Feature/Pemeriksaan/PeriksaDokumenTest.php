@@ -89,6 +89,7 @@ class PeriksaDokumenTest extends TestCase
 
     public function test_posisi_antrean_panel_keputusan_dan_riwayat(): void
     {
+        session(['stub_role' => 'admin']);
         $lama = $this->diajukan('Pengajuan Lama', '2026-03-01T09:00:00+07:00');
         $baru = $this->diajukan('Pengajuan Baru', '2026-03-04T09:00:00+07:00');
 

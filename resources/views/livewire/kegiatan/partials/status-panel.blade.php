@@ -67,6 +67,9 @@
                             <span class="block text-stone-500">
                                 {{ $jejak['oleh'] }} · {{ \Illuminate\Support\Carbon::parse($jejak['pada'])->locale('id')->translatedFormat('j M Y, H.i') }}
                             </span>
+                            @if (filled($jejak['catatan'] ?? null))
+                                <span class="mt-1 block rounded-lg bg-stone-50 px-2 py-1 whitespace-pre-line text-stone-700 ring-1 ring-stone-100" data-catatan-pemeriksa>{{ $jejak['catatan'] }}</span>
+                            @endif
                         </span>
                     </li>
                 @endforeach

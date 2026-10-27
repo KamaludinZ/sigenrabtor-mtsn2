@@ -11,6 +11,7 @@ use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\SaranPelaksanaan;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
@@ -785,15 +786,7 @@ class Form extends Component
 
     private function catatRiwayat(string $aksi, StatusKegiatan $ke): void
     {
-        $pengguna = StubData::currentUser();
-
-        $this->riwayatStatus[] = [
-            'aksi' => $aksi,
-            'status' => $ke->value,
-            'oleh' => $pengguna['name'],
-            'peran' => $pengguna['role'],
-            'pada' => now()->toIso8601String(),
-        ];
+        $this->riwayatStatus[] = RiwayatStatus::entri($aksi, $ke, StubData::currentUser());
     }
 
     /**

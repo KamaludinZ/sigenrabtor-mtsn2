@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test';
 
+// Panel status Data Kegiatan muncul dua kali (mobile di kolom utama, desktop di samping); ambil yang terlihat.
+const panelStatus = (page) => page.getByTestId('panel-status').locator('visible=true');
+
+async function ajukan(page) {
+    await panelStatus(page).getByRole('button', { name: 'Ajukan pemeriksaan', exact: true }).click();
+    await panelStatus(page).getByRole('button', { name: 'Ya, ajukan pemeriksaan' }).click();
+    await expect(page.getByText('Status kegiatan: Diperiksa.')).toBeVisible();
+}
+
 test.describe('Pemeriksaan', () => {
     test('layout: khusus admin, tab status dengan jumlah, cari & saringan di URL', async ({ page }, testInfo) => {
         const ditolak = await page.goto('/pemeriksaan');
@@ -69,6 +78,66 @@ test.describe('Pemeriksaan', () => {
         await expect(page.getByTestId('tabel-rab-komite')).toBeVisible();
         await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Pemeriksaan' }).click();
         await expect(page).toHaveURL(/\/pemeriksaan\?status=draf$/);
+
+        await page.goto('/demo/peran/leading');
+    });
+
+    test('keputusan: kembalikan wajib catatan, leading melihat catatan, pengajuan ulang disetujui', async ({ page }, testInfo) => {
+        // Kegiatan baru per proyek agar tidak mengubah contoh yang dipakai tes lain.
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/buat');
+        await page.locator('#nama_kegiatan').fill(`Kegiatan Pemeriksaan ${testInfo.project.name}`);
+        await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit$/);
+        const urlKegiatan = page.url();
+        const id = urlKegiatan.match(/kegiatan\/(\d+)/)[1];
+
+        await page.getByRole('link', { name: 'Kode & Klasifikasi', exact: true }).click();
+        await page.locator('#kode_sk').click();
+        await page.locator('#kode_sk-cari').fill('SK.12');
+        await page.locator('#kode_sk-cari').press('Enter');
+        await expect(page.getByTestId('uraian-sk')).toContainText('perencanaan dan anggaran');
+        await page.getByRole('button', { name: 'Simpan', exact: true }).click();
+        await expect(page.getByText(/Kode & klasifikasi tersimpan\./)).toBeVisible();
+        await page.goto(urlKegiatan);
+        await page.locator('#tanggal_mulai').fill('2026-07-14');
+        await page.locator('#lama_hari').fill('2');
+        await page.locator('#tempat').fill('Aula Madrasah');
+        await page.locator('#peserta_jumlah').fill('40');
+        await page.locator('#peserta_jenis').fill('Guru');
+        await page.locator('#peserta_jenis').blur();
+        await ajukan(page);
+
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pemeriksaan');
+        await page.getByTestId('daftar-pemeriksaan').locator(`li[data-kegiatan="${id}"]`).getByRole('link', { name: 'Periksa' }).click();
+        await expect(page).toHaveURL(new RegExp(`/pemeriksaan/${id}$`));
+        const panel = page.getByTestId('panel-keputusan');
+        await expect(panel).toHaveAttribute('data-status', 'diperiksa');
+        await expect(page.getByTestId('peringatan-keputusan')).toContainText('Sumber dana belum dipilih');
+
+        await panel.getByRole('button', { name: 'Kembalikan', exact: true }).click();
+        await expect(panel).toContainText('Tulis catatan perbaikan agar leading tahu apa yang harus diubah.');
+        await expect(page.getByTestId('konfirmasi-keputusan')).toHaveCount(0);
+        await panel.getByLabel(/Catatan untuk leading/).fill('Sasaran belum terukur.\nSesuaikan honor narasumber dengan SBM.');
+        await panel.getByRole('button', { name: 'Kembalikan', exact: true }).click();
+        await expect(page.getByTestId('konfirmasi-keputusan')).toContainText('Kembalikan ke leading?');
+        await page.screenshot({ path: `storage/playwright/shots/pemeriksaan-keputusan-${testInfo.project.name}.png`, fullPage: true });
+        await panel.getByRole('button', { name: 'Ya, kembalikan' }).click();
+        await expect(panel).toHaveAttribute('data-status', 'dikembalikan');
+        await expect(page.getByTestId('riwayat-pemeriksaan')).toContainText('Sesuaikan honor narasumber dengan SBM.');
+
+        await page.goto('/demo/peran/leading');
+        await page.goto(urlKegiatan);
+        await expect(panelStatus(page).locator('[data-catatan-pemeriksa]').first()).toContainText('Sasaran belum terukur.');
+        await ajukan(page);
+
+        await page.goto('/demo/peran/admin');
+        await page.goto(`/pemeriksaan/${id}`);
+        await panel.getByRole('button', { name: 'Setujui', exact: true }).click();
+        await panel.getByRole('button', { name: 'Ya, setujui' }).click();
+        await expect(panel).toHaveAttribute('data-status', 'disetujui');
+        await expect(panel).toContainText('Perlu perbaikan lagi?');
 
         await page.goto('/demo/peran/leading');
     });
