@@ -1,0 +1,171 @@
+{
+    "_keterangan": "Kasus bersama terbilang server (App\\Support\\Terbilang) dan klien (resources/js/format.js). di_luar_batas: rupiah() menolak, tampil() null, klien \"\".",
+    "kasus": [
+        {
+            "nilai": 0,
+            "rupiah": "Nol Rupiah",
+            "kata": "nol",
+            "catatan": "nol"
+        },
+        {
+            "nilai": 1,
+            "rupiah": "Satu Rupiah",
+            "kata": "satu",
+            "catatan": "satuan"
+        },
+        {
+            "nilai": 10,
+            "rupiah": "Sepuluh Rupiah",
+            "kata": "sepuluh",
+            "catatan": "\"se-\" untuk sepuluh"
+        },
+        {
+            "nilai": 11,
+            "rupiah": "Sebelas Rupiah",
+            "kata": "sebelas",
+            "catatan": "sebelas"
+        },
+        {
+            "nilai": 15,
+            "rupiah": "Lima Belas Rupiah",
+            "kata": "lima belas",
+            "catatan": "belasan"
+        },
+        {
+            "nilai": 100,
+            "rupiah": "Seratus Rupiah",
+            "kata": "seratus",
+            "catatan": "\"se-\" untuk seratus"
+        },
+        {
+            "nilai": 115000,
+            "rupiah": "Seratus Lima Belas Ribu Rupiah",
+            "kata": "seratus lima belas ribu",
+            "catatan": "ratusan ribu + belasan"
+        },
+        {
+            "nilai": 1000,
+            "rupiah": "Seribu Rupiah",
+            "kata": "seribu",
+            "catatan": "\"se-\" untuk seribu"
+        },
+        {
+            "nilai": 1001001,
+            "rupiah": "Satu Juta Seribu Satu Rupiah",
+            "kata": "satu juta seribu satu",
+            "catatan": "seribu di tengah angka"
+        },
+        {
+            "nilai": 1100000,
+            "rupiah": "Satu Juta Seratus Ribu Rupiah",
+            "kata": "satu juta seratus ribu",
+            "catatan": "juta + seratus ribu"
+        },
+        {
+            "nilai": 2320000,
+            "rupiah": "Dua Juta Tiga Ratus Dua Puluh Ribu Rupiah",
+            "kata": "dua juta tiga ratus dua puluh ribu",
+            "catatan": "termin 2 Form RAB"
+        },
+        {
+            "nilai": 2500750,
+            "rupiah": "Dua Juta Lima Ratus Ribu Tujuh Ratus Lima Puluh Rupiah",
+            "kata": "dua juta lima ratus ribu tujuh ratus lima puluh",
+            "catatan": "tiga kelompok"
+        },
+        {
+            "nilai": 7680000,
+            "rupiah": "Tujuh Juta Enam Ratus Delapan Puluh Ribu Rupiah",
+            "kata": "tujuh juta enam ratus delapan puluh ribu",
+            "catatan": "termin 1 Form RAB"
+        },
+        {
+            "nilai": 9450000,
+            "rupiah": "Sembilan Juta Empat Ratus Lima Puluh Ribu Rupiah",
+            "kata": "sembilan juta empat ratus lima puluh ribu",
+            "catatan": "KAK Paket Meeting (PRD)"
+        },
+        {
+            "nilai": 9540000,
+            "rupiah": "Sembilan Juta Lima Ratus Empat Puluh Ribu Rupiah",
+            "kata": "sembilan juta lima ratus empat puluh ribu",
+            "catatan": "RAB Paket Meeting (PRD)"
+        },
+        {
+            "nilai": 10000000,
+            "rupiah": "Sepuluh Juta Rupiah",
+            "kata": "sepuluh juta",
+            "catatan": "contoh PRD F3"
+        },
+        {
+            "nilai": 20000000,
+            "rupiah": "Dua Puluh Juta Rupiah",
+            "kata": "dua puluh juta",
+            "catatan": "data TOR baris 2"
+        },
+        {
+            "nilai": 32000000,
+            "rupiah": "Tiga Puluh Dua Juta Rupiah",
+            "kata": "tiga puluh dua juta",
+            "catatan": "dulu ditulis \"Tiga Puluh Juta\""
+        },
+        {
+            "nilai": 1000000000,
+            "rupiah": "Satu Miliar Rupiah",
+            "kata": "satu miliar",
+            "catatan": "miliar"
+        },
+        {
+            "nilai": 1000000000000,
+            "rupiah": "Satu Triliun Rupiah",
+            "kata": "satu triliun",
+            "catatan": "triliun"
+        },
+        {
+            "nilai": 999999999999,
+            "rupiah": "Sembilan Ratus Sembilan Puluh Sembilan Miliar Sembilan Ratus Sembilan Puluh Sembilan Juta Sembilan Ratus Sembilan Puluh Sembilan Ribu Sembilan Ratus Sembilan Puluh Sembilan Rupiah",
+            "kata": "sembilan ratus sembilan puluh sembilan miliar sembilan ratus sembilan puluh sembilan juta sembilan ratus sembilan puluh sembilan ribu sembilan ratus sembilan puluh sembilan",
+            "catatan": "angka terpanjang di bawah satu triliun"
+        },
+        {
+            "nilai": -500000,
+            "rupiah": "Minus Lima Ratus Ribu Rupiah",
+            "kata": "minus lima ratus ribu",
+            "catatan": "minus"
+        },
+        {
+            "nilai": 999999999999999,
+            "rupiah": "Sembilan Ratus Sembilan Puluh Sembilan Triliun Sembilan Ratus Sembilan Puluh Sembilan Miliar Sembilan Ratus Sembilan Puluh Sembilan Juta Sembilan Ratus Sembilan Puluh Sembilan Ribu Sembilan Ratus Sembilan Puluh Sembilan Rupiah",
+            "kata": "sembilan ratus sembilan puluh sembilan triliun sembilan ratus sembilan puluh sembilan miliar sembilan ratus sembilan puluh sembilan juta sembilan ratus sembilan puluh sembilan ribu sembilan ratus sembilan puluh sembilan",
+            "catatan": "batas atas (Terbilang::MAKSIMUM)"
+        },
+        {
+            "nilai": 1000001,
+            "rupiah": "Satu Juta Satu Rupiah",
+            "kata": "satu juta satu",
+            "catatan": "satu juta satu"
+        },
+        {
+            "nilai": 2000,
+            "rupiah": "Dua Ribu Rupiah",
+            "kata": "dua ribu",
+            "catatan": "dua ribu"
+        },
+        {
+            "nilai": 1100,
+            "rupiah": "Seribu Seratus Rupiah",
+            "kata": "seribu seratus",
+            "catatan": "seribu seratus"
+        },
+        {
+            "nilai": 110000000,
+            "rupiah": "Seratus Sepuluh Juta Rupiah",
+            "kata": "seratus sepuluh juta",
+            "catatan": "seratus sepuluh juta"
+        }
+    ],
+    "di_luar_batas": [
+        1000000000000000,
+        -1000000000000000
+    ]
+}

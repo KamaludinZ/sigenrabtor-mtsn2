@@ -10,6 +10,9 @@ use Throwable;
  */
 class Format
 {
+    /** Nilai baca parseRupiah() untuk angka yang melebihi batas terbilang (Terbilang::MAKSIMUM + 1). */
+    public const MAKS_BACA_RUPIAH = 1_000_000_000_000_000;
+
     /**
      * 10000000 → "10.000.000" (pemisah ribuan titik); pecahan memakai koma, mis. 1.5 → "1,5".
      */
@@ -48,6 +51,12 @@ class Format
         }
 
         $digit = preg_replace('/\D/', '', (string) $teks);
+
+        // Lebih dari 15 digit (> 999 triliun, batas Terbilang) dibaca sebagai 1.000 triliun: tetap ditolak validasi
+        // "terlalu besar" tanpa meluapkan bilangan bulat saat dijumlahkan (mis. ketikan yang belum divalidasi).
+        if (strlen(ltrim($digit, '0')) > 15) {
+            return self::MAKS_BACA_RUPIAH;
+        }
 
         return $digit === '' ? null : (int) $digit;
     }

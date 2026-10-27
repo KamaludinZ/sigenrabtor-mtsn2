@@ -2,7 +2,6 @@
 
 namespace App\Support\Rab;
 
-use App\Support\Format;
 use App\Support\Terbilang;
 
 /**
@@ -27,7 +26,7 @@ final class TotalAnggaran
                 'sumber' => $a->sumber,
                 'total' => $a->total(),
                 'terbilang' => $a->terbilang(),
-                'dokumen' => $a->terbilang() === null ? null : Format::rupiahDokumen($a->total()).' ('.$a->terbilang().')',
+                'dokumen' => $a->terbilang() === null ? null : Terbilang::denganAngka($a->total()),
                 'jumlah_item' => $a->jumlahItem(),
                 'pagu' => $a->pagu(),
                 'status_pagu' => $pagu->status,

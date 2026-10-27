@@ -1,6 +1,8 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Perbaikan: mengetik atau menempelkan angka yang sangat besar (lebih dari 999 triliun) di isian rupiah — pagu, harga satuan, atau nominal termin — tidak lagi membuat halaman gagal dimuat; terbilangnya dikosongkan dan isian ditolak dengan pesan "terlalu besar" saat disimpan. Pemeriksa terbilang dokumen juga melaporkan nominal seperti itu alih-alih gagal.
+- Layanan terbilang di server kini berbagi kasus uji yang sama persis dengan terbilang di browser, dan menyediakan satu format pasangan nominal–terbilang bergaya dokumen ("Rp10.000.000,- (Sepuluh Juta Rupiah)").
 - Fondasi backend: **endpoint total anggaran** per kegiatan (`/kegiatan/{id}/total-anggaran`, JSON) berisi total RAB tiap sumber dana beserta terbilang dan tulisan dokumennya, pagu dan status pagu, jumlah rincian, status termin, serta total gabungan — angka yang sama dengan layar dan dokumen. Akun leading hanya bisa membuka kegiatan leading-nya.
 - Fondasi backend: terbilang total RAB yang tersimpan di database kini dijamin selalu sesuai totalnya — kosong bila total Rp0 dan selalu bisa disusun (total RAB dan nominal termin dibatasi di bawah 1.000 triliun) — dan salinan lama dihitung ulang dari rinciannya saat migrasi.
 - Rekap anggaran per kelompok belanja (bahan, jasa, lain-lain) dan per kode akun kini disusun dengan satu logika yang sama untuk halaman RAB satu kegiatan dan rekap Monitoring seluruh kegiatan, dan dipastikan sama persis dengan penjumlahan di database untuk sumber dana yang dipilih.

@@ -25,10 +25,11 @@ class PemeriksaTerbilang
 
         foreach ($cocok as [, $angka, $tertulis]) {
             $nominal = (int) Format::parseRupiah($angka);
-            $seharusnya = Terbilang::rupiah($nominal);
             $tertulis = trim(preg_replace('/\s+/u', ' ', $tertulis));
 
-            if (mb_strtolower($tertulis) !== mb_strtolower($seharusnya)) {
+            if ($nominal > Terbilang::MAKSIMUM) {
+                $temuan[] = ['nominal' => $nominal, 'tertulis' => $tertulis, 'seharusnya' => '—', 'masalah' => 'Nominal terlalu besar untuk diterbilangkan (maksimal 999 triliun).'];
+            } elseif (mb_strtolower($tertulis) !== mb_strtolower($seharusnya = Terbilang::rupiah($nominal))) {
                 $temuan[] = ['nominal' => $nominal, 'tertulis' => $tertulis, 'seharusnya' => $seharusnya, 'masalah' => 'Terbilang tidak sesuai nominal.'];
             }
 

@@ -22,6 +22,6 @@
     @if ($terbilang)
         @php $awal = \App\Support\Format::parseRupiah($nilaiAwal); @endphp
         <p class="mt-1 min-h-4 text-right text-xs text-stone-500 italic" data-testid="{{ $id }}-terbilang" aria-live="polite"
-           x-text="(() => { const n = parseInt(String($wire.$get('{{ $model }}') ?? '').replace(/\D/g, ''), 10); return n > 0 ? $terbilang(n) : '' })()">{{ $awal ? \App\Support\Terbilang::rupiah($awal) : '' }}</p>
+           x-text="(() => { const n = parseInt(String($wire.$get('{{ $model }}') ?? '').replace(/\D/g, ''), 10); return n > 0 ? $terbilang(n) : '' })()">{{ \App\Support\Terbilang::tampil($awal) }}</p>
     @endif
 </div>

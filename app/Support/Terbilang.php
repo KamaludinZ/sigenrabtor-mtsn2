@@ -33,11 +33,21 @@ class Terbilang
 
     /**
      * Terbilang untuk ditampilkan: null bila nilai kosong atau nol, agar layar/dokumen menampilkan keterangan
-     * kontekstual (mis. "belum ada rincian") alih-alih "Nol Rupiah" untuk anggaran yang belum diisi.
+     * kontekstual (mis. "belum ada rincian") alih-alih "Nol Rupiah" untuk anggaran yang belum diisi. Juga null di luar
+     * MAKSIMUM (mis. angka yang sedang diketik belum divalidasi) — sama dengan kembaran klien yang mengembalikan ''.
      */
     public static function tampil(?int $nilai): ?string
     {
-        return $nilai === null || $nilai === 0 ? null : self::rupiah($nilai);
+        return $nilai === null || $nilai === 0 || abs($nilai) > self::MAKSIMUM ? null : self::rupiah($nilai);
+    }
+
+    /**
+     * Nominal beserta terbilangnya bergaya dokumen: 10000000 → "Rp10.000.000,- (Sepuluh Juta Rupiah)" — pasangan yang
+     * diperiksa PemeriksaTerbilang (Pembiayaan KAK, teks salin total anggaran).
+     */
+    public static function denganAngka(int $nilai): string
+    {
+        return Format::rupiahDokumen($nilai).' ('.self::rupiah($nilai).')';
     }
 
     /**

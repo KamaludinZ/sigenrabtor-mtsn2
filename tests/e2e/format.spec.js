@@ -17,6 +17,8 @@ const KASUS_NIP = JSON.parse(readFileSync(new URL('../fixtures/nip.json', import
 const KASUS_TEKS_BAKU = JSON.parse(readFileSync(new URL('../fixtures/teks-baku.json', import.meta.url), 'utf-8'));
 // Pemeriksaan berkas arsip final bersama: juga diuji di tests/Feature/Kegiatan/ArsipFinalTest.php terhadap ArsipFinal.
 const KASUS_ARSIP = JSON.parse(readFileSync(new URL('../fixtures/arsip-final.json', import.meta.url), 'utf-8'));
+// Kasus terbilang bersama dengan App\Support\Terbilang.
+const KASUS_TERBILANG = JSON.parse(readFileSync(new URL('../fixtures/terbilang.json', import.meta.url), 'utf-8'));
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {
@@ -43,17 +45,13 @@ test.describe('Format mata uang di klien', () => {
     test('terbilang klien sama dengan server & tampil di ringkasan RAB', async ({ page }) => {
         await page.goto('/kegiatan/1/rab');
         await expect(page.getByTestId('total-anggaran-terbilang').first()).toHaveText('“Sepuluh Juta Rupiah”');
-        const hasil = await page.evaluate(() => [0, 11, 115000, 1000, 1001001, 32000000, 9540000, 1000000000000].map((n) => window.SIRABTOR.terbilang(n)));
-        expect(hasil).toEqual([
-            'Nol Rupiah',
-            'Sebelas Rupiah',
-            'Seratus Lima Belas Ribu Rupiah',
-            'Seribu Rupiah',
-            'Satu Juta Seribu Satu Rupiah',
-            'Tiga Puluh Dua Juta Rupiah',
-            'Sembilan Juta Lima Ratus Empat Puluh Ribu Rupiah',
-            'Satu Triliun Rupiah',
-        ]);
+        // Kasus bersama dengan App\Support\Terbilang (tests/fixtures/terbilang.json); di luar batas klien mengembalikan ''.
+        const hasil = await page.evaluate((kasus) => ({
+            rupiah: kasus.kasus.map((k) => window.SIRABTOR.terbilang(k.nilai)),
+            luar: kasus.di_luar_batas.map((n) => window.SIRABTOR.terbilang(n)),
+        }), KASUS_TERBILANG);
+        expect(hasil.rupiah).toEqual(KASUS_TERBILANG.kasus.map((k) => k.rupiah));
+        expect(hasil.luar).toEqual(KASUS_TERBILANG.di_luar_batas.map(() => ''));
     });
 
     test('deteksi NIP & aspek konteks di klien sama dengan server', async ({ page }) => {

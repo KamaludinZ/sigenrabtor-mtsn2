@@ -129,8 +129,8 @@ class KalimatKak
      */
     public static function pembiayaan(int $total, string $sumber, int $tahun, string $madrasah): string
     {
-        return 'Biaya yang terkait dengan kegiatan ini diperlukan sebesar '.Format::rupiahDokumen($total)
-            .' ('.Terbilang::rupiah($total).') yang dibebankan pada dana '.self::sumberDana($sumber, $madrasah, $tahun)
+        return 'Biaya yang terkait dengan kegiatan ini diperlukan sebesar '.Terbilang::denganAngka($total)
+            .' yang dibebankan pada dana '.self::sumberDana($sumber, $madrasah, $tahun)
             .', sebagaimana RAB terlampir.';
     }
 

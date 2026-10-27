@@ -10,25 +10,54 @@ use Tests\TestCase;
 
 class TerbilangTest extends TestCase
 {
+    /** @return array<string, mixed> Kasus bersama server & klien (tests/fixtures/terbilang.json). */
+    private static function fixture(): array
+    {
+        return json_decode((string) file_get_contents(__DIR__.'/../fixtures/terbilang.json'), true);
+    }
+
     /**
-     * Kasus uji dari data tiruan anggaran (StubAnggaran::kasusUji), ditulis ulang agar tes unit mandiri.
-     *
-     * @return array<string, array{int, string}>
+     * @return array<string, array{int, string, string}>
      */
     public static function kasusProvider(): array
     {
         $kasus = [];
-        foreach (StubAnggaran::kasusUji() as $k) {
-            $kasus[$k['catatan'].' ('.$k['nilai'].')'] = [$k['nilai'], $k['terbilang']];
+        foreach (self::fixture()['kasus'] as $k) {
+            $kasus[$k['catatan'].' ('.$k['nilai'].')'] = [$k['nilai'], $k['rupiah'], $k['kata']];
         }
 
         return $kasus;
     }
 
     #[DataProvider('kasusProvider')]
-    public function test_terbilang_rupiah_sesuai_kaidah(int $nilai, string $harapan): void
+    public function test_terbilang_rupiah_sesuai_kaidah(int $nilai, string $rupiah, string $kata): void
     {
-        $this->assertSame($harapan, Terbilang::rupiah($nilai));
+        $this->assertSame([$rupiah, $kata], [Terbilang::rupiah($nilai), Terbilang::kata($nilai)]);
+        $this->assertSame($nilai === 0 ? null : $rupiah, Terbilang::tampil($nilai));
+    }
+
+    public function test_kasus_data_tiruan_tercakup_fixture(): void
+    {
+        $fixture = array_column(self::fixture()['kasus'], 'rupiah', 'nilai');
+
+        foreach (StubAnggaran::kasusUji() as $k) {
+            $this->assertSame($k['terbilang'], $fixture[$k['nilai']] ?? null, (string) $k['nilai']);
+        }
+    }
+
+    public function test_di_luar_batas_tidak_ditampilkan(): void
+    {
+        foreach (self::fixture()['di_luar_batas'] as $nilai) {
+            $this->assertNull(Terbilang::tampil($nilai));
+        }
+        $this->assertNull(Terbilang::tampil(PHP_INT_MAX));
+        $this->assertNull(Terbilang::tampil(null));
+    }
+
+    public function test_dengan_angka_gaya_dokumen(): void
+    {
+        $this->assertSame('Rp10.000.000,- (Sepuluh Juta Rupiah)', Terbilang::denganAngka(10_000_000));
+        $this->assertSame('Rp0,- (Nol Rupiah)', Terbilang::denganAngka(0));
     }
 
     public function test_bentuk_kata_huruf_kecil(): void

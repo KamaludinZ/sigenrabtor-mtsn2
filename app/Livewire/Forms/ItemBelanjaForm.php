@@ -20,6 +20,8 @@ class ItemBelanjaForm extends Form
     /** Batas harga satuan untuk menolak salah ketik digit berlebih. */
     public const MAKS_HARGA = 10_000_000_000;
 
+    public const MAKS_VOLUME = 100_000;
+
     public const SATUAN = ['OJ', 'OH', 'OK', 'orang', 'kotak', 'pack', 'paket', 'rim', 'lembar', 'buah', 'dus', 'botol', 'kali', 'kegiatan', 'bulan', 'unit'];
 
     public const SARAN_URAIAN = [
@@ -71,7 +73,7 @@ class ItemBelanjaForm extends Form
                     $fail('Volume harus berupa angka, mis. 6 atau 1,5.');
                 } elseif ($angka <= 0) {
                     $fail('Volume harus lebih dari 0.');
-                } elseif ($angka > 100_000) {
+                } elseif ($angka > self::MAKS_VOLUME) {
                     $fail('Volume terlalu besar (maksimal 100.000).');
                 }
             }],
@@ -166,7 +168,9 @@ class ItemBelanjaForm extends Form
         $volume = self::angkaVolume($this->volume);
         $harga = Format::parseRupiah($this->harga_satuan);
 
-        return $volume && $harga ? KalkulatorRab::jumlah($volume, $harga) : null;
+        // Perkiraan hanya untuk angka dalam batas aturan (volume ≤ 100.000, harga ≤ MAKS_HARGA): ketikan di luar batas
+        // ditolak validasi dan tidak boleh meluapkan perhitungan.
+        return $volume > 0 && $volume <= self::MAKS_VOLUME && $harga > 0 && $harga <= self::MAKS_HARGA ? KalkulatorRab::jumlah($volume, $harga) : null;
     }
 
     /**
