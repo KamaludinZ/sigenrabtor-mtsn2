@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **penerima data pelaksanaan** di server — jadwal, bulan, tempat, peserta, dan uraian pelaksanaan bisa disimpan tersendiri tanpa menyentuh isian lain, dirapikan seperti di form (bulan mengikuti jadwal bila belum dipilih, tanggal pelaporan otomatis 10 hari setelah selesai) dan diperiksa dengan aturan yang sama, termasuk konsistensi jadwal dengan bulan dan tanggal pelaporan.
 - Fondasi backend: **skema data pelaksanaan** — tanggal selesai kegiatan (dihitung dari tanggal mulai, lama, dan pilihan hari kerja) kini ikut tersimpan di database agar kegiatan bisa dicari per rentang tanggal dan per bulan pelaksanaan, dengan batasan bahwa tanggal selesai tidak mendahului tanggal mulai dan bulan pelaksanaan hanya Januari–Desember.
 - Kelengkapan kode kegiatan kini diperiksa satu layanan di server: checklist isian di Pratinjau Dokumen dan kaidah dokumen ("kode dipilih dari master tahun aktif") sama-sama menandai kode yang belum dipilih, kode yang tidak ada di master tahun aktif, dan — baru — IKSK yang bukan indikator SK terpilih.
 - Penyimpanan kode & klasifikasi kegiatan kini dipegang satu layanan di server yang memeriksa ulang setiap kode (SK wajib, IKSK harus indikator SK-nya, kode harus ada di master tahun aktif, leading sesuai akun), menolak menimpa perubahan dari tab lain, mencatat riwayat perubahan kode, dan menggugurkan penanda kode hilang — sama hasilnya baik dengan data tiruan maupun database.
