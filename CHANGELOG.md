@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **endpoint konteks kegiatan** (`/kegiatan/{id}/konteks`, JSON) — catatan konteks beserta panjangnya, kapan terakhir berubah, aspek catatan yang sudah ditulis (latar khusus, peserta, narasumber, output), peringatan bila memuat NIP, dan bahan yang akan dikirim ke AI persis seperti terkirim (NIP disembunyikan). Akun leading hanya bisa membuka kegiatan leading-nya.
 - Fondasi backend: **skema konteks kegiatan** — catatan konteks (bahan AI) dibatasi 3.000 karakter juga di database, dan waktu terakhir catatan itu berubah kini tercatat tersendiri, terpisah dari perubahan isian kegiatan lainnya.
 - **Batas pagu ditegakkan**: kegiatan yang RAB sumber dananya melebihi pagu kini tidak bisa diajukan (pesan tampil di isian pagu sumber dana itu, mis. "RAB Komite Rp7.950.000 melebihi pagu Rp7.500.000 sebesar Rp450.000") dan tidak bisa disetujui pemeriksa — tetap bisa dikembalikan. Selama masih disusun, kondisi pagu tetap berupa peringatan, dan checklist isian di Pratinjau Dokumen menandainya sebagai syarat pengajuan.
 - RAB: menghapus rincian, mengurungkan hapus, memindah item ke RAB sumber dana lain, dan mengurungkan pemindahan kini juga lewat layanan server yang sama — ditolak bila RAB sudah terkunci, dan urungkan yang terkirim dua kali tidak membuat item ganda.
