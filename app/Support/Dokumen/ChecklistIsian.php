@@ -7,8 +7,8 @@ use App\Contracts\TahunAnggaranRepository;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalKegiatan;
+use App\Support\Kegiatan\KelengkapanKode;
 use App\Support\Kegiatan\MatrikTahapan;
-use App\Support\MasterKode;
 use App\Support\Pengaturan\PenandaTangan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\MekanismePembayaran;
@@ -23,13 +23,8 @@ use App\Support\Stub\StubData;
 final class ChecklistIsian
 {
     /** Kolom kode → [label, kunci pencarian di master]. */
-    private const KODE = [
-        'kode_sk' => ['Kode SK', 'kode'],
-        'kode_iksk' => ['IKSK', 'kode'],
-        'kode_rktm' => ['Kode RKTM', 'kode'],
-        'kode_edm' => ['Kode EDM', 'kode'],
-        'budaya_mutu' => ['5 Budaya Mutu', 'nomor'],
-    ];
+    /** Urutan butir kode di checklist (status & pesan dari KelengkapanKode). */
+    private const KODE = ['kode_sk', 'kode_iksk', 'kode_rktm', 'kode_edm', 'budaya_mutu'];
 
     /** Label isian pelaksanaan wajib (urutan KegiatanForm::PELAKSANAAN_WAJIB). */
     private const PELAKSANAAN = [
@@ -77,13 +72,11 @@ final class ChecklistIsian
             array_keys(self::PELAKSANAAN),
         )];
 
-        $master = ['kode_sk' => MasterKode::kodeSk(), 'kode_iksk' => MasterKode::kodeIksk(), 'kode_rktm' => MasterKode::kodeRktm(), 'kode_edm' => MasterKode::kodeEdm(), 'budaya_mutu' => MasterKode::budayaMutu()];
-        $grup[] = ['kunci' => 'kode', 'judul' => 'Kode & klasifikasi', 'tautan' => $tautan('kegiatan.kode'), 'butir' => array_map(function (string $kolom) use ($kegiatan, $master, $butir, $isi, $tahun) {
-            [$label, $cari] = self::KODE[$kolom];
-            $valid = $isi($kolom) && MasterKode::cari($master[$kolom], $kegiatan[$kolom], $cari) !== null;
-
-            return $butir($kolom, $label, $valid, isset(KegiatanForm::KODE_WAJIB[$kolom]), $isi($kolom) && ! $valid ? "{$kegiatan[$kolom]} tidak ada di master TA {$tahun}." : null);
-        }, array_keys(self::KODE))];
+        $kode = KelengkapanKode::periksa($kegiatan, $tahun);
+        $grup[] = ['kunci' => 'kode', 'judul' => 'Kode & klasifikasi', 'tautan' => $tautan('kegiatan.kode'), 'butir' => array_map(
+            fn (string $kolom) => $butir($kolom, $kode[$kolom]['label'], $kode[$kolom]['status'] === 'terisi', $kode[$kolom]['wajib'], $kode[$kolom]['status'] === 'kosong' ? null : $kode[$kolom]['pesan']),
+            self::KODE,
+        )];
 
         $anggaran = AnggaranKegiatan::untuk($kegiatan);
         $butirAnggaran = [$butir('sumber_dana', 'Sumber dana dipilih', $anggaran !== [])];

@@ -2,6 +2,7 @@
 
 namespace App\Support\Dokumen;
 
+use App\Support\Kegiatan\KelengkapanKode;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -32,14 +33,6 @@ final class KaidahDokumen
     ];
 
     /** Kolom kode kegiatan → [label, daftar master, kunci pencarian]. */
-    private const KODE = [
-        'kode_rktm' => 'Kode RKTM',
-        'kode_sk' => 'Kode SK',
-        'kode_iksk' => 'IKSK',
-        'kode_edm' => 'Kode EDM',
-        'budaya_mutu' => '5 Budaya Mutu',
-    ];
-
     /**
      * @param  array<string, mixed>  $kegiatan
      * @param  array{teks: list<array<string, mixed>>, nilai: array<string, string>}  $cover  Isi cover yang ditampilkan (sinkronisasi tahun).
@@ -101,20 +94,20 @@ final class KaidahDokumen
             $tambah('termin', in_array($mekanisme->status(), ['kurang', 'lebih'], true) ? 'gagal' : 'lulus', $mekanisme->teksStatus().'.');
         }
 
-        // 7. Kode dipilih dari master tahun aktif.
-        $daftar = ['kode_rktm' => MasterKode::kodeRktm(), 'kode_sk' => MasterKode::kodeSk(), 'kode_iksk' => MasterKode::kodeIksk(), 'kode_edm' => MasterKode::kodeEdm(), 'budaya_mutu' => MasterKode::budayaMutu()];
+        // 7. Kode dipilih dari master tahun aktif (KelengkapanKode: kosong, tidak ada di master, IKSK bukan indikator SK).
         $belum = [];
         $asing = [];
-        foreach (self::KODE as $kolom => $label) {
-            $nilai = $kegiatan[$kolom] ?? null;
-            if (blank($nilai)) {
-                $belum[] = $label;
-            } elseif (MasterKode::cari($daftar[$kolom], $nilai, $kolom === 'budaya_mutu' ? 'nomor' : 'kode') === null) {
-                $asing[] = "{$label} {$nilai}";
-            }
+        $tidakSesuai = [];
+        foreach (KelengkapanKode::periksa($kegiatan, $tahun) as $kode) {
+            match ($kode['status']) {
+                'kosong' => $belum[] = $kode['label'],
+                'asing' => $asing[] = "{$kode['label']} {$kode['kode']}",
+                'tidak_sesuai' => $tidakSesuai[] = $kode['pesan'],
+                default => null,
+            };
         }
-        $tambah('kode', $asing !== [] ? 'gagal' : ($belum !== [] ? 'peringatan' : 'lulus'), match (true) {
-            $asing !== [] => 'Tidak ada di master TA '.$tahun.': '.implode(', ', $asing).'.',
+        $tambah('kode', $asing !== [] || $tidakSesuai !== [] ? 'gagal' : ($belum !== [] ? 'peringatan' : 'lulus'), match (true) {
+            $asing !== [] || $tidakSesuai !== [] => trim(($asing !== [] ? 'Tidak ada di master TA '.$tahun.': '.implode(', ', $asing).'. ' : '').implode(' ', $tidakSesuai)),
             $belum !== [] => 'Belum dipilih: '.implode(', ', $belum).'.',
             default => 'Semua kode dipilih dari master TA '.$tahun.'.',
         });
