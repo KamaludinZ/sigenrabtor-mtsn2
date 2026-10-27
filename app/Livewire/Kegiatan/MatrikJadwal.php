@@ -7,6 +7,7 @@ use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\PenyusunUsulanJadwal;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
+use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
@@ -303,6 +304,14 @@ class MatrikJadwal extends Component
         ]);
 
         $this->usulGagal = null;
+        $pengguna = StubData::currentUser();
+        if (BatasAi::sisa($pengguna) <= 0) {
+            $this->usulan = [];
+            $this->usulGagal = BatasAi::pesanHabis();
+
+            return;
+        }
+
         $permintaan = new PermintaanUsulanJadwal(
             kegiatanId: $this->kegiatanId,
             jenis: $this->usulJenis,
@@ -319,6 +328,7 @@ class MatrikJadwal extends Component
 
             return;
         }
+        BatasAi::catat($pengguna, 'usul_jadwal');
 
         if ($this->usulan === []) {
             $this->usulGagal = 'AI tidak memberi usulan yang bisa dipakai. Coba lagi atau ubah instruksi.';

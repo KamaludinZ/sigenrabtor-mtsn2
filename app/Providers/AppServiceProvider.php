@@ -14,9 +14,11 @@ use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\NomorHalamanRepository;
 use App\Contracts\NotifikasiRepository;
 use App\Contracts\PejabatRepository;
+use App\Contracts\PemakaianAiRepository;
 use App\Contracts\PembuatPdfBuku;
 use App\Contracts\PenggunaRepository;
 use App\Contracts\PengubahPdf;
+use App\Contracts\PenyusunSaranKalimat;
 use App\Contracts\PenyusunUsulanJadwal;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\RabRepository;
@@ -37,11 +39,13 @@ use App\Support\Stub\StubMatrikJadwalRepository;
 use App\Support\Stub\StubNomorHalamanRepository;
 use App\Support\Stub\StubNotifikasiRepository;
 use App\Support\Stub\StubPejabatRepository;
+use App\Support\Stub\StubPemakaianAiRepository;
 use App\Support\Stub\StubPembuatPdfBuku;
 use App\Support\Stub\StubPenggunaRepository;
 use App\Support\Stub\StubProfilMadrasahRepository;
 use App\Support\Stub\StubRabRepository;
 use App\Support\Stub\StubRiwayatPengaturanRepository;
+use App\Support\Stub\StubSaranKalimat;
 use App\Support\Stub\StubTahunAnggaranRepository;
 use App\Support\Stub\StubTemplateCoverRepository;
 use App\Support\Stub\StubTemplateDokumenRepository;
@@ -81,6 +85,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PenggunaRepository::class, StubPenggunaRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         $this->app->singleton(PenyusunUsulanJadwal::class, StubUsulanJadwal::class);
+        $this->app->singleton(PenyusunSaranKalimat::class, StubSaranKalimat::class);
+        $this->app->singleton(PemakaianAiRepository::class, StubPemakaianAiRepository::class);
 
         // Konversi PDF (ekspor Monitoring; kelak cetak KAK/RAB & buku) lewat LibreOffice headless.
         $this->app->singleton(PengubahPdf::class, PengubahPdfLibreOffice::class);

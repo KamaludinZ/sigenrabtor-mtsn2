@@ -21,7 +21,8 @@
 
 {{--
     Kalimat KAK (PRD §20): enam bagian yang bisa dibantu AI dalam urutan dokumen. Tiap kartu: isian (jadwal: ringkasan +
-    tautan Matrik & Jadwal), bahan dari data kegiatan untuk AI, apa yang dihasilkan AI, dan pratinjau bagian KAK.
+    tautan Matrik & Jadwal), tombol Buat dengan AI (<x-ai.tombol-buat>) + panel saran, bahan dari data kegiatan untuk AI,
+    apa yang dihasilkan AI, dan pratinjau bagian KAK.
 --}}
 <div class="mx-auto max-w-7xl"
      x-data="{ dirty: $wire.entangle('adaPerubahan') }"
@@ -103,10 +104,17 @@
                                    :kelengkapan="$ringkasan['terisi'][$kunci] ? 'lengkap' : ($kunci === 'latar_belakang' ? 'opsional' : 'kosong')"
                                    data-bagian-ai="{{ $kunci }}">
                     <x-slot:actions>
-                        <button type="button" class="btn-secondary px-2.5 py-1.5 text-xs" disabled title="Sedang disiapkan" data-testid="buat-ai-{{ $kunci }}">
-                            <x-ui.icon name="sparkles" class="size-3.5" /> Buat dengan AI <x-ui.segera />
-                        </button>
+                        <x-ai.tombol-buat :bagian="$kunci" :keadaan="$this->keadaanTombol($kunci)" :href="route('kegiatan.matrik', ['kegiatan' => $kegiatanId]).'#jadwal'" />
                     </x-slot:actions>
+
+                    @if ($galatAi[$kunci] ?? null)
+                        <p class="mb-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 ring-1 ring-red-200" role="alert" data-testid="galat-ai-{{ $kunci }}">
+                            <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $galatAi[$kunci] }}
+                        </p>
+                    @endif
+                    @if ($saranTerbuka === $kunci && ($saran[$kunci] ?? []) !== [])
+                        @include('livewire.kegiatan.partials.saran-kalimat')
+                    @endif
 
                     @switch($kunci)
                         @case('nama_cover')
@@ -204,7 +212,9 @@
                     <li class="flex items-start gap-2"><x-ui.icon name="history" class="mt-px size-3.5 shrink-0 text-stone-400" /> Setiap saran tercatat di riwayat saran AI.</li>
                     <li class="flex items-start gap-2"><x-ui.icon name="info" class="mt-px size-3.5 shrink-0 text-stone-400" />
                         {{ $ringkasan['penyedia'] ? 'Penyedia: '.$ringkasan['penyedia'].'.' : 'Penyedia AI belum dipilih admin — saran memakai contoh tiruan.' }}
-                        Batas {{ $ringkasan['batas'] }} permintaan per hari.
+                    </li>
+                    <li class="flex items-start gap-2" data-testid="sisa-ai"><x-ui.icon name="sparkles" class="mt-px size-3.5 shrink-0 text-stone-400" />
+                        Sisa {{ $this->sisaAi() }} dari {{ $ringkasan['batas'] }} permintaan AI hari ini.
                     </li>
                 </ul>
             </section>

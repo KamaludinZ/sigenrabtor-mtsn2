@@ -4,14 +4,20 @@ namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
+use App\Contracts\PenyusunSaranKalimat;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\BagianAi;
+use App\Support\Kegiatan\BatasAi;
+use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
+use App\Support\Kegiatan\PermintaanSaranKalimat;
+use App\Support\Kegiatan\TombolAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
+use App\Support\Teks;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -23,7 +29,8 @@ use Livewire\Component;
  * (BagianAi::BAGIAN — nama cover, latar belakang, tujuan, sasaran, pelaksanaan, jadwal) dalam satu formulir: isian teks,
  * bahan dari data kegiatan untuk AI, tempat tercetak, dan pratinjau bagian KAK. Kolom yang disunting hanya
  * BagianAi::KOLOM (+ cover_manual) dan disimpan dengan menggabungkan record tersimpan; jadwal disunting di Matrik & Jadwal.
- * Tombol "Buat dengan AI" menyusul.
+ * Tombol "Buat dengan AI" (<x-ai.tombol-buat>, keadaan TombolAi) meminta 2–3 versi ke PenyusunSaranKalimat dalam batas
+ * harian BatasAi; versi tampil di panel saran bagiannya (memakai versi menyusul).
  */
 #[Layout('layouts.app')]
 class KalimatAi extends Component
@@ -46,6 +53,18 @@ class KalimatAi extends Component
     /** @var array<string, array{0: string, 1: string}>|null Kolom yang disimpan pihak lain sejak dimuat → [dimuat, tersimpan]. */
     #[Locked]
     public ?array $bentrok = null;
+
+    /** @var array<string, list<array{judul: string, ciri: string, teks: string}>> Saran AI terakhir per bagian (BagianAi). */
+    #[Locked]
+    public array $saran = [];
+
+    /** @var array<string, string> Pesan gagal permintaan AI terakhir per bagian. */
+    #[Locked]
+    public array $galatAi = [];
+
+    /** Bagian yang panel sarannya terbuka. */
+    #[Locked]
+    public ?string $saranTerbuka = null;
 
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
@@ -165,6 +184,114 @@ class KalimatAi extends Component
     {
         $this->muatDari(app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? $this->dataKegiatan);
         $this->dispatch('notify', message: 'Kalimat terbaru dimuat.', type: 'info');
+    }
+
+    /**
+     * "Buat dengan AI": minta 2–3 versi saran satu bagian ke penyusun (tiruan selama AI belum tersambung). Bahan dari
+     * BagianAi::bahan & KonteksAi::teks (tanpa nama/NIP pejabat). Batas harian dicek dulu (BatasAi); kegagalan penyedia
+     * tampil di kartu bagian dengan "Coba lagi", bukan sebagai galat halaman.
+     */
+    public function mintaSaran(string $bagian, PenyusunSaranKalimat $penyusun): void
+    {
+        $this->pastikanDapatDiedit();
+        abort_unless(isset(BagianAi::BAGIAN[$bagian]) && BagianAi::BAGIAN[$bagian]['kolom'] !== null, 404);
+
+        $pengguna = StubData::currentUser();
+        $kegiatan = $this->kegiatanSekarang();
+        unset($this->galatAi[$bagian]);
+
+        if (blank(trim((string) ($kegiatan['nama_kegiatan'] ?? '')))) {
+            $this->galatAi[$bagian] = 'Isi nama kegiatan dulu di Data Kegiatan.';
+
+            return;
+        }
+        if (BatasAi::sisa($pengguna) <= 0) {
+            $this->galatAi[$bagian] = BatasAi::pesanHabis();
+
+            return;
+        }
+
+        $bahanBagian = array_column(array_filter(BagianAi::bahan($bagian, $kegiatan), fn (array $b) => $b['nilai'] !== null), 'nilai', 'label');
+        $permintaan = new PermintaanSaranKalimat(
+            kegiatanId: $this->kegiatanId,
+            bagian: $bagian,
+            teks: trim((string) ($kegiatan[BagianAi::BAGIAN[$bagian]['kolom']] ?? '')),
+            instruksi: '',
+            bahanBagian: $bahanBagian,
+            bahan: KonteksAi::teks($kegiatan),
+            namaKegiatan: (string) $kegiatan['nama_kegiatan'],
+        );
+
+        try {
+            $saran = self::rapikanSaran($bagian, $penyusun->sarankan($permintaan));
+        } catch (GagalUsulanAi $e) {
+            $this->galatAi[$bagian] = $e->getMessage();
+
+            return;
+        }
+
+        BatasAi::catat($pengguna, $bagian);
+        if ($saran === []) {
+            $this->galatAi[$bagian] = 'AI tidak memberi saran yang bisa dipakai. Coba lagi.';
+
+            return;
+        }
+
+        $this->saran[$bagian] = $saran;
+        $this->saranTerbuka = $bagian;
+    }
+
+    /** Buka/tutup panel saran satu bagian. */
+    public function bukaSaran(string $bagian): void
+    {
+        abort_unless(isset($this->saran[$bagian]), 404);
+        $this->saranTerbuka = $this->saranTerbuka === $bagian ? null : $bagian;
+    }
+
+    public function tutupSaran(): void
+    {
+        $this->saranTerbuka = null;
+    }
+
+    /**
+     * Keadaan tombol "Buat dengan AI" satu bagian.
+     *
+     * @return array{status: string, label: string, keterangan: string|null, jumlah: int}
+     */
+    public function keadaanTombol(string $bagian): array
+    {
+        return TombolAi::keadaan($bagian, $this->kegiatanSekarang(), $this->dapatDiedit(), $this->sisaAi(), $this->saran[$bagian] ?? [], $this->galatAi[$bagian] ?? null);
+    }
+
+    public function sisaAi(): int
+    {
+        return BatasAi::sisa(StubData::currentUser());
+    }
+
+    /**
+     * Hasil penyusun dirapikan: maks. 3 versi, teks satu spasi (nama cover kapital satu baris), sesuai batas panjang
+     * kolomnya, tanpa versi kosong/kembar.
+     *
+     * @param  array<int, mixed>  $saran
+     * @return list<array{judul: string, ciri: string, teks: string}>
+     */
+    public static function rapikanSaran(string $bagian, array $saran): array
+    {
+        $maks = ['nama_cover' => 255, 'latar_belakang' => 5000, 'tujuan' => 2000, 'sasaran' => 2000, 'pelaksanaan' => 3000][$bagian] ?? 2000;
+        $hasil = [];
+        foreach ($saran as $i => $s) {
+            if (! is_array($s)) {
+                continue;
+            }
+            $teks = $bagian === 'nama_cover' ? mb_strtoupper(Teks::rapikan(preg_replace('/\s+/u', ' ', (string) ($s['teks'] ?? '')))) : Teks::rapikan((string) ($s['teks'] ?? ''));
+            $teks = mb_substr($teks, 0, $maks);
+            if ($teks === '' || in_array($teks, array_column($hasil, 'teks'), true)) {
+                continue;
+            }
+            $hasil[] = ['judul' => Teks::rapikan((string) ($s['judul'] ?? '')) ?: 'Versi '.(count($hasil) + 1), 'ciri' => mb_substr(Teks::rapikan((string) ($s['ciri'] ?? '')), 0, 60), 'teks' => $teks];
+        }
+
+        return array_slice($hasil, 0, 3);
     }
 
     /** Data kegiatan dengan teks yang sedang disunting (bahan AI & pratinjau mengikuti layar). */

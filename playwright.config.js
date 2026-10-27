@@ -19,6 +19,7 @@ export const E2E_PENGGUNA_FILE = 'stub/pengguna-e2e.json';
 export const E2E_ARSIP_FILE = 'stub/arsip-final-e2e.json';
 export const E2E_NOTIFIKASI_FILE = 'stub/notifikasi-e2e.json';
 export const E2E_BUKU_FILE = 'stub/buku-dokumen-e2e.json';
+export const E2E_PEMAKAIAN_AI_FILE = 'stub/pemakaian-ai-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -71,6 +72,7 @@ export default defineConfig({
             STUB_ARSIP_FILE: E2E_ARSIP_FILE,
             STUB_NOTIFIKASI_FILE: E2E_NOTIFIKASI_FILE,
             STUB_BUKU_FILE: E2E_BUKU_FILE,
+            STUB_PEMAKAIAN_AI_FILE: E2E_PEMAKAIAN_AI_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },
