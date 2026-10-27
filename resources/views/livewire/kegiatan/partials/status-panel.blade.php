@@ -37,7 +37,19 @@
                 @php
                     // Pengajuan setelah dikembalikan = pengajuan ulang hasil perbaikan.
                     $label = $kunci === 'ajukan' && $status === \App\Enums\StatusKegiatan::Dikembalikan->value ? 'Ajukan ulang' : $aksi['label'];
+                    // Tandai final menunggu arsip final semua sumber dana (PRD F18).
+                    $arsipKurang = $kunci === 'finalkan' ? $this->arsipKurang() : [];
                 @endphp
+                @if ($arsipKurang !== [])
+                    <div wire:key="aksi-{{ $kunci }}-{{ $status }}-terhalang" data-testid="final-terhalang">
+                        <button type="button" class="{{ $gayaTombol[$aksi['gaya']] }} w-full" disabled>
+                            <x-ui.icon :name="$aksi['ikon']" class="size-4" />
+                            {{ $label }}
+                        </button>
+                        <p class="mt-1.5 text-xs text-gold-700">{{ \App\Support\Kegiatan\ArsipFinal::pesanKurang($arsipKurang) }}</p>
+                    </div>
+                    @continue
+                @endif
                 <div x-data="{ yakin: false }" wire:key="aksi-{{ $kunci }}-{{ $status }}">
                     <button type="button" x-show="! yakin" x-on:click="yakin = true" class="{{ $gayaTombol[$aksi['gaya']] }} w-full">
                         <x-ui.icon :name="$aksi['ikon']" class="size-4" />

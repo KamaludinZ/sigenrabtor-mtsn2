@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Kegiatan;
 
+use App\Contracts\ArsipFinalRepository;
 use App\Contracts\DataPaguRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
@@ -9,6 +10,7 @@ use App\Enums\SumberDana;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
+use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\PerbaikanKegiatan;
@@ -738,6 +740,12 @@ class Form extends Component
             return;
         }
 
+        if ($aksi === 'finalkan' && ($kurang = $this->arsipKurang()) !== []) {
+            $this->dispatch('notify', message: ArsipFinal::pesanKurang($kurang), type: 'error');
+
+            return;
+        }
+
         if ($aksi === 'ajukan') {
             try {
                 $this->form->validate();
@@ -768,6 +776,27 @@ class Form extends Component
         unset($this->aksiStatus, $this->drafTerbaru);
 
         $this->dispatch('notify', message: 'Status kegiatan: '.$definisi['ke']->label().'.');
+    }
+
+    /**
+     * Sumber dana yang arsip finalnya belum diunggah (syarat "Tandai final", PRD F18).
+     *
+     * @return list<string>
+     */
+    public function arsipKurang(): array
+    {
+        if ($this->kegiatanId === null) {
+            return [];
+        }
+
+        return ArsipFinal::kurang(['id' => $this->kegiatanId] + $this->form->dataUntukDisimpan(), app(ArsipFinalRepository::class)->untukKegiatan($this->kegiatanId));
+    }
+
+    /** Panel arsip final berubah: render ulang agar syarat "Tandai final" di panel status ikut diperbarui. */
+    #[On('arsip-final-berubah')]
+    public function arsipFinalBerubah(): void
+    {
+        unset($this->aksiStatus);
     }
 
     /**

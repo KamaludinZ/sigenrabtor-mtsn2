@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Kegiatan;
 
+use App\Contracts\ArsipFinalRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Kegiatan\Form;
+use Illuminate\Http\UploadedFile;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -64,10 +66,16 @@ class StatusKegiatanTest extends TestCase
         $this->assertSame('diperiksa', $this->statusTersimpan());
 
         $this->sebagaiAdmin();
-        Livewire::test(Form::class, ['kegiatan' => 1])
+        $form = Livewire::test(Form::class, ['kegiatan' => 1])
             ->assertSee('Setujui')
             ->call('ubahStatus', 'setujui')
             ->assertSet('status', 'disetujui')
+            // Tandai final menunggu arsip final semua sumber dana (contoh 1: Komite).
+            ->call('ubahStatus', 'finalkan')
+            ->assertSet('status', 'disetujui')
+            ->assertDispatched('notify', message: 'Unggah arsip final bertanda tangan untuk RAB Komite sebelum menandai final.', type: 'error');
+        app(ArsipFinalRepository::class)->simpan(1, 'Komite', UploadedFile::fake()->createWithContent('arsip.pdf', '%PDF-1.4'), ['id' => 2, 'name' => 'Koordinator PUSKOM']);
+        $form->call('arsipFinalBerubah')
             ->call('ubahStatus', 'finalkan')
             ->assertSet('status', 'final')
             ->assertSee('Buka kunci')

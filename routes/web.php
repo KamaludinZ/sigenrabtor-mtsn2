@@ -5,6 +5,7 @@ use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\LogoMadrasah;
+use App\Http\Controllers\UnduhArsipFinal;
 use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateDataPagu;
@@ -45,6 +46,7 @@ Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegia
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
+Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');
 
 // Monitoring anggaran lintas kegiatan & leading (PRD Fase 5 §11), khusus admin.
 Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');

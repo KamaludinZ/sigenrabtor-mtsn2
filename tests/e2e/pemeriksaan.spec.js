@@ -82,11 +82,14 @@ test.describe('Pemeriksaan', () => {
         await page.goto('/demo/peran/leading');
     });
 
-    test('keputusan & perbaikan: kembalikan wajib catatan, leading memperbaiki data lalu ajukan ulang, admin melihat yang diubah lalu menyetujui', async ({ page }, testInfo) => {
+    test('keputusan & perbaikan: kembalikan wajib catatan, leading memperbaiki data lalu ajukan ulang, admin menyetujui, leading mengunggah arsip final lalu menandai final', async ({ page }, testInfo) => {
         // Kegiatan baru per proyek agar tidak mengubah contoh yang dipakai tes lain.
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/buat');
         await page.locator('#nama_kegiatan').fill(`Kegiatan Pemeriksaan ${testInfo.project.name}`);
+        await page.getByTestId('sumber-dipa').getByRole('checkbox').check();
+        await expect(page.locator('#pagu_dipa')).toBeEnabled();
+        await page.locator('#pagu_dipa').pressSequentially('1000000');
         await page.getByRole('button', { name: 'Simpan Draf' }).first().click();
         await expect(page).toHaveURL(/\/kegiatan\/\d+\/edit$/);
         const urlKegiatan = page.url();
@@ -114,7 +117,7 @@ test.describe('Pemeriksaan', () => {
         await expect(page).toHaveURL(new RegExp(`/pemeriksaan/${id}$`));
         const panel = page.getByTestId('panel-keputusan');
         await expect(panel).toHaveAttribute('data-status', 'diperiksa');
-        await expect(page.getByTestId('peringatan-keputusan')).toContainText('Sumber dana belum dipilih');
+        await expect(page.getByTestId('peringatan-keputusan')).toContainText('dokumen belum lengkap');
 
         await panel.getByRole('button', { name: 'Kembalikan', exact: true }).click();
         await expect(panel).toContainText('Tulis catatan perbaikan agar leading tahu apa yang harus diubah.');
@@ -148,6 +151,34 @@ test.describe('Pemeriksaan', () => {
         await panel.getByRole('button', { name: 'Ya, setujui' }).click();
         await expect(panel).toHaveAttribute('data-status', 'disetujui');
         await expect(panel).toContainText('Perlu perbaikan lagi?');
+        await expect(page.getByTestId('arsip-pemeriksaan').locator('[data-arsip="DIPA"]')).toContainText('Belum diunggah');
+
+        // Leading mengunggah arsip final PDF per sumber dana, lalu menandai final (data terkunci).
+        await page.goto('/demo/peran/leading');
+        await page.goto(urlKegiatan);
+        await expect(panelStatus(page).getByTestId('final-terhalang')).toContainText('Unggah arsip final bertanda tangan untuk RAB DIPA sebelum menandai final.');
+        const arsip = page.getByTestId('panel-arsip-final');
+        await expect(arsip.getByTestId('jumlah-arsip')).toHaveText('0 dari 1 diunggah');
+        await arsip.getByTestId('input-arsip-dipa').setInputFiles('tests/fixtures/arsip-contoh.pdf');
+        await expect(arsip.locator('[data-arsip="DIPA"] [data-nama-arsip]')).toHaveText('arsip-contoh.pdf');
+        await expect(arsip.getByTestId('arsip-lengkap')).toBeVisible();
+        await expect(page.getByTestId('belum-disimpan')).toHaveCount(0);
+        await expect(panelStatus(page).getByTestId('final-terhalang')).toHaveCount(0);
+        const tautanPdf = arsip.getByRole('link', { name: 'Lihat' });
+        const pdf = await page.request.get(await tautanPdf.getAttribute('href'));
+        expect(pdf.headers()['content-type']).toBe('application/pdf');
+        await page.screenshot({ path: `storage/playwright/shots/arsip-final-${testInfo.project.name}.png` });
+
+        await panelStatus(page).getByRole('button', { name: 'Tandai final', exact: true }).click();
+        await panelStatus(page).getByRole('button', { name: 'Ya, tandai final' }).click();
+        await expect(page.getByTestId('banner-terkunci')).toContainText('status Final');
+        await expect(arsip).toContainText('Data terkunci; hanya admin yang dapat membuka kunci.');
+        await expect(arsip.getByTestId('input-arsip-dipa')).toHaveCount(0);
+
+        await page.goto('/demo/peran/admin');
+        await page.goto(`/pemeriksaan/${id}`);
+        await expect(panel).toHaveAttribute('data-status', 'final');
+        await expect(page.getByTestId('arsip-pemeriksaan').locator('[data-arsip="DIPA"]')).toContainText('Lihat PDF');
 
         await page.goto('/demo/peran/leading');
     });

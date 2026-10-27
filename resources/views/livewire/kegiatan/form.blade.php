@@ -126,6 +126,10 @@
 
             @include('livewire.kegiatan.partials.banner-perbaikan')
 
+            @if ($kegiatanId && in_array($status, ['disetujui', 'final'], true))
+                <livewire:kegiatan.panel-arsip-final :kegiatan-id="$kegiatanId" wire:key="arsip-final-{{ $kegiatanId }}-{{ $status }}" />
+            @endif
+
             {{-- fieldset[disabled] mengunci semua isian & tombol di dalamnya saat status bukan Draf/Dikembalikan --}}
             <fieldset @disabled(! $this->dapatDiedit()) class="min-w-0 space-y-6">
             @foreach ($this->sections as $section)

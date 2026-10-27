@@ -83,7 +83,7 @@ enum StatusKegiatan: string
             'finalkan' => [
                 'label' => 'Tandai final', 'dari' => [self::Disetujui], 'ke' => self::Final,
                 'peran' => ['leading', 'admin'], 'gaya' => 'primary', 'ikon' => 'lock',
-                'konfirmasi' => 'Data dikunci permanen. Unggah arsip PDF bertanda tangan menyusul.',
+                'konfirmasi' => 'Arsip final semua sumber dana sudah diunggah; data dikunci dan hanya admin yang dapat membuka kunci.',
             ],
             'buka_kunci' => [
                 'label' => 'Buka kunci', 'dari' => [self::Final], 'ke' => self::Dikembalikan,

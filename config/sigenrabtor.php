@@ -58,6 +58,7 @@ return [
         'dasar_hukum_file' => env('STUB_DASAR_HUKUM_FILE', 'stub/dasar-hukum.json'),
         'leading_file' => env('STUB_LEADING_FILE', 'stub/leading.json'),
         'pengguna_file' => env('STUB_PENGGUNA_FILE', 'stub/pengguna.json'),
+        'arsip_file' => env('STUB_ARSIP_FILE', 'stub/arsip-final.json'),
     ],
 
     /*

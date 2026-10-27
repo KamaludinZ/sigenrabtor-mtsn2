@@ -53,6 +53,27 @@
         </div>
     @endif
 
+    @if (in_array($status, [StatusKegiatan::Disetujui, StatusKegiatan::Final], true) && $this->arsip !== [])
+        {{-- Arsip final per sumber dana (diunggah leading di Data Kegiatan). --}}
+        <ul class="mt-3 space-y-1.5 text-xs" data-testid="arsip-pemeriksaan">
+            @foreach ($this->arsip as $s => $a)
+                <li class="flex items-center justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 ring-1 ring-stone-100" data-arsip="{{ $s }}">
+                    <span class="min-w-0">
+                        <span class="font-semibold text-stone-800">Arsip RAB {{ $s }}</span>
+                        @if ($a)
+                            <span class="block truncate text-stone-500">{{ $a['diunggah_oleh'] }} · {{ $waktu($a['diunggah_pada']) }}</span>
+                        @else
+                            <span class="block text-gold-700">Belum diunggah</span>
+                        @endif
+                    </span>
+                    @if ($a)
+                        <a href="{{ route('kegiatan.arsip', ['kegiatan' => $kegiatanId, 'sumber' => $s, 'v' => $a['diunggah_pada']]) }}" target="_blank" rel="noopener" class="shrink-0 font-semibold text-brand-700 hover:text-brand-800">Lihat PDF</a>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
     @if ($pilihan !== [])
         @if ($status === StatusKegiatan::Diperiksa && ($jumlahDokumen === 0 || $belumLengkap > 0 || $melebihi !== []))
             <div class="mt-3 flex gap-2 rounded-lg bg-gold-50 px-2.5 py-2 text-xs text-stone-700 ring-1 ring-gold-200" data-testid="peringatan-keputusan">

@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Pemeriksaan;
 
+use App\Contracts\ArsipFinalRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
@@ -118,6 +120,19 @@ class Periksa extends Component
             'kak' => count(SusunanKak::dari($this->dataKegiatan, $sumber)->kurang),
             'rab' => count(SusunanRab::dari($this->dataKegiatan, $sumber)->kurang),
         ], $this->kak->daftarSumber);
+    }
+
+    /**
+     * Arsip final per sumber dana wajib (null = belum diunggah), untuk status Disetujui & Final.
+     *
+     * @return array<string, array<string, mixed>|null>
+     */
+    #[Computed]
+    public function arsip(): array
+    {
+        $ada = app(ArsipFinalRepository::class)->untukKegiatan($this->kegiatanId);
+
+        return array_combine($sumber = ArsipFinal::sumberWajib($this->dataKegiatan), array_map(fn (string $s) => $ada[$s] ?? null, $sumber));
     }
 
     /** Perbaikan terakhir (dikembalikan/dibuka kuncinya) beserta bagian yang berubah sesudahnya; null bila belum pernah. */
