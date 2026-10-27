@@ -3,10 +3,10 @@
 namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
-use App\Contracts\TemplateCoverRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\ChecklistIsian;
+use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\StatusDraf;
 use App\Support\Dokumen\SusunanKak;
@@ -127,13 +127,7 @@ class PratinjauDokumen extends Component
     #[Computed]
     public function cover(): array
     {
-        $cover = collect(app(TemplateCoverRepository::class)->semua(StubData::tahunAktif()['tahun']))->firstWhere('is_default', true);
-
-        return [
-            'gambar' => $cover ? route('dokumen.cover.gambar', ['cover' => $cover['id'], 'v' => $cover['diperbarui_pada']]) : null,
-            'teks' => TeksCover::rapikan($cover['teks_items'] ?? TeksCover::bawaan()),
-            'nilai' => TeksCover::nilai($this->dataKegiatan, $this->kak->sumber),
-        ];
+        return CoverDokumen::desain() + ['nilai' => TeksCover::nilai($this->dataKegiatan, $this->kak->sumber)];
     }
 
     public function render()

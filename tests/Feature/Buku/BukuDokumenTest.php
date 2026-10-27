@@ -3,8 +3,11 @@
 namespace Tests\Feature\Buku;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\TemplateCoverRepository;
 use App\Livewire\Buku\Daftar;
 use App\Support\Dokumen\BukuDokumen;
+use App\Support\Dokumen\TeksCover;
+use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -41,7 +44,9 @@ class BukuDokumenTest extends TestCase
             ->assertSee('1.6 · Tim Penjamin Mutu — DIPA')
             ->assertSeeInOrder(['Cover buku', 'Daftar Kegiatan', 'Review RKJM dan Penyusunan RKTM', 'Supervisi Akademik'])
             ->assertSee('TOR_RAB_Tim_Penjamin_Mutu_DIPA_2026.pdf')
-            ->assertSee('SUMBER ANGGARAN DIPA')
+            ->assertSeeHtml('data-cover-buku="1.6|DIPA"')
+            ->assertSee('SUMBER DANA DIPA')
+            ->assertSee('KETUA TIM PENJAMIN MUTU')
             ->assertSee('urut kode RKTM')
             ->assertSee('2 kegiatan masih DRAF')
             ->assertSeeHtml('data-buku="1.6|Komite" data-jumlah="3"')
@@ -54,6 +59,28 @@ class BukuDokumenTest extends TestCase
         Livewire::withQueryParams(['leading' => '1.1', 'sumber' => 'BOS'])->test(Daftar::class)
             ->assertSet('leading', '')
             ->assertSet('sumber', '');
+    }
+
+    public function test_cover_buku_memakai_desain_cover_dan_nilai_buku(): void
+    {
+        $this->assertSame([
+            'kop' => 'MADRASAH TSANAWIYAH NEGERI 2 KOTA MALANG',
+            'judul' => 'KEGIATAN',
+            'nama_kegiatan' => 'TIM PENJAMIN MUTU',
+            'sumber_anggaran' => 'SUMBER DANA KOMITE',
+            'disusun_oleh' => 'Disusun oleh:',
+            'leading' => 'KETUA TIM PENJAMIN MUTU',
+            'kota' => 'MALANG',
+            'tahun' => 'TAHUN ANGGARAN 2026',
+        ], BukuDokumen::nilaiCover('1.6', 'Komite'));
+        $this->assertSame(array_keys(TeksCover::FIELD), array_keys(BukuDokumen::nilaiCover('1.6', 'Komite')), 'Mengisi kotak teks desain cover yang sama.');
+
+        $id = app(TemplateCoverRepository::class)->tambah(2026, 'Cover Biru', UploadedFile::fake()->image('cover.png', 595, 842), TeksCover::bawaan());
+        $html = Livewire::test(Daftar::class)->html();
+        $this->assertSame(2, substr_count($html, 'data-cover-buku="1.6|DIPA"'), 'Gambar kecil + tampilan besar.');
+        $this->assertStringContainsString(route('dokumen.cover.gambar', ['cover' => $id]), $html);
+        $this->assertStringContainsString('data-testid="cap-draf"', $html);
+        $this->assertStringNotContainsString('id="cetak-cover-tahun"', $html, 'Tanpa jangkar ganda.');
     }
 
     public function test_admin_melihat_semua_buku(): void

@@ -6,7 +6,6 @@
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $terpilih = $this->terpilih;
     $isi = $this->isi;
-    $cover = $terpilih ? BukuDokumen::cover($terpilih['leading'], $terpilih['sumber']) : null;
     $bukuIni = $terpilih ? collect($this->peta)->first(fn ($b) => $b['leading'] === $terpilih['leading'] && $b['sumber'] === $terpilih['sumber']) : null;
     $jumlahDraf = $isi ? count(array_filter($isi['baris'], fn ($b) => $b['draf'])) : 0;
     $admin = \App\Support\Stub\StubData::currentUser()['role'] === 'admin';
@@ -124,20 +123,24 @@
             </section>
 
             <aside class="space-y-4" aria-label="Cover & pengaturan buku">
-                {{-- Cover buku (pratinjau ringkas; desainnya menyusul cetak buku). --}}
-                <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-cover-buku" data-testid="cover-buku">
-                    <h2 id="judul-cover-buku" class="text-sm font-semibold text-stone-900">Cover buku</h2>
-                    <div class="mt-3 flex aspect-[210/297] flex-col items-center justify-between rounded-sm bg-white p-4 text-center font-serif text-stone-900 shadow-sm ring-1 ring-stone-200">
-                        <p class="text-[10px] font-bold tracking-wide">{{ $cover['kop'] }}</p>
-                        <div class="space-y-2">
-                            <p class="text-lg font-bold tracking-[0.2em]">{{ $cover['judul'] }}</p>
-                            <p class="text-[11px] font-semibold">{{ $cover['sumber'] }}</p>
-                            <p class="text-xs font-bold">{{ $cover['leading'] }}</p>
-                        </div>
-                        <div class="space-y-1 text-[10px]">
-                            <p>{{ $cover['disusun'] }}</p>
-                            <p class="font-semibold">{{ $cover['kota'] }}</p>
-                            <p class="font-semibold">{{ $cover['tahun'] }}</p>
+                {{-- Halaman cover buku: desain cover default tahun aktif berisi nilai buku; klik untuk memperbesar. --}}
+                <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-cover-buku" data-testid="cover-buku"
+                         x-data="{ besar: false }" x-on:keydown.escape.window="besar = false">
+                    <div class="flex items-baseline justify-between gap-2">
+                        <h2 id="judul-cover-buku" class="text-sm font-semibold text-stone-900">Cover buku</h2>
+                        <button type="button" x-on:click="besar = true" class="text-xs font-semibold text-brand-700 hover:text-brand-800" data-testid="perbesar-cover-buku">Perbesar</button>
+                    </div>
+                    <button type="button" x-on:click="besar = true" class="mt-3 block w-full text-left" aria-label="Perbesar cover buku">
+                        <x-dokumen.cover-buku :leading="$terpilih['leading']" :sumber="$terpilih['sumber']" :draf="$jumlahDraf > 0" />
+                    </button>
+                    <p class="mt-2 text-xs text-stone-500">Memakai desain cover default TA {{ $tahun }}{{ $admin ? '' : ' yang diatur admin' }}.</p>
+
+                    <div x-cloak x-show="besar" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/70 p-4" role="dialog" aria-modal="true" aria-label="Cover buku" data-testid="cover-buku-besar" x-on:click.self="besar = false">
+                        <div class="w-full max-w-md">
+                            <x-dokumen.cover-buku :leading="$terpilih['leading']" :sumber="$terpilih['sumber']" :draf="$jumlahDraf > 0" />
+                            <div class="mt-3 flex justify-center">
+                                <button type="button" x-on:click="besar = false" class="btn-secondary bg-white">Tutup</button>
+                            </div>
                         </div>
                     </div>
                 </section>

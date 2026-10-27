@@ -96,13 +96,13 @@ final class BukuDokumen
     }
 
     /**
-     * Isi cover buku (PRD §7A.1): "Kegiatan", sumber anggaran, nama leading, tahun, "Disusun oleh" pejabat leading, kop, kota.
+     * Isi kotak teks cover buku (PRD §7A.1) — kunci TeksCover::FIELD sehingga memakai desain cover yang sama dengan cover
+     * kegiatan: kop, "KEGIATAN", nama unit leading, sumber dana, "Disusun oleh:" pejabat leading, kota, tahun anggaran.
      *
      * @return array<string, string>
      */
-    public static function cover(string $leading, string $sumber): array
+    public static function nilaiCover(string $leading, string $sumber): array
     {
-        $tahun = StubData::tahunAktif()['tahun'];
         $madrasah = StubData::madrasah();
         $unit = MasterKode::leading($leading);
         $pembuat = PenandaTangan::pembuat(['leading' => $leading]);
@@ -110,11 +110,12 @@ final class BukuDokumen
         return [
             'kop' => mb_strtoupper($madrasah['nama']),
             'judul' => 'KEGIATAN',
-            'sumber' => 'SUMBER ANGGARAN '.mb_strtoupper($sumber),
-            'leading' => mb_strtoupper($unit['nama_unit'] ?? $leading),
-            'disusun' => 'Disusun oleh: '.($pembuat['jabatan'] ?? ($unit['jabatan_penanda_tangan'] ?? 'Pejabat leading')),
+            'nama_kegiatan' => mb_strtoupper($unit['nama_unit'] ?? $leading),
+            'sumber_anggaran' => 'SUMBER DANA '.mb_strtoupper($sumber),
+            'disusun_oleh' => 'Disusun oleh:',
+            'leading' => mb_strtoupper($pembuat['jabatan'] ?? ($unit['jabatan_penanda_tangan'] ?? 'Pejabat leading')),
             'kota' => mb_strtoupper($madrasah['kota']),
-            'tahun' => "TAHUN ANGGARAN {$tahun}",
+            'tahun' => 'TAHUN ANGGARAN '.StubData::tahunAktif()['tahun'],
         ];
     }
 

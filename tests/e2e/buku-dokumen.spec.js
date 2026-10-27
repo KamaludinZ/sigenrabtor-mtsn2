@@ -18,12 +18,19 @@ test.describe('Buku dokumen', () => {
         await expect(susunan.locator('[data-bagian-buku]')).toHaveCount(2);
         await expect(susunan.locator('li[data-kegiatan]')).not.toHaveCount(0);
         await expect(page.getByTestId('nama-berkas-buku')).toContainText('TOR_RAB_Tim_Penjamin_Mutu_DIPA_2026.pdf');
-        await expect(page.getByTestId('cover-buku')).toContainText('TIM PENJAMIN MUTU');
+        const cover = page.getByTestId('cover-buku');
+        await expect(cover.locator('[data-field="judul"]').first()).toHaveText('KEGIATAN');
+        await expect(cover.locator('[data-field="nama_kegiatan"]').first()).toHaveText('TIM PENJAMIN MUTU');
+        await cover.getByTestId('perbesar-cover-buku').click();
+        await expect(page.getByTestId('cover-buku-besar')).toBeVisible();
+        await page.screenshot({ path: `storage/playwright/shots/cover-buku-${testInfo.project.name}.png` });
+        await page.keyboard.press('Escape');
+        await expect(page.getByTestId('cover-buku-besar')).toBeHidden();
 
         await page.getByTestId('parameter-buku').getByRole('group', { name: 'Sumber dana' }).getByRole('button', { name: 'Komite' }).click();
         await expect(page).toHaveURL(/sumber=Komite/);
         await expect(susunan.getByRole('heading', { level: 2 })).toContainText('— Komite');
-        await expect(page.getByTestId('cover-buku')).toContainText('SUMBER ANGGARAN KOMITE');
+        await expect(cover.locator('[data-field="sumber_anggaran"]').first()).toHaveText('SUMBER DANA KOMITE');
 
         const peta = page.getByTestId('peta-buku');
         await expect(peta.locator('[data-buku]')).toHaveCount(2);
