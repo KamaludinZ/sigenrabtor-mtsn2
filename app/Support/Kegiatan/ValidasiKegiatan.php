@@ -6,6 +6,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Rules\KalimatUtuh;
 use App\Support\Format;
+use App\Support\Master\IkskPerSk;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Carbon\CarbonImmutable;
@@ -61,7 +62,7 @@ final class ValidasiKegiatan
             'leading' => ['nullable', Rule::in(array_column(MasterKode::pilihanLeading($pengguna ?? StubData::currentUser(), $leadingTersimpan), 'kode'))],
             'kode_rktm' => ['nullable', Rule::in(array_column(MasterKode::kodeRktm(), 'kode'))],
             'kode_sk' => ['nullable', Rule::in(array_column(MasterKode::kodeSk(), 'kode'))],
-            'kode_iksk' => ['nullable', Rule::in(array_column(MasterKode::kodeIksk(), 'kode')), self::ikskSesuaiSk((string) ($data['kode_sk'] ?? ''))],
+            'kode_iksk' => ['nullable', Rule::in(array_column(MasterKode::kodeIksk(), 'kode')), self::ikskSesuaiSk($data['kode_sk'] ?? null)],
             'kode_edm' => ['nullable', Rule::in(array_column(MasterKode::kodeEdm(), 'kode'))],
             'budaya_mutu' => ['nullable', Rule::in(array_column(MasterKode::budayaMutu(), 'nomor'))],
             'tempat' => ['nullable', 'string', 'max:255'],
@@ -220,23 +221,12 @@ final class ValidasiKegiatan
         };
     }
 
-    private static function ikskSesuaiSk(string $kodeSk): Closure
+    /** IKSK harus indikator SK terpilih (IkskPerSk::galat). */
+    private static function ikskSesuaiSk(?string $kodeSk): Closure
     {
         return function (string $attribute, mixed $value, Closure $fail) use ($kodeSk) {
-            if (blank($value)) {
-                return;
-            }
-
-            if ($kodeSk === '') {
-                $fail('Pilih kode SK terlebih dahulu.');
-
-                return;
-            }
-
-            $iksk = MasterKode::cari(MasterKode::kodeIksk(), $value);
-
-            if ($iksk !== null && $iksk['kode_sk'] !== $kodeSk) {
-                $fail("{$value} bukan indikator dari {$kodeSk}.");
+            if ($pesan = IkskPerSk::galat($kodeSk, filled($value) ? (string) $value : null)) {
+                $fail($pesan);
             }
         };
     }

@@ -3,6 +3,7 @@
 namespace App\Support\Kegiatan\Impor;
 
 use App\Support\Kegiatan\KodeHilang;
+use App\Support\Master\IkskPerSk;
 use App\Support\Master\Impor\PemeriksaIksk;
 use App\Support\Master\Impor\PemeriksaSk;
 use App\Support\MasterKode;
@@ -26,11 +27,10 @@ final class PemeriksaPerkin
     {
         $diperiksa = PemeriksaImporKegiatan::periksa($barisMentah, $namaAda, $leadings, $semuaLeading, $leadingBawaan);
         $sk = array_column(MasterKode::kodeSk(), null, 'kode');
-        $iksk = array_column(MasterKode::kodeIksk(), null, 'kode');
         $tahun = StubData::tahunAktif()['tahun'];
 
         foreach ($barisMentah as $i => $mentah) {
-            $kode = self::kode($mentah['nilai']['kode_sk'] ?? null, $mentah['nilai']['kode_iksk'] ?? null, $sk, $iksk, $tahun);
+            $kode = self::kode($mentah['nilai']['kode_sk'] ?? null, $mentah['nilai']['kode_iksk'] ?? null, $sk, $tahun);
             $baris = &$diperiksa[$i];
 
             if ($baris['status'] === 'siap' && $kode['gagal'] !== []) {
@@ -127,10 +127,9 @@ final class PemeriksaPerkin
      * dan kode yang dikosongkan karena tidak ada di master.
      *
      * @param  array<string, array{kode: string}>  $sk
-     * @param  array<string, array{kode: string, kode_sk: string}>  $iksk
      * @return array{sk: string|null, iksk: string|null, gagal: list<string>, peringatan: list<string>, sk_induk: bool, dikosongkan: list<string>}
      */
-    private static function kode(mixed $mentahSk, mixed $mentahIksk, array $sk, array $iksk, int $tahun): array
+    private static function kode(mixed $mentahSk, mixed $mentahIksk, array $sk, int $tahun): array
     {
         $teksSk = trim((string) $mentahSk);
         $teksIksk = trim((string) $mentahIksk);
@@ -148,8 +147,7 @@ final class PemeriksaPerkin
             return $hasil;
         }
 
-        if ($kodeIksk !== null && isset($iksk[$kodeIksk])) {
-            $induk = $iksk[$kodeIksk]['kode_sk'];
+        if ($kodeIksk !== null && ($induk = IkskPerSk::induk($kodeIksk)) !== null) {
             if ($kodeSk !== null && $kodeSk !== $induk) {
                 return ['gagal' => ["{$kodeIksk} adalah indikator {$induk}, bukan {$kodeSk}."]] + $hasil;
             }

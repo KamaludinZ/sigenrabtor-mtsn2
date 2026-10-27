@@ -9,7 +9,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\SusunanPanitia;
 use App\Support\Kegiatan\ValidasiKegiatan;
-use App\Support\MasterKode;
+use App\Support\Master\IkskPerSk;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
@@ -488,39 +488,14 @@ class KegiatanForm extends Form
     }
 
     /**
-     * IKSK yang sudah dipilih dikosongkan bila tidak lagi berada di bawah SK terpilih.
+     * Sesudah SK berganti: IKSK dikosongkan bila bukan indikator SK baru, dan bila SK baru hanya punya satu indikator
+     * indikator itu dipilih (IkskPerSk::sesudahGantiSk). Mengembalikan true bila IKSK dipilih otomatis.
      */
-    public function sinkronIksk(): void
+    public function sinkronIksk(): bool
     {
-        if ($this->kode_iksk === '') {
-            return;
-        }
+        ['iksk' => $this->kode_iksk, 'otomatis' => $otomatis] = IkskPerSk::sesudahGantiSk($this->kode_sk, $this->kode_iksk);
 
-        $iksk = MasterKode::cari(MasterKode::kodeIksk(), $this->kode_iksk);
-
-        if ($iksk === null || $iksk['kode_sk'] !== $this->kode_sk) {
-            $this->kode_iksk = '';
-        }
-    }
-
-    /**
-     * Bila SK terpilih hanya memiliki satu IKSK dan IKSK masih kosong, pilih IKSK itu. Mengembalikan true bila terisi.
-     */
-    public function pilihIkskTunggal(): bool
-    {
-        if ($this->kode_sk === '' || $this->kode_iksk !== '') {
-            return false;
-        }
-
-        $opsi = MasterKode::kodeIksk($this->kode_sk);
-
-        if (count($opsi) !== 1) {
-            return false;
-        }
-
-        $this->kode_iksk = $opsi[0]['kode'];
-
-        return true;
+        return $otomatis;
     }
 
     /**

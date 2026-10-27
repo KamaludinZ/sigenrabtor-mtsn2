@@ -231,7 +231,7 @@ class Form extends Component
             'tanggal_mulai', 'lama_hari', 'hari_kerja' => $this->form->sinkronJadwal(),
             'tanggal_laporan' => $this->form->setLaporanManual(),
             'bulan_pelaksanaan' => $this->form->rapikanBulan(),
-            'kode_sk' => [$this->form->sinkronIksk(), $this->form->pilihIkskTunggal()],
+            'kode_sk' => $this->form->sinkronIksk(),
             'pagu_dipa', 'pagu_komite' => $this->form->rapikanPagu($field),
             'dana_dipa', 'dana_komite' => $this->gantiPilihanSumber(substr($field, 5)),
             default => null,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Master\IkskPerSk;
 use App\Support\Master\JenisKode;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
@@ -22,7 +23,7 @@ class AmbilMasterKode extends Controller
 
         $tahun = filter_var($request->query('ta'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 2000, 'max_range' => 2100]]) ?: StubData::tahunAktif()['tahun'];
         $baris = $jenis === 'iksk' && filled($request->query('sk'))
-            ? MasterKode::kodeIksk((string) $request->query('sk'), $tahun)
+            ? IkskPerSk::pilihan((string) $request->query('sk'), $tahun)
             : JenisKode::baris($jenis, $tahun);
 
         if ($jenis === 'edm') {

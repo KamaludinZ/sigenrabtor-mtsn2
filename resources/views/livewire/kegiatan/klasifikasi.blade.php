@@ -10,7 +10,7 @@
     $opsiLeading = MasterKode::pilihanLeading(StubData::currentUser(), $form->leadingTersimpan());
     $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
     $skTerpilih = MasterKode::cari(MasterKode::kodeSk(), $form->kode_sk);
-    $opsiIksk = $form->kode_sk ? MasterKode::kodeIksk($form->kode_sk) : [];
+    $opsiIksk = \App\Support\Master\IkskPerSk::pilihan($form->kode_sk);
     $opsiIkskCari = array_map(fn ($i) => ['nilai' => $i['kode'], 'label' => $i['uraian'], 'keterangan' => null, 'grup' => null], $opsiIksk);
     $ikskTerpilih = MasterKode::cari(MasterKode::kodeIksk(), $form->kode_iksk);
     $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm(), $form->kode_edm);

@@ -89,9 +89,7 @@ class Klasifikasi extends Component
         $field = substr($property, 5);
 
         if ($field === 'kode_sk') {
-            $this->form->sinkronIksk();
-
-            if ($this->form->pilihIkskTunggal()) {
+            if ($this->form->sinkronIksk()) {
                 $this->dispatch('notify', message: "IKSK {$this->form->kode_iksk} dipilih otomatis — satu-satunya indikator {$this->form->kode_sk}.", type: 'info');
             }
 
