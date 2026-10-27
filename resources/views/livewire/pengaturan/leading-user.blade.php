@@ -18,7 +18,7 @@
                          deskripsi="Unit penerima mandat beserta jabatan penanda tangannya, dan akun yang boleh masuk. Akun leading hanya melihat kegiatan leading yang ditautkan kepadanya.">
         <x-slot:aksi>
             @if ($tab === 'leading')
-                <button type="button" class="btn-primary" disabled title="Sedang disiapkan"><x-ui.icon name="plus" class="size-4" /> Tambah leading <x-ui.segera /></button>
+                <button type="button" wire:click="tambahLeading" class="btn-primary" @disabled($suntingLeading === 'baru')><x-ui.icon name="plus" class="size-4" /> Tambah leading</button>
             @else
                 <button type="button" class="btn-primary" disabled title="Sedang disiapkan"><x-ui.icon name="plus" class="size-4" /> Tambah akun <x-ui.segera /></button>
             @endif
@@ -44,6 +44,44 @@
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="min-w-0" wire:key="tab-{{ $tab }}">
             @if ($tab === 'leading')
+                @if ($suntingLeading !== null)
+                    @php
+                        $terpakai = $suntingLeading === 'baru' ? 0 : $this->kodeTerpakai($suntingLeading);
+                    @endphp
+                    <form wire:submit="simpanLeading" class="mb-6 rounded-2xl bg-white shadow-xs ring-1 ring-brand-200" data-testid="formulir-leading" wire:key="formulir-leading-{{ $suntingLeading }}">
+                        <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
+                            <h2 class="text-base font-semibold text-stone-900">{{ $suntingLeading === 'baru' ? 'Tambah leading' : 'Ubah leading '.$suntingLeading }}</h2>
+                            <p class="mt-0.5 text-sm text-stone-500">Jabatan penanda tangan tercetak di kolom "Pembuat" lembar pengesahan dan menjadi jabatan bawaan pejabat leading.</p>
+                        </header>
+                        <div class="grid gap-5 px-5 py-5 sm:grid-cols-[7rem_minmax(0,1fr)_6rem] sm:px-6">
+                            <x-ui.field label="Kode" for="leading-kode" error="isianLeading.kode" required
+                                        :hint="$terpakai > 0 ? 'Terkunci: dipakai '.$terpakai.' kegiatan/akun.' : 'mis. 1.9'">
+                                <input type="text" id="leading-kode" wire:model="isianLeading.kode" maxlength="10" inputmode="decimal" autocomplete="off" @readonly($terpakai > 0)
+                                       @class(['form-input tabular-nums', 'bg-stone-50 text-stone-500' => $terpakai > 0]) x-init="$el.readOnly || $el.focus()"
+                                       @error('isianLeading.kode') aria-invalid="true" aria-describedby="leading-kode-error" @enderror>
+                            </x-ui.field>
+                            <x-ui.field label="Nama unit" for="leading-nama" error="isianLeading.nama_unit" required>
+                                <input type="text" id="leading-nama" wire:model="isianLeading.nama_unit" maxlength="{{ \App\Support\Pengaturan\AturanLeading::MAKS_NAMA }}" autocomplete="off" class="form-input"
+                                       placeholder="mis. Waka Kurikulum" x-init="$el.form.querySelector('#leading-kode').readOnly && $el.focus()"
+                                       @error('isianLeading.nama_unit') aria-invalid="true" aria-describedby="leading-nama-error" @enderror>
+                            </x-ui.field>
+                            <x-ui.field class="sm:order-last sm:col-span-3" label="Jabatan penanda tangan" for="leading-jabatan" error="isianLeading.jabatan_penanda_tangan" required>
+                                <input type="text" id="leading-jabatan" wire:model="isianLeading.jabatan_penanda_tangan" maxlength="{{ \App\Support\Pengaturan\AturanLeading::MAKS_JABATAN }}" autocomplete="off" class="form-input"
+                                       placeholder="mis. Wakil Kepala Bidang Kurikulum"
+                                       @error('isianLeading.jabatan_penanda_tangan') aria-invalid="true" aria-describedby="leading-jabatan-error" @enderror>
+                            </x-ui.field>
+                            <x-ui.field label="Urutan" for="leading-urutan" error="isianLeading.urutan" hint="Urutan tampil">
+                                <input type="number" id="leading-urutan" wire:model="isianLeading.urutan" min="0" max="999" class="form-input tabular-nums"
+                                       @error('isianLeading.urutan') aria-invalid="true" aria-describedby="leading-urutan-error" @enderror>
+                            </x-ui.field>
+                        </div>
+                        <div class="flex justify-end gap-2 border-t border-stone-100 px-5 py-3 sm:px-6">
+                            <button type="button" wire:click="batalLeading" class="btn-ghost">Batal</button>
+                            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanLeading"><x-ui.icon name="save" class="size-4" /> <span wire:loading.remove wire:target="simpanLeading">Simpan</span><span wire:loading wire:target="simpanLeading">Menyimpan…</span></button>
+                        </div>
+                    </form>
+                @endif
+
                 @php
                     $baris = $this->leadingTampil();
                     $pejabat = $this->pejabatLeading();
@@ -128,7 +166,7 @@
                                             <td class="py-3 pr-5 pl-3 text-right sm:pr-6">
                                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 {{ $gayaStatus }}"><x-ui.icon :name="$ikonStatus" class="size-3.5" /> {{ $labelStatus }}</span>
                                                 <span class="mt-1.5 flex justify-end gap-0.5">
-                                                    <button type="button" class="rounded-md p-1 text-stone-400" disabled title="Ubah — sedang disiapkan" aria-label="Ubah leading {{ $l['kode'] }} (sedang disiapkan)"><x-ui.icon name="pencil" class="size-4" /></button>
+                                                    <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-800" title="Ubah" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-4" /></button>
                                                     <button type="button" class="rounded-md p-1 text-stone-400" disabled title="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} — sedang disiapkan" aria-label="{{ $l['is_active'] ? 'Nonaktifkan' : 'Aktifkan' }} leading {{ $l['kode'] }} (sedang disiapkan)"><x-ui.icon :name="$l['is_active'] ? 'lock' : 'check-circle'" class="size-4" /></button>
                                                 </span>
                                             </td>
@@ -154,6 +192,7 @@
                                     <p class="text-xs text-stone-500">{{ $l['jabatan_penanda_tangan'] }} · {{ $kegiatan[$l['kode']] ?? 0 }} kegiatan</p>
                                     <p class="mt-1 text-xs text-stone-600">Pejabat: {{ $p && $p['nama'] ? $p['nama'] : 'belum diisi' }}</p>
                                     <p class="text-xs text-stone-600">Akun: {{ $tertaut === [] ? 'belum ada' : implode(', ', array_map(fn ($a) => $a['name'].($a['is_active'] ? '' : ' (nonaktif)'), $tertaut)) }}</p>
+                                    <button type="button" wire:click="ubahLeading(@js($l['kode']))" class="btn-ghost mt-1.5 px-2 py-1 text-xs" aria-label="Ubah leading {{ $l['kode'] }}"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
                                 </li>
                             @endforeach
                         </ul>

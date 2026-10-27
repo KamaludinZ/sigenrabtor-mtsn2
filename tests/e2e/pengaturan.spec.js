@@ -941,4 +941,38 @@ test.describe('Pengaturan admin', () => {
         expect(overflow).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/akun-user-${testInfo.project.name}.png`, fullPage: true });
     });
+
+    test('leading: formulir tambah (galat kode ganda), ubah jabatan lalu pulihkan, kode terpakai terkunci', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading');
+        await page.getByRole('button', { name: 'Tambah leading' }).click();
+        const form = page.getByTestId('formulir-leading');
+        await expect(form.getByLabel('Kode')).toBeFocused();
+        await form.getByLabel('Kode').fill('1.6');
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(form).toContainText('Kode 1.6 sudah dipakai leading lain.');
+        await expect(form).toContainText('Nama unit wajib diisi.');
+        await form.getByRole('button', { name: 'Batal' }).click();
+        await expect(form).toHaveCount(0);
+
+        // Kode yang dipakai kegiatan/akun terkunci.
+        await page.getByRole('button', { name: 'Ubah leading 1.6' }).filter({ visible: true }).click();
+        await expect(form.getByLabel('Kode')).toHaveAttribute('readonly', '');
+        await expect(form).toContainText('Terkunci: dipakai');
+        await form.getByRole('button', { name: 'Batal' }).click();
+
+        // Ubah jabatan Mahad, lalu pulihkan (proyek mobile memakai data yang sama).
+        const jabatan = `Pengasuh Mahad Madrasah ${testInfo.project.name}`;
+        await page.getByRole('button', { name: 'Ubah leading 1.7' }).filter({ visible: true }).click();
+        await form.getByLabel('Jabatan penanda tangan').fill(jabatan);
+        await form.screenshot({ path: `storage/playwright/shots/leading-form-${testInfo.project.name}.png` });
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('Leading 1.7 Mahad diperbarui.')).toBeVisible();
+        await expect(page.getByTestId('daftar-leading').locator('[data-leading="1.7"]').filter({ visible: true })).toContainText(jabatan);
+        await page.getByRole('button', { name: 'Ubah leading 1.7' }).filter({ visible: true }).click();
+        await form.getByLabel('Jabatan penanda tangan').fill('Pengasuh Mahad');
+        await form.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByTestId('daftar-leading').locator('[data-leading="1.7"]').filter({ visible: true })).not.toContainText(jabatan);
+        await expect(form).toHaveCount(0);
+    });
 });

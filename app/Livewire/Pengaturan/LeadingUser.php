@@ -6,17 +6,21 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\LeadingRepository;
 use App\Contracts\PenggunaRepository;
 use App\Support\Kegiatan\TahunKegiatan;
+use App\Support\Pengaturan\AturanLeading;
+use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * Pengaturan › Leading & User (PRD Fase 6 §15, F29–F30): tab Leading (kode, nama unit, jabatan penanda tangan, status,
  * akun tertaut, kegiatan tahun aktif) dan tab Akun (peran admin/leading, tautan leading, status, terakhir masuk). Tab di
  * `?tab=`. Tabel leading bisa dicari, disaring status, dan diurutkan (URL `cari_leading`/`status_leading`/`urut_leading`/`arah_leading`) serta
- * menampilkan pejabat penanda tangan tahun aktif. Tambah/ubah/nonaktifkan menyusul (tombolnya "Segera").
+ * menampilkan pejabat penanda tangan tahun aktif. Leading ditambah/diubah lewat formulir inline (aturan AturanLeading,
+ * kode yang dipakai kegiatan/akun terkunci, riwayat tambah_leading/ubah_leading); nonaktifkan & akun menyusul.
  */
 #[Layout('layouts.app')]
 class LeadingUser extends Component
@@ -47,6 +51,12 @@ class LeadingUser extends Component
 
     #[Url(as: 'arah_leading', except: '')]
     public string $arahLeading = '';
+
+    /** Leading yang disunting: 'baru' (tambah), kode leading (ubah), atau null. */
+    public ?string $suntingLeading = null;
+
+    /** @var array{kode: string, nama_unit: string, jabatan_penanda_tangan: string, urutan: string} */
+    public array $isianLeading = ['kode' => '', 'nama_unit' => '', 'jabatan_penanda_tangan' => '', 'urutan' => ''];
 
     public function mount(): void
     {
@@ -127,6 +137,100 @@ class LeadingUser extends Component
         if (! array_key_exists($this->tab, self::TAB)) {
             $this->tab = 'leading';
         }
+        $this->batalLeading();
+    }
+
+    public function tambahLeading(): void
+    {
+        $this->batalLeading();
+        $this->tab = 'leading';
+        $this->suntingLeading = 'baru';
+        $this->isianLeading['urutan'] = (string) (max([0, ...array_column($this->leading, 'urutan')]) + 1);
+    }
+
+    public function ubahLeading(string $kode): void
+    {
+        $leading = collect($this->leading)->firstWhere('kode', '===', $kode);
+        if ($leading === null) {
+            return;
+        }
+
+        $this->batalLeading();
+        $this->suntingLeading = $kode;
+        $this->isianLeading = ['kode' => $leading['kode'], 'nama_unit' => $leading['nama_unit'], 'jabatan_penanda_tangan' => $leading['jabatan_penanda_tangan'], 'urutan' => (string) $leading['urutan']];
+    }
+
+    public function batalLeading(): void
+    {
+        $this->reset('suntingLeading', 'isianLeading');
+        $this->resetErrorBag(array_map(fn (string $k) => "isianLeading.{$k}", array_keys($this->isianLeading)));
+    }
+
+    public function simpanLeading(LeadingRepository $repo): void
+    {
+        $kodeLama = $this->suntingLeading === 'baru' ? null : $this->suntingLeading;
+        $lama = $kodeLama === null ? null : collect($this->leading)->firstWhere('kode', '===', $kodeLama);
+        if ($this->suntingLeading === null || ($kodeLama !== null && $lama === null)) {
+            return;
+        }
+
+        $this->resetErrorBag(array_map(fn (string $k) => "isianLeading.{$k}", array_keys($this->isianLeading)));
+        $isian = array_map(fn (mixed $v) => AturanLeading::rapikan((string) $v), $this->isianLeading);
+        if ($kodeLama !== null && $this->kodeTerpakai($kodeLama) > 0) {
+            $isian['kode'] = $kodeLama; // Kode terpakai tidak bisa diganti (input terkunci di layar).
+        }
+        $this->isianLeading = $isian;
+        $galat = AturanLeading::galat($isian, $this->leading, $kodeLama);
+        foreach ($galat as $kolom => $pesan) {
+            $this->addError("isianLeading.{$kolom}", $pesan);
+        }
+        if ($galat !== []) {
+            return;
+        }
+
+        $baru = [
+            'kode' => AturanLeading::normalkanKode($isian['kode']),
+            'nama_unit' => $isian['nama_unit'],
+            'jabatan_penanda_tangan' => $isian['jabatan_penanda_tangan'],
+        ] + ($isian['urutan'] === '' ? [] : ['urutan' => (int) $isian['urutan']]);
+
+        if ($lama !== null) {
+            $ringkasan = RiwayatPengaturan::perubahan(
+                ['urutan' => (string) $lama['urutan']] + $lama,
+                ['urutan' => (string) ($baru['urutan'] ?? $lama['urutan'])] + $baru,
+                ['kode' => 'Kode', 'nama_unit' => 'Nama unit', 'jabatan_penanda_tangan' => 'Jabatan', 'urutan' => 'Urutan'],
+            );
+            if ($ringkasan === null) {
+                $this->batalLeading();
+                $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+                return;
+            }
+        }
+
+        try {
+            $repo->simpan($baru, $kodeLama);
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: 'Leading gagal disimpan. Isian masih ada di layar — coba simpan lagi.', type: 'error');
+
+            return;
+        }
+
+        RiwayatPengaturan::catat($lama === null ? 'tambah_leading' : 'ubah_leading', $lama === null
+            ? "Leading {$baru['kode']} {$baru['nama_unit']} — jabatan {$baru['jabatan_penanda_tangan']}"
+            : "Leading {$kodeLama} — {$ringkasan}");
+        unset($this->leading);
+        $this->batalLeading();
+        $this->dispatch('notify', message: 'Leading '.$baru['kode'].' '.$baru['nama_unit'].($lama === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
+    }
+
+    /** Banyaknya kegiatan (semua tahun) & akun yang memakai kode leading — kode yang terpakai tidak bisa diganti. */
+    public function kodeTerpakai(string $kode): int
+    {
+        $kegiatan = count(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['leading'] ?? null) === $kode));
+
+        return $kegiatan + count($this->akunPerLeading()[$kode] ?? []);
     }
 
     /**

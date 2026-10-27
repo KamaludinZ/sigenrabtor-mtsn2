@@ -394,7 +394,7 @@ class ProfilMadrasah extends Component
     /** "Kepala Madrasah", "Ketua Komite", atau "Pejabat 1.6 Tim Penjamin Mutu". */
     public function judulPejabat(string $kunci): string
     {
-        $baris = str_starts_with($kunci, 'leading:') ? collect($this->pejabat['leading'])->firstWhere('kode', substr($kunci, 8)) : null;
+        $baris = str_starts_with($kunci, 'leading:') ? collect($this->pejabat['leading'])->firstWhere('kode', '===', substr($kunci, 8)) : null;
 
         return match ($kunci) {
             'kepala' => 'Kepala Madrasah',
@@ -414,7 +414,7 @@ class ProfilMadrasah extends Component
             return $this->pejabat[$kunci];
         }
 
-        $baris = str_starts_with($kunci, 'leading:') ? collect($this->pejabat['leading'])->firstWhere('kode', substr($kunci, 8)) : null;
+        $baris = str_starts_with($kunci, 'leading:') ? collect($this->pejabat['leading'])->firstWhere('kode', '===', substr($kunci, 8)) : null;
 
         return $baris ? ['jabatan' => $baris['jabatan'], 'nama' => $baris['nama'], 'nip' => $baris['nip']] : null;
     }

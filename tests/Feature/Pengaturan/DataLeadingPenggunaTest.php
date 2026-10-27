@@ -17,7 +17,7 @@ class DataLeadingPenggunaTest extends TestCase
         $semua = app(LeadingRepository::class)->semua();
         $this->assertSame(['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9'], array_column($semua, 'kode'));
         $this->assertSame(range(1, 9), array_column($semua, 'urutan'));
-        $this->assertFalse(collect($semua)->firstWhere('kode', '1.9')['is_active']);
+        $this->assertFalse(collect($semua)->firstWhere('kode', '===', '1.9')['is_active']);
         $this->assertSame(['kode' => '1.7', 'nama_unit' => 'Mahad', 'jabatan_penanda_tangan' => 'Pengasuh Mahad', 'urutan' => 7, 'is_active' => true], $semua[6]);
 
         // Pilihan leading di seluruh aplikasi hanya yang aktif, bentuk lama tetap.
@@ -33,7 +33,7 @@ class DataLeadingPenggunaTest extends TestCase
 
         $repo->simpan(['kode' => '1.6', 'nama_unit' => 'TPM', 'jabatan_penanda_tangan' => 'Ketua TPM', 'urutan' => 0], '1.6');
         $this->assertSame('1.6', $repo->semua()[0]['kode'], 'Urutan 0 tampil paling atas.');
-        $this->assertSame('TPM', collect(MasterKode::leadings())->firstWhere('kode', '1.6')['nama_unit']);
+        $this->assertSame('TPM', collect(MasterKode::leadings())->firstWhere('kode', '===', '1.6')['nama_unit']);
 
         $repo->simpan(['kode' => '1.8', 'nama_unit' => 'PMM', 'jabatan_penanda_tangan' => 'Koordinator PMM', 'is_active' => false], '1.8');
         $this->assertNotContains('1.8', array_column(MasterKode::leadings(), 'kode'));

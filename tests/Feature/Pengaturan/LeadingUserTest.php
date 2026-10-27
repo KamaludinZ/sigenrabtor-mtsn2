@@ -116,7 +116,7 @@ class LeadingUserTest extends TestCase
             ->assertSeeHtmlInOrder(['data-leading="1.1"', 'data-kolom="pejabat"', 'Siti Rohmah, M.Pd.'])
             ->assertSeeHtmlInOrder(['data-leading="1.2"', 'data-kolom="pejabat"', 'Pejabat belum diisi'])
             ->assertSeeHtml('href="'.route('pengaturan.madrasah.index', ['tab' => 'pejabat']).'"')
-            ->assertSeeHtml('aria-label="Ubah leading 1.1 (sedang disiapkan)"')
+            ->assertSeeHtml('aria-label="Ubah leading 1.1"')
             ->assertSeeHtml('aria-label="Aktifkan leading 1.9 (sedang disiapkan)"');
     }
 }

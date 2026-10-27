@@ -132,7 +132,7 @@ final class PemeriksaImporKegiatan
         $teks = trim((string) $nilai);
 
         if ($teks === '') {
-            $leading = $bawaan ? collect($leadings)->firstWhere('kode', $bawaan) : null;
+            $leading = $bawaan ? collect($leadings)->firstWhere('kode', '===', $bawaan) : null;
 
             return [$leading, null];
         }

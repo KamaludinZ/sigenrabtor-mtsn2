@@ -153,7 +153,7 @@ class ImporKegiatanTest extends TestCase
     public function test_akun_leading_hanya_untuk_leading_sendiri_dan_bawaan_terisi(): void
     {
         $semua = MasterKode::leadings();
-        $milik = [collect($semua)->firstWhere('kode', '1.6')];
+        $milik = [collect($semua)->firstWhere('kode', '===', '1.6')];
 
         $hasil = PemeriksaImporKegiatan::periksa([
             ['baris' => 2, 'nilai' => ['nama_kegiatan' => 'A', 'leading' => 'Waka Kurikulum']],

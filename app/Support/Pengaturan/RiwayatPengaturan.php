@@ -30,6 +30,8 @@ final class RiwayatPengaturan
         'ubah_dasar_hukum' => ['Ubah dasar hukum', 'madrasah'],
         'ubah_latar_belakang' => ['Ubah latar belakang baku', 'madrasah'],
         'ubah_sk_rktm' => ['Ubah SK RKTM/RKAM', 'madrasah'],
+        'tambah_leading' => ['Tambah leading', 'leading'],
+        'ubah_leading' => ['Ubah leading', 'leading'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */
