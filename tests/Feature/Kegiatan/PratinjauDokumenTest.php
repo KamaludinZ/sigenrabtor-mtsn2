@@ -9,6 +9,7 @@ use App\Livewire\Kegiatan\PratinjauDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Dokumen\TahunDokumen;
 use App\Support\Dokumen\TanggalDokumen;
 use App\Support\Dokumen\TeksCover;
 use Illuminate\Http\UploadedFile;
@@ -133,6 +134,34 @@ class PratinjauDokumenTest extends TestCase
             ->assertSeeHtml('id="cetak-rab-mekanisme"')
             ->assertSee('“Malang, 3 Januari 2026”', false)
             ->assertSee('Sesuai');
+    }
+
+    public function test_tahun_sinkron_di_kepala_dokumen(): void
+    {
+        $data = app(KegiatanRepository::class)->temukan(1);
+        unset($data['id']);
+        $id = app(KegiatanRepository::class)->simpan(['tujuan' => 'meningkatkan mutu kurikulum seperti evaluasi tahun 2025.'] + $data);
+        app(RabRepository::class)->tambahItem($id, 'Komite', ['uraian' => 'Konsumsi rapat 2025', 'volume' => 10, 'satuan' => 'kotak', 'harga_satuan' => 25_000]);
+        $kegiatan = app(KegiatanRepository::class)->temukan($id);
+
+        $tempat = TahunDokumen::dari($kegiatan, SusunanKak::dari($kegiatan, 'Komite'), SusunanRab::dari($kegiatan, 'Komite'), ['teks' => TeksCover::bawaan(), 'nilai' => TeksCover::nilai($kegiatan, 'Komite')]);
+        $this->assertSame(['cover-tahun', 'rab-judul', 'kak-pembiayaan', 'kak-bagian-3', 'rab-rincian'], array_column($tempat, 'kunci'));
+        $this->assertSame(['KAK · 3. Tujuan (2025)', 'RAB · Rincian: Konsumsi rapat 2025 (2025)'], TahunDokumen::beda($tempat));
+        $this->assertSame(['jumlah' => 2, 'beda' => 1], TahunDokumen::untukDokumen($tempat, 'kak'));
+        $this->assertSame(['jumlah' => 1, 'beda' => 0], TahunDokumen::untukDokumen($tempat, 'cover'));
+
+        Livewire::test(PratinjauDokumen::class, ['kegiatan' => $id])
+            ->assertSeeHtml('data-testid="tahun-cetak"')
+            ->assertSeeHtml('data-tahun-tempat="kak-bagian-3" data-jenis="isian" data-sinkron="tidak"')
+            ->assertSeeHtml('href="#cetak-kak-bagian-3"')
+            ->assertSeeHtml('id="cetak-kak-bagian-3"')
+            ->assertSeeHtml('id="cetak-cover-tahun"')
+            ->assertSeeHtml('id="cetak-rab-judul"')
+            ->assertSee('Menyebut tahun 2025 — dokumen dicetak untuk TA 2026.')
+            ->assertSee('TA 2026 · 1 menyebut tahun lain')
+            ->assertSee('TA 2026 · tahun sinkron')
+            ->assertSeeHtml('data-kaidah="tahun" data-status="peringatan"')
+            ->assertSee('Teks menyebut tahun lain: KAK · 3. Tujuan (2025), RAB · Rincian: Konsumsi rapat 2025 (2025)');
     }
 
     public function test_aturan_kaidah(): void

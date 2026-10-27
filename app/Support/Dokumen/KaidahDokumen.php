@@ -42,9 +42,10 @@ final class KaidahDokumen
 
     /**
      * @param  array<string, mixed>  $kegiatan
+     * @param  array{teks: list<array<string, mixed>>, nilai: array<string, string>}  $cover  Isi cover yang ditampilkan (sinkronisasi tahun).
      * @return list<array{kunci: string, nomor: int, judul: string, status: string, pesan: string}>
      */
-    public static function periksa(array $kegiatan, SusunanKak $kak, SusunanRab $rab): array
+    public static function periksa(array $kegiatan, SusunanKak $kak, SusunanRab $rab, array $cover = ['teks' => [], 'nilai' => []]): array
     {
         $tahun = StubData::tahunAktif()['tahun'];
         $anggaran = $rab->anggaran ?? (AnggaranKegiatan::perSumber($kegiatan)[$kak->sumber] ?? null);
@@ -72,9 +73,11 @@ final class KaidahDokumen
         $tanggal = TanggalDokumen::dari($kegiatan, $kak->sumber, $tahun);
         $tahunKegiatan = TahunKegiatan::dari($kegiatan);
         $luarTahun = array_values(array_unique(array_map(fn (array $t) => "{$t['dokumen']} · {$t['bagian']}", array_filter($tanggal, fn (array $t) => collect($t['temuan'])->contains('jenis', 'tahun')))));
-        $tambah('tahun', $tahunKegiatan === $tahun && $luarTahun === [] ? 'lulus' : 'peringatan', match (true) {
+        $tahunBeda = TahunDokumen::beda(TahunDokumen::dari($kegiatan, $kak, $rab, $cover, $tahun), $tahun);
+        $tambah('tahun', $tahunKegiatan === $tahun && $luarTahun === [] && $tahunBeda === [] ? 'lulus' : 'peringatan', match (true) {
             $tahunKegiatan !== $tahun => "Kegiatan tercatat di TA {$tahunKegiatan}, tetapi dokumen dicetak dengan TA aktif {$tahun}.",
             $luarTahun !== [] => "Tanggal di luar TA {$tahun}: ".implode(', ', $luarTahun).'.',
+            $tahunBeda !== [] => 'Teks menyebut tahun lain: '.implode(', ', $tahunBeda).' — pastikan bukan sisa dokumen tahun lalu.',
             default => "Cover, judul, dasar hukum, jadwal, tanggal, dan RAB memakai TA {$tahun}.",
         });
 

@@ -18,6 +18,6 @@
     @foreach ($teks as $kotak)
         <div @class(['absolute font-serif leading-tight break-words whitespace-pre-line', 'rounded-[2px] outline-1 outline-offset-1 outline-dashed outline-brand-500/80 bg-brand-50/30' => $garis])
              style="left: {{ $kotak['x'] }}%; top: {{ $kotak['y'] }}%; width: {{ $kotak['width'] }}%; text-align: {{ $kotak['align'] }}; font-weight: {{ $kotak['weight'] === 'bold' ? 700 : 400 }}; color: {{ $kotak['color'] }}; font-size: calc({{ $kotak['font_size'] }} * 100cqw / {{ TeksCover::LEBAR_PT }})"
-             data-field="{{ $kotak['field'] }}" title="{{ TeksCover::FIELD[$kotak['field']] }}">{{ $nilai[$kotak['field']] ?? '' }}</div>
+             data-field="{{ $kotak['field'] }}" title="{{ TeksCover::FIELD[$kotak['field']] }}" @if (in_array($kotak['field'], ['tahun', 'nama_kegiatan'], true)) id="cetak-cover-{{ $kotak['field'] }}" @endif>{{ $nilai[$kotak['field']] ?? '' }}</div>
     @endforeach
 </div>

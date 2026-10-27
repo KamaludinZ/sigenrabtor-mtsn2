@@ -9,6 +9,7 @@ use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Dokumen\TahunDokumen;
 use App\Support\Dokumen\TanggalDokumen;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Stub\StubData;
@@ -41,10 +42,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover);
         }
     }
 
@@ -81,6 +82,13 @@ class PratinjauDokumen extends Component
         return $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
     }
 
+    /** @return list<array<string, mixed>> Tempat tahun tercetak/terketik (TahunDokumen) dokumen sumber dana yang ditampilkan. */
+    #[Computed]
+    public function tahunCetak(): array
+    {
+        return TahunDokumen::dari($this->dataKegiatan, $this->kak, $this->rab, $this->cover);
+    }
+
     /** @return list<array<string, mixed>> Tempat tanggal tercetak (TanggalDokumen) dokumen sumber dana yang ditampilkan. */
     #[Computed]
     public function tanggal(): array
@@ -92,7 +100,7 @@ class PratinjauDokumen extends Component
     #[Computed]
     public function kaidah(): array
     {
-        return KaidahDokumen::periksa($this->dataKegiatan, $this->kak, $this->rab);
+        return KaidahDokumen::periksa($this->dataKegiatan, $this->kak, $this->rab, $this->cover);
     }
 
     /**

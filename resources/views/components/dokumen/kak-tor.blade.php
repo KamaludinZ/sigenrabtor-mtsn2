@@ -39,7 +39,7 @@
 
     <div class="space-y-6 px-5 py-8 sm:px-14 sm:py-10">
         @foreach ($daftarBagian as $isiBagian)
-            <section data-bagian="{{ $isiBagian['nomor'] }}">
+            <section data-bagian="{{ $isiBagian['nomor'] }}" id="cetak-kak-bagian-{{ $isiBagian['nomor'] }}" class="scroll-mt-40">
                 <h3 class="font-bold uppercase">{{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}</h3>
                 <div class="mt-2 space-y-2 pl-5">
                     @foreach ($isiBagian['isi'] as $blok)

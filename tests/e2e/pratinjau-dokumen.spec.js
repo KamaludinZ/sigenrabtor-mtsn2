@@ -47,6 +47,15 @@ test.describe('Pratinjau dokumen', () => {
         await expect(page.locator('#cetak-rab-pengesahan')).toBeInViewport();
         await expect(page.locator('#cetak-rab-pengesahan')).toContainText(/Malang, \d{1,2} \S+ 2026/);
 
+        // Satu tahun untuk semua: penanda di kepala tiap dokumen & daftar tahun di dokumen.
+        await expect(dokumen.getByTestId('kepala-tahun')).toHaveCount(3);
+        await expect(dokumen.getByTestId('kepala-tahun').first()).toContainText('TA 2026 · tahun sinkron');
+        const tahun = kaidah.getByTestId('tahun-cetak');
+        await expect(tahun.getByTestId('tahun-cetak-status')).toHaveText('Sinkron TA 2026');
+        await tahun.locator('[data-tahun-tempat="rab-judul"]').getByRole('link').click();
+        await expect(page.locator('#cetak-rab-judul')).toBeInViewport();
+        await expect(page.locator('#cetak-rab-judul')).toContainText('Tahun 2026');
+
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(lebar).toBeLessThanOrEqual(0);
         await page.goto('/kegiatan/2/pratinjau?sumber=Komite');

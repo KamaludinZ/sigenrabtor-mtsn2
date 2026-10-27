@@ -15,6 +15,8 @@
         'info' => ['info', 'text-sky-700'],
     ];
     $dokumen = ['cover' => 'Cover', 'kak' => 'KAK/TOR', 'rab' => 'RAB'];
+    $tahunDokumen = \App\Support\Stub\StubData::tahunAktif()['tahun'];
+    $kepalaTahun = fn (string $d) => \App\Support\Dokumen\TahunDokumen::untukDokumen($this->tahunCetak, $d);
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -104,6 +106,9 @@
 
                 {{-- Tanggal Indonesia: tiap tanggal yang tercetak, tautan ke letaknya. --}}
                 <x-dokumen.tanggal-cetak :tanggal="$this->tanggal" />
+
+                {{-- Satu tahun untuk semua: tahun di header/judul & isian yang menyebut tahun. --}}
+                <x-dokumen.tahun-cetak :tempat="$this->tahunCetak" :tahun="$tahunDokumen" />
             </section>
 
             @php
@@ -127,12 +132,12 @@
         {{-- Dokumen berurutan seperti dicetak. --}}
         <div class="min-w-0 space-y-6 rounded-2xl bg-stone-100 p-3 ring-1 ring-stone-200 sm:p-6 lg:col-start-1 lg:row-start-1" wire:loading.class="opacity-60" wire:target="sumber" data-testid="dokumen-pratinjau">
             <section id="dok-cover" class="scroll-mt-36" aria-label="Cover" wire:key="cover-{{ $sumberAktif }}">
-                <p class="mb-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">Cover</p>
+                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">Cover <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('cover')" :tahun="$tahunDokumen" /></p>
                 <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" class="max-w-[210mm]" />
             </section>
 
             <section id="dok-kak" class="scroll-mt-36" aria-label="KAK/TOR" wire:key="kak-{{ $sumberAktif }}">
-                <p class="mb-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">KAK/TOR</p>
+                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">KAK/TOR <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('kak')" :tahun="$tahunDokumen" /></p>
                 @if ($kak->peringatanPagu)
                     <x-rab.peringatan-pagu :sumber="$kak->sumber" :hasil="$kak->peringatanPagu->hasil" ringkas class="mx-auto mb-3 max-w-[210mm]" />
                 @endif
@@ -140,7 +145,7 @@
             </section>
 
             <section id="dok-rab" class="scroll-mt-36" aria-label="RAB" wire:key="rab-{{ $sumberAktif }}">
-                <p class="mb-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">RAB{{ $sumberAktif ? ' '.$sumberAktif : '' }}</p>
+                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">RAB{{ $sumberAktif ? ' '.$sumberAktif : '' }} <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('rab')" :tahun="$tahunDokumen" /></p>
                 <x-dokumen.rab :susunan="$rab" />
             </section>
         </div>

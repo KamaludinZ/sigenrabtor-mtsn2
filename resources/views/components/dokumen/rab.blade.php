@@ -18,7 +18,7 @@
 
     <div class="space-y-6 px-5 py-8 sm:px-12 sm:py-10">
         <header class="text-center">
-            <h2 class="mx-auto max-w-xl font-bold uppercase">{{ $susunan->judul }}</h2>
+            <h2 id="cetak-rab-judul" class="mx-auto max-w-xl scroll-mt-40 font-bold uppercase transition-colors target:bg-gold-100" data-tempat-cetak="rab-judul">{{ $susunan->judul }}</h2>
             @if ($susunan->draf)
                 <p class="mt-2 font-sans text-xs font-semibold tracking-[0.3em] text-red-700">DRAF</p>
             @endif
@@ -46,7 +46,7 @@
 
         @if ($susunan->anggaran)
             {{-- Tabel lebih lebar dari kertas di layar sempit: digeser, bukan terpotong. --}}
-            <div class="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+            <div id="cetak-rab-rincian" class="-mx-5 scroll-mt-40 overflow-x-auto px-5 sm:mx-0 sm:px-0">
                 <x-rab.tabel-rincian :anggaran="$susunan->anggaran" gaya="dokumen" class="min-w-[34rem] font-sans" />
             </div>
         @else
