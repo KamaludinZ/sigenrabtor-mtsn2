@@ -16,6 +16,7 @@ use App\Livewire\Buku\Daftar as BukuDaftar;
 use App\Livewire\Dashboard;
 use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
 use App\Livewire\Kegiatan\Form as KegiatanForm;
+use App\Livewire\Kegiatan\KalimatAi as KegiatanKalimatAi;
 use App\Livewire\Kegiatan\Klasifikasi as KegiatanKlasifikasi;
 use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\PratinjauDokumen as KegiatanPratinjauDokumen;
@@ -51,6 +52,7 @@ Route::get('/buku/{buku}/unduh', UnduhBuku::class)->whereUuid('buku')->name('buk
 Route::get('/data-pagu/template', UnduhTemplateDataPagu::class)->middleware(HanyaAdmin::class)->name('pagu.template');
 Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegiatan')->name('kegiatan.edit');
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
+Route::get('/kegiatan/{kegiatan}/kalimat', KegiatanKalimatAi::class)->whereNumber('kegiatan')->name('kegiatan.kalimat');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
