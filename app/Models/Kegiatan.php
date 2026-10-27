@@ -28,6 +28,7 @@ class Kegiatan extends Model
             'kode_hilang' => 'array',
             'riwayat_kode' => 'array',
             'dikunci_pada' => 'datetime',
+            'konteks_diperbarui_pada' => 'datetime',
         ];
     }
 

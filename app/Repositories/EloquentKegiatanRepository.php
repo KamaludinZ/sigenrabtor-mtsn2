@@ -69,6 +69,10 @@ class EloquentKegiatanRepository implements KegiatanRepository
             ]);
 
             $kegiatan->fill($this->kolom($data));
+            // Waktu perubahan catatan konteks (bahan AI) dicatat terpisah dari versi Data Kegiatan.
+            if ($kegiatan->isDirty('konteks')) {
+                $kegiatan->konteks_diperbarui_pada = blank($kegiatan->konteks) ? null : $kegiatan->freshTimestamp();
+            }
             // Salinan tanggal selesai (DataPelaksanaan) untuk pencarian rentang jadwal di database; tidak dikirim ke tampilan.
             $kegiatan->tanggal_selesai = DataPelaksanaan::dari($kegiatan->only(['tanggal_mulai', 'lama_hari', 'hari_kerja']))->selesai()?->toDateString();
             // Setiap simpan memperbarui versi, termasuk bila hanya sumber dana/panitia/riwayat yang berubah.
@@ -270,6 +274,7 @@ class EloquentKegiatanRepository implements KegiatanRepository
             'catatan' => $r->catatan,
             'sidik' => $r->sidik,
         ], fn ($nilai) => $nilai !== null))->all();
+        $data['konteks_diperbarui_pada'] = self::waktu($kegiatan->konteks_diperbarui_pada);
         $data['duplikat_dari'] = $kegiatan->duplikat_dari_id
             ? ['id' => $kegiatan->duplikat_dari_id, 'tahun' => $kegiatan->duplikatDari?->tahun_anggaran]
             : null;
