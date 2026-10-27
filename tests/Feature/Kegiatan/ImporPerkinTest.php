@@ -86,6 +86,9 @@ class ImporPerkinTest extends TestCase
         $this->assertSame(['IKSK 8.9 tidak ada di master TA 2026 — dikosongkan, pilih nanti di Data Kegiatan.'], $baris[10]['peringatan']);
         $this->assertStringContainsString('bukan leading akun Anda', $baris[11]['pesan'][0]);
         $this->assertCount(2, $baris[13]['pesan'], 'Format SK & IKSK salah.');
+        // Asal kode: tertulis di baris itu, ikut sel gabung di atas, atau (SK) dari induk IKSK.
+        $this->assertSame([['berkas', 'berkas'], ['atas', 'atas'], ['atas', 'berkas']], [[$baris[4]['asal_sk'], $baris[4]['asal_iksk']], [$baris[5]['asal_sk'], $baris[5]['asal_iksk']], [$baris[6]['asal_sk'], $baris[6]['asal_iksk']]]);
+        $this->assertSame([['IKSK 8.9'], null], [$baris[10]['dikosongkan'], $baris[10]['asal_iksk']]);
 
         $data = PemeriksaPerkin::dataKegiatan($baris[4]);
         $this->assertSame(['Pelatihan Guru Pendidikan Inklusif', 'SK.9', 'IKSK 9.1', 'draf', 'impor_perkin', [7], [['sumber' => 'DIPA', 'pagu' => 4_500_000]]], [
@@ -105,6 +108,7 @@ class ImporPerkinTest extends TestCase
             ['baris' => 4, 'nilai' => ['kode_sk' => null, 'kode_iksk' => null, 'nama_kegiatan' => 'C', 'leading' => '1.6']],
         ], [], $leading, MasterKode::leadings());
         $this->assertSame([['SK.10', 'IKSK 10.2'], [null, null], [null, null]], array_map(fn ($b) => [$b['kode_sk'], $b['kode_iksk']], $lain));
+        $this->assertSame(['induk', ['SK.99']], [$lain[0]['asal_sk'], $lain[1]['dikosongkan']]);
         $this->assertSame('SK.99 tidak ada di master TA 2026 — dikosongkan, pilih nanti di Data Kegiatan.', $lain[1]['peringatan'][0]);
         $this->assertSame('Kode SK & IKSK kosong — pilih nanti di Data Kegiatan.', $lain[2]['peringatan'][0]);
     }
@@ -132,7 +136,12 @@ class ImporPerkinTest extends TestCase
             ->assertSee('Siap (4)')
             ->assertSee('Gagal (4)')
             ->assertSee('IKSK 9.3 adalah indikator SK.9, bukan SK.8.')
-            ->assertSee('SK.9 · IKSK 9.1')
+            ->assertSeeHtml('data-testid="tabel-perkin"')
+            ->assertSeeHtml('data-baris-perkin="5"')
+            ->assertSee('dari sel gabung di atas')
+            ->assertSeeHtml('title="Tidak ada di master — dikosongkan">IKSK 8.9</span>')
+            ->assertSee('Jumlah baris siap (4 kegiatan)')
+            ->assertSeeInOrder(['Jumlah baris siap', 'Rp12.500.000', 'Rp2.500.000'])
             ->assertSeeHtml('data-testid="mulai-impor"')
             ->assertSee('Impor 4 kegiatan')
             ->call('mulaiImpor')

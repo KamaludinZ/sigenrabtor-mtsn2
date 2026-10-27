@@ -35,7 +35,7 @@ final class PembacaPerkin
     /**
      * Baris kegiatan beserta nama sheet yang dibaca dan kunci isian yang ditemukan di judul kolomnya.
      *
-     * @return array{lembar: string, kolom: list<string>, baris: list<array{baris: int, nilai: array<string, string|int|float|null>}>}
+     * @return array{lembar: string, kolom: list<string>, baris: list<array{baris: int, nilai: array<string, string|int|float|null>, ikut: array{kode_sk: bool, kode_iksk: bool}}>}
      *
      * @throws GagalBacaImpor
      */
@@ -71,7 +71,12 @@ final class PembacaPerkin
                 throw new GagalBacaImpor('Sheet '.$lembar->getTitle().' berisi lebih dari '.TemplateImporKegiatan::MAKS_BARIS.' baris kegiatan. Bagi menjadi beberapa berkas.');
             }
 
-            $hasil[] = ['baris' => $nomor, 'nilai' => ['kode_sk' => $sk, 'kode_iksk' => $iksk] + $nilai];
+            $hasil[] = [
+                'baris' => $nomor,
+                'nilai' => ['kode_sk' => $sk, 'kode_iksk' => $iksk] + $nilai,
+                // Kode yang tidak tertulis di baris ini (diambil dari sel gabung/baris di atasnya).
+                'ikut' => ['kode_sk' => $sk !== null && blank($nilai['kode_sk'] ?? null), 'kode_iksk' => $iksk !== null && blank($nilai['kode_iksk'] ?? null)],
+            ];
         }
 
         if ($hasil === []) {

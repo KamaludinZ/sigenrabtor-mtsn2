@@ -42,7 +42,18 @@ test.describe('Duplikat & impor cascade Perkin', () => {
         await expect(impor.getByTestId('saring-gagal')).toHaveAttribute('aria-selected', 'true');
         await expect(impor.getByTestId('pratinjau-impor')).toContainText('IKSK 9.3 adalah indikator SK.9, bukan SK.8.');
         await impor.getByTestId('saring-siap').click();
-        await expect(impor.locator('tr[data-status="siap"]:visible')).toHaveCount(4);
+        // Tabel di layar lebar, kartu di layar sempit — keduanya memakai saringan & pencarian yang sama.
+        const tampil = impor.getByTestId('tabel-perkin').locator('[data-status]:visible');
+        await expect(tampil).toHaveCount(4);
+        await impor.getByTestId('cari-perkin').fill('sarana');
+        await expect(tampil).toHaveCount(1);
+        await expect(tampil.first()).toContainText('Pemeliharaan Sarana Kelas');
+        await expect(tampil.first()).toContainText('dari sel gabung di atas');
+        await impor.getByTestId('cari-perkin').fill('');
+        await expect(tampil).toHaveCount(4);
+        const jumlah = impor.getByTestId(testInfo.project.name === 'mobile' ? 'jumlah-perkin-ringkas' : 'jumlah-perkin');
+        await expect(jumlah).toContainText('4 kegiatan');
+        await expect(jumlah).toContainText('Rp12.500.000');
 
         const cascade = impor.getByTestId('cascade-perkin');
         await expect(cascade).toContainText('Sheet Cascade Perkin');

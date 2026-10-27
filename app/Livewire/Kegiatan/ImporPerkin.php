@@ -16,8 +16,9 @@ use LogicException;
 
 /**
  * Impor draf kegiatan massal dari sheet cascade Perkin (PRD §19, tab Perkin halaman Duplikat & Impor): unggah berkas →
- * pratinjau per baris (PemeriksaPerkin: isian kegiatan + kode SK/IKSK terhadap master tahun aktif) beserta susunan
- * cascade SK → IKSK. Proses impor menyusul.
+ * pratinjau per baris (PemeriksaPerkin: isian kegiatan + kode SK/IKSK terhadap master tahun aktif) di tabel khusus
+ * Perkin (asal kode, kode yang dikosongkan, pagu per sumber + baris jumlah, cari) beserta susunan cascade SK → IKSK.
+ * Proses impor menyusul.
  */
 class ImporPerkin extends ImporBertahap
 {
@@ -47,8 +48,20 @@ class ImporPerkin extends ImporBertahap
         $namaAda = array_column(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => TahunKegiatan::dari($k) === $tahun), 'nama_kegiatan');
         $diperiksa = PemeriksaPerkin::periksa($bacaan['baris'], $namaAda, $leadings, MasterKode::leadings(), count($leadings) === 1 ? $leadings[0]['kode'] : null);
 
+        $uraianSk = array_column(MasterKode::kodeSk(), 'uraian', 'kode');
+        $uraianIksk = array_column(MasterKode::kodeIksk(), 'uraian', 'kode');
+
         return array_map(fn (array $b) => [
             'baris' => $b['baris'],
+            // Bentuk terurai untuk tabel pratinjau Perkin (partial tabel-perkin).
+            'perkin' => [
+                'sk' => $b['kode_sk'], 'sk_uraian' => $uraianSk[$b['kode_sk']] ?? null, 'sk_asal' => $b['asal_sk'],
+                'iksk' => $b['kode_iksk'], 'iksk_uraian' => $uraianIksk[$b['kode_iksk']] ?? null, 'iksk_asal' => $b['asal_iksk'],
+                'dikosongkan' => $b['dikosongkan'],
+                'leading' => $b['leading'], 'leading_nama' => MasterKode::leading($b['leading'])['nama_unit'] ?? null,
+                'pagu' => array_column($b['sumber_dana'], 'pagu', 'sumber'),
+                'bulan' => JadwalPelaksanaan::teksBulan($b['bulan'], $tahun),
+            ],
             'tampil' => [
                 'nama' => $b['nama'] ?: '—',
                 'kode' => implode(' · ', array_filter([$b['kode_sk'], $b['kode_iksk']])) ?: '—',
@@ -82,6 +95,24 @@ class ImporPerkin extends ImporBertahap
         return PemeriksaPerkin::cascade(array_map(fn (array $b) => ['status' => $b['status']] + $b['data'], $this->baris));
     }
 
+    /**
+     * Jumlah baris siap beserta pagu per sumber dana (baris jumlah tabel pratinjau).
+     *
+     * @return array{kegiatan: int, pagu: array<string, int>}
+     */
+    public function jumlahSiap(): array
+    {
+        $siap = array_filter($this->baris, fn (array $b) => $b['status'] === 'siap');
+        $pagu = [];
+        foreach ($siap as $b) {
+            foreach ($b['perkin']['pagu'] as $sumber => $nilai) {
+                $pagu[$sumber] = ($pagu[$sumber] ?? 0) + $nilai;
+            }
+        }
+
+        return ['kegiatan' => count($siap), 'pagu' => $pagu];
+    }
+
     public function ulangi(): void
     {
         parent::ulangi();
@@ -104,6 +135,7 @@ class ImporPerkin extends ImporBertahap
             'judul' => 'Unggah sheet cascade Perkin',
             'keterangan' => 'Berkas Excel berisi sheet Perkin (mis. MASTER '.StubData::tahunAktif()['tahun'].'.xlsx). Setiap baris kegiatan menjadi draf lengkap dengan kode SK & IKSK, leading, pagu, dan bulan pelaksanaan.',
             'satuan' => 'kegiatan',
+            'tabelPratinjau' => 'livewire.kegiatan.partials.tabel-perkin',
             'pratinjauTambahan' => 'livewire.kegiatan.partials.cascade-perkin',
             'prosesSegera' => true,
         ]);

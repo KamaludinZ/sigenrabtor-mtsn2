@@ -18,7 +18,8 @@ final class PemeriksaPerkin
     /**
      * @param  list<array{baris: int, nilai: array<string, mixed>}>  $barisMentah  Dari PembacaPerkin::baca().
      * @param  list<string>  $namaAda  Nama kegiatan tahun aktif.
-     * @return list<array<string, mixed>> Baris PemeriksaImporKegiatan::periksa() + kode_sk, kode_iksk (null bila kosong/dikosongkan).
+     * @return list<array<string, mixed>> Baris PemeriksaImporKegiatan::periksa() + kode_sk, kode_iksk (null bila kosong/dikosongkan),
+     *                                    asal_sk (berkas|atas|induk), asal_iksk (berkas|atas), dikosongkan (kode di luar master).
      */
     public static function periksa(array $barisMentah, array $namaAda, array $leadings, array $semuaLeading, ?string $leadingBawaan = null): array
     {
@@ -27,21 +28,25 @@ final class PemeriksaPerkin
         $iksk = array_column(MasterKode::kodeIksk(), null, 'kode');
         $tahun = StubData::tahunAktif()['tahun'];
 
-        foreach ($barisMentah as $i => ['nilai' => $nilai]) {
-            [$kodeSk, $kodeIksk, $gagal, $peringatan] = self::kode($nilai['kode_sk'] ?? null, $nilai['kode_iksk'] ?? null, $sk, $iksk, $tahun);
+        foreach ($barisMentah as $i => $mentah) {
+            $kode = self::kode($mentah['nilai']['kode_sk'] ?? null, $mentah['nilai']['kode_iksk'] ?? null, $sk, $iksk, $tahun);
             $baris = &$diperiksa[$i];
 
-            if ($baris['status'] === 'siap' && $gagal !== []) {
+            if ($baris['status'] === 'siap' && $kode['gagal'] !== []) {
                 $baris['status'] = 'gagal';
             }
             if ($baris['status'] === 'gagal') {
-                array_push($baris['pesan'], ...$gagal);
+                array_push($baris['pesan'], ...$kode['gagal']);
                 $baris['peringatan'] = [];
             } elseif ($baris['status'] === 'siap') {
-                $baris['peringatan'] = [...$peringatan, ...$baris['peringatan']];
+                $baris['peringatan'] = [...$kode['peringatan'], ...$baris['peringatan']];
             }
-            $baris['kode_sk'] = $kodeSk;
-            $baris['kode_iksk'] = $kodeIksk;
+            $ikut = $mentah['ikut'] ?? [];
+            $baris['kode_sk'] = $kode['sk'];
+            $baris['kode_iksk'] = $kode['iksk'];
+            $baris['asal_sk'] = $kode['sk'] === null ? null : ($kode['sk_induk'] ? 'induk' : (($ikut['kode_sk'] ?? false) ? 'atas' : 'berkas'));
+            $baris['asal_iksk'] = $kode['iksk'] === null ? null : (($ikut['kode_iksk'] ?? false) ? 'atas' : 'berkas');
+            $baris['dikosongkan'] = $kode['dikosongkan'];
             unset($baris);
         }
 
@@ -111,9 +116,12 @@ final class PemeriksaPerkin
     }
 
     /**
+     * Kode SK & IKSK satu baris terhadap master: kode terpakai, pesan gagal, peringatan, SK yang diisi dari induk IKSK,
+     * dan kode yang dikosongkan karena tidak ada di master.
+     *
      * @param  array<string, array{kode: string}>  $sk
      * @param  array<string, array{kode: string, kode_sk: string}>  $iksk
-     * @return array{0: string|null, 1: string|null, 2: list<string>, 3: list<string>} SK, IKSK, pesan gagal, peringatan.
+     * @return array{sk: string|null, iksk: string|null, gagal: list<string>, peringatan: list<string>, sk_induk: bool, dikosongkan: list<string>}
      */
     private static function kode(mixed $mentahSk, mixed $mentahIksk, array $sk, array $iksk, int $tahun): array
     {
@@ -121,38 +129,40 @@ final class PemeriksaPerkin
         $teksIksk = trim((string) $mentahIksk);
         $kodeSk = $teksSk === '' ? null : PemeriksaSk::normalkanKode($teksSk);
         $kodeIksk = $teksIksk === '' ? null : PemeriksaIksk::normalkanKode($teksIksk);
-        $gagal = [];
-        $peringatan = [];
+        $hasil = ['sk' => null, 'iksk' => null, 'gagal' => [], 'peringatan' => [], 'sk_induk' => false, 'dikosongkan' => []];
 
         if ($teksSk !== '' && $kodeSk === null) {
-            $gagal[] = "Kode SK \"{$teksSk}\" tidak berformat SK.n (mis. SK.10).";
+            $hasil['gagal'][] = "Kode SK \"{$teksSk}\" tidak berformat SK.n (mis. SK.10).";
         }
         if ($teksIksk !== '' && $kodeIksk === null) {
-            $gagal[] = "Kode IKSK \"{$teksIksk}\" tidak berformat IKSK n.m (mis. IKSK 10.2).";
+            $hasil['gagal'][] = "Kode IKSK \"{$teksIksk}\" tidak berformat IKSK n.m (mis. IKSK 10.2).";
         }
-        if ($gagal !== []) {
-            return [null, null, $gagal, []];
+        if ($hasil['gagal'] !== []) {
+            return $hasil;
         }
 
         if ($kodeIksk !== null && isset($iksk[$kodeIksk])) {
             $induk = $iksk[$kodeIksk]['kode_sk'];
             if ($kodeSk !== null && $kodeSk !== $induk) {
-                return [null, null, ["{$kodeIksk} adalah indikator {$induk}, bukan {$kodeSk}."], []];
+                return ['gagal' => ["{$kodeIksk} adalah indikator {$induk}, bukan {$kodeSk}."]] + $hasil;
             }
+            $hasil['sk_induk'] = $kodeSk === null;
             $kodeSk = $induk;
         } elseif ($kodeIksk !== null) {
-            $peringatan[] = "{$kodeIksk} tidak ada di master TA {$tahun} — dikosongkan, pilih nanti di Data Kegiatan.";
+            $hasil['peringatan'][] = "{$kodeIksk} tidak ada di master TA {$tahun} — dikosongkan, pilih nanti di Data Kegiatan.";
+            $hasil['dikosongkan'][] = $kodeIksk;
             $kodeIksk = null;
         }
 
         if ($kodeSk !== null && ! isset($sk[$kodeSk])) {
-            $peringatan[] = "{$kodeSk} tidak ada di master TA {$tahun} — dikosongkan, pilih nanti di Data Kegiatan.";
+            $hasil['peringatan'][] = "{$kodeSk} tidak ada di master TA {$tahun} — dikosongkan, pilih nanti di Data Kegiatan.";
+            $hasil['dikosongkan'][] = $kodeSk;
             $kodeSk = null;
         }
         if ($teksSk === '' && $teksIksk === '') {
-            $peringatan[] = 'Kode SK & IKSK kosong — pilih nanti di Data Kegiatan.';
+            $hasil['peringatan'][] = 'Kode SK & IKSK kosong — pilih nanti di Data Kegiatan.';
         }
 
-        return [$kodeSk, $kodeIksk, [], $peringatan];
+        return ['sk' => $kodeSk, 'iksk' => $kodeIksk] + $hasil;
     }
 }
