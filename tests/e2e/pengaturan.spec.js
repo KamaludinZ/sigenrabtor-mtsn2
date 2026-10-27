@@ -694,4 +694,45 @@ test.describe('Pengaturan admin', () => {
         await expect(bagian.getByTestId('paragraf-baku')).toContainText('Madrasah Tsanawiyah Negeri 2 Kota Malang');
         await expect(bagian.getByTestId('kalimat-sisip')).toContainText('Perjanjian Kinerja (Perkin) Kepala Madrasah adalah kegiatan');
     });
+
+    test('SK RKTM/RKAM: isi nomor & tanggal, tampil di Tahun Anggaran, penanda di butir, lalu dikosongkan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        const sk = page.getByTestId('sk-rktm');
+        await expect(sk.getByTestId('sk-kosong')).toBeVisible();
+        await sk.getByRole('button', { name: 'Isi SK' }).click();
+        await expect(sk.getByLabel('Nomor SK')).toBeFocused();
+        await sk.getByLabel('Nomor SK').fill(`12/SK/RKTM/${testInfo.project.name}`);
+        await sk.getByRole('button', { name: 'Simpan' }).click();
+        await expect(sk.getByRole('alert')).toHaveText('Tanggal SK wajib diisi bersama nomornya.');
+        await sk.getByLabel('Tanggal SK').fill('2025-12-30');
+        await sk.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('SK RKTM/RKAM TA 2026 tersimpan.')).toBeVisible();
+        await expect(sk.locator('[data-sk="nomor"]')).toHaveText(`12/SK/RKTM/${testInfo.project.name}`);
+        await expect(sk.locator('[data-sk="tanggal"]')).toHaveText('30 Desember 2025');
+        await expect(sk.getByTestId('sk-dipakai')).toContainText('Belum dipakai di dasar hukum');
+        await sk.screenshot({ path: `storage/playwright/shots/sk-rktm-${testInfo.project.name}.png` });
+
+        // Penanda SK lewat tombol sisip di isian butir (dibatalkan, tidak disimpan).
+        const daftar = page.getByTestId('daftar-dasar-hukum');
+        await daftar.getByRole('button', { name: 'Tambah butir' }).click();
+        const isian = daftar.getByRole('textbox', { name: 'Butir baru' });
+        await isian.fill('SK Nomor ');
+        await daftar.getByRole('button', { name: 'Nomor SK' }).click();
+        await expect(isian).toHaveValue('SK Nomor {no_sk_rktm}');
+        await isian.press('Escape');
+        await expect(daftar.locator('li[data-butir]')).toHaveCount(4);
+
+        await page.goto('/pengaturan/tahun');
+        await expect(page.getByText(`12/SK/RKTM/${testInfo.project.name}`).first()).toBeVisible();
+
+        // Pulihkan: kosongkan SK TA 2026 (tes lain mengharapkan SK belum diisi).
+        await page.goto('/pengaturan/madrasah/dasar-hukum');
+        await sk.getByRole('button', { name: 'Ubah' }).click();
+        await sk.getByLabel('Nomor SK').fill('');
+        await sk.getByLabel('Tanggal SK').fill('');
+        await sk.getByRole('button', { name: 'Simpan' }).click();
+        await expect(page.getByText('SK RKTM/RKAM TA 2026 dikosongkan.')).toBeVisible();
+        await expect(sk.getByTestId('sk-kosong')).toBeVisible();
+    });
 });

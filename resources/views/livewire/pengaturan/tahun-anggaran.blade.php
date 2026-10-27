@@ -49,7 +49,7 @@
                                 <dd class="flex items-center gap-1 font-medium text-gold-700" data-testid="sk-belum-diisi">
                                     <x-ui.icon name="alert" class="size-4" /> Belum diisi
                                 </dd>
-                                <dd class="text-xs text-stone-500">Nomor &amp; tanggal SK tercetak di dasar hukum KAK.</dd>
+                                <dd class="text-xs text-stone-500">Nomor &amp; tanggal SK tercetak di dasar hukum KAK. <a href="{{ route('pengaturan.madrasah.dasar_hukum') }}" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800">Isi SK</a></dd>
                             @endif
                         </div>
                         <div>

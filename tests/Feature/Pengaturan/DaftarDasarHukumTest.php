@@ -44,7 +44,7 @@ class DaftarDasarHukumTest extends TestCase
         $this->assertSame('Terlalu panjang (maksimal 500 karakter).', DaftarDasarHukum::galat(str_repeat('a', 501), $daftar));
         $this->assertSame('Butir ini sudah ada di nomor 1.', DaftarDasarHukum::galat('undang-undang nomor 20 tahun 2003', $daftar));
         $this->assertNull(DaftarDasarHukum::galat('Undang-Undang Nomor 20 Tahun 2003', $daftar, 'a'), 'Butir yang sedang diubah tidak dibandingkan dengan dirinya.');
-        $this->assertSame('Penanda {nama_kegiatan}, {thn} tidak dikenal — di dasar hukum hanya {tahun} (tahun anggaran) yang bisa dipakai.', DaftarDasarHukum::galat('Kegiatan {nama_kegiatan} {thn} {tahun}', $daftar));
+        $this->assertSame('Penanda {nama_kegiatan}, {thn} tidak dikenal — di dasar hukum hanya {tahun}, {no_sk_rktm}, {tanggal_sk_rktm} yang bisa dipakai.', DaftarDasarHukum::galat('Kegiatan {nama_kegiatan} {thn} {tahun}', $daftar));
         $this->assertNull(DaftarDasarHukum::galat('Peraturan baru Tahun {tahun}', $daftar));
     }
 

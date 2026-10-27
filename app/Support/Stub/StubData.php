@@ -101,7 +101,17 @@ class StubData
      */
     public static function dasarHukum(int $tahun): array
     {
-        return DaftarDasarHukum::cetak(array_column(app(DasarHukumRepository::class)->untukTahun($tahun)['dasar_hukum'], 'teks'), $tahun);
+        return DaftarDasarHukum::cetak(self::dasarHukumMentah($tahun), $tahun);
+    }
+
+    /**
+     * Teks mentah (berpenanda) butir dasar hukum tahun $tahun, urut cetak.
+     *
+     * @return list<string>
+     */
+    public static function dasarHukumMentah(int $tahun): array
+    {
+        return array_column(app(DasarHukumRepository::class)->untukTahun($tahun)['dasar_hukum'], 'teks');
     }
 
     /**

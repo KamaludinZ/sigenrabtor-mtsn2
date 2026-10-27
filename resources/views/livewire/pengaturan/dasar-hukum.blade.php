@@ -138,7 +138,66 @@
                     </ol>
                     <p class="sr-only" role="status">{{ $pengumuman }}</p>
                 @endif
-                <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Tanda baca akhir disusun otomatis seperti di dokumen: titik koma (;), butir terakhir titik (.). Tulis <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{tahun}</code> agar tahun anggaran terisi sendiri.</p>
+                <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Tanda baca akhir disusun otomatis seperti di dokumen: titik koma (;), butir terakhir titik (.). Tulis <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{tahun}</code> agar tahun anggaran terisi sendiri, <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{no_sk_rktm}</code>/<code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{tanggal_sk_rktm}</code> untuk SK RKTM/RKAM.</p>
+            </section>
+
+            {{-- SK RKTM/RKAM: disimpan pada tahun anggaran, tercetak di butir dasar hukum lewat penanda. --}}
+            @php
+                $sk = \App\Support\Pengaturan\SkRktm::untuk($ta);
+                $butirSk = $this->butirMemakaiSk();
+                $peringatanSk = \App\Support\Pengaturan\SkRktm::peringatanTanggal($sk['tanggal'], $ta);
+            @endphp
+            <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-sk-rktm" data-testid="sk-rktm">
+                <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+                    <div class="min-w-0">
+                        <h2 id="judul-sk-rktm" class="text-base font-semibold text-stone-900">SK RKTM/RKAM TA {{ $ta }}</h2>
+                        <p class="mt-0.5 text-sm text-stone-500">Nomor &amp; tanggal SK penetapan rencana kerja tahunan, disimpan pada tahun anggaran.</p>
+                    </div>
+                    @if ($bolehUbah && ! $suntingSk)
+                        <button type="button" wire:click="ubahSk" class="btn-secondary shrink-0 self-start"><x-ui.icon name="pencil" class="size-4" /> {{ $sk['nomor'] ? 'Ubah' : 'Isi SK' }}</button>
+                    @endif
+                </header>
+                @if ($suntingSk)
+                    <form wire:submit="simpanSk" class="px-5 py-4 sm:px-6" data-testid="isian-sk">
+                        <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                            <x-ui.field label="Nomor SK" for="sk-nomor" error="isianSk.nomor">
+                                <input type="text" id="sk-nomor" wire:model="isianSk.nomor" maxlength="{{ \App\Support\Pengaturan\SkRktm::MAKS_NOMOR }}" class="form-input" autocomplete="off"
+                                       placeholder="mis. 123/Mts.13.25.2/PP.00/12/{{ $ta - 1 }}" x-init="$el.focus()"
+                                       @error('isianSk.nomor') aria-invalid="true" aria-describedby="sk-nomor-error" @enderror>
+                            </x-ui.field>
+                            <x-ui.field label="Tanggal SK" for="sk-tanggal" error="isianSk.tanggal">
+                                <input type="date" id="sk-tanggal" wire:model="isianSk.tanggal" class="form-input"
+                                       @error('isianSk.tanggal') aria-invalid="true" aria-describedby="sk-tanggal-error" @enderror>
+                            </x-ui.field>
+                        </div>
+                        <p class="mt-2 text-xs text-stone-500">Kosongkan keduanya untuk menghapus SK. Biasanya ditetapkan akhir TA {{ $ta - 1 }} atau awal TA {{ $ta }}.</p>
+                        <div class="mt-4 flex justify-end gap-2">
+                            <button type="button" wire:click="batalSk" class="btn-ghost">Batal</button>
+                            <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanSk"><x-ui.icon name="save" class="size-4" /> Simpan</button>
+                        </div>
+                    </form>
+                @else
+                    <div class="space-y-3 px-5 py-4 sm:px-6">
+                        @if ($sk['nomor'])
+                            <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[minmax(0,1fr)_12rem]">
+                                <div class="min-w-0"><dt class="text-xs text-stone-500">Nomor</dt><dd class="font-medium break-words text-stone-900" data-sk="nomor">{{ $sk['nomor'] }}</dd></div>
+                                <div><dt class="text-xs text-stone-500">Tanggal</dt><dd class="font-medium text-stone-900" data-sk="tanggal">{{ \App\Support\Format::tanggal($sk['tanggal']) }}</dd></div>
+                            </dl>
+                        @else
+                            <p class="flex items-center gap-1.5 text-sm font-medium text-gold-700" data-testid="sk-kosong"><x-ui.icon name="alert" class="size-4" /> Nomor &amp; tanggal SK TA {{ $ta }} belum diisi.</p>
+                        @endif
+                        @if ($peringatanSk)
+                            <p class="flex items-start gap-1.5 text-xs text-gold-700"><x-ui.icon name="alert" class="mt-0.5 size-3.5 shrink-0" /> {{ $peringatanSk }}</p>
+                        @endif
+                        <p class="text-xs text-stone-500" data-testid="sk-dipakai">
+                            @if ($butirSk !== [])
+                                Tercetak di butir dasar hukum nomor {{ implode(', ', $butirSk) }}{{ $sk['nomor'] ? '' : ' — sementara tercetak "…" dan KAK/TOR ditandai belum lengkap' }}.
+                            @else
+                                Belum dipakai di dasar hukum — tulis <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{no_sk_rktm}</code> dan <code class="rounded bg-stone-100 px-1 font-mono text-[11px]">{tanggal_sk_rktm}</code> di butir SK RKTM agar nomor &amp; tanggalnya terisi sendiri.
+                            @endif
+                        </p>
+                    </div>
+                @endif
             </section>
 
             {{-- Latar belakang baku --}}

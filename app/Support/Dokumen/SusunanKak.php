@@ -11,6 +11,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\PenandaTangan;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Rab\AnggaranKegiatan;
@@ -94,6 +95,9 @@ final readonly class SusunanKak
         }
         $bagian[] = ['nomor' => 1, 'judul' => 'Latar Belakang', 'isi' => $latar];
 
+        if (DaftarDasarHukum::skKurang(StubData::dasarHukumMentah($tahun), $tahun)) {
+            $kurang[] = 'nomor & tanggal SK RKTM/RKAM (Pengaturan › Dasar hukum)';
+        }
         $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [['jenis' => 'daftar', 'bernomor' => true, 'butir' => StubData::dasarHukum($tahun)]]];
 
         $bagian[] = ['nomor' => 3, 'judul' => 'Tujuan dan Sasaran', 'isi' => [

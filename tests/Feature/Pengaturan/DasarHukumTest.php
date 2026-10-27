@@ -87,7 +87,7 @@ class DasarHukumTest extends TestCase
         $this->assertNull($belum['diperbarui_pada']);
 
         // Dokumen menerima teks siap cetak: penanda terisi tahunnya sendiri.
-        $this->assertSame('Surat Keputusan Kepala MTsN 2 Kota Malang tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun 2025.', StubData::dasarHukum(2025)[2]);
+        $this->assertSame('Surat Keputusan Kepala MTsN 2 Kota Malang Nomor Contoh 001/SK/RKTM/2025 tanggal 6 Januari 2025 tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun 2025.', StubData::dasarHukum(2025)[2]);
         $this->assertStringContainsString('pada Tahun Anggaran 2027 memerlukan', StubData::latarBelakangBaku(2027));
         $this->assertSame([], StubData::dasarHukum(2027));
         $this->assertSame(

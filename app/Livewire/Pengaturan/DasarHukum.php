@@ -5,10 +5,12 @@ namespace App\Livewire\Pengaturan;
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Format;
 use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\LatarBelakangBaku;
 use App\Support\Pengaturan\RiwayatPengaturan;
+use App\Support\Pengaturan\SkRktm;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Str;
@@ -49,6 +51,12 @@ class DasarHukum extends Component
     /** @var array{latar_belakang: string, kalimat_penutup: string} Teks mentah (berpenanda) yang sedang disunting. */
     public array $isianLatar = ['latar_belakang' => '', 'kalimat_penutup' => ''];
 
+    /** Isian SK RKTM/RKAM terbuka. */
+    public bool $suntingSk = false;
+
+    /** @var array{nomor: string, tanggal: string} Tanggal Y-m-d (input date). */
+    public array $isianSk = ['nomor' => '', 'tanggal' => ''];
+
     public function mount(): void
     {
         $this->rapikanTahun();
@@ -59,6 +67,7 @@ class DasarHukum extends Component
         $this->rapikanTahun();
         $this->batalButir();
         $this->batalLatar();
+        $this->batalSk();
         $this->butirTerhapus = null;
         unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
     }
@@ -242,6 +251,76 @@ class DasarHukum extends Component
         unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
         $this->batalLatar();
         $this->dispatch('notify', message: "Latar belakang baku TA {$tahun} tersimpan.", type: 'success');
+    }
+
+    public function ubahSk(): void
+    {
+        if ($this->tahunTerkunci()) {
+            return;
+        }
+
+        $sk = SkRktm::untuk($this->tahunDilihat());
+        $this->batalSk();
+        $this->isianSk = ['nomor' => (string) $sk['nomor'], 'tanggal' => (string) $sk['tanggal']];
+        $this->suntingSk = true;
+    }
+
+    public function batalSk(): void
+    {
+        $this->reset('suntingSk', 'isianSk');
+        $this->resetErrorBag(['isianSk.nomor', 'isianSk.tanggal']);
+    }
+
+    /** Simpan nomor & tanggal SK ke tahun anggaran yang dilihat; keduanya kosong = SK dikosongkan. */
+    public function simpanSk(TahunAnggaranRepository $repo): void
+    {
+        if (! $this->suntingSk || $this->tahunTerkunci()) {
+            return;
+        }
+
+        $this->resetErrorBag(['isianSk.nomor', 'isianSk.tanggal']);
+        $this->isianSk = ['nomor' => SkRktm::rapikanNomor((string) ($this->isianSk['nomor'] ?? '')), 'tanggal' => trim((string) ($this->isianSk['tanggal'] ?? ''))];
+        $galat = SkRktm::galat($this->isianSk['nomor'], $this->isianSk['tanggal']);
+        foreach ($galat as $kolom => $pesan) {
+            $this->addError("isianSk.{$kolom}", $pesan);
+        }
+        if ($galat !== []) {
+            return;
+        }
+
+        $tahun = $this->tahunDilihat();
+        $lama = SkRktm::untuk($tahun);
+        $baru = ['nomor' => $this->isianSk['nomor'] ?: null, 'tanggal' => $this->isianSk['tanggal'] ?: null];
+        $tampil = fn (array $sk) => ['nomor' => $sk['nomor'], 'tanggal' => $sk['tanggal'] ? Format::tanggal($sk['tanggal']) : null];
+        $ringkasan = RiwayatPengaturan::perubahan($tampil($lama), $tampil($baru), ['nomor' => 'Nomor', 'tanggal' => 'Tanggal']);
+        $this->batalSk();
+        if ($ringkasan === null) {
+            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+            return;
+        }
+
+        $repo->simpanSk($tahun, $baru['nomor'], $baru['tanggal']);
+        RiwayatPengaturan::catat('ubah_sk_rktm', "SK RKTM/RKAM TA {$tahun} — {$ringkasan}");
+        unset($this->dasarHukum);
+        $this->dispatch('notify', message: $baru['nomor'] ? "SK RKTM/RKAM TA {$tahun} tersimpan." : "SK RKTM/RKAM TA {$tahun} dikosongkan.", type: 'success');
+    }
+
+    /**
+     * Nomor butir dasar hukum (1-based) yang memuat penanda SK.
+     *
+     * @return list<int>
+     */
+    public function butirMemakaiSk(): array
+    {
+        $nomor = [];
+        foreach ($this->pengaturan['dasar_hukum'] as $i => $butir) {
+            if (SkRktm::dipakai($butir['teks'])) {
+                $nomor[] = $i + 1;
+            }
+        }
+
+        return $nomor;
     }
 
     /** Tombol naik/turun: geser satu posisi ($arah -1/1), fokus tetap di tombol yang sama. */

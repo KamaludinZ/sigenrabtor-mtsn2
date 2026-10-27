@@ -29,6 +29,7 @@ final class RiwayatPengaturan
         'ubah_mengetahui' => ['Ubah blok Mengetahui', 'madrasah'],
         'ubah_dasar_hukum' => ['Ubah dasar hukum', 'madrasah'],
         'ubah_latar_belakang' => ['Ubah latar belakang baku', 'madrasah'],
+        'ubah_sk_rktm' => ['Ubah SK RKTM/RKAM', 'madrasah'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */

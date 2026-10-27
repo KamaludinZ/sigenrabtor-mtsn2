@@ -4,8 +4,9 @@ namespace App\Support\Pengaturan;
 
 /**
  * Aturan butir dasar hukum (PRD §13): satu butir = satu kalimat tanpa tanda baca akhir; saat dicetak penanda `{tahun}`
- * diisi dan tanda baca akhir disusun menurut urutan (titik koma, butir terakhir titik) sehingga menambah, menghapus,
- * atau mengurutkan butir tidak perlu membetulkan tanda baca butir lain.
+ * dan SK RKTM/RKAM (`{no_sk_rktm}`/`{tanggal_sk_rktm}`, dari tahun anggaran — "…" selama kosong) diisi dan tanda baca
+ * akhir disusun menurut urutan (titik koma, butir terakhir titik) sehingga menambah, menghapus, atau mengurutkan butir
+ * tidak perlu membetulkan tanda baca butir lain.
  */
 final class DaftarDasarHukum
 {
@@ -30,8 +31,25 @@ final class DaftarDasarHukum
     public static function cetak(array $butir, int $tahun): array
     {
         $akhir = count($butir) - 1;
+        $sk = array_map(fn (?string $v) => $v ?? '…', SkRktm::nilai($tahun));
 
-        return array_map(fn (string $teks, int $i) => self::rapikan(TeksBaku::isi($teks, $tahun)).($i === $akhir ? '.' : ';'), $butir, array_keys($butir));
+        return array_map(fn (string $teks, int $i) => self::rapikan(TeksBaku::isiNilai($teks, $tahun, $sk)).($i === $akhir ? '.' : ';'), $butir, array_keys($butir));
+    }
+
+    /** Penanda yang boleh di butir dasar hukum. */
+    public static function boleh(): array
+    {
+        return [TeksBaku::TAHUN, ...array_keys(SkRktm::PENANDA)];
+    }
+
+    /**
+     * Butir memakai penanda SK sementara SK tahun $tahun belum lengkap (dokumen perlu dilengkapi).
+     *
+     * @param  list<string>  $butir  Teks mentah.
+     */
+    public static function skKurang(array $butir, int $tahun): bool
+    {
+        return collect($butir)->contains(fn (string $teks) => SkRktm::dipakai($teks)) && ! SkRktm::lengkap($tahun);
     }
 
     /**
@@ -48,9 +66,9 @@ final class DaftarDasarHukum
             return 'Terlalu panjang (maksimal '.self::MAKS_KARAKTER.' karakter).';
         }
 
-        $asing = TeksBaku::penandaAsing($teks, [TeksBaku::TAHUN]);
+        $asing = TeksBaku::penandaAsing($teks, self::boleh());
         if ($asing !== []) {
-            return 'Penanda '.implode(', ', $asing).' tidak dikenal — di dasar hukum hanya '.TeksBaku::TAHUN.' (tahun anggaran) yang bisa dipakai.';
+            return 'Penanda '.implode(', ', $asing).' tidak dikenal — di dasar hukum hanya '.implode(', ', self::boleh()).' yang bisa dipakai.';
         }
 
         $kunci = mb_strtolower($teks);

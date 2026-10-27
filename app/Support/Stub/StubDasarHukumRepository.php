@@ -78,7 +78,8 @@ class StubDasarHukumRepository implements DasarHukumRepository
     }
 
     /**
-     * Contoh TA 2026 & 2025 (butir dasar hukum berbeda, tanpa tanda baca akhir; tahun di butir SK RKTM lewat penanda).
+     * Contoh TA 2026 & 2025 (butir dasar hukum berbeda, tanpa tanda baca akhir; tahun di butir SK RKTM lewat penanda, TA 2025
+     * juga nomor & tanggal SK-nya).
      *
      * @return array<string, array<string, mixed>>
      */
@@ -102,7 +103,7 @@ class StubDasarHukumRepository implements DasarHukumRepository
                 'dasar_hukum' => [
                     ['id' => 'dh-2025-1', 'teks' => $uu],
                     ['id' => 'dh-2025-2', 'teks' => $pma90],
-                    ['id' => 'dh-2025-3', 'teks' => $rktm],
+                    ['id' => 'dh-2025-3', 'teks' => 'Surat Keputusan Kepala MTsN 2 Kota Malang Nomor {no_sk_rktm} tanggal {tanggal_sk_rktm} tentang Rencana Kerja Tahunan Madrasah (RKTM) MTsN 2 Kota Malang Tahun {tahun}'],
                 ],
                 'diperbarui_pada' => '2025-01-06T09:00:00+07:00',
             ],
