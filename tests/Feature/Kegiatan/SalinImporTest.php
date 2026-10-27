@@ -69,6 +69,34 @@ class SalinImporTest extends TestCase
             ->assertSet('tahunSumber', 0);
     }
 
+    public function test_daftar_kegiatan_tahun_lalu_dengan_rincian_dan_yang_sudah_ada(): void
+    {
+        $baru = app(KegiatanRepository::class)->simpan([
+            'nama_kegiatan' => 'Rapat Kerja Tahunan', 'leading' => '1.6', 'tahun_anggaran' => 2025, 'status' => 'final', 'kode_rktm' => '6.17.12',
+            'tujuan' => 'menyusun program kerja', 'tempat' => 'Aula', 'peserta_jumlah' => 40, 'peserta_jenis' => 'Guru', 'lama_hari' => 2,
+            'bulan_pelaksanaan' => [1, 2], 'sumber_dana' => [['sumber' => 'Komite', 'pagu' => 3_000_000]],
+        ]);
+        // Nama sama dengan contoh kegiatan 2 di TA 2026 → sudah diduplikat.
+        $ganda = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => '  supervisi akademik dan refleksi  PEMBELAJARAN', 'leading' => '1.6', 'tahun_anggaran' => 2025]);
+
+        $baris = collect(DuplikatKegiatan::sumber(app(KegiatanRepository::class)->semua(), 2025, ['role' => 'leading', 'leadings' => ['1.6']]))->keyBy('id');
+        $this->assertSame(['Aula', '40 orang (Guru)', 2, 'Januari – Februari 2025', '6.17.12', null], [$baris[$baru]['tempat'], $baris[$baru]['peserta'], $baris[$baru]['lama_hari'], $baris[$baru]['bulan'], $baris[$baru]['kode_rktm'], $baris[$baru]['sudah_ada']]);
+        $this->assertSame([['sumber' => 'Komite', 'total' => 0, 'item' => 0]], $baris[$baru]['sumber']);
+        $this->assertSame(2, $baris[$ganda]['sudah_ada']);
+
+        Livewire::test(SalinImpor::class)
+            ->assertSeeHtml('data-testid="daftar-tahun-lalu"')
+            ->assertSeeHtml('data-sumber-duplikat="'.$ganda.'" data-sudah-ada="ya"')
+            ->assertSee('Sudah ada di TA 2026')
+            ->assertSeeHtml('href="'.route('kegiatan.edit', ['kegiatan' => 2]).'"')
+            ->assertSeeHtml('data-rincian-lalu="'.$baru.'"')
+            ->assertSee('menyusun program kerja')
+            ->call('pilihSemua')
+            ->assertSet('pilihan', [$baru], 'Yang sudah ada dilewati.')
+            ->set('pilihan', [$baru, $ganda])
+            ->assertSet('pilihan', [$baru]);
+    }
+
     public function test_tab_impor_perkin(): void
     {
         Livewire::withQueryParams(['tab' => 'perkin'])->test(SalinImpor::class)

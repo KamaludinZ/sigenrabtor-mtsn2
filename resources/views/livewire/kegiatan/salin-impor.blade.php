@@ -89,26 +89,7 @@
                         <p class="mt-3 text-sm font-medium text-stone-700">{{ $this->semuaSumber === [] ? 'Belum ada kegiatan TA '.$tahunDipakai.' yang bisa diduplikat.' : 'Tidak ada kegiatan yang cocok.' }}</p>
                     </div>
                 @else
-                    <ul class="divide-y divide-stone-100" wire:loading.class="opacity-60" wire:target="tahunSumber,cari,leading">
-                        @foreach ($sumber as $b)
-                            <li wire:key="sumber-{{ $b['id'] }}">
-                                <label class="flex cursor-pointer items-start gap-3 px-5 py-3 hover:bg-stone-50 sm:px-6" data-sumber-duplikat="{{ $b['id'] }}">
-                                    <input type="checkbox" wire:model.live="pilihan" value="{{ $b['id'] }}" class="mt-1 size-4 rounded border-stone-300 text-brand-700 focus:ring-brand-600">
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block font-medium text-stone-900">{{ $b['nama'] }}</span>
-                                        <span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500">
-                                            <span>{{ $b['leading'] ? $b['leading'].' '.($b['nama_leading'] ?? '') : 'Leading belum dipilih' }}</span>
-                                            @foreach ($b['sumber'] as $s)
-                                                <x-rab.lencana-sumber :sumber="$s" class="text-[10px]" />
-                                            @endforeach
-                                            <span class="tabular-nums">{{ Format::rupiah($b['total']) }}</span>
-                                            <x-ui.status-badge :status="$b['status']" />
-                                        </span>
-                                    </span>
-                                </label>
-                            </li>
-                        @endforeach
-                    </ul>
+                    <x-kegiatan.daftar-tahun-lalu :baris="$sumber" :pilihan="$pilihan" :tahun-aktif="$tahunAktif" wire:loading.class="opacity-60" wire:target="tahunSumber,cari,leading" />
                 @endif
 
                 <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 px-5 py-3 sm:px-6">

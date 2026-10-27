@@ -3,6 +3,9 @@
 namespace App\Support\Kegiatan\Duplikat;
 
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Kegiatan\DataPelaksanaan;
+use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
+use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -37,28 +40,46 @@ final class DuplikatKegiatan
     }
 
     /**
-     * Kegiatan tahun $tahun dalam cakupan akun, sebagai baris pilihan.
+     * Kegiatan tahun $tahun dalam cakupan akun, sebagai baris pilihan: identitas, kode RKTM, sumber dana & jumlah rincian
+     * RAB, bulan, ringkasan isian, dan `sudah_ada` (id kegiatan tahun aktif bernama sama — tidak bisa diduplikat lagi).
      *
-     * @param  list<array<string, mixed>>  $kegiatan
+     * @param  list<array<string, mixed>>  $kegiatan  Semua kegiatan (semua tahun).
      * @param  array{role: string, leadings: list<string>}  $pengguna
-     * @return list<array{id: int, nama: string, leading: string|null, nama_leading: string|null, sumber: list<string>, total: int, status: string}>
+     * @return list<array<string, mixed>>
      */
     public static function sumber(array $kegiatan, int $tahun, array $pengguna): array
     {
+        $tahunAktif = StubData::tahunAktif()['tahun'];
+        $aktif = [];
+        foreach ($kegiatan as $k) {
+            if (TahunKegiatan::dari($k) === $tahunAktif) {
+                $aktif[PemeriksaImporKegiatan::kunciNama((string) ($k['nama_kegiatan'] ?? ''))] ??= (int) $k['id'];
+            }
+        }
+
         $baris = [];
         foreach ($kegiatan as $k) {
             if (TahunKegiatan::dari($k) !== $tahun || ($pengguna['role'] !== 'admin' && ! in_array($k['leading'] ?? null, $pengguna['leadings'], true))) {
                 continue;
             }
             $anggaran = AnggaranKegiatan::untuk($k);
+            $nama = trim((string) ($k['nama_kegiatan'] ?? '')) ?: 'Kegiatan tanpa nama';
+            $pelaksanaan = DataPelaksanaan::dari($k);
             $baris[] = [
                 'id' => (int) $k['id'],
-                'nama' => trim((string) ($k['nama_kegiatan'] ?? '')) ?: 'Kegiatan tanpa nama',
+                'nama' => $nama,
                 'leading' => $k['leading'] ?? null,
                 'nama_leading' => MasterKode::leading($k['leading'] ?? null)['nama_unit'] ?? null,
-                'sumber' => array_map(fn ($a) => $a->sumber, $anggaran),
+                'kode_rktm' => $k['kode_rktm'] ?? null,
+                'sumber' => array_map(fn ($a) => ['sumber' => $a->sumber, 'total' => $a->total(), 'item' => $a->jumlahItem()], $anggaran),
                 'total' => array_sum(array_map(fn ($a) => $a->total(), $anggaran)),
+                'bulan' => JadwalPelaksanaan::teksBulan($pelaksanaan->bulan, $tahun),
+                'tujuan' => trim((string) ($k['tujuan'] ?? '')) ?: null,
+                'tempat' => $pelaksanaan->tempat ?: null,
+                'peserta' => $pelaksanaan->pesertaJumlah ? $pelaksanaan->pesertaJumlah.' orang'.($pelaksanaan->pesertaJenis ? " ({$pelaksanaan->pesertaJenis})" : '') : ($pelaksanaan->pesertaJenis ?: null),
+                'lama_hari' => $pelaksanaan->lamaHari,
                 'status' => (string) ($k['status'] ?? 'draf'),
+                'sudah_ada' => $aktif[PemeriksaImporKegiatan::kunciNama($nama)] ?? null,
             ];
         }
         usort($baris, fn (array $a, array $b) => [$a['leading'] ?? '~', $a['nama']] <=> [$b['leading'] ?? '~', $b['nama']]);

@@ -77,7 +77,8 @@ class SalinImpor extends Component
 
     public function pilihSemua(): void
     {
-        $this->pilihan = array_values(array_unique([...$this->pilihan, ...array_column($this->sumberTampil(), 'id')]));
+        $bisa = array_column(array_filter($this->sumberTampil(), fn (array $b) => $b['sudah_ada'] === null), 'id');
+        $this->pilihan = array_values(array_unique([...$this->pilihan, ...$bisa]));
     }
 
     public function kosongkanPilihan(): void
@@ -94,7 +95,8 @@ class SalinImpor extends Component
             $this->tahunSumber = 0;
         }
         unset($this->semuaSumber);
-        $ada = array_column($this->semuaSumber, 'id');
+        // Kegiatan yang sudah ada di tahun aktif (nama sama) tidak bisa dipilih.
+        $ada = array_column(array_filter($this->semuaSumber, fn (array $b) => $b['sudah_ada'] === null), 'id');
         $this->pilihan = array_values(array_filter(array_map('intval', $this->pilihan), fn (int $id) => in_array($id, $ada, true)));
     }
 
