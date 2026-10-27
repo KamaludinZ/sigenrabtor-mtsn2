@@ -60,6 +60,22 @@ test.describe('Buku dokumen', () => {
         await proses.getByRole('button', { name: 'Tutup' }).click();
         await expect(proses).toHaveCount(0);
 
+        // Dokumen satu kegiatan di dalam buku: cover, KAK/TOR, RAB dengan rentang halaman buku; pindah ke kegiatan berikutnya.
+        const pertama = await susunan.locator('li[data-kegiatan]').first().getAttribute('data-kegiatan');
+        await susunan.locator(`[data-lihat-kegiatan="${pertama}"]`).click();
+        await expect(page).toHaveURL(new RegExp(`kegiatan=${pertama}`));
+        const lihat = page.getByTestId('lihat-kegiatan-buku');
+        await expect(lihat).toContainText(/Kegiatan 1 dari \d+ di buku ini/);
+        await expect(lihat.locator('[data-lembar]')).toHaveCount(3);
+        await expect(lihat.locator('[data-lembar="kak"] [data-rentang]')).toHaveText(/^hal\. \d+–\d+$/);
+        await expect(lihat).toBeInViewport();
+        if (await lihat.getByRole('button', { name: 'Kegiatan berikutnya' }).count()) {
+            await lihat.getByRole('button', { name: 'Kegiatan berikutnya' }).click();
+            await expect(lihat).toContainText(/Kegiatan 2 dari \d+ di buku ini/);
+        }
+        await lihat.getByRole('button', { name: 'Tutup dokumen kegiatan' }).click();
+        await expect(lihat).toHaveCount(0);
+
         // Kegiatan di buku membuka pratinjau dokumennya untuk sumber dana buku itu.
         await susunan.locator('li[data-kegiatan] a').first().click();
         await expect(page).toHaveURL(/\/kegiatan\/\d+\/pratinjau\?sumber=DIPA$/);

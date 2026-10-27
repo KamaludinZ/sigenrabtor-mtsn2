@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Buku Dokumen: tombol **Lihat di buku** pada tiap kegiatan menampilkan bagian kegiatan itu persis seperti di dalam buku — cover kegiatan, KAK/TOR, dan RAB sumber dana buku — lengkap dengan rentang halamannya (mis. "hal. 4–8") dan cap DRAF bila masih draf, dengan tombol *Sebelumnya*/*Berikutnya* mengikuti urutan buku.
 - Buku Dokumen: **halaman daftar kegiatan** tampil seperti tercetak — judul, subjudul, kolom, dan urutan sesuai pengaturan daftar isi buku itu, kolom Halaman berisi perkiraan halaman awal tiap kegiatan, baris jumlah anggaran, serta nomor halaman di posisi yang diatur. Pratinjau di Pengaturan › Template Dokumen › Daftar isi memakai tampilan yang sama.
 - Buku Dokumen: **halaman cover buku** kini memakai desain cover yang sama dengan cover kegiatan (desain default tahun aktif dari Pengaturan › Template Dokumen) berisi "KEGIATAN", nama unit leading, sumber dana, pejabat penyusun, kota, dan tahun anggaran — bercap DRAF selama masih ada kegiatan DRAF — dan bisa diperbesar.
 - Buku Dokumen: tombol **Susun buku** mengambil kegiatan buku itu satu per satu dengan bilah kemajuan — tiap kegiatan dicatat siap atau masih DRAF beserta alasannya — dan bisa dihentikan di tengah jalan. Hasil penyusunan tercatat di *Riwayat susun* (kapan, oleh siapa, jumlah kegiatan, perkiraan halaman, ada DRAF atau tidak). Berkas PDF gabungan menyusul.

@@ -102,6 +102,37 @@ class BukuDokumenTest extends TestCase
             ->assertSeeInOrder(['Review RKJM dan Penyusunan RKTM', '3', 'Supervisi Akademik dan Refleksi Pembelajaran', '11']);
     }
 
+    public function test_dokumen_satu_kegiatan_di_dalam_buku(): void
+    {
+        $kegiatan = BukuDokumen::tahunAktif(app(KegiatanRepository::class)->semua());
+        $simulasi = BukuDokumen::isi($kegiatan, '1.6', 'DIPA')['simulasi'];
+        $this->assertSame(['cover' => null, 'kak' => [4, 8], 'rab' => [9, 10]], BukuDokumen::rentangKegiatan($simulasi, 0), 'Cover kegiatan tanpa nomor (bawaan), KAK 5 & RAB 2 halaman.');
+        $this->assertSame(['hal. 12–16', 'hal. 9', null], [BukuDokumen::teksRentang(12, 16), BukuDokumen::teksRentang(9, 9), BukuDokumen::teksRentang(null, null)]);
+
+        Livewire::test(Daftar::class)
+            ->assertDontSeeHtml('data-testid="lihat-kegiatan-buku"')
+            ->call('lihatKegiatan', 3)
+            ->assertSet('lihat', 3)
+            ->assertSee('Kegiatan 1 dari 2 di buku ini')
+            ->assertSeeHtml('data-testid="pratinjau-kak"')
+            ->assertSeeHtml('data-testid="pratinjau-rab"')
+            ->assertSeeHtml('aria-label="Kegiatan berikutnya"')
+            ->assertDontSeeHtml('aria-label="Kegiatan sebelumnya"')
+            ->call('lihatKegiatan', 2)
+            ->assertSee('Kegiatan 2 dari 2 di buku ini')
+            ->call('tutupLihat')
+            ->assertSet('lihat', 0);
+
+        // Isi tampilan diperiksa pada render awal (respons pembaruan Livewire ber-JSON meloloskan "/" & huruf non-ASCII).
+        Livewire::withQueryParams(['kegiatan' => 3])->test(Daftar::class)
+            ->assertSeeHtml('data-testid="dokumen-kegiatan-buku" data-kegiatan="3"')
+            ->assertSeeInOrder(['Cover kegiatan', 'tanpa nomor', 'KAK/TOR', 'hal. 4–8', 'RAB DIPA', 'hal. 9–10']);
+
+        // Kegiatan di luar buku yang dipilih tidak ditampilkan.
+        Livewire::withQueryParams(['kegiatan' => 1])->test(Daftar::class)->assertSet('lihat', 0);
+        Livewire::withQueryParams(['sumber' => 'Komite', 'kegiatan' => 1])->test(Daftar::class)->assertSet('lihat', 1)->assertSee('RAB Komite');
+    }
+
     public function test_admin_melihat_semua_buku(): void
     {
         session(['stub_role' => 'admin']);

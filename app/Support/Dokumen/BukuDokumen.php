@@ -128,6 +128,31 @@ final class BukuDokumen
         ];
     }
 
+    /**
+     * Rentang halaman tercetak satu kegiatan di buku (urutan $indeks dalam daftar isi) dari simulasi nomor halaman:
+     * cover kegiatan, KAK/TOR, dan RAB — null bila halamannya tanpa nomor.
+     *
+     * @param  array{halaman: list<array{jenis: string, kegiatan: int|null, nomor: int|null}>}  $simulasi
+     * @return array{cover: int|null, kak: array{0: int|null, 1: int|null}, rab: array{0: int|null, 1: int|null}}
+     */
+    public static function rentangKegiatan(array $simulasi, int $indeks): array
+    {
+        $milik = collect($simulasi['halaman'])->where('kegiatan', $indeks);
+        $rentang = fn (string $jenis) => [$milik->where('jenis', $jenis)->pluck('nomor')->filter()->min(), $milik->where('jenis', $jenis)->pluck('nomor')->filter()->max()];
+
+        return ['cover' => $milik->firstWhere('jenis', 'cover_kegiatan')['nomor'] ?? null, 'kak' => $rentang('kak'), 'rab' => $rentang('rab')];
+    }
+
+    /** "hal. 4–8", "hal. 9", atau null bila tanpa nomor. */
+    public static function teksRentang(?int $awal, ?int $akhir): ?string
+    {
+        return match (true) {
+            $awal === null => null,
+            $akhir === null || $akhir === $awal => "hal. {$awal}",
+            default => "hal. {$awal}–{$akhir}",
+        };
+    }
+
     /** Nama berkas buku, mis. "TOR_RAB_PMM_DIPA_2026.pdf" (PRD §7). */
     public static function namaBerkas(string $leading, string $sumber): string
     {

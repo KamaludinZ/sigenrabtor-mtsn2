@@ -111,7 +111,10 @@
                                     @endif
                                 </p>
                             </div>
-                            <span class="pt-0.5 text-right text-xs text-stone-500 tabular-nums" data-halaman>hal. {{ $b['halaman'] ?? '…' }}</span>
+                            <span class="flex flex-col items-end gap-1 pt-0.5 text-right text-xs text-stone-500 tabular-nums">
+                                <span data-halaman>hal. {{ $b['halaman'] ?? '…' }}</span>
+                                <button type="button" wire:click="lihatKegiatan({{ $b['id'] }})" @class(['font-semibold hover:text-brand-800', 'text-brand-800 underline' => $lihat === $b['id'], 'text-brand-700' => $lihat !== $b['id']]) data-lihat-kegiatan="{{ $b['id'] }}">Lihat di buku</button>
+                            </span>
                         </li>
                     @empty
                         <li class="px-5 py-10 text-center sm:px-6" data-testid="buku-tanpa-kegiatan">
@@ -195,6 +198,32 @@
                 @endif
             </aside>
         </div>
+
+        {{-- Dokumen satu kegiatan di dalam buku (urutan & rentang halaman buku). --}}
+        @if ($dilihat = $this->dilihat)
+            <section class="mt-6 scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-dokumen-buku" data-testid="lihat-kegiatan-buku"
+                     wire:key="lihat-{{ $lihat }}" x-data x-init="$el.scrollIntoView({ behavior: 'instant', block: 'start' })">
+                <header class="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
+                    <div class="min-w-0">
+                        <p class="text-xs font-medium text-stone-500">Kegiatan {{ $dilihat['indeks'] + 1 }} dari {{ $dilihat['jumlah'] }} di buku ini</p>
+                        <h2 id="judul-dokumen-buku" class="text-base font-semibold text-stone-900">{{ $dilihat['data']['nama_kegiatan'] }}</h2>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        @if ($dilihat['sebelum'])
+                            <button type="button" wire:click="lihatKegiatan({{ $dilihat['sebelum'] }})" class="btn-ghost px-2.5 py-1.5 text-sm" aria-label="Kegiatan sebelumnya"><x-ui.icon name="chevron-right" class="size-4 rotate-180" /> Sebelumnya</button>
+                        @endif
+                        @if ($dilihat['sesudah'])
+                            <button type="button" wire:click="lihatKegiatan({{ $dilihat['sesudah'] }})" class="btn-ghost px-2.5 py-1.5 text-sm" aria-label="Kegiatan berikutnya">Berikutnya <x-ui.icon name="chevron-right" class="size-4" /></button>
+                        @endif
+                        <a href="{{ route('kegiatan.pratinjau', ['kegiatan' => $lihat, 'sumber' => $terpilih['sumber']]) }}" wire:navigate class="btn-secondary px-2.5 py-1.5 text-sm">Buka pratinjau</a>
+                        <button type="button" wire:click="tutupLihat" class="btn-ghost px-2.5 py-1.5 text-sm" aria-label="Tutup dokumen kegiatan"><x-ui.icon name="x" class="size-4" /></button>
+                    </div>
+                </header>
+                <div class="rounded-b-2xl bg-stone-100 p-3 sm:p-6" wire:loading.class="opacity-60" wire:target="lihatKegiatan">
+                    <x-dokumen.kegiatan-buku :kegiatan="$dilihat['data']" :sumber="$terpilih['sumber']" :rentang="$dilihat['rentang']" />
+                </div>
+            </section>
+        @endif
 
         {{-- Peta semua buku tahun aktif --}}
         <section class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-peta-buku" data-testid="peta-buku">

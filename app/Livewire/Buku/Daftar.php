@@ -19,7 +19,8 @@ use Livewire\Component;
  * kegiatan) lalu lihat susunan bukunya — cover buku, daftar kegiatan urut kode RKTM dengan halaman awal, status & cap
  * DRAF tiap kegiatan — serta peta semua buku tahun aktif. Akun leading hanya melihat buku leading-nya. "Susun buku"
  * mengambil kegiatan bertahap (PengambilanBuku, dipanggil berulang dari klien) lalu mencatatnya di riwayat
- * (BukuDokumenRepository); gabung PDF menyusul.
+ * (BukuDokumenRepository); dokumen satu kegiatan bisa dilihat di dalam buku (`?kegiatan=`, <x-dokumen.kegiatan-buku>);
+ * gabung PDF menyusul.
  */
 #[Layout('layouts.app')]
 class Daftar extends Component
@@ -29,6 +30,10 @@ class Daftar extends Component
 
     #[Url(except: '')]
     public string $sumber = '';
+
+    /** Kegiatan yang dokumennya sedang dilihat di dalam buku (0 = tidak ada). */
+    #[Url(as: 'kegiatan', except: 0)]
+    public int $lihat = 0;
 
     /**
      * Penyusunan buku yang sedang/selesai berjalan (simulasi pengambilan kegiatan; dikelola server).
@@ -53,11 +58,52 @@ class Daftar extends Component
         $this->rapikan();
     }
 
+    public function updatedLihat(): void
+    {
+        $this->rapikan();
+    }
+
     public function pilih(string $leading, string $sumber): void
     {
         $this->leading = $leading;
         $this->sumber = $sumber;
         $this->rapikan();
+    }
+
+    /** Lihat dokumen satu kegiatan di dalam buku ini (urutan & halaman buku). */
+    public function lihatKegiatan(int $id): void
+    {
+        $this->lihat = $id;
+        $this->rapikan();
+    }
+
+    public function tutupLihat(): void
+    {
+        $this->lihat = 0;
+    }
+
+    /**
+     * Kegiatan yang sedang dilihat: data, urutan di buku, rentang halaman, dan tetangganya.
+     *
+     * @return array{data: array<string, mixed>, indeks: int, jumlah: int, rentang: array<string, mixed>, sebelum: int|null, sesudah: int|null}|null
+     */
+    #[Computed]
+    public function dilihat(): ?array
+    {
+        $id = array_column($this->isi['baris'] ?? [], 'id');
+        $i = array_search($this->lihat, $id, true);
+        if ($i === false) {
+            return null;
+        }
+
+        return [
+            'data' => array_column($this->kegiatan, null, 'id')[$this->lihat],
+            'indeks' => $i,
+            'jumlah' => count($id),
+            'rentang' => BukuDokumen::rentangKegiatan($this->isi['simulasi'], $i),
+            'sebelum' => $id[$i - 1] ?? null,
+            'sesudah' => $id[$i + 1] ?? null,
+        ];
     }
 
     /** Mulai menyusun buku yang dipilih: kegiatan diambil bertahap lewat lanjutkanSusun(). */
@@ -207,7 +253,10 @@ class Daftar extends Component
         if ($this->sumber !== '' && SumberDana::tryFrom($this->sumber) === null) {
             $this->sumber = '';
         }
-        unset($this->terpilih, $this->isi, $this->riwayat);
+        unset($this->terpilih, $this->isi, $this->riwayat, $this->dilihat);
+        if ($this->lihat !== 0 && $this->dilihat === null) {
+            $this->lihat = 0;
+        }
         // Ganti buku: hasil penyusunan buku lain tidak ditampilkan lagi.
         if ($this->proses && ($this->terpilih === null || $this->proses['leading'] !== $this->terpilih['leading'] || $this->proses['sumber'] !== $this->terpilih['sumber'])) {
             $this->proses = null;
