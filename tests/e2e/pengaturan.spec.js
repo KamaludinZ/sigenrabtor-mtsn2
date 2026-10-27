@@ -17,7 +17,8 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByTestId('jumlah-wajib-siap')).toHaveText('4/7 wajib siap');
         await expect(kesiapan.locator('li[data-siap="tidak"]')).toHaveCount(6);
         await expect(page.locator('article[data-testid^="bagian-"]')).toHaveCount(6);
-        await expect(page.getByTestId('bagian-leading')).toContainText('Segera disiapkan');
+        await expect(page.getByTestId('bagian-ai')).toContainText('Segera disiapkan');
+        await expect(page.getByTestId('bagian-leading').getByRole('link', { name: 'Buka Leading & User' })).toBeVisible();
         await expect(page.getByTestId('bagian-madrasah').getByRole('link', { name: 'Buka Profil & Pejabat' })).toBeVisible();
         await expect(page.getByTestId('bagian-tahun').getByRole('link', { name: 'Buka Tahun Anggaran' })).toBeVisible();
 
@@ -35,8 +36,8 @@ test.describe('Pengaturan admin', () => {
         }
 
         // Butir kesiapan tanpa halaman menuju kartu bagiannya.
-        await kesiapan.getByRole('link', { name: 'Leading & akun' }).click();
-        await expect(page).toHaveURL(/#bagian-leading$/);
+        await kesiapan.getByRole('link', { name: 'Penyedia AI' }).click();
+        await expect(page).toHaveURL(/#bagian-ai$/);
         await page.screenshot({ path: `storage/playwright/shots/pengaturan-ikhtisar-${testInfo.project.name}.png`, fullPage: true });
     });
 
@@ -898,5 +899,31 @@ test.describe('Pengaturan admin', () => {
         await expect(page.getByText('Unggahan dibatalkan — master kode TA 2026 tidak berubah.')).toBeVisible();
         await expect(panel).toHaveCount(0);
         await expect(page.getByTestId('master-kode').getByRole('tab', { name: /^SK/ })).toContainText('11');
+    });
+
+    test('leading & user: tab leading & akun, akun tertaut, status, tanpa gulir mendatar', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan');
+        await page.getByTestId('bagian-leading').getByRole('link', { name: 'Buka Leading & User' }).click();
+        await expect(page).toHaveURL(/\/pengaturan\/leading$/);
+        const leading = page.getByTestId('daftar-leading');
+        await expect(leading.locator('[data-leading]').filter({ visible: true })).toHaveCount(9);
+        await expect(leading.locator('[data-leading="1.1"]').filter({ visible: true })).toContainText('Siti Rohmah, M.Pd.');
+        await expect(leading.locator('[data-leading="1.9"]').filter({ visible: true })).toContainText('Nonaktif');
+        await expect(page.getByTestId('leading-tanpa-akun')).toContainText('1.3 Waka Sarpras');
+        let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/leading-user-${testInfo.project.name}.png`, fullPage: true });
+
+        await page.getByRole('button', { name: /^Akun/ }).click();
+        await expect(page).toHaveURL(/tab=akun/);
+        const akun = page.getByTestId('daftar-akun');
+        await expect(akun.locator('[data-akun]')).toHaveCount(6);
+        await expect(akun.locator('[data-akun="2"]')).toContainText('Anda');
+        await expect(akun.locator('[data-akun="4"]')).toContainText('1.4 Waka Humas');
+        await expect(akun.locator('[data-akun="6"]')).toContainText('Nonaktif');
+        overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: `storage/playwright/shots/akun-user-${testInfo.project.name}.png`, fullPage: true });
     });
 });
