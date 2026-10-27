@@ -77,7 +77,7 @@
     </div>
 
     {{-- Parameter jawaban --}}
-    <form wire:submit="simpanParameter" class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-parameter-ai" data-testid="parameter-ai">
+    <form wire:submit="simpanParameter" class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-parameter-ai" data-testid="parameter-ai" x-data="formAi('isianParameter', 'parameter')">
         <h2 id="judul-parameter-ai" class="text-sm font-semibold text-stone-900">Parameter jawaban</h2>
         <p class="mt-0.5 text-xs text-stone-500">Berlaku untuk semua penyedia: “Buat dengan AI”, minta perbaikan, dan usulan jadwal.</p>
 
@@ -118,7 +118,10 @@
             @error('isianParameter.jumlah_versi') <p class="form-error" role="alert">{{ $message }}</p> @enderror
         </fieldset>
 
-        <div class="mt-5 flex flex-wrap-reverse items-center justify-between gap-2 border-t border-stone-100 pt-4">
+        <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
+            @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'parameter'])
+        </div>
+        <div class="mt-2 flex flex-wrap-reverse items-center justify-between gap-2">
             <button type="button" wire:click="kembalikanParameter" class="btn-ghost text-xs whitespace-nowrap">Kembalikan bawaan</button>
             <button type="submit" class="btn-primary whitespace-nowrap" wire:loading.attr="disabled" wire:target="simpanParameter" data-testid="simpan-parameter">
                 <x-ui.icon name="save" class="size-4" /> Simpan parameter

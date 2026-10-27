@@ -20,12 +20,13 @@
                 @endunless
             </div>
             @if ($gayaTerbuka)
-                <form wire:submit="simpanGaya" class="mt-2 space-y-2" x-data x-on:keydown.escape="$wire.batalGaya()">
+                <form wire:submit="simpanGaya" class="mt-2 space-y-2" x-data="formAi('isianGaya', 'gaya')" x-on:keydown.escape="$wire.batalGaya()">
                     <textarea wire:model="isianGaya" rows="3" maxlength="{{ PromptAi::MAKS_GAYA }}" class="form-input text-sm" aria-label="Gaya bahasa baku" data-testid="isian-gaya"></textarea>
                     @error('isianGaya') <p class="form-error" role="alert">{{ $message }}</p> @enderror
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <button type="button" wire:click="pakaiGayaBawaan" class="btn-ghost px-2 py-1 text-xs">Pakai bawaan</button>
-                        <div class="flex gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'gaya'])
                             <button type="button" wire:click="batalGaya" class="btn-ghost px-2.5 py-1.5 text-xs">Batal</button>
                             <button type="submit" class="btn-primary px-2.5 py-1.5 text-xs" data-testid="simpan-gaya">Simpan</button>
                         </div>
@@ -70,7 +71,7 @@
                     </div>
 
                     @if ($terbuka)
-                        <form wire:submit="simpanPromptBagian" class="mt-3 space-y-3 rounded-xl bg-stone-50/70 p-4 ring-1 ring-stone-200" data-testid="formulir-prompt" x-data x-on:keydown.escape="$wire.batalPrompt()">
+                        <form wire:submit="simpanPromptBagian" class="mt-3 space-y-3 rounded-xl bg-stone-50/70 p-4 ring-1 ring-stone-200" data-testid="formulir-prompt" x-data="formAi('isianPrompt', 'prompt')" x-on:keydown.escape="$wire.batalPrompt()">
                             <div>
                                 <label for="isian-instruksi" class="text-sm font-medium text-stone-800">Instruksi untuk AI</label>
                                 <textarea id="isian-instruksi" wire:model.live.debounce.500ms="isianPrompt.instruksi" rows="4" maxlength="{{ $maksInstruksi }}" class="form-input mt-1.5 text-sm" x-ref="instruksi"
@@ -107,7 +108,8 @@
 
                             <div class="flex flex-col-reverse gap-2 border-t border-stone-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
                                 <button type="button" wire:click="pakaiPromptBawaan" class="btn-ghost text-xs">Kembalikan bawaan</button>
-                                <div class="flex flex-col-reverse gap-2 sm:flex-row">
+                                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                    @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'prompt'])
                                     <button type="button" wire:click="batalPrompt" class="btn-ghost">Batal</button>
                                     <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanPromptBagian" data-testid="simpan-prompt"><x-ui.icon name="save" class="size-4" /> Simpan</button>
                                 </div>

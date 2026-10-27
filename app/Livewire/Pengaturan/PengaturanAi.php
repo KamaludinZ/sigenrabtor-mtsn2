@@ -6,6 +6,7 @@ use App\Contracts\DaftarModelAi;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PengaturanAiRepository;
 use App\Contracts\PromptAiRepository;
+use App\Contracts\RiwayatPengaturanRepository;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
@@ -96,6 +97,13 @@ class PengaturanAi extends Component
 
     public int|string $isianKhusus = '';
 
+    /** @var array{bagian: string, pesan: string}|null Kegagalan simpan terakhir, tampil di formulir bagiannya (Coba lagi). */
+    #[Locked]
+    public ?array $gagalSimpan = null;
+
+    /** Bagian formulir yang sedang disimpan dalam permintaan ini (event `pengaturan-ai-tersimpan`, $gagalSimpan). */
+    private string $bagianSimpan = '';
+
     /** `diperbarui_pada` template prompt saat penyunting dibuka. */
     #[Locked]
     public ?string $versiPrompt = null;
@@ -163,6 +171,7 @@ class PengaturanAi extends Component
      */
     public function simpanLokal(): void
     {
+        $this->bagianSimpan = 'lokal';
         $this->resetErrorBag();
         ['data' => $data, 'galat' => $galat] = AturanPenyediaAi::lokal($this->isianLokal);
         if ($galat !== []) {
@@ -212,6 +221,7 @@ class PengaturanAi extends Component
     /** Simpan gaya bahasa baku semua bagian (kosong = bawaan). */
     public function simpanGaya(): void
     {
+        $this->bagianSimpan = 'gaya';
         $this->resetErrorBag();
         $gaya = trim(preg_replace('/\s+/u', ' ', $this->isianGaya));
         if ($gaya === '' || mb_strlen($gaya) > PromptAi::MAKS_GAYA) {
@@ -257,6 +267,7 @@ class PengaturanAi extends Component
     /** Simpan template prompt bagian yang disunting (PromptAi::galat). */
     public function simpanPromptBagian(): void
     {
+        $this->bagianSimpan = 'prompt';
         $bagian = $this->promptTerbuka;
         abort_unless($bagian !== null, 404);
         $this->resetErrorBag();
@@ -322,6 +333,7 @@ class PengaturanAi extends Component
     /** Simpan batas umum per akun per hari (BatasAi::RENTANG). */
     public function simpanBatas(): void
     {
+        $this->bagianSimpan = 'batas';
         $this->resetErrorBag();
         if ($galat = BatasAi::galat($this->isianBatas)) {
             $this->addError('isianBatas', $galat);
@@ -404,6 +416,7 @@ class PengaturanAi extends Component
     /** Pakai satu model dari daftar yang dimuat untuk penyedia itu. */
     public function pakaiModel(string $penyedia, string $model): void
     {
+        $this->bagianSimpan = 'model';
         abort_unless(in_array($model, array_column($this->daftarModel[$penyedia]['model'] ?? [], 'nama'), true), 404);
 
         $lama = app(PengaturanAiRepository::class)->ambil();
@@ -419,6 +432,7 @@ class PengaturanAi extends Component
     /** Simpan parameter jawaban (ParameterAi). */
     public function simpanParameter(): void
     {
+        $this->bagianSimpan = 'parameter';
         $this->resetErrorBag();
         ['data' => $data, 'galat' => $galat] = ParameterAi::rapikan($this->isianParameter);
         if ($galat !== []) {
@@ -502,6 +516,7 @@ class PengaturanAi extends Component
      */
     public function simpanCloud(): void
     {
+        $this->bagianSimpan = 'cloud';
         $penyedia = $this->cloudTerbuka;
         abort_unless($penyedia !== null, 404);
         $this->resetErrorBag();
@@ -572,6 +587,7 @@ class PengaturanAi extends Component
     /** Simpan penyedia aktif & cadangan (AturanPenyediaAi::pilih — keduanya harus siap). */
     public function simpanPilihan(): void
     {
+        $this->bagianSimpan = 'pilihan';
         $this->resetErrorBag();
         $lama = app(PengaturanAiRepository::class)->ambil();
         ['pengaturan' => $baru, 'galat' => $galat] = AturanPenyediaAi::pilih($lama, $this->pilihan['aktif'] ?? null, $this->pilihan['cadangan'] ?? null);
@@ -625,16 +641,19 @@ class PengaturanAi extends Component
         }
 
         unset($baru['diperbarui_pada']);
+        $this->gagalSimpan = null;
         $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), $label + ['aktif' => 'Penyedia aktif', 'cadangan' => 'Penyedia cadangan']);
         // Kunci API tidak pernah ikut dicatat; hanya keterangan diisi/diganti/dihapus.
         $perubahan = implode('; ', array_filter([$perubahan, $tambahan])) ?: null;
         try {
             app(PengaturanAiRepository::class)->simpan($baru);
         } catch (RuntimeException $e) {
+            $this->gagalSimpan = ['bagian' => $this->bagianSimpan, 'pesan' => $e->getMessage()];
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return false;
         }
+        $this->dispatch('pengaturan-ai-tersimpan', bagian: $this->bagianSimpan);
 
         if ($perubahan !== null) {
             RiwayatPengaturan::catat($aksi, $awalan.$perubahan);
@@ -655,6 +674,18 @@ class PengaturanAi extends Component
     private static function ringkasPeran(array $pengaturan): array
     {
         return ['aktif' => PenyediaAi::nama($pengaturan['provider_aktif']) ?? 'belum dipilih', 'cadangan' => PenyediaAi::nama($pengaturan['provider_cadangan']) ?? 'belum dipilih'];
+    }
+
+    /**
+     * Perubahan Pengaturan AI terakhir dari riwayat (aksi bagian `ai`): waktu, pengguna, dan jenis perubahan.
+     *
+     * @return array{waktu: string, pengguna: string, label: string}|null
+     */
+    public function terakhirDisimpan(): ?array
+    {
+        $entri = collect(app(RiwayatPengaturanRepository::class)->semua())->first(fn (array $r) => (RiwayatPengaturan::AKSI[$r['aksi']][1] ?? null) === 'ai');
+
+        return $entri === null ? null : ['waktu' => $entri['waktu'], 'pengguna' => $entri['pengguna'], 'label' => RiwayatPengaturan::AKSI[$entri['aksi']][0]];
     }
 
     /**
@@ -702,13 +733,16 @@ class PengaturanAi extends Component
             return false;
         }
 
+        $this->gagalSimpan = null;
         try {
             $repo->simpan(array_diff_key($ubah($lama), ['diperbarui_pada' => 1]));
         } catch (RuntimeException $e) {
+            $this->gagalSimpan = ['bagian' => $this->bagianSimpan, 'pesan' => $e->getMessage()];
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return false;
         }
+        $this->dispatch('pengaturan-ai-tersimpan', bagian: $this->bagianSimpan);
         if ($keterangan !== null) {
             RiwayatPengaturan::catat('ubah_prompt_ai', $keterangan);
         }
@@ -720,6 +754,7 @@ class PengaturanAi extends Component
     /** Simpan/buang batas khusus satu akun beserta riwayatnya. */
     private function ubahBatasKhusus(int $id, ?int $batas): void
     {
+        $this->bagianSimpan = 'khusus';
         $akun = collect(StubPengaturan::pengguna())->firstWhere('id', $id);
         abort_unless($akun !== null, 404);
 

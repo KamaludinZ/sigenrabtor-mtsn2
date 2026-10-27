@@ -42,7 +42,7 @@
                     </div>
 
                     @if ($khususTerbuka === $p['id'])
-                        <form wire:submit="simpanKhusus" class="mt-3 flex flex-wrap items-end gap-2 rounded-lg bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="formulir-khusus" x-data x-on:keydown.escape="$wire.batalKhusus()">
+                        <form wire:submit="simpanKhusus" class="mt-3 flex flex-wrap items-end gap-2 rounded-lg bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="formulir-khusus" x-data="formAi('isianKhusus', 'khusus')" x-on:keydown.escape="$wire.batalKhusus()">
                             <label class="block">
                                 <span class="text-xs font-medium text-stone-700">Batas khusus per hari</span>
                                 <input type="number" wire:model="isianKhusus" min="{{ $minBatas }}" max="{{ $maksBatas }}" class="form-input mt-1 w-28 tabular-nums" data-testid="isian-khusus">
@@ -52,6 +52,7 @@
                                 <button type="button" wire:click="hapusKhusus({{ $p['id'] }})" class="btn-ghost px-2.5 py-1.5 text-xs" data-testid="hapus-khusus">Pakai batas umum</button>
                             @endif
                             <button type="button" wire:click="batalKhusus" class="btn-ghost px-2.5 py-1.5 text-xs">Batal</button>
+                            @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'khusus'])
                             @error('isianKhusus') <p class="form-error w-full" role="alert">{{ $message }}</p> @enderror
                         </form>
                     @endif
@@ -61,7 +62,7 @@
     </section>
 
     <aside class="space-y-4">
-        <form wire:submit="simpanBatas" class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-batas-harian" data-testid="batas-harian-ai">
+        <form wire:submit="simpanBatas" class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-batas-harian" data-testid="batas-harian-ai" x-data="formAi('isianBatas', 'batas')">
             <h2 id="judul-batas-harian" class="text-sm font-semibold text-stone-900">Batas umum per akun per hari</h2>
             <p class="mt-1 text-xs text-stone-500">Berlaku untuk “Buat dengan AI”, minta perbaikan, dan usulan jadwal. Permintaan yang gagal tidak dihitung.</p>
             <div class="mt-3 grid grid-cols-3 gap-1 rounded-lg bg-stone-100 p-0.5 text-xs font-semibold" role="radiogroup" aria-label="Pilihan cepat batas">
@@ -76,6 +77,7 @@
             </label>
             @error('isianBatas') <p class="form-error" role="alert">{{ $message }}</p> @enderror
             <p class="mt-2 text-xs text-stone-500" data-testid="kapasitas-ai">Kapasitas harian saat ini: ± {{ $kapasitas }} permintaan untuk {{ count($pemakaian) }} akun aktif.</p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">@include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'batas'])</div>
             <button type="submit" class="btn-primary mt-3 w-full" wire:loading.attr="disabled" wire:target="simpanBatas" data-testid="simpan-batas">
                 <x-ui.icon name="save" class="size-4" /> Simpan batas umum
             </button>

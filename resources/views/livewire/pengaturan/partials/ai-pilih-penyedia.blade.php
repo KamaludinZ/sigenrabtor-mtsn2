@@ -13,7 +13,7 @@
     tukar, dan alur cadangan. Simpan lewat simpanPilihan() (AturanPenyediaAi::pilih).
 --}}
 <section class="rounded-2xl bg-white shadow-xs ring-2 ring-brand-200" aria-labelledby="judul-pilih-penyedia" data-testid="pilih-penyedia" wire:key="pilih-penyedia"
-         x-data x-on:keydown.escape="$wire.batalPilihan()">
+         x-data="formAi('pilihan', 'pilihan')" x-on:keydown.escape="$wire.batalPilihan()">
     <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4">
         <div class="min-w-0">
             <h2 id="judul-pilih-penyedia" class="text-sm font-semibold text-stone-900">Pilih penyedia aktif &amp; cadangan</h2>
@@ -80,7 +80,8 @@
         @endif
     </ol>
 
-    <div class="mt-4 flex flex-col-reverse gap-2 border-t border-stone-100 px-5 py-3 sm:flex-row sm:justify-end">
+    <div class="mt-4 flex flex-col-reverse gap-2 border-t border-stone-100 px-5 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'pilihan'])
         <button type="button" wire:click="batalPilihan" class="btn-ghost">Batal</button>
         <button type="button" wire:click="simpanPilihan" wire:loading.attr="disabled" wire:target="simpanPilihan" class="btn-primary" data-testid="simpan-pilihan">
             <x-ui.icon name="save" class="size-4" /> Simpan pilihan

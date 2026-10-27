@@ -2,6 +2,7 @@ import unggahArsip, { galatArsip } from './arsip-final';
 import { akhirPekan, angka, galatNip, jumlahRab, nip, rapikanKetikan, rupiah, statusPagu, tanggalPanjang, terbilang } from './format';
 import editorCover from './editor-cover';
 import catatanKonteks, { aspekTerisi, memuatNip } from './konteks';
+import formAi, { adaFormKotor } from './form-ai';
 import panelKonsistensi, { periksaKonsistensiBulan } from './konsistensi-bulan';
 import gridMatrik, { ringkasanMatrik } from './matrik';
 import paguKegiatan from './pagu-kegiatan';
@@ -12,7 +13,7 @@ import jumlahTermin, { persenTermin, statusTermin } from './termin';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu), $ringkasanMatrik(matrik), $nip(teks), $galatNip(teks).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor };
 
 pasangSiaranAnggaran();
 
@@ -38,6 +39,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('panelKonsistensi', panelKonsistensi);
     window.Alpine.data('unggahArsip', unggahArsip);
     window.Alpine.data('editorCover', editorCover);
+    window.Alpine.data('formAi', formAi);
 
     // x-angka-bulat: isian angka bulat — tolak ketikan e/+/-/titik/koma dan sisakan digit saat menempel ("1.000" → "1000").
     window.Alpine.directive('angka-bulat', (el) => {

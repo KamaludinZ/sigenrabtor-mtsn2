@@ -49,7 +49,7 @@
                 </div>
 
                 @if ($terbuka)
-                    <form wire:submit="simpanCloud" class="mt-4 space-y-4 rounded-xl bg-stone-50/70 p-4 ring-1 ring-stone-200" data-testid="formulir-{{ $kunci }}" x-data x-on:keydown.escape="$wire.batalCloud()">
+                    <form wire:submit="simpanCloud" class="mt-4 space-y-4 rounded-xl bg-stone-50/70 p-4 ring-1 ring-stone-200" data-testid="formulir-{{ $kunci }}" x-data="formAi('isianCloud', 'cloud')" x-on:keydown.escape="$wire.batalCloud()">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <x-ui.field label="Model" for="cloud-model" error="isianCloud.model" :hint="'Nama model dari dasbor penyedia ('.$p['contoh_model'].').'">
                                 <input type="text" id="cloud-model" wire:model="isianCloud.model" maxlength="100" class="form-input font-mono text-sm" autocomplete="off"
@@ -105,10 +105,12 @@
 
                         <div class="flex flex-col-reverse gap-2 border-t border-stone-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
                             <button type="button" class="btn-ghost text-xs" disabled title="Sedang disiapkan">Uji koneksi <x-ui.segera /></button>
-                            <div class="flex flex-col-reverse gap-2 sm:flex-row">
+                            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'cloud'])
                                 <button type="button" wire:click="batalCloud" class="btn-ghost">Batal</button>
                                 <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanCloud" data-testid="simpan-cloud">
-                                    <x-ui.icon name="save" class="size-4" /> {{ $peringatanCloud !== [] ? 'Tetap simpan' : 'Simpan' }}
+                                    <span wire:loading.remove wire:target="simpanCloud" class="inline-flex items-center gap-1.5"><x-ui.icon name="save" class="size-4" /> {{ $peringatanCloud !== [] ? 'Tetap simpan' : 'Simpan' }}</span>
+                                    <span wire:loading.flex wire:target="simpanCloud" class="items-center gap-1.5"><x-ui.icon name="loader" class="size-4 animate-spin" /> <span x-text="$wire.isianCloud.kunci ? 'Mengenkripsi kunci & menyimpan…' : 'Menyimpan…'">Menyimpan…</span></span>
                                 </button>
                             </div>
                         </div>

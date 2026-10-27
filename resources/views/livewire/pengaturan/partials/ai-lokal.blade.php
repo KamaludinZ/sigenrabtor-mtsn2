@@ -32,7 +32,7 @@
     </header>
 
     @if ($lokalTerbuka)
-        <form wire:submit="simpanLokal" class="space-y-4 px-5 py-4" data-testid="formulir-lokal" x-data x-on:keydown.escape="$wire.batalLokal()">
+        <form wire:submit="simpanLokal" class="space-y-4 px-5 py-4" data-testid="formulir-lokal" x-data="formAi('isianLokal', 'lokal')" x-on:keydown.escape="$wire.batalLokal()">
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-ui.field class="sm:col-span-2" label="Alamat server" for="lokal-base-url" error="isianLokal.base_url" required
                             hint="Alamat & port Ollama di jaringan madrasah, mis. http://192.168.1.10:11434 (bawaan Ollama: port 11434).">
@@ -70,12 +70,14 @@
                 @error('isianLokal.peran') <p class="form-error" role="alert">{{ $message }}</p> @enderror
             </fieldset>
 
-            <div class="flex flex-col-reverse gap-2 border-t border-stone-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col-reverse gap-2 border-t border-stone-100 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <button type="button" class="btn-ghost text-xs" disabled title="Sedang disiapkan">Uji koneksi <x-ui.segera /></button>
-                <div class="flex flex-col-reverse gap-2 sm:flex-row">
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+                    @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'lokal'])
                     <button type="button" wire:click="batalLokal" class="btn-ghost">Batal</button>
                     <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanLokal" data-testid="simpan-lokal">
-                        <x-ui.icon name="save" class="size-4" /> Simpan
+                        <span wire:loading.remove wire:target="simpanLokal" class="inline-flex items-center gap-1.5"><x-ui.icon name="save" class="size-4" /> Simpan</span>
+                        <span wire:loading.flex wire:target="simpanLokal" class="items-center gap-1.5"><x-ui.icon name="loader" class="size-4 animate-spin" /> Menyimpan…</span>
                     </button>
                 </div>
             </div>

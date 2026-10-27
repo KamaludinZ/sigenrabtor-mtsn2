@@ -196,4 +196,42 @@ test.describe('Pengaturan AI', () => {
         await batas.getByTestId('simpan-batas').click();
         await expect(page.getByText('Batas umum tersimpan: 20 permintaan AI per akun per hari.')).toBeVisible();
     });
+
+    test('proses simpan: penanda belum disimpan, konfirmasi pindah tab, tersimpan, lalu pulihkan', async ({ page }) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/ai');
+        const lokal = page.getByTestId('penyedia-lokal');
+        await lokal.getByTestId('atur-lokal').click();
+        await expect(lokal.getByTestId('belum-disimpan-lokal')).toBeHidden();
+        await lokal.getByLabel('Model').fill('qwen2.5:3b');
+        await expect(lokal.getByTestId('belum-disimpan-lokal')).toBeVisible();
+
+        // Pindah tab saat ada perubahan → konfirmasi; ditolak = tetap di tab Penyedia.
+        page.once('dialog', async (dialog) => {
+            expect(dialog.message()).toContain('belum disimpan');
+            await dialog.dismiss();
+        });
+        await page.getByTestId('tab-pengaturan-ai').locator('[data-tab="model"]').click();
+        await expect(page).not.toHaveURL(/tab=model/);
+        await expect(lokal.getByTestId('formulir-lokal')).toBeVisible();
+
+        // Batal → bersih → pindah tab tanpa konfirmasi.
+        await lokal.getByRole('button', { name: 'Batal' }).click();
+        await page.getByTestId('tab-pengaturan-ai').locator('[data-tab="model"]').click();
+        await expect(page).toHaveURL(/tab=model/);
+
+        const parameter = page.getByTestId('parameter-ai');
+        await parameter.locator('[data-preset="konsisten"]').click();
+        await expect(parameter.getByTestId('belum-disimpan-parameter')).toBeVisible();
+        await parameter.getByTestId('simpan-parameter').click();
+        await expect(parameter.getByTestId('tersimpan-parameter')).toBeVisible();
+        await expect(parameter.getByTestId('belum-disimpan-parameter')).toBeHidden();
+        await expect(page.getByTestId('terakhir-disimpan-ai')).toContainText('Ubah model & parameter AI');
+
+        // Pulihkan parameter bawaan.
+        await parameter.getByRole('button', { name: 'Kembalikan bawaan' }).click();
+        await parameter.getByTestId('simpan-parameter').click();
+        await expect(parameter.locator('[data-preset="seimbang"]')).toHaveAttribute('aria-checked', 'true');
+        await expect(parameter.getByTestId('belum-disimpan-parameter')).toBeHidden();
+    });
 });
