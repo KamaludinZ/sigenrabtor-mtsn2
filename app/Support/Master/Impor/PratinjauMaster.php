@@ -7,6 +7,7 @@ use App\Support\Impor\GagalBacaImpor;
 use App\Support\Impor\LembarExcel;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\JenisKode;
+use App\Support\MasterKode;
 
 /**
  * Pratinjau sebelum simpan (PRD §14): tiap jenis dalam berkas dibaca dari sheet-nya, diperiksa per baris, lalu
@@ -23,10 +24,11 @@ final class PratinjauMaster
         'sk' => ['uraian' => 'Uraian'],
         'iksk' => ['uraian' => 'Uraian', 'kode_sk' => 'SK induk'],
         'rktm' => ['sub_kegiatan' => 'Sub kegiatan', 'kegiatan' => 'Kegiatan', 'snp' => 'Standar (SNP)'],
+        'edm' => ['uraian' => 'Uraian', 'komponen' => 'Komponen'],
     ];
 
     /** Jenis → pembaca sheet (jenis lain menyusul). */
-    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class, 'rktm' => PemeriksaRktm::class];
+    private const PEMBACA = ['sk' => PemeriksaSk::class, 'iksk' => PemeriksaIksk::class, 'rktm' => PemeriksaRktm::class, 'edm' => PemeriksaEdm::class];
 
     /**
      * @param  array<string, string>  $sheet  Jenis → nama sheet yang dikenali.
@@ -44,7 +46,8 @@ final class PratinjauMaster
             if ($item['dibaca']) {
                 try {
                     $lembar = LembarExcel::buka($path, $namaAsli, $namaSheet);
-                    $item['baris'] = self::bandingkan(self::PEMBACA[$jenis]::baca($lembar), $jenis, $tahun, JenisKode::pemakaian($jenis, $kegiatan));
+                    $baca = $jenis === 'edm' ? PemeriksaEdm::baca($lembar, MasterKode::komponenEdm($tahun)) : self::PEMBACA[$jenis]::baca($lembar);
+                    $item['baris'] = self::bandingkan($baca, $jenis, $tahun, JenisKode::pemakaian($jenis, $kegiatan));
                 } catch (GagalPratinjauMaster $e) {
                     $item['galat'] = $e->getMessage();
                 }
@@ -103,8 +106,13 @@ final class PratinjauMaster
     public static function bandingkan(array $baris, string $jenis, int $tahun, array $pakai): array
     {
         $kunci = JenisKode::DAFTAR[$jenis]['kunci'];
+        // EDM: master menyimpan huruf komponen, berkas & pratinjau memakai namanya.
+        $komponen = $jenis === 'edm' ? MasterKode::komponenEdm($tahun) : [];
         $lama = [];
         foreach (JenisKode::baris($jenis, $tahun) as $b) {
+            if ($jenis === 'edm') {
+                $b['komponen'] = $komponen[$b['komponen']] ?? $b['komponen'];
+            }
             $lama[(string) $b[$kunci]] = $b;
         }
 
