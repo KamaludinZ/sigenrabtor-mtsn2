@@ -2,6 +2,7 @@
 
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\BatalImporKegiatan;
 use App\Http\Controllers\BukaKunciFinal;
 use App\Http\Controllers\CatatanPemeriksaanKegiatan;
 use App\Http\Controllers\DataAgregasiMonitoring;
@@ -41,6 +42,7 @@ use App\Http\Controllers\PasangKunciFinal;
 use App\Http\Controllers\PeriksaCetakKegiatan;
 use App\Http\Controllers\PeriksaUlangImporKegiatan;
 use App\Http\Controllers\ProsesDuplikatKegiatan;
+use App\Http\Controllers\ProsesImporKegiatan;
 use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\RencanaDuplikatKegiatan;
@@ -114,6 +116,8 @@ Route::post('/kegiatan/duplikat', ProsesDuplikatKegiatan::class)->name('kegiatan
 Route::post('/kegiatan/impor-perkin', UnggahPerkinKegiatan::class)->name('kegiatan.impor_perkin.unggah');
 Route::get('/kegiatan/impor-perkin/{impor}', DataImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.data');
 Route::post('/kegiatan/impor-perkin/{impor}/periksa', PeriksaUlangImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.periksa');
+Route::post('/kegiatan/impor-perkin/{impor}/proses', ProsesImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.proses');
+Route::post('/kegiatan/impor-perkin/{impor}/batal', BatalImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.batal');
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
 Route::get('/buku', BukuDaftar::class)->name('buku.index');
 Route::get('/buku/kegiatan', KegiatanBukuDokumen::class)->name('buku.kegiatan');

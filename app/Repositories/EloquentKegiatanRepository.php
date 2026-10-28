@@ -163,6 +163,10 @@ class EloquentKegiatanRepository implements KegiatanRepository
         if (array_key_exists('duplikat_dari', $data)) {
             $kolom['duplikat_dari_id'] = filled($data['duplikat_dari']['id'] ?? null) ? (int) $data['duplikat_dari']['id'] : null;
         }
+        // Impor yang membuat kegiatan (impor_kegiatan); hanya dikirim jalur impor bertahap.
+        if (array_key_exists('impor_id', $data)) {
+            $kolom['impor_id'] = filled($data['impor_id']) ? (string) $data['impor_id'] : null;
+        }
 
         return $kolom;
     }
@@ -283,6 +287,9 @@ class EloquentKegiatanRepository implements KegiatanRepository
         $data['duplikat_dari'] = $kegiatan->duplikat_dari_id
             ? ['id' => $kegiatan->duplikat_dari_id, 'tahun' => $kegiatan->duplikatDari?->tahun_anggaran]
             : null;
+        if ($kegiatan->impor_id !== null) {
+            $data['impor_id'] = $kegiatan->impor_id;
+        }
 
         return $data;
     }
