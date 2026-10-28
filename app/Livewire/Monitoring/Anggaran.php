@@ -4,6 +4,7 @@ namespace App\Livewire\Monitoring;
 
 use App\Contracts\KegiatanRepository;
 use App\Support\Monitoring\DaftarKegiatanMonitoring;
+use App\Support\Monitoring\DataMonitoring;
 use App\Support\Monitoring\RingkasanAnggaran;
 use App\Support\Monitoring\SaringanMonitoring;
 use App\Support\Stub\StubPengaturan;
@@ -175,9 +176,7 @@ class Anggaran extends Component
     /** Urutan per leading memakai kolom yang tampil (saringan satu sumber dana menyembunyikan kolom sumber lain & Jumlah). */
     private function urutLeadingTampil(): bool
     {
-        $grup = explode('_', $this->urutLeading)[0];
-
-        return in_array($grup, ['kode', 'jumlah'], true) || $this->sumber === '' || $grup === mb_strtolower($this->sumber);
+        return DataMonitoring::urutLeadingSah($this->urutLeading, $this->sumber);
     }
 
     public function keHalaman(int $halaman): void

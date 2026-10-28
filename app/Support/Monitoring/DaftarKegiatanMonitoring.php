@@ -24,8 +24,7 @@ final class DaftarKegiatanMonitoring
     public static function untuk(array $nilai): array
     {
         $saringan = SaringanMonitoring::dari($nilai);
-        $urut = is_string($nilai['urut'] ?? null) && isset(RingkasanAnggaran::URUT_RINCIAN[$nilai['urut']]) ? $nilai['urut'] : 'total';
-        $arah = in_array($nilai['arah'] ?? null, ['asc', 'desc'], true) ? $nilai['arah'] : RingkasanAnggaran::URUT_RINCIAN[$urut][1];
+        [$urut, $arah] = self::urutan($nilai);
 
         $semua = RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), $saringan->untukRingkasan())->rincianKegiatan($urut, $arah);
         $jumlahHalaman = max(1, (int) ceil(count($semua) / self::PER_HALAMAN));
@@ -44,10 +43,24 @@ final class DaftarKegiatanMonitoring
     }
 
     /**
+     * Urutan tabel rincian yang sah: kunci URUT_RINCIAN (bawaan `total`) dan arah asc/desc (bawaan arah kunci itu).
+     *
+     * @param  array<string, mixed>  $nilai
+     * @return array{0: string, 1: string}
+     */
+    public static function urutan(array $nilai): array
+    {
+        $urut = is_string($nilai['urut'] ?? null) && isset(RingkasanAnggaran::URUT_RINCIAN[$nilai['urut']]) ? $nilai['urut'] : 'total';
+        $arah = in_array($nilai['arah'] ?? null, ['asc', 'desc'], true) ? $nilai['arah'] : RingkasanAnggaran::URUT_RINCIAN[$urut][1];
+
+        return [$urut, $arah];
+    }
+
+    /**
      * @param  array<string, mixed>  $b  Baris RingkasanAnggaran::rincianKegiatan().
      * @return array<string, mixed>
      */
-    private static function baris(array $b): array
+    public static function baris(array $b): array
     {
         /** @var StatusKegiatan $status */
         $status = $b['status'];
