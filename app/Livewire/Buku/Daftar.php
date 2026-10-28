@@ -4,9 +4,9 @@ namespace App\Livewire\Buku;
 
 use App\Contracts\BukuDokumenRepository;
 use App\Contracts\KegiatanRepository;
-use App\Contracts\PembuatPdfBuku;
 use App\Enums\SumberDana;
 use App\Support\Dokumen\BukuDokumen;
+use App\Support\Dokumen\PdfBuku;
 use App\Support\Dokumen\PengambilanBuku;
 use App\Support\Dokumen\ProsesPdfBuku;
 use App\Support\Stub\StubData;
@@ -22,7 +22,8 @@ use Livewire\Component;
  * DRAF tiap kegiatan — serta peta semua buku tahun aktif. Akun leading hanya melihat buku leading-nya. "Susun buku"
  * mengambil kegiatan bertahap (PengambilanBuku, dipanggil berulang dari klien) lalu mencatatnya di riwayat
  * (BukuDokumenRepository); dokumen satu kegiatan bisa dilihat di dalam buku (`?kegiatan=`, <x-dokumen.kegiatan-buku>).
- * "Gabung PDF" memulai pembuatan PDF (PembuatPdfBuku) yang dipantau berkala sampai selesai (unduh) atau gagal (coba lagi).
+ * "Gabung PDF" memulai pembuatan PDF (PdfBuku → PembuatPdfBuku) yang dipantau berkala sampai selesai (unduh) atau gagal
+ * (coba lagi).
  */
 #[Layout('layouts.app')]
 class Daftar extends Component
@@ -72,23 +73,15 @@ class Daftar extends Component
         $this->rapikan();
     }
 
-    /** Mulai membuat PDF buku yang dipilih (PembuatPdfBuku); statusnya dipantau lewat pantauPdf(). */
+    /** Mulai membuat PDF buku yang dipilih (PdfBuku::mulai); statusnya dipantau lewat pantauPdf(). */
     public function gabungPdf(): void
     {
         if ($this->isi === null || $this->isi['baris'] === [] || ProsesPdfBuku::berjalan($this->pekerjaanPdf['pdf'] ?? null)) {
             return;
         }
 
-        app(PembuatPdfBuku::class)->mulai([
-            'tahun' => StubData::tahunAktif()['tahun'],
-            'leading' => $this->terpilih['leading'],
-            'sumber' => $this->terpilih['sumber'],
-            'jumlah_kegiatan' => count($this->isi['baris']),
-            'halaman' => $this->isi['simulasi']['terakhir'],
-            'ada_draf' => collect($this->isi['baris'])->contains('draf', true),
-            'kegiatan' => array_map(fn (array $b) => ['id' => $b['id'], 'nama' => $b['nama_kegiatan'], 'halaman' => $b['halaman'], 'hasil' => $b['draf'] ? 'draf' : 'siap'], $this->isi['baris']),
-            'dibuat_oleh' => StubData::currentUser()['name'],
-        ]);
+        // Jalur yang sama dengan endpoint buku.pdf.mulai.
+        PdfBuku::mulai(StubData::currentUser(), $this->terpilih['leading'], $this->terpilih['sumber']);
         unset($this->riwayat, $this->pekerjaanPdf);
     }
 
@@ -100,7 +93,7 @@ class Daftar extends Component
             return;
         }
 
-        $hasil = app(PembuatPdfBuku::class)->pantau($pekerjaan['id']);
+        $hasil = PdfBuku::pantau($pekerjaan['id'], StubData::currentUser());
         unset($this->riwayat, $this->pekerjaanPdf);
 
         match ($hasil['pdf']['status']) {
