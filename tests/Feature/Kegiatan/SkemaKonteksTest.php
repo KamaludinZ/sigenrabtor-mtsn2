@@ -6,6 +6,7 @@ use App\Repositories\EloquentKegiatanRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\RujukanDb;
 use Tests\TestCase;
 
 class SkemaKonteksTest extends TestCase
@@ -49,6 +50,8 @@ class SkemaKonteksTest extends TestCase
 
     public function test_migrasi_mengisi_waktu_konteks_lama(): void
     {
+        // ALTER TABLE activities ditolak selama ada pemeriksaan rujukan tertunda: periksa seketika.
+        RujukanDb::segera();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $berisi = DB::table('activities')->insertGetId(['tahun_anggaran' => 2026, 'nama_kegiatan' => 'Workshop', 'konteks' => 'Catatan lama.', 'updated_at' => '2026-01-03 08:00:00+07']);
         $kosong = DB::table('activities')->insertGetId(['tahun_anggaran' => 2026, 'nama_kegiatan' => 'Rapat', 'konteks' => '', 'updated_at' => '2026-01-03 08:00:00+07']);

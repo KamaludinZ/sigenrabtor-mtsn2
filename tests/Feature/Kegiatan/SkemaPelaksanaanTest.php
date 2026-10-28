@@ -9,6 +9,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\RujukanDb;
 use Tests\TestCase;
 
 class SkemaPelaksanaanTest extends TestCase
@@ -71,6 +72,8 @@ class SkemaPelaksanaanTest extends TestCase
 
     public function test_migrasi_mengisi_tanggal_selesai_kegiatan_lama(): void
     {
+        // ALTER TABLE activities ditolak selama ada pemeriksaan rujukan tertunda: periksa seketika.
+        RujukanDb::segera();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $lama = $this->kegiatan(['tanggal_mulai' => '2026-11-16', 'lama_hari' => 2, 'hari_kerja' => true]);
         $tanpaJadwal = $this->kegiatan(['lama_hari' => 2]);

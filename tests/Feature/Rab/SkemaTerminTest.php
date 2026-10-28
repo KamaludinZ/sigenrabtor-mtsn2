@@ -6,6 +6,7 @@ use App\Repositories\EloquentRabRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\RujukanDb;
 use Tests\TestCase;
 
 class SkemaTerminTest extends TestCase
@@ -19,6 +20,7 @@ class SkemaTerminTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        RujukanDb::siapkan();
         $this->kegiatan = DB::table('activities')->insertGetId(['tahun_anggaran' => 2026, 'nama_kegiatan' => 'Workshop Kurikulum']);
         $this->anggaran = DB::table('anggaran_kegiatan')->insertGetId(['activity_id' => $this->kegiatan, 'sumber_dana' => 'Komite', 'pagu' => 10_000_000]);
         // Aturan antarbaris diperiksa saat commit; transaksi tes tidak pernah commit, jadi periksa seketika.

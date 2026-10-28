@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Tests\Support\RujukanDb;
 use Tests\TestCase;
 use Tests\Unit\KalkulatorRabTest;
 
@@ -22,6 +23,7 @@ class SkemaRabTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        RujukanDb::siapkan();
         $kegiatan = DB::table('activities')->insertGetId(['tahun_anggaran' => 2026, 'nama_kegiatan' => 'Workshop Kurikulum']);
         $this->anggaran = DB::table('anggaran_kegiatan')->insertGetId(['activity_id' => $kegiatan, 'sumber_dana' => 'Komite', 'pagu' => 10_000_000]);
     }

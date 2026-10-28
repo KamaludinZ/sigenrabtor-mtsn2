@@ -8,11 +8,18 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\Support\MasterKodeDb;
+use Tests\Support\RujukanDb;
 use Tests\TestCase;
 
 class SkemaMasterKodeTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        RujukanDb::siapkan();
+    }
 
     private function ditolak(callable $aksi): void
     {
