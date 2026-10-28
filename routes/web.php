@@ -42,6 +42,7 @@ use App\Http\Controllers\FormatRupiahTerbilang;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\HapusArsipFinal;
 use App\Http\Controllers\HapusDrafDokumen;
+use App\Http\Controllers\HasilDokumenKegiatan;
 use App\Http\Controllers\KegiatanBukuDokumen;
 use App\Http\Controllers\KodeMasterKegiatan;
 use App\Http\Controllers\KonfigurasiAiBerlaku;
@@ -81,6 +82,7 @@ use App\Http\Controllers\StatusKunciFinal;
 use App\Http\Controllers\StatusPdfBuku;
 use App\Http\Controllers\SumberDanaKegiatan;
 use App\Http\Controllers\SumberDuplikatKegiatan;
+use App\Http\Controllers\SusunDokumenKegiatan;
 use App\Http\Controllers\TahunAnggaranAktif;
 use App\Http\Controllers\TerminKegiatan;
 use App\Http\Controllers\TotalAnggaranKegiatan;
@@ -194,6 +196,8 @@ Route::get('/kegiatan/{kegiatan}/cetak', CetakDokumenKegiatan::class)->whereNumb
 Route::get('/kegiatan/{kegiatan}/draf', DrafDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.draf');
 Route::put('/kegiatan/{kegiatan}/draf', SimpanDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.simpan');
 Route::delete('/kegiatan/{kegiatan}/draf', HapusDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.hapus');
+Route::post('/kegiatan/{kegiatan}/dokumen/susun', SusunDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.dokumen.susun');
+Route::get('/kegiatan/{kegiatan}/dokumen/hasil', HasilDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.dokumen.hasil');
 Route::get('/kegiatan/{kegiatan}/matrik-jadwal', MatrikJadwalKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.matrik_jadwal');
 // Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).
 Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('dokumen.cover.gambar');

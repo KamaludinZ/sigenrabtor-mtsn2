@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
  * Hasil susunan KAK/TOR per dokumen (PRD §7B.2; baris dari App\Support\Dokumen\HasilKakTor):
  * - documents.sidik_isi (md5 seluruh hasil, HasilKakTor::sidik) & disusun_pada — berpasangan: dokumen yang belum pernah
  *   disusun tidak punya keduanya;
- * - dokumen_bagian: satu baris per bagian 1–HasilKakTor::JUMLAH_BAGIAN (unik per dokumen) — judul, blok isi jsonb (larik
+ * - dokumen_bagian: satu baris per bagian 1–HasilKakTor::JUMLAH_BAGIAN (unik per dokumen) — judul, blok isi json (urutan
+ *   kunci tetap; larik
  *   blok berjenis HasilKakTor::JENIS_BLOK dengan kunci isinya, fungsi `isi_bagian_kak_sah`), status lengkap/kurang/periksa
  *   yang sejalan dengan daftar `kurang`/`periksa`, sidik md5; hanya untuk dokumen yang memuat KAK/TOR (FK komposit
  *   (document_id, jenis_dokumen) → documents (id, jenis), jenis di HasilKakTor::JENIS); ikut terhapus bersama dokumen.
@@ -50,7 +51,8 @@ return new class extends Migration
             $table->string('jenis_dokumen', 10);
             $table->unsignedSmallInteger('nomor');
             $table->string('judul', HasilKakTor::MAKS_JUDUL);
-            $table->jsonb('isi');
+            // json (bukan jsonb): urutan kunci blok tetap seperti hasil susunan.
+            $table->json('isi');
             $table->string('status', 10);
             $table->jsonb('kurang')->default('[]');
             $table->jsonb('periksa')->default('[]');
@@ -70,7 +72,7 @@ return new class extends Migration
                 jenis_dokumen IN ({$jenis})
                 AND nomor BETWEEN 1 AND {$jumlah}
                 AND btrim(judul) <> ''
-                AND isi_bagian_kak_sah(isi)
+                AND isi_bagian_kak_sah(isi::jsonb)
                 AND status IN ({$status})
                 AND daftar_teks_sah(kurang) AND daftar_teks_sah(periksa)
                 AND (status <> 'lengkap' OR (kurang = '[]'::jsonb AND periksa = '[]'::jsonb))

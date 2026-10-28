@@ -89,6 +89,7 @@ return [
         'duplikat_file' => env('STUB_DUPLIKAT_FILE', 'stub/duplikat-kegiatan.json'),
         'impor_file' => env('STUB_IMPOR_FILE', 'stub/impor-kegiatan.json'),
         'draf_dokumen_file' => env('STUB_DRAF_DOKUMEN_FILE', 'stub/draf-dokumen.json'),
+        'hasil_dokumen_file' => env('STUB_HASIL_DOKUMEN_FILE', 'stub/hasil-dokumen.json'),
     ],
 
     /*

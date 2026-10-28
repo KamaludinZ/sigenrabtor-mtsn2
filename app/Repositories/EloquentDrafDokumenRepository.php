@@ -95,7 +95,8 @@ class EloquentDrafDokumenRepository implements DrafDokumenRepository
                 }
                 $konten = (array) json_decode((string) $baris->konten, true);
                 unset($konten['draf']);
-                if ($konten === [] && $baris->nomor_dokumen === null && $baris->file_docx_path === null && $baris->file_pdf_path === null) {
+                // Baris yang menyimpan hasil susunan (sidik_isi), nomor, atau berkas cetak tetap ada.
+                if ($konten === [] && $baris->sidik_isi === null && $baris->nomor_dokumen === null && $baris->file_docx_path === null && $baris->file_pdf_path === null) {
                     DB::table('documents')->where('id', $baris->id)->delete();
                 } else {
                     DB::table('documents')->where('id', $baris->id)->update([
