@@ -89,16 +89,20 @@ class KelolaArsipFinalTest extends TestCase
         Storage::disk('local')->assertMissing($lama['path']);
         $this->assertSame(['dipa-revisi.pdf', 'Koordinator PUSKOM'], [$repo->untukKegiatan($id)['DIPA']['nama_berkas'], $repo->untukKegiatan($id)['DIPA']['diunggah_oleh']]);
 
-        KelolaArsipFinal::unggah($id, 'Komite', $this->pdf('komite.pdf'), self::LEADING);
-        $data = KelolaArsipFinal::data(app(KegiatanRepository::class)->temukan($id), self::LEADING);
-        $this->assertSame([true, null, [], true, ['DIPA', 'Komite']], [$data['boleh_unggah'], $data['alasan'], $data['kurang'], $data['lengkap'], array_column($data['sumber'], 'sumber')]);
-        $this->assertArrayNotHasKey('path', $data['sumber'][0]['arsip'], 'Path penyimpanan tidak dibuka.');
-        $this->assertSame(['DIPA', 'Komite'], array_keys($repo->untukKegiatan($id)), 'Urut sumber dana baku.');
-
-        $path = $repo->untukKegiatan($id)['Komite']['path'];
-        $this->assertSame(['kurang' => ['Komite'], 'pesan' => 'Arsip final RAB Komite dihapus.'], KelolaArsipFinal::hapus($id, 'Komite', self::LEADING));
+        $path = $repo->untukKegiatan($id)['DIPA']['path'];
+        $this->assertSame(['kurang' => ['DIPA', 'Komite'], 'pesan' => 'Arsip final RAB DIPA dihapus.'], KelolaArsipFinal::hapus($id, 'DIPA', self::LEADING));
         Storage::disk('local')->assertMissing($path);
-        $this->assertSame(['DIPA'], array_keys($repo->untukKegiatan($id)));
+        $this->assertSame([], $repo->untukKegiatan($id));
+
+        // Melengkapi arsip semua sumber dana langsung memfinalkan kegiatan (FinalOtomatis).
+        $this->assertFalse(KelolaArsipFinal::unggah($id, 'Komite', $this->pdf('komite.pdf'), self::LEADING)['final']);
+        $lengkap = KelolaArsipFinal::unggah($id, 'DIPA', $this->pdf(), self::LEADING);
+        $this->assertSame([true, 'final', 'Arsip final RAB DIPA tersimpan. '.KelolaArsipFinal::PESAN_FINAL], [$lengkap['final'], $lengkap['status'], $lengkap['pesan']]);
+        $data = KelolaArsipFinal::data(app(KegiatanRepository::class)->temukan($id), self::LEADING);
+        $this->assertSame([false, KelolaArsipFinal::PESAN_STATUS, [], true, [], ['DIPA', 'Komite']], [$data['boleh_unggah'], $data['alasan'], $data['kurang'], $data['lengkap'], $data['kurang_final_otomatis'], array_column($data['sumber'], 'sumber')]);
+        $this->assertArrayNotHasKey('path', $data['sumber'][0]['arsip'], 'Path penyimpanan tidak dibuka.');
+        $this->assertTrue($data['sumber'][0]['arsip']['berlaku']);
+        $this->assertSame(['DIPA', 'Komite'], array_keys($repo->untukKegiatan($id)), 'Urut sumber dana baku.');
     }
 
     public function test_aturan_unggah_dan_hapus(): void

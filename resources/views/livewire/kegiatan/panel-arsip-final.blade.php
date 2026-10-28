@@ -20,7 +20,7 @@
             </h2>
             <p class="mt-0.5 text-sm text-stone-500">
                 @if ($boleh)
-                    Cetak KAK/TOR & RAB, mintakan tanda tangan, lalu unggah hasil pindaiannya (PDF) untuk tiap sumber dana. Setelah lengkap, tandai final di panel status untuk mengunci data.
+                    Cetak KAK/TOR & RAB, mintakan tanda tangan, lalu unggah hasil pindaiannya (PDF) untuk tiap sumber dana. Begitu arsip semua sumber dana terunggah, kegiatan otomatis menjadi Final dan datanya terkunci.
                 @else
                     Arsip yang diunggah sebelum kegiatan ditandai final. Data terkunci; hanya admin yang dapat membuka kunci.
                 @endif
@@ -57,6 +57,9 @@
                                     <span class="shrink-0 text-xs font-normal text-stone-500">{{ ArsipFinal::ukuran($a['ukuran']) }}</span>
                                 </p>
                                 <p class="text-xs text-stone-500">Diunggah {{ $a['diunggah_oleh'] }} · {{ Carbon::parse($a['diunggah_pada'])->locale('id')->translatedFormat('j F Y, H.i') }}</p>
+                                @if ($boleh && ! isset($this->berlaku[$s]))
+                                    <p class="mt-0.5 text-xs text-gold-700" data-testid="arsip-lama-{{ mb_strtolower($s) }}">Diunggah sebelum disetujui ulang — unggah ulang versi bertanda tangan terbaru, atau tandai final bila arsip ini masih berlaku.</p>
+                                @endif
                             @else
                                 <p class="flex items-center gap-1.5 font-medium text-gold-700"><x-ui.icon name="alert" class="size-4 shrink-0" /> Belum diunggah</p>
                                 <p class="text-xs text-stone-500">PDF hasil pindaian KAK/TOR & RAB {{ $s }} yang sudah ditandatangani, maks. {{ ArsipFinal::MAKS_KB / 1024 }} MB.</p>

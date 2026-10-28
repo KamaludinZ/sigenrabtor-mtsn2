@@ -6,6 +6,7 @@ use App\Contracts\ArsipFinalRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\ArsipFinal;
+use App\Support\Kegiatan\FinalOtomatis;
 use App\Support\Kegiatan\KelolaArsipFinal;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -19,7 +20,7 @@ use Livewire\WithFileUploads;
  * Panel arsip final di Data Kegiatan (PRD F18): selama Disetujui, PDF bertanda tangan/pindaian diunggah per sumber dana
  * (diperiksa dulu di klien oleh Alpine `unggahArsip`, lalu langsung tersimpan begitu selesai terunggah; bisa diganti atau
  * dihapus — aturan lewat KelolaArsipFinal, sama dengan endpoint `kegiatan.arsip.unggah`/`hapus`); selama Final hanya bisa
- * dilihat. Setiap perubahan men-dispatch `arsip-final-berubah` agar panel status
+ * dilihat. Unggahan yang melengkapi arsip semua sumber dana langsung memfinalkan kegiatan (FinalOtomatis). Setiap perubahan men-dispatch `arsip-final-berubah` agar panel status
  * menghitung ulang syarat "Tandai final".
  */
 class PanelArsipFinal extends Component
@@ -55,6 +56,17 @@ class PanelArsipFinal extends Component
         return app(ArsipFinalRepository::class)->untukKegiatan($this->kegiatanId);
     }
 
+    /**
+     * Arsip yang diunggah sesudah persetujuan terakhir (FinalOtomatis) — arsip lain dari putaran sebelumnya.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    #[Computed]
+    public function berlaku(): array
+    {
+        return FinalOtomatis::berlaku($this->kegiatan, $this->arsip);
+    }
+
     /** @return list<string> */
     #[Computed]
     public function sumber(): array
@@ -83,6 +95,9 @@ class PanelArsipFinal extends Component
             $this->buangBerkas($sumber);
         }
 
+        if ($hasil['final']) {
+            unset($this->kegiatan, $this->status);
+        }
         $this->selesai($hasil['pesan']);
     }
 
@@ -100,7 +115,7 @@ class PanelArsipFinal extends Component
 
     private function selesai(string $pesan, string $jenis = 'success'): void
     {
-        unset($this->arsip);
+        unset($this->arsip, $this->berlaku);
         $this->dispatch('arsip-final-berubah');
         $this->dispatch('notify', message: $pesan, type: $jenis);
     }

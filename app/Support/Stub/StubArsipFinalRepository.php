@@ -3,6 +3,7 @@
 namespace App\Support\Stub;
 
 use App\Contracts\ArsipFinalRepository;
+use App\Enums\SumberDana;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -10,13 +11,17 @@ use Illuminate\Support\Str;
 
 /**
  * Arsip final tiruan: metadata di berkas JSON (disk "local", berkunci id kegiatan lalu sumber dana), PDF di folder
- * senama berkas tanpa `.json` (`{folder}/{kegiatan}/{sumber}-{acak}.pdf`). Belum ada contoh arsip.
+ * senama berkas tanpa `.json` (`{folder}/{kegiatan}/{sumber}-{acak}.pdf`); dibaca urut SumberDana. Belum ada contoh arsip.
  */
 class StubArsipFinalRepository implements ArsipFinalRepository
 {
     public function untukKegiatan(int $kegiatanId): array
     {
-        return $this->baca()[(string) $kegiatanId] ?? [];
+        $arsip = $this->baca()[(string) $kegiatanId] ?? [];
+        $urut = array_flip(SumberDana::urutan());
+        uksort($arsip, fn (string $a, string $b) => ($urut[$a] ?? PHP_INT_MAX) <=> ($urut[$b] ?? PHP_INT_MAX));
+
+        return $arsip;
     }
 
     public function simpan(int $kegiatanId, string $sumber, UploadedFile $berkas, array $pengguna): array

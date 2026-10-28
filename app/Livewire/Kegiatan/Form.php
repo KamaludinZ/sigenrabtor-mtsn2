@@ -852,7 +852,12 @@ class Form extends Component
     #[On('arsip-final-berubah')]
     public function arsipFinalBerubah(): void
     {
-        unset($this->aksiStatus);
+        // Unggahan yang melengkapi arsip memfinalkan kegiatan otomatis (FinalOtomatis): ikuti status & riwayat tersimpan.
+        $tersimpan = app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? [];
+        $this->status = StatusKegiatan::tryFrom($tersimpan['status'] ?? '')?->value ?? $this->status;
+        $this->riwayatStatus = array_values((array) ($tersimpan['riwayat_status'] ?? $this->riwayatStatus));
+        $this->diperbaruiPada = $tersimpan['diperbarui_pada'] ?? $this->diperbaruiPada;
+        unset($this->aksiStatus, $this->drafTerbaru);
     }
 
     /**

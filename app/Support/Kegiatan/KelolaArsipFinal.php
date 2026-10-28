@@ -18,11 +18,14 @@ use RuntimeException;
  *   kunci dibuka admin dulu); null = boleh;
  * - sumber dana harus salah satu yang dipilih kegiatan (ArsipFinal::sumberWajib, galat `sumber`);
  * - berkas diperiksa ArsipFinal::galatUnggahan (aturan sama dengan pemeriksaan klien `galatArsip`, galat `berkas`);
- * - hasil memuat `kurang` (sumber dana yang arsipnya belum ada — syarat "Tandai final").
+ * - hasil memuat `kurang` (sumber dana yang arsipnya belum ada — syarat "Tandai final"); unggahan yang melengkapi arsip
+ *   semua sumber dana langsung memfinalkan kegiatan (FinalOtomatis, `final`/`status` di hasil).
  */
 final class KelolaArsipFinal
 {
     public const PESAN_STATUS = 'Arsip final hanya bisa diunggah selama kegiatan berstatus Disetujui.';
+
+    public const PESAN_FINAL = 'Arsip semua sumber dana lengkap — kegiatan kini Final dan datanya terkunci.';
 
     /**
      * @param  array<string, mixed>  $kegiatan
@@ -70,6 +73,7 @@ final class KelolaArsipFinal
     {
         $id = (int) $kegiatan['id'];
         $arsip = app(ArsipFinalRepository::class)->untukKegiatan($id);
+        $berlaku = FinalOtomatis::berlaku($kegiatan, $arsip);
         $status = self::status($kegiatan);
 
         return [
@@ -79,15 +83,18 @@ final class KelolaArsipFinal
             'boleh_unggah' => ($alasan = self::alasan($kegiatan, $pengguna)) === null,
             'alasan' => $alasan,
             'maks_kb' => ArsipFinal::MAKS_KB,
-            'sumber' => array_map(fn (string $s) => ['sumber' => $s, 'arsip' => isset($arsip[$s]) ? self::tampil($id, $arsip[$s]) : null], ArsipFinal::sumberWajib($kegiatan)),
+            'sumber' => array_map(fn (string $s) => ['sumber' => $s, 'arsip' => isset($arsip[$s]) ? self::tampil($id, $arsip[$s]) + ['berlaku' => isset($berlaku[$s])] : null], ArsipFinal::sumberWajib($kegiatan)),
             'kurang' => $kurang = ArsipFinal::kurang($kegiatan, $arsip),
             'lengkap' => $kurang === [],
+            // Sumber dana yang arsipnya belum diunggah sesudah persetujuan terakhir: unggahan berikutnya yang melengkapinya
+            // memfinalkan kegiatan otomatis.
+            'kurang_final_otomatis' => FinalOtomatis::kurang($kegiatan, $arsip),
         ];
     }
 
     /**
      * @param  array{id: int, name: string, role: string, leadings?: list<string>}  $pengguna
-     * @return array{arsip: array<string, mixed>, ganti: bool, kurang: list<string>, pesan: string}
+     * @return array{arsip: array<string, mixed>, ganti: bool, kurang: list<string>, final: bool, status: string, pesan: string}
      *
      * @throws RuntimeException Kegiatan tidak ditemukan.
      * @throws AuthorizationException
@@ -106,12 +113,15 @@ final class KelolaArsipFinal
         $repo = app(ArsipFinalRepository::class);
         $ganti = isset($repo->untukKegiatan($id)[$sumber]);
         $arsip = $repo->simpan($id, $sumber, $berkas, $pengguna);
+        $final = FinalOtomatis::jalankan($id, $pengguna) !== null;
 
         return [
             'arsip' => self::tampil($id, $arsip),
             'ganti' => $ganti,
             'kurang' => ArsipFinal::kurang($kegiatan, $repo->untukKegiatan($id)),
-            'pesan' => 'Arsip final RAB '.$sumber.($ganti ? ' diganti.' : ' tersimpan.'),
+            'final' => $final,
+            'status' => $final ? StatusKegiatan::Final->value : self::status($kegiatan)->value,
+            'pesan' => 'Arsip final RAB '.$sumber.($ganti ? ' diganti.' : ' tersimpan.').($final ? ' '.self::PESAN_FINAL : ''),
         ];
     }
 

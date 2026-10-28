@@ -8,6 +8,7 @@ use App\Livewire\Kegiatan\Form;
 use App\Livewire\Kegiatan\PanelArsipFinal;
 use App\Livewire\Pemeriksaan\Periksa;
 use App\Support\Kegiatan\ArsipFinal;
+use App\Support\Kegiatan\KelolaArsipFinal;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -70,19 +71,24 @@ class ArsipFinalTest extends TestCase
         Storage::disk('local')->assertMissing($lama['path']);
         $this->assertSame('revisi.pdf', $repo->untukKegiatan($id)['DIPA']['nama_berkas']);
 
-        $panel->set('berkas.Komite', $this->pdf('komite.pdf'))
-            ->assertSee('2 dari 2 diunggah')
-            ->assertSeeHtml('data-testid="arsip-lengkap"');
-        Livewire::test(Form::class, ['kegiatan' => $id])->assertDontSeeHtml('data-testid="final-terhalang"');
-
-        $path = $repo->untukKegiatan($id)['Komite']['path'];
-        $panel->call('$set', 'konfirmasiHapus', 'Komite')
-            ->assertSee('Hapus arsip RAB Komite?')
-            ->call('hapus', 'Komite')
-            ->assertDispatched('notify', message: 'Arsip final RAB Komite dihapus.')
-            ->assertSee('1 dari 2 diunggah');
+        $path = $repo->untukKegiatan($id)['DIPA']['path'];
+        $panel->call('$set', 'konfirmasiHapus', 'DIPA')
+            ->assertSee('Hapus arsip RAB DIPA?')
+            ->call('hapus', 'DIPA')
+            ->assertDispatched('notify', message: 'Arsip final RAB DIPA dihapus.')
+            ->assertSee('0 dari 2 diunggah');
         Storage::disk('local')->assertMissing($path);
-        $this->assertSame(['DIPA'], array_keys($repo->untukKegiatan($id)));
+        $this->assertSame([], $repo->untukKegiatan($id));
+
+        // Arsip terakhir yang melengkapi semua sumber dana langsung memfinalkan kegiatan; panel menjadi baca-saja.
+        $panel->set('berkas.DIPA', $this->pdf('dipa.pdf'))
+            ->set('berkas.Komite', $this->pdf('komite.pdf'))
+            ->assertDispatched('notify', message: 'Arsip final RAB Komite tersimpan. '.KelolaArsipFinal::PESAN_FINAL)
+            ->assertSee('2 dari 2 diunggah')
+            ->assertDontSeeHtml('data-testid="arsip-lengkap"')
+            ->assertSee('Data terkunci; hanya admin yang dapat membuka kunci.')
+            ->assertDontSeeHtml('data-testid="input-arsip-dipa"');
+        $this->assertSame('final', app(KegiatanRepository::class)->temukan($id)['status']);
     }
 
     public function test_berkas_selain_pdf_ditolak(): void
