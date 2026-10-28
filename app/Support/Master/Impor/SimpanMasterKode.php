@@ -13,8 +13,9 @@ use LogicException;
  * Simpan unggahan Excel menjadi master kode tahun anggaran (PRD §14, F7 "pratinjau sebelum disimpan") — dipakai tombol
  * *Simpan master* panel Unggah Excel dan endpoint `master.unggah`. Berkas diproses ulang lewat ProsesBerkasMaster::proses
  * (izin admin & tahun terbuka) sehingga yang tersimpan selalu isi berkas itu; disimpan hanya bila `kendala()` kosong —
- * kendala ProsesBerkasMaster, jenis yang penyimpanannya belum tersedia (DIDUKUNG), dan aturan antar-jenis (SK yang hilang
- * padahal masih menjadi induk IKSK master tahun itu, kecuali IKSK ikut diunggah). Yang tersimpan per jenis: baris
+ * kendala ProsesBerkasMaster (termasuk IKSK yang SK induknya tidak ada di SK berkas/master — PratinjauMaster::periksaInduk),
+ * jenis yang penyimpanannya belum tersedia (DIDUKUNG), dan aturan antar-jenis (SK yang hilang padahal masih menjadi induk
+ * IKSK master tahun itu, kecuali IKSK ikut diunggah). Yang tersimpan per jenis: baris
  * baru/berubah/tetap urut berkas (MasterKodeRepository::ganti, seluruh jenis sekaligus); kode yang hilang keluar dari
  * master dan kegiatan pemakainya ditandai KodeHilang. Jejak: catatan unggahan (ringkasan per jenis) + riwayat
  * `unggah_master_kode`.
@@ -22,7 +23,7 @@ use LogicException;
 final class SimpanMasterKode
 {
     /** Jenis yang sudah bisa disimpan dari unggahan. */
-    public const DIDUKUNG = ['sk'];
+    public const DIDUKUNG = ['sk', 'iksk'];
 
     /** Jenis → bagian master (MasterKodeRepository::ganti). */
     public const BAGIAN = ['sk' => 'kode_sk', 'iksk' => 'kode_iksk', 'rktm' => 'kode_rktm', 'edm' => 'kode_edm', 'budaya' => 'budaya_mutu'];
@@ -115,6 +116,31 @@ final class SimpanMasterKode
     }
 
     /**
+     * Ringkasan IKSK per SK induk untuk pratinjau IKSK: kode & uraian SK (master tahun itu; null bila tidak ada), jumlah
+     * IKSK berkas per status (tanpa yang hilang), urut kode SK.
+     *
+     * @param  list<array<string, mixed>>  $baris  Baris pratinjau IKSK.
+     * @return list<array{kode_sk: string, uraian_sk: string|null, jumlah: int, status: array<string, int>}>
+     */
+    public static function indukIksk(array $baris, int $tahun): array
+    {
+        $uraian = array_column(JenisKode::baris('sk', $tahun), 'uraian', 'kode');
+        $hasil = [];
+        foreach ($baris as $b) {
+            if ($b['status'] === 'hilang') {
+                continue;
+            }
+            $sk = (string) $b['tampil']['kode_sk'];
+            $hasil[$sk] ??= ['kode_sk' => $sk, 'uraian_sk' => $uraian[$sk] ?? null, 'jumlah' => 0, 'status' => []];
+            $hasil[$sk]['jumlah']++;
+            $hasil[$sk]['status'][$b['status']] = ($hasil[$sk]['status'][$b['status']] ?? 0) + 1;
+        }
+        uksort($hasil, fn (string $a, string $b) => version_compare(substr($a, 3), substr($b, 3)) ?: strcmp($a, $b));
+
+        return array_values($hasil);
+    }
+
+    /**
      * Baris pratinjau → baris master jenisnya.
      *
      * @param  array<string, mixed>  $b
@@ -124,6 +150,7 @@ final class SimpanMasterKode
     {
         return match ($jenis) {
             'sk' => ['kode' => $b['kode'], 'uraian' => $b['tampil']['uraian']],
+            'iksk' => ['kode' => $b['kode'], 'kode_sk' => $b['tampil']['kode_sk'], 'uraian' => $b['tampil']['uraian']],
             default => throw new LogicException("Penyimpanan master {$jenis} belum tersedia."),
         };
     }

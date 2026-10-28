@@ -16,7 +16,8 @@ use Illuminate\Http\Request;
  * Endpoint unggah master kode satu jenis (PRD §14; `POST /master/{tahun}/unggah/{jenis}`, rute admin `master.unggah`,
  * jenis SimpanMasterKode::DIDUKUNG): berkas `berkas` (xlsx/xls/csv, ProsesBerkasMaster) dibaca & dibandingkan dengan
  * master tahun itu; tanpa `simpan` hanya pratinjau, dengan `simpan=1` disimpan bila tidak ada kendala. Jawaban JSON:
- * berkas, baris pratinjau, ringkasan, kendala, peringatan, siap, disimpan (+ id unggahan); berkas/kendala → 422, izin
+ * berkas, baris pratinjau, ringkasan, `induk` (IKSK: ringkasan per SK induk, SimpanMasterKode::indukIksk), kendala,
+ * peringatan, siap, disimpan (+ id unggahan); berkas/kendala → 422, izin
  * (bukan admin, tahun terkunci/belum dibuat) → 403.
  */
 class UnggahMasterKode extends Controller
@@ -49,6 +50,7 @@ class UnggahMasterKode extends Controller
             'berkas' => ['nama' => $berkas['nama'], 'ukuran' => $berkas['ukuran'], 'sheet' => $item['sheet']],
             'ringkasan' => $item['ringkasan'],
             'baris' => array_map(fn (array $b) => ['kode' => $b['kode'], 'status' => $b['status'], 'isi' => $b['tampil'], 'lama' => $b['lama'], 'pesan' => $b['pesan'], 'dipakai' => $b['dipakai'], 'baris_berkas' => $b['baris']], $item['baris']),
+            'induk' => $jenis === 'iksk' ? SimpanMasterKode::indukIksk($item['baris'], $tahun) : null,
             'kendala' => $hasil['disimpan'] ? [] : $kendala,
             'peringatan' => $hasil['peringatan'],
             'siap' => $hasil['disimpan'] || $kendala === [],
