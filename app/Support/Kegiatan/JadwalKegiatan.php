@@ -17,6 +17,16 @@ final readonly class JadwalKegiatan
     /** Panjang maksimal uraian satu baris (aturan isian, usulan AI, & CHECK schedules_uraian_check). */
     public const MAKS_URAIAN = 200;
 
+    /** Uraian 6 baris baku template KAK (bisa diubah per kegiatan; diisi lewat "Isi jadwal baku" di Matrik & Jadwal). */
+    public const URAIAN_BAKU = [
+        'Pembentukan kepanitiaan',
+        'Rapat koordinasi panitia',
+        'Persiapan sarana dan bahan kegiatan',
+        'Pelaksanaan kegiatan',
+        'Evaluasi kegiatan',
+        'Penyusunan dan penyerahan laporan',
+    ];
+
     /**
      * @param  list<array{uraian: string, bulan: list<int>}>  $baris
      */
@@ -38,6 +48,14 @@ final readonly class JadwalKegiatan
             : array_map(fn (array $b) => ['uraian' => trim((string) ($b['uraian'] ?? '')), 'bulan' => MatrikTahapan::rapikanBulan($b['bulan'] ?? [])], $tersimpan);
 
         return new self($baris);
+    }
+
+    /** Baris baku (schedules.is_baku): uraiannya salah satu URAIAN_BAKU, tanpa memandang huruf besar/kecil & spasi ganda. */
+    public static function uraianBaku(string $uraian): bool
+    {
+        $kunci = fn (string $teks) => mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $teks)));
+
+        return in_array($kunci($uraian), array_map($kunci, self::URAIAN_BAKU), true);
     }
 
     /** Waktu pelaksanaan satu baris, mis. "Juli 2026" atau "Juli – Agustus 2026"; null bila bulannya belum diisi. */

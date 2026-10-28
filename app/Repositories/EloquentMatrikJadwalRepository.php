@@ -11,7 +11,8 @@ use RuntimeException;
 /**
  * Matrik tahapan & jadwal di PostgreSQL (tabel matrik_tahapan & schedules), padanan StubMatrikJadwalRepository.
  * Selama activities.matrik_jadwal_disimpan_pada kosong, kegiatan mendapat butir baku & 6 baris baku; sesudah disimpan,
- * isi dibaca apa adanya — termasuk jadwal atau tahapan yang sengaja dikosongkan.
+ * isi dibaca apa adanya — termasuk jadwal atau tahapan yang sengaja dikosongkan. schedules.is_baku dicatat saat simpan
+ * (JadwalKegiatan::uraianBaku); bulan_mulai/bulan_selesai dihitung database.
  */
 class EloquentMatrikJadwalRepository implements MatrikJadwalRepository
 {
@@ -64,7 +65,7 @@ class EloquentMatrikJadwalRepository implements MatrikJadwalRepository
             DB::table('matrik_tahapan')->insert($baris);
 
             DB::table('schedules')->insert(array_map(
-                fn (array $b, int $i) => ['activity_id' => $kegiatanId, 'urutan' => $i + 1, 'uraian' => $b['uraian'], 'bulan' => json_encode($b['bulan'])],
+                fn (array $b, int $i) => ['activity_id' => $kegiatanId, 'urutan' => $i + 1, 'uraian' => $b['uraian'], 'bulan' => json_encode($b['bulan']), 'is_baku' => JadwalKegiatan::uraianBaku($b['uraian'])],
                 $jadwal->baris,
                 array_keys($jadwal->baris),
             ));

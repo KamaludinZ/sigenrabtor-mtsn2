@@ -40,15 +40,8 @@ use RuntimeException;
 #[Layout('layouts.app')]
 class MatrikJadwal extends Component
 {
-    /** Uraian jadwal baku (bisa diubah per kegiatan); bulannya diturunkan dari jadwal pelaksanaan saat diisi. */
-    public const JADWAL_BAKU = [
-        'Pembentukan kepanitiaan',
-        'Rapat koordinasi panitia',
-        'Persiapan sarana dan bahan kegiatan',
-        'Pelaksanaan kegiatan',
-        'Evaluasi kegiatan',
-        'Penyusunan dan penyerahan laporan',
-    ];
+    /** Uraian jadwal baku (JadwalKegiatan::URAIAN_BAKU); bulannya diturunkan dari jadwal pelaksanaan saat diisi. */
+    public const JADWAL_BAKU = JadwalKegiatan::URAIAN_BAKU;
 
     /** Instruksi cepat di panel usul jadwal AI (disisipkan ke kotak instruksi, tetap bisa diedit). */
     public const SARAN_INSTRUKSI = ['lebih ringkas', 'persiapan lebih awal', 'tambahkan rapat evaluasi', 'sertakan publikasi kegiatan'];
