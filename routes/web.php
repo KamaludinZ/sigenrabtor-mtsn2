@@ -6,6 +6,7 @@ use App\Http\Controllers\DataAgregasiMonitoring;
 use App\Http\Controllers\DataDasarHukum;
 use App\Http\Controllers\DataDashboard;
 use App\Http\Controllers\DataKegiatanMonitoring;
+use App\Http\Controllers\DataLatarBelakang;
 use App\Http\Controllers\DataMonitoringAnggaran;
 use App\Http\Controllers\DataPaguMonitoring;
 use App\Http\Controllers\DataPejabat;
@@ -125,6 +126,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/madrasah', PengaturanProfilMadrasah::class)->name('madrasah.index');
     Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
     Route::get('/madrasah/dasar-hukum/data', DataDasarHukum::class)->name('madrasah.dasar_hukum.data');
+    Route::get('/madrasah/latar-belakang/data', DataLatarBelakang::class)->name('madrasah.latar_belakang.data');
     Route::get('/madrasah/pejabat', DataPejabat::class)->name('madrasah.pejabat');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');

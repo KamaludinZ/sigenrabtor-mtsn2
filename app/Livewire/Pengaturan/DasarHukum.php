@@ -10,6 +10,7 @@ use App\Support\Format;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\KelolaDasarHukum;
+use App\Support\Pengaturan\KelolaLatarBelakang;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\LatarBelakangBaku;
 use App\Support\Pengaturan\PengaturanBerubah;
@@ -18,7 +19,6 @@ use App\Support\Pengaturan\SkRktm;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -231,7 +231,7 @@ class DasarHukum extends Component
         $this->resetErrorBag(['isianLatar.latar_belakang', 'isianLatar.kalimat_penutup']);
     }
 
-    public function simpanLatar(DasarHukumRepository $repo): void
+    public function simpanLatar(): void
     {
         if (! $this->suntingLatar || $this->tahunTerkunci()) {
             return;
@@ -242,47 +242,37 @@ class DasarHukum extends Component
             'latar_belakang' => LatarBelakangBaku::rapikan((string) ($this->isianLatar['latar_belakang'] ?? '')),
             'kalimat_penutup' => LatarBelakangBaku::rapikan((string) ($this->isianLatar['kalimat_penutup'] ?? '')),
         ];
-        $galat = array_filter([
-            'isianLatar.latar_belakang' => LatarBelakangBaku::galatParagraf($this->isianLatar['latar_belakang']),
-            'isianLatar.kalimat_penutup' => LatarBelakangBaku::galatPenutup($this->isianLatar['kalimat_penutup']),
-        ]);
-        foreach ($galat as $kolom => $pesan) {
-            $this->addError($kolom, $pesan);
-        }
-        if ($galat !== []) {
-            return;
-        }
-
-        if ($this->berubahDiTempatLain()) {
-            return;
-        }
-        $lama = $this->pengaturan;
-        $berubah = array_keys(array_filter([
-            'paragraf baku' => $this->isianLatar['latar_belakang'] !== $lama['latar_belakang'],
-            'kalimat penutup' => $this->isianLatar['kalimat_penutup'] !== $lama['kalimat_penutup'],
-        ]));
-        if ($berubah === []) {
-            $this->batalLatar();
-            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
-
-            return;
-        }
 
         $tahun = $this->tahunDilihat();
         try {
-            $repo->simpan($tahun, $this->isianLatar + ['dasar_hukum' => $lama['dasar_hukum']]);
+            $hasil = KelolaLatarBelakang::simpan($tahun, $this->isianLatar, StubData::currentUser(), $this->versi);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError("isianLatar.{$kolom}", $pesan[0]);
+            }
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (PengaturanBerubah) {
+            $this->muatUlang();
+
+            return;
         } catch (RuntimeException $e) {
             report($e);
             $this->dispatch('notify', message: "Latar belakang baku TA {$tahun} gagal disimpan. Isian masih ada di layar — coba simpan lagi.", type: 'error');
 
             return;
         }
-        $keterangan = "Latar belakang TA {$tahun} — ubah ".implode(' & ', $berubah);
-        if (in_array('kalimat penutup', $berubah, true)) {
-            $keterangan .= ': '.Str::limit($this->isianLatar['kalimat_penutup'], 120);
-        }
-        RiwayatPengaturan::catat('ubah_latar_belakang', $keterangan);
 
+        if ($hasil['berubah'] === []) {
+            $this->batalLatar();
+            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+            return;
+        }
         unset($this->pengaturan, $this->dasarHukum, $this->latarBelakang);
         $this->batalLatar();
         $this->dispatch('notify', message: "Latar belakang baku TA {$tahun} tersimpan.", type: 'success');
