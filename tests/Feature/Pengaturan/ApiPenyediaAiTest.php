@@ -35,7 +35,7 @@ class ApiPenyediaAiTest extends TestCase
         $data = $this->getJson(route('pengaturan.ai.penyedia'))->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertJson(['versi' => null, 'provider_aktif' => null, 'provider_cadangan' => null])
-            ->assertJsonPath('penyedia.0', ['kunci' => 'ollama', 'nama' => 'Ollama (server sekolah)', 'jenis' => 'lokal', 'butuh_kunci' => false, 'base_url' => 'http://localhost:11434', 'alamat_bawaan' => 'http://localhost:11434', 'model' => null, 'batas_waktu' => 60, 'ada_kunci' => false, 'kunci_akhir' => null, 'peran' => 'tidak', 'siap' => false, 'kurang' => ['model']])
+            ->assertJsonPath('penyedia.0', ['kunci' => 'ollama', 'nama' => 'Ollama (server sekolah)', 'jenis' => 'lokal', 'butuh_kunci' => false, 'base_url' => 'http://localhost:11434', 'alamat_bawaan' => 'http://localhost:11434', 'model' => null, 'batas_waktu' => 60, 'ada_kunci' => false, 'kunci_akhir' => null, 'peran' => 'tidak', 'siap' => false, 'kurang' => ['model'], 'kesehatan' => null])
             ->json();
         $this->assertSame(['ollama', 'claude', 'openai', 'gemini'], array_column($data['penyedia'], 'kunci'));
         $this->assertSame('https://api.anthropic.com/v1', $data['penyedia'][1]['alamat_bawaan']);

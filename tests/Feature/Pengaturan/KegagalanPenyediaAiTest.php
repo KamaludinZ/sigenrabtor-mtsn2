@@ -48,7 +48,7 @@ class KegagalanPenyediaAiTest extends TestCase
 
     public function test_rantai_penyedia_aktif_lalu_cadangan(): void
     {
-        $this->assertSame(['hasil' => 'ok', 'penyedia' => 'tiruan', 'gagal' => []], RantaiPenyediaAi::jalankan(fn () => 'ok'));
+        $this->assertSame(['hasil' => 'ok', 'penyedia' => 'tiruan', 'gagal' => [], 'aktif' => null, 'dilewati' => null], RantaiPenyediaAi::jalankan(fn () => 'ok'));
 
         $this->atur(['simulasi_gagal' => ['jenis' => 'waktu_habis', 'cakupan' => 'aktif']]);
         $e = $this->gagal(fn () => RantaiPenyediaAi::jalankan(fn () => 'ok'));

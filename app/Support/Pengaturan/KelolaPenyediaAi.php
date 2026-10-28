@@ -3,6 +3,7 @@
 namespace App\Support\Pengaturan;
 
 use App\Contracts\PengaturanAiRepository;
+use App\Support\Kegiatan\KesehatanPenyediaAi;
 use App\Support\Kegiatan\KlienLlmHttp;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -22,7 +23,7 @@ use RuntimeException;
  *   `tulis()` (PengaturanAiRepository::simpan, RuntimeException naik; riwayat `ubah_penyedia_ai` hanya bila berubah —
  *   ringkasan "Label: lama → baru" + catatan kunci diisi/diganti/dihapus). Galat isian → ValidationException berkunci
  *   isian; bukan admin → AuthorizationException.
- * `data()` = bentuk JSON konfigurasi penyedia tanpa kunci API.
+ * `data()` = bentuk JSON konfigurasi penyedia tanpa kunci API (beserta `kesehatan` failover KesehatanPenyediaAi).
  */
 final class KelolaPenyediaAi
 {
@@ -67,6 +68,8 @@ final class KelolaPenyediaAi
                     'peran' => AturanPenyediaAi::peranDari($ai, $kunci),
                     'siap' => $siap['siap'],
                     'kurang' => $siap['kurang'],
+                    // Kegagalan nyata terakhir & jeda failover (KesehatanPenyediaAi); null = sehat.
+                    'kesehatan' => KesehatanPenyediaAi::status($kunci),
                 ];
             }, array_keys(PenyediaAi::DAFTAR)),
         ];
