@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\CoverDokumen;
+use App\Support\Dokumen\IsianSusun;
 use App\Support\Dokumen\JenisDokumen;
 use App\Support\Dokumen\PemeriksaanCetak;
 use App\Support\Dokumen\StatusCetak;
@@ -13,8 +14,15 @@ use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanOtomatis;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Dokumen\TeksCover;
+use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
+use App\Support\Kegiatan\KunciKegiatan;
+use App\Support\Kegiatan\UbahDataKegiatan;
+use App\Support\Pengaturan\PengaturanBerubah;
+use App\Support\Rab\RincianRab;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -28,6 +36,9 @@ use Livewire\Component;
  * dokumen tersimpan (tiruan StubData::drafDokumen sampai Simpan Draf tersedia). Sumber dana di `?sumber=`
  * ('' = sumber pertama); jenis dokumen di `?jenis=` (JenisDokumen, pilihan <x-dokumen.pilih-jenis>) menentukan bagian yang
  * tampil (cover/KAK-TOR/RAB), master template, cap DRAF, dan pemeriksaan cetak (PemeriksaanCetak: nama berkas & butir cek).
+ * Isian yang menentukan bagian bisa dilengkapi di tempat (`bukaIsian($nomor)` → `simpanIsian()`, kolom IsianSusun, lewat
+ * UbahDataKegiatan dengan versi saat dibuka) dan rincian RAB ditambah dari kartu RAB (`tambahRincian()`, RincianRab) —
+ * keduanya hanya selama kegiatan bisa diubah (KunciKegiatan).
  */
 #[Layout('layouts.app')]
 class SusunDokumen extends Component
@@ -40,6 +51,19 @@ class SusunDokumen extends Component
 
     #[Url(except: JenisDokumen::BAWAAN)]
     public string $jenis = JenisDokumen::BAWAAN;
+
+    /** Nomor bagian yang isiannya sedang dilengkapi di tempat; null = tertutup. */
+    public ?int $isianTerbuka = null;
+
+    /** @var array<string, string> */
+    public array $isian = [];
+
+    /** Versi data kegiatan (UbahDataKegiatan::versi) saat isian dibuka. */
+    #[Locked]
+    public ?string $versiIsian = null;
+
+    /** @var array{uraian: string, kategori: string, volume: string, satuan: string, harga_satuan: string} */
+    public array $rincianBaru = ['uraian' => '', 'kategori' => '', 'volume' => '', 'satuan' => '', 'harga_satuan' => ''];
 
     public function mount(int $kegiatan): void
     {
@@ -64,6 +88,98 @@ class SusunDokumen extends Component
         $jenis = JenisDokumen::rapikan($this->jenis);
         $this->jenis = JenisDokumen::perluSumber($jenis) && $this->kak->sumber === null ? JenisDokumen::TANPA_SUMBER : $jenis;
         unset($this->pemeriksaan, $this->pilihanJenis);
+    }
+
+    /** Kegiatan masih bisa diubah (status Draf/Dikembalikan & tahun anggaran terbuka). */
+    public function dapatDiubah(): bool
+    {
+        return KunciKegiatan::dapatDiubah($this->dataKegiatan);
+    }
+
+    public function bukaIsian(int $nomor): void
+    {
+        abort_unless(IsianSusun::untuk($nomor) !== [], 404);
+        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — isiannya hanya bisa dilihat.');
+        $this->isian = IsianSusun::isian($this->dataKegiatan, $nomor);
+        $this->versiIsian = UbahDataKegiatan::versi($this->dataKegiatan);
+        $this->resetErrorBag();
+        $this->isianTerbuka = $nomor;
+    }
+
+    public function tutupIsian(): void
+    {
+        $this->isianTerbuka = null;
+        $this->resetErrorBag();
+    }
+
+    /** Simpan isian bagian yang dibuka; galat tampil di kolomnya, perubahan dari tempat lain memuat ulang isian. */
+    public function simpanIsian(): void
+    {
+        $nomor = $this->isianTerbuka;
+        abort_unless($nomor !== null, 404);
+        $this->resetErrorBag();
+
+        try {
+            $hasil = UbahDataKegiatan::ubah($this->kegiatanId, IsianSusun::kiriman($nomor, $this->isian), StubData::currentUser(), $this->versiIsian);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError("isian.{$kolom}", $pesan[0]);
+            }
+
+            return;
+        } catch (PengaturanBerubah $e) {
+            $this->muatUlang();
+            $this->bukaIsian($nomor);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->muatUlang();
+            $this->isianTerbuka = null;
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $this->isianTerbuka = null;
+        $this->dispatch('notify', message: $hasil['diubah'] === [] ? $hasil['pesan'] : 'Bagian '.$nomor.' diperbarui — susunan KAK/TOR mengikuti isian baru.', type: $hasil['diubah'] === [] ? 'info' : 'success');
+    }
+
+    /** Tambah satu rincian ke RAB sumber dana yang ditampilkan (RincianRab: dirapikan & diperiksa seperti halaman RAB). */
+    public function tambahRincian(): void
+    {
+        $sumber = $this->kak->sumber;
+        abort_unless($sumber !== null, 404);
+        $this->resetErrorBag();
+
+        try {
+            $hasil = RincianRab::tambah($this->kegiatanId, $sumber, $this->rincianBaru);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError("rincianBaru.{$kolom}", $pesan[0]);
+            }
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->reset('rincianBaru');
+        $this->muatUlang();
+        $this->dispatch('notify', message: "Rincian ditambahkan ke RAB {$sumber}: ".Format::rupiah($hasil['jumlah']).'.', type: 'success');
+        if ($hasil['termin'] !== null) {
+            $this->dispatch('notify', message: $hasil['termin']['pesan'], type: $hasil['termin']['tipe']);
+        }
+    }
+
+    /** Buang data & susunan yang dihitung agar tampilan memakai data tersimpan terbaru. */
+    private function muatUlang(): void
+    {
+        unset($this->dataKegiatan);
+        $this->lupakan();
     }
 
     private function lupakan(): void

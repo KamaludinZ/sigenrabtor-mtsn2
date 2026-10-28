@@ -81,4 +81,40 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(page.getByTestId('susun-rab')).toHaveCount(0);
         await expect(page.getByTestId('nama-berkas')).toHaveText(/^KAK_/);
     });
+
+    test('lengkapi isian di tempat: tempat pelaksanaan tersimpan lalu dipulihkan; tambah rincian menolak isian kosong', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/dokumen?jenis=KAK');
+        const bagian5 = page.locator('#susun-bagian-5');
+        await bagian5.getByTestId('lengkapi-5').click();
+        const form = page.getByTestId('isian-bagian-5');
+        await expect(form).toBeVisible();
+        const tempat = form.locator('#isian-tempat');
+        const awal = await tempat.inputValue();
+
+        // Esc menutup tanpa menyimpan.
+        await tempat.fill('Ruang uji E2E');
+        await tempat.press('Escape');
+        await expect(form).toHaveCount(0);
+        await expect(bagian5.getByTestId('pratinjau-kak')).not.toContainText('Ruang uji E2E');
+
+        await bagian5.getByTestId('lengkapi-5').click();
+        await page.locator('#isian-tempat').fill('Ruang Multimedia MTsN 2 Kota Malang');
+        await page.getByTestId('simpan-isian').click();
+        await expect(page.getByTestId('isian-bagian-5')).toHaveCount(0);
+        await expect(bagian5.getByTestId('pratinjau-kak')).toContainText('Ruang Multimedia MTsN 2 Kota Malang');
+
+        // Pulihkan data bersama.
+        await bagian5.getByTestId('lengkapi-5').click();
+        await page.locator('#isian-tempat').fill(awal);
+        await page.getByTestId('simpan-isian').click();
+        await expect(page.getByTestId('isian-bagian-5')).toHaveCount(0);
+        await expect(bagian5.getByTestId('pratinjau-kak')).not.toContainText('Ruang Multimedia');
+
+        await page.goto('/kegiatan/1/dokumen');
+        const tambah = page.getByTestId('tambah-rincian-susun');
+        await tambah.getByTestId('simpan-rincian-susun').click();
+        await expect(tambah.locator('.form-error').first()).toBeVisible();
+        await expect(tambah).toContainText(/uraian/i);
+    });
 });

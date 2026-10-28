@@ -1,4 +1,6 @@
 @use('App\Support\Dokumen\DokumenKegiatan')
+@use('App\Support\Dokumen\IsianSusun')
+@use('App\Livewire\Forms\ItemBelanjaForm')
 @use('Illuminate\Support\Carbon')
 
 @php
@@ -17,6 +19,7 @@
     $template = $this->template();
     $jangkarPratinjau = ['cover' => '#dok-cover', 'kak' => '#dok-kak', 'rab' => '#dok-rab'][$isi[0]];
     $labelBagianTemplate = ['kak' => 'KAK/TOR', 'rab' => 'RAB'];
+    $bisaUbah = $this->dapatDiubah();
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $admin = \App\Support\Stub\StubData::currentUser()['role'] === 'admin';
     $nadaStatus = [
@@ -149,12 +152,46 @@
                                 @endforeach
                             </p>
                         </div>
+                        @if ($bisaUbah && IsianSusun::untuk($b['nomor']) !== [] && $isianTerbuka !== $b['nomor'])
+                            <button type="button" class="btn-secondary shrink-0 px-2.5 py-1 text-xs" wire:click="bukaIsian({{ $b['nomor'] }})" x-on:click="buka = true" data-testid="lengkapi-{{ $b['nomor'] }}">
+                                <x-ui.icon name="pencil" class="size-3.5" /> <span class="hidden sm:inline">Lengkapi di sini</span><span class="sm:hidden">Isi</span>
+                            </button>
+                        @endif
                         <button type="button" class="btn-ghost -mr-2 shrink-0 px-2" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" aria-controls="isi-susun-{{ $b['nomor'] }}">
                             <x-ui.icon name="chevron-down" class="size-4 transition" x-bind:class="{ 'rotate-180': buka }" />
                             <span class="sr-only">Tampilkan atau sembunyikan bagian {{ $b['nomor'] }}</span>
                         </button>
                     </header>
                     <div id="isi-susun-{{ $b['nomor'] }}" x-show="buka">
+                        @if ($isianTerbuka === $b['nomor'])
+                            {{-- Isian bagian ini, disimpan lewat UbahDataKegiatan (aturan sama dengan Data Kegiatan). --}}
+                            <form wire:submit="simpanIsian" x-on:keydown.escape.prevent="$wire.tutupIsian()" class="mx-4 mb-3 space-y-3 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 sm:mx-5 sm:p-4" data-testid="isian-bagian-{{ $b['nomor'] }}">
+                                <div class="grid gap-3 sm:grid-cols-2">
+                                    @foreach (IsianSusun::untuk($b['nomor']) as $kolom)
+                                        @php [$label, $jenisInput, $maks, $contoh] = IsianSusun::KOLOM[$kolom]; @endphp
+                                        <x-ui.field :label="$label" for="isian-{{ $kolom }}" :error="'isian.'.$kolom" :class="$jenisInput === 'uraian' ? 'sm:col-span-2' : ''">
+                                            @if ($jenisInput === 'uraian')
+                                                <textarea id="isian-{{ $kolom }}" wire:model="isian.{{ $kolom }}" rows="3" maxlength="{{ $maks }}" placeholder="{{ $contoh }}" class="form-input text-sm" @error('isian.'.$kolom) aria-invalid="true" @enderror></textarea>
+                                            @elseif ($jenisInput === 'tanggal')
+                                                <input type="date" id="isian-{{ $kolom }}" wire:model="isian.{{ $kolom }}" class="form-input text-sm" @error('isian.'.$kolom) aria-invalid="true" @enderror>
+                                            @elseif ($jenisInput === 'angka')
+                                                <input type="number" id="isian-{{ $kolom }}" wire:model="isian.{{ $kolom }}" min="1" max="{{ $maks }}" inputmode="numeric" placeholder="{{ $contoh }}" class="form-input text-sm" @error('isian.'.$kolom) aria-invalid="true" @enderror>
+                                            @else
+                                                <input type="text" id="isian-{{ $kolom }}" wire:model="isian.{{ $kolom }}" maxlength="{{ $maks }}" placeholder="{{ $contoh }}" class="form-input text-sm" @error('isian.'.$kolom) aria-invalid="true" @enderror>
+                                            @endif
+                                        </x-ui.field>
+                                    @endforeach
+                                </div>
+                                @error('isian')<p class="form-error" role="alert">{{ $message }}</p>@enderror
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    <button type="button" class="btn-ghost text-sm" wire:click="tutupIsian">Batal</button>
+                                    <button type="submit" class="btn-primary text-sm" wire:loading.attr="disabled" wire:target="simpanIsian" data-testid="simpan-isian">
+                                        <span wire:loading.remove wire:target="simpanIsian">Simpan isian</span><span wire:loading wire:target="simpanIsian">Menyimpan…</span>
+                                    </button>
+                                </div>
+                                <p class="text-xs text-stone-500">Tersimpan ke Data Kegiatan; isian lain tetap di <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="font-medium text-brand-700 hover:text-brand-800">halaman Data Kegiatan</a>.</p>
+                            </form>
+                        @endif
                         @if ($b['kurang'] !== [])
                             <div class="mx-4 mb-3 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-800 ring-1 ring-gold-200 sm:mx-5" data-testid="kurang-bagian">
                                 <p class="font-semibold">Belum lengkap — tertandai kuning di dokumen:</p>
@@ -221,6 +258,61 @@
                             <span class="text-sm font-semibold text-stone-900">Total <x-ui.uang :nilai="$rab->anggaran?->total() ?? 0" /></span>
                         </div>
                     </dl>
+
+                    {{-- Rincian belanja (ringkas) + tambah rincian cepat. --}}
+                    <div class="border-t border-stone-100 px-4 py-3 sm:px-5">
+                        <h3 class="text-xs font-semibold tracking-wide text-stone-500 uppercase">Rincian belanja</h3>
+                        @if (($rab->anggaran?->jumlahItem() ?? 0) === 0)
+                            <p class="mt-1.5 text-sm text-stone-500">Belum ada rincian — tambahkan minimal satu baris agar RAB tersusun.</p>
+                        @else
+                            <ol class="mt-1.5 divide-y divide-stone-100 text-sm" data-testid="daftar-rincian-susun">
+                                @foreach ($rab->anggaran->hasil->rincian as $i => $item)
+                                    <li class="flex items-baseline justify-between gap-3 py-1.5" wire:key="rincian-{{ $item['id'] ?? $i }}">
+                                        <span class="min-w-0">
+                                            <span class="text-stone-800">{{ $item['uraian'] }}</span>
+                                            <span class="block text-xs text-stone-500">{{ \App\Support\Format::angka($item['volume']) }} {{ $item['satuan'] }} × <x-ui.uang :nilai="$item['harga_satuan']" /> · {{ ItemBelanjaForm::LABEL_KATEGORI[$item['kategori']] ?? $item['kategori'] }}</span>
+                                        </span>
+                                        <span class="shrink-0 font-medium text-stone-900 tabular-nums"><x-ui.uang :nilai="$item['jumlah']" /></span>
+                                    </li>
+                                @endforeach
+                            </ol>
+                        @endif
+
+                        @if ($bisaUbah)
+                            <form wire:submit="tambahRincian" class="mt-3 grid gap-2 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 sm:grid-cols-6" data-testid="tambah-rincian-susun">
+                                <x-ui.field label="Uraian" for="rincian-uraian" error="rincianBaru.uraian" class="sm:col-span-6">
+                                    <input type="text" id="rincian-uraian" wire:model="rincianBaru.uraian" maxlength="255" placeholder="mis. Konsumsi rapat koordinasi" class="form-input text-sm">
+                                </x-ui.field>
+                                <x-ui.field label="Volume" for="rincian-volume" error="rincianBaru.volume" class="sm:col-span-1">
+                                    <input type="text" id="rincian-volume" wire:model="rincianBaru.volume" inputmode="decimal" placeholder="mis. 20" class="form-input text-sm">
+                                </x-ui.field>
+                                <x-ui.field label="Satuan" for="rincian-satuan" error="rincianBaru.satuan" class="sm:col-span-2">
+                                    <input type="text" id="rincian-satuan" wire:model="rincianBaru.satuan" list="satuan-susun" maxlength="30" placeholder="mis. kotak" class="form-input text-sm">
+                                    <datalist id="satuan-susun">
+                                        @foreach (ItemBelanjaForm::SATUAN as $satuan)
+                                            <option value="{{ $satuan }}"></option>
+                                        @endforeach
+                                    </datalist>
+                                </x-ui.field>
+                                <x-ui.field label="Harga satuan" for="rincian-harga" error="rincianBaru.harga_satuan" class="sm:col-span-3">
+                                    <x-ui.rupiah id="rincian-harga" model="rincianBaru.harga_satuan" class="text-sm" />
+                                </x-ui.field>
+                                <x-ui.field label="Kelompok belanja" for="rincian-kategori" error="rincianBaru.kategori" class="sm:col-span-3">
+                                    <select id="rincian-kategori" wire:model="rincianBaru.kategori" class="form-input text-sm">
+                                        <option value="">Tebak dari uraian</option>
+                                        @foreach (ItemBelanjaForm::LABEL_KATEGORI as $kunci => $label)
+                                            <option value="{{ $kunci }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </x-ui.field>
+                                <div class="flex items-end justify-end sm:col-span-3">
+                                    <button type="submit" class="btn-primary w-full justify-center text-sm sm:w-auto" wire:loading.attr="disabled" wire:target="tambahRincian" data-testid="simpan-rincian-susun">
+                                        <x-ui.icon name="plus" class="size-4" /> Tambah ke RAB {{ $sumberAktif }}
+                                    </button>
+                                </div>
+                            </form>
+                        @endif
+                    </div>
                 @endif
             </section>
             @endif

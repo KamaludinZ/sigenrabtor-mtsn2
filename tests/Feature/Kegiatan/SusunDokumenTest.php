@@ -3,9 +3,11 @@
 namespace Tests\Feature\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\RabRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Kegiatan\SusunDokumen;
 use App\Support\Dokumen\DokumenKegiatan;
+use App\Support\Dokumen\IsianSusun;
 use App\Support\Dokumen\JenisDokumen;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\SusunanKak;
@@ -162,6 +164,79 @@ class SusunDokumenTest extends TestCase
         Livewire::test(SusunDokumen::class, ['kegiatan' => 1])
             ->assertSee('Atur master KAK/TOR')
             ->assertSeeHtml('href="'.route('pengaturan.madrasah.dasar_hukum').'"');
+    }
+
+    public function test_lengkapi_isian_bagian_di_tempat(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $id = $repo->simpan(['nama_kegiatan' => 'Rapat Kerja Madrasah', 'leading' => '1.6', 'user_id' => 1, 'tahun_anggaran' => 2026]);
+        $this->assertSame([[], ['tujuan', 'sasaran']], [IsianSusun::untuk(2), IsianSusun::untuk(3)]);
+        $this->assertSame(['tanggal_mulai' => null, 'lama_hari' => 2, 'peserta_jumlah' => null, 'peserta_jenis' => 'guru', 'uraian_pelaksanaan' => null],
+            IsianSusun::kiriman(4, ['lama_hari' => '2', 'tanggal_mulai' => ' ', 'peserta_jenis' => ' guru ', 'tempat' => 'diabaikan']));
+
+        $halaman = Livewire::test(SusunDokumen::class, ['kegiatan' => $id])
+            ->assertSeeHtml('data-testid="lengkapi-3"')
+            ->assertDontSeeHtml('data-testid="lengkapi-2"')
+            ->call('bukaIsian', 3)
+            ->assertSet('isianTerbuka', 3)
+            ->assertSet('isian', ['tujuan' => '', 'sasaran' => ''])
+            ->assertSeeHtml('data-testid="isian-bagian-3"')
+            ->set('isian.tujuan', 'menyusun rencana kerja tahunan madrasah.')
+            ->set('isian.sasaran', 'rencana kerja yang terukur dan disepakati warga madrasah.')
+            ->call('simpanIsian')
+            ->assertHasNoErrors()
+            ->assertSet('isianTerbuka', null)
+            ->assertDispatched('notify', message: 'Bagian 3 diperbarui — susunan KAK/TOR mengikuti isian baru.', type: 'success')
+            ->assertSeeHtml('data-bagian="3" data-status="lengkap"');
+        $this->assertSame('menyusun rencana kerja tahunan madrasah.', $repo->temukan($id)['tujuan']);
+
+        // Galat aturan tampil di kolomnya; isian tetap terbuka.
+        $halaman->call('bukaIsian', 4)->set('isian.lama_hari', 'dua')->set('isian.peserta_jumlah', '0')->call('simpanIsian')
+            ->assertHasErrors(['isian.lama_hari', 'isian.peserta_jumlah'])
+            ->assertSet('isianTerbuka', 4)
+            ->call('tutupIsian')
+            ->assertSet('isianTerbuka', null);
+
+        // Berubah di tempat lain sejak dibuka: isian dimuat ulang, tidak menimpa.
+        $halaman->call('bukaIsian', 5);
+        $repo->simpan(['tempat' => 'Aula Utama'] + $repo->temukan($id), $id);
+        $halaman->set('isian.tempat', 'Laboratorium')->call('simpanIsian')
+            ->assertSet('isian.tempat', 'Aula Utama')
+            ->assertSet('isianTerbuka', 5)
+            ->assertDispatched('notify', type: 'error');
+        $this->assertSame('Aula Utama', $repo->temukan($id)['tempat']);
+        $halaman->call('bukaIsian', 2)->assertNotFound();
+    }
+
+    public function test_tambah_rincian_rab_dari_susun(): void
+    {
+        $repo = app(KegiatanRepository::class);
+        $id = $repo->simpan(['nama_kegiatan' => 'Rapat Kerja Madrasah', 'leading' => '1.6', 'user_id' => 1, 'tahun_anggaran' => 2026, 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 2_000_000]]]);
+
+        Livewire::test(SusunDokumen::class, ['kegiatan' => $id])
+            ->assertSee('Belum ada rincian')
+            ->call('tambahRincian')
+            ->assertHasErrors(['rincianBaru.uraian', 'rincianBaru.volume', 'rincianBaru.satuan', 'rincianBaru.harga_satuan'])
+            ->set('rincianBaru', ['uraian' => 'Konsumsi rapat koordinasi', 'kategori' => '', 'volume' => '20', 'satuan' => 'kotak', 'harga_satuan' => '25.000'])
+            ->call('tambahRincian')
+            ->assertHasNoErrors()
+            ->assertSet('rincianBaru.uraian', '')
+            ->assertDispatched('notify', message: 'Rincian ditambahkan ke RAB DIPA: Rp500.000.', type: 'success')
+            ->assertSeeHtml('data-testid="daftar-rincian-susun"')
+            ->assertSee('Konsumsi rapat koordinasi');
+        $this->assertSame(['Konsumsi rapat koordinasi', 'bahan'], [app(RabRepository::class)->rincian($id, 'DIPA')[0]['uraian'], app(RabRepository::class)->rincian($id, 'DIPA')[0]['kategori']], 'Kelompok ditebak dari uraian.');
+
+        // Terkunci (diajukan): tanpa formulir; aksi ditolak.
+        $repo->simpan(['status' => 'diperiksa'] + $repo->temukan($id), $id);
+        Livewire::test(SusunDokumen::class, ['kegiatan' => $id])
+            ->assertDontSeeHtml('data-testid="tambah-rincian-susun"')
+            ->assertDontSeeHtml('data-testid="lengkapi-3"')
+            ->set('rincianBaru', ['uraian' => 'Fotokopi materi', 'kategori' => 'bahan', 'volume' => '10', 'satuan' => 'rim', 'harga_satuan' => '50000'])
+            ->call('tambahRincian')
+            ->assertDispatched('notify', type: 'error')
+            ->call('bukaIsian', 3)
+            ->assertForbidden();
+        $this->assertCount(1, app(RabRepository::class)->rincian($id, 'DIPA'));
     }
 
     public function test_hak_akses_kegiatan(): void
