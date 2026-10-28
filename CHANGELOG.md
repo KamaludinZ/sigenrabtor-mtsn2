@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **pengelolaan profil madrasah di server** — simpan profil (dirapikan, riwayat hanya bila ada perubahan), unggah/hapus logo kop, dan aturan isiannya kini satu layanan yang dipakai halaman Profil & Pejabat (khusus admin); tersedia API baca profil madrasah beserta isian kop yang masih kosong.
 - Fondasi backend: **profil madrasah di database** — nama, nama singkat, kota, alamat, telepon, visi, dan logo kop kini bisa disimpan di database dengan hasil yang sama persis dengan penyimpanan saat ini; aturan isiannya (telepon, panjang visi) sama dengan formulir Profil & Pejabat.
 - RAB: tombol **Unduh PDF** di halaman RAB — RAB yang sama dengan unduhan Excel dicetak ke PDF A4 (angka & tanda DRAF identik); bila mesin dokumen tidak tersedia, halaman RAB menampilkan pesan galatnya.
 - RAB: tombol **Unduh Excel** di halaman RAB — RAB sumber dana yang sedang dibuka diunduh sebagai berkas Excel yang isinya sama dengan dokumen RAB (judul, header kegiatan & kode, rincian dengan angka yang bisa dihitung ulang, total & terbilang, mekanisme pembayaran, dan lembar pengesahan); tanda DRAF ikut tercantum selama dokumennya belum siap. Tersedia juga unduhan semua RAB satu kegiatan sekaligus (satu lembar per sumber dana).

@@ -3,15 +3,16 @@
 namespace App\Livewire\Pengaturan;
 
 use App\Contracts\PejabatRepository;
-use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\Nip;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -38,24 +39,13 @@ class ProfilMadrasah extends Component
     /** Tab yang berupa halaman tersendiri (nama rute). */
     public const TAB_HALAMAN = ['dasar_hukum' => 'pengaturan.madrasah.dasar_hukum'];
 
-    /**
-     * Isian profil madrasah (kolom tabel profil_madrasah): label, tempat tercetak, dan wajib untuk kop.
-     *
-     * @var array<string, array{label: string, dipakai: string, wajib: bool}>
-     */
-    public const ISIAN_PROFIL = [
-        'nama' => ['label' => 'Nama madrasah', 'dipakai' => 'Kop, cover, dan judul dokumen', 'wajib' => true],
-        'nama_singkat' => ['label' => 'Nama singkat', 'dipakai' => 'Sebutan sumber dana ("DIPA MTsN 2 Kota Malang Tahun …") dan isi KAK', 'wajib' => true],
-        'kota' => ['label' => 'Kota', 'dipakai' => 'Tempat & tanggal tanda tangan, cover', 'wajib' => true],
-        'alamat' => ['label' => 'Alamat', 'dipakai' => 'Kop dokumen', 'wajib' => true],
-        'telepon' => ['label' => 'Telepon', 'dipakai' => 'Kop dokumen', 'wajib' => true],
-        'visi' => ['label' => 'Visi', 'dipakai' => 'Profil madrasah; dapat dirujuk di latar belakang KAK', 'wajib' => false],
-    ];
+    /** Isian profil madrasah: label, tempat tercetak, dan wajib untuk kop (KelolaProfilMadrasah::ISIAN). */
+    public const ISIAN_PROFIL = KelolaProfilMadrasah::ISIAN;
 
     /** Batas ukuran logo (KB) dan sisi terpendek minimal (piksel). */
-    public const MAKS_LOGO_KB = 2048;
+    public const MAKS_LOGO_KB = KelolaProfilMadrasah::MAKS_LOGO_KB;
 
-    public const MIN_SISI_LOGO = 200;
+    public const MIN_SISI_LOGO = KelolaProfilMadrasah::MIN_SISI_LOGO;
 
     #[Url(except: 'profil')]
     public string $tab = 'profil';
@@ -265,19 +255,17 @@ class ProfilMadrasah extends Component
     }
 
     /** Rapikan spasi (visi boleh berganti baris), validasi, simpan, lalu catat ringkasan perubahannya di riwayat. */
-    public function simpanProfil(ProfilMadrasahRepository $repo): void
+    public function simpanProfil(): void
     {
-        $mentah = array_merge(array_fill_keys(array_keys(self::ISIAN_PROFIL), ''), array_intersect_key($this->isian, self::ISIAN_PROFIL));
-        $this->isian = array_map(fn ($nilai) => self::rapikan((string) $nilai), $mentah);
-        $this->isian['visi'] = self::rapikanParagraf((string) $mentah['visi']);
+        $this->isian = KelolaProfilMadrasah::rapikan($this->isian);
         $this->validate(array_intersect_key($this->rules(), array_flip(array_map(fn ($k) => "isian.{$k}", array_keys(self::ISIAN_PROFIL)))));
 
-        $lama = $repo->ambil();
-        $repo->simpan($this->isian);
-        $baru = $repo->ambil();
-        $ringkasan = RiwayatPengaturan::perubahan($lama, $baru, array_map(fn (array $isian) => $isian['label'], self::ISIAN_PROFIL));
-        if ($ringkasan !== null) {
-            RiwayatPengaturan::catat('ubah_profil', $ringkasan);
+        try {
+            $ringkasan = KelolaProfilMadrasah::simpan($this->isian, StubData::currentUser())['ringkasan'];
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
         }
 
         unset($this->profil);
@@ -291,16 +279,19 @@ class ProfilMadrasah extends Component
         $this->validateOnly('logo');
     }
 
-    public function simpanLogo(ProfilMadrasahRepository $repo): void
+    public function simpanLogo(): void
     {
         $this->validateOnly('logo');
-        $adaSebelumnya = $repo->ambil()['logo_path'] !== null;
-        $repo->simpanLogo($this->logo);
-        $nama = $this->logo->getClientOriginalName();
+
+        try {
+            KelolaProfilMadrasah::simpanLogo($this->logo, StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
         $this->logo->delete();
         $this->reset('logo');
-
-        RiwayatPengaturan::catat('unggah_logo', ($adaSebelumnya ? 'Logo kop diganti' : 'Logo kop diunggah')." ({$nama}).");
         unset($this->profil);
         $this->dispatch('notify', message: 'Logo kop tersimpan.', type: 'success');
     }
@@ -312,15 +303,19 @@ class ProfilMadrasah extends Component
         $this->resetValidation('logo');
     }
 
-    public function hapusLogo(ProfilMadrasahRepository $repo): void
+    public function hapusLogo(): void
     {
-        if ($repo->ambil()['logo_path'] === null) {
+        try {
+            if (! KelolaProfilMadrasah::hapusLogo(StubData::currentUser())) {
+                return;
+            }
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
             return;
         }
 
-        $repo->hapusLogo();
         $this->konfirmasiHapusLogo = false;
-        RiwayatPengaturan::catat('hapus_logo', 'Logo kop dihapus; dokumen dicetak tanpa logo sampai diunggah lagi.');
         unset($this->profil);
         $this->dispatch('notify', message: 'Logo kop dihapus.', type: 'info');
     }
@@ -437,13 +432,7 @@ class ProfilMadrasah extends Component
     protected function rules(): array
     {
         return [
-            'isian.nama' => ['required', 'string', 'max:150'],
-            'isian.nama_singkat' => ['required', 'string', 'max:60'],
-            'isian.kota' => ['required', 'string', 'max:60'],
-            'isian.alamat' => ['nullable', 'string', 'max:255'],
-            'isian.telepon' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-\s.\/]+$/'],
-            'isian.visi' => ['nullable', 'string', 'max:1000'],
-            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:'.self::MAKS_LOGO_KB, 'dimensions:min_width='.self::MIN_SISI_LOGO.',min_height='.self::MIN_SISI_LOGO],
+            ...collect(KelolaProfilMadrasah::aturan())->mapWithKeys(fn (array $aturan, string $kunci) => [$kunci === 'logo' ? 'logo' : "isian.{$kunci}" => $aturan])->all(),
         ];
     }
 
@@ -453,16 +442,7 @@ class ProfilMadrasah extends Component
     protected function messages(): array
     {
         return [
-            'isian.nama.required' => 'Nama madrasah wajib diisi — tercetak di kop dan cover.',
-            'isian.nama_singkat.required' => 'Nama singkat wajib diisi — dipakai sebutan sumber dana di dokumen.',
-            'isian.kota.required' => 'Kota wajib diisi — dipakai di tempat & tanggal tanda tangan.',
-            'isian.*.max' => 'Terlalu panjang (maksimal :max karakter).',
-            'isian.telepon.regex' => 'Telepon hanya boleh berisi angka, spasi, dan tanda + ( ) - . /',
-            'logo.required' => 'Pilih gambar logo.',
-            'logo.image' => 'Logo harus berupa gambar PNG atau JPG.',
-            'logo.mimes' => 'Logo harus berupa gambar PNG atau JPG.',
-            'logo.max' => 'Ukuran logo maksimal '.(self::MAKS_LOGO_KB / 1024).' MB.',
-            'logo.dimensions' => 'Logo terlalu kecil — minimal '.self::MIN_SISI_LOGO.' × '.self::MIN_SISI_LOGO.' piksel agar tajam saat dicetak.',
+            ...collect(KelolaProfilMadrasah::pesan())->mapWithKeys(fn (string $pesan, string $kunci) => [str_starts_with($kunci, 'logo.') ? $kunci : "isian.{$kunci}" => $pesan])->all(),
         ];
     }
 
@@ -470,14 +450,6 @@ class ProfilMadrasah extends Component
     private static function rapikan(string $teks): string
     {
         return trim(preg_replace('/\s+/u', ' ', $teks));
-    }
-
-    /** Paragraf (visi): spasi ganda dirapikan per baris, paling banyak satu baris kosong di antara paragraf. */
-    private static function rapikanParagraf(string $teks): string
-    {
-        $baris = array_map(fn (string $b) => self::rapikan($b), explode("\n", str_replace("\r", '', $teks)));
-
-        return trim(preg_replace("/\n{3,}/", "\n\n", implode("\n", $baris)));
     }
 
     /**

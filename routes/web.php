@@ -7,6 +7,7 @@ use App\Http\Controllers\DataDashboard;
 use App\Http\Controllers\DataKegiatanMonitoring;
 use App\Http\Controllers\DataMonitoringAnggaran;
 use App\Http\Controllers\DataPaguMonitoring;
+use App\Http\Controllers\DataProfilMadrasah;
 use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\EksporMonitoringExcel;
@@ -112,6 +113,7 @@ Route::get('/master-kode/{jenis}', AmbilMasterKode::class)->whereIn('jenis', arr
 
 // Logo kop madrasah: tampil di kop & pratinjau dokumen semua pengguna.
 Route::get('/madrasah/logo', LogoMadrasah::class)->name('madrasah.logo');
+Route::get('/madrasah/profil', DataProfilMadrasah::class)->name('madrasah.profil');
 
 // Pengaturan admin (PRD Fase 5–7): seluruh halaman khusus admin.
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {
