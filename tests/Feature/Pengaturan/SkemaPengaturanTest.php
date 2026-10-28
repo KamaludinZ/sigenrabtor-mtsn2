@@ -219,6 +219,9 @@ class SkemaPengaturanTest extends TestCase
         $this->assertFalse(Schema::hasColumn('users', 'role'));
         DB::table('activities')->insert(['tahun_anggaran' => 2030, 'nama_kegiatan' => 'Bebas']);
         DB::table('activities')->delete();
+        // Peristiwa trigger tertunda (alur status) diperiksa dulu: tabel dengan peristiwa tertunda tidak bisa di-ALTER.
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+        DB::statement('SET CONSTRAINTS ALL DEFERRED');
 
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_MASTER])->assertSuccessful();

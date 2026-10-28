@@ -119,8 +119,8 @@ class EloquentKegiatanRepositoryTest extends TestCase
         $this->assertSame([$pengguna['id'], $finalkan['pada']], [$baris->dikunci_oleh, Carbon::parse($baris->dikunci_pada)->setTimezone(config('app.timezone'))->toIso8601String()]);
 
         // Buka kunci (catatan & sidik ikut tersimpan) → jejak kunci dilepas.
-        $buka = RiwayatStatus::entri('buka_kunci', StatusKegiatan::Disetujui, $pengguna, 'Salah tanggal.') + ['sidik' => ['identitas' => 'abc']];
-        $this->repo->simpan(['status' => 'disetujui', 'riwayat_status' => [$dibuat, $ajukan, $finalkan, $buka]], $id);
+        $buka = RiwayatStatus::entri('buka_kunci', StatusKegiatan::Dikembalikan, $pengguna, 'Salah tanggal.') + ['sidik' => ['identitas' => 'abc']];
+        $this->repo->simpan(['status' => 'dikembalikan', 'riwayat_status' => [$dibuat, $ajukan, $finalkan, $buka]], $id);
         $this->assertSame($buka, $this->repo->temukan($id)['riwayat_status'][3]);
         $this->assertNull(DB::table('activities')->find($id)->dikunci_pada);
     }

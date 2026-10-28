@@ -69,6 +69,11 @@ class EloquentKegiatanRepository implements KegiatanRepository
             ]);
 
             $kegiatan->fill($this->kolom($data));
+            // Jejak kunci hanya selama Final (CHECK activities_kunci_check): dibuang dalam simpan yang sama dengan status
+            // barunya (mis. buka kunci); untuk Final diisi catatKunci() sesudah riwayatnya tersimpan.
+            if ($kegiatan->status !== StatusKegiatan::Final->value) {
+                $kegiatan->forceFill(['dikunci_pada' => null, 'dikunci_oleh' => null]);
+            }
             // Waktu perubahan catatan konteks (bahan AI) dicatat terpisah dari versi Data Kegiatan.
             if ($kegiatan->isDirty('konteks')) {
                 $kegiatan->konteks_diperbarui_pada = blank($kegiatan->konteks) ? null : $kegiatan->freshTimestamp();
