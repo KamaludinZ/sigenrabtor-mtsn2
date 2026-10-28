@@ -69,4 +69,23 @@ class CetakDaftarTest extends TestCase
         $menu = collect(Navigation::groups('leading'))->flatMap(fn (array $g) => $g['items'])->firstWhere('route', 'cetak.index');
         $this->assertSame(['Cetak & Unduh', true], [$menu['label'], $menu['available']]);
     }
+
+    public function test_tombol_aksi_cetak_di_data_kegiatan_dan_ruang_kerja(): void
+    {
+        $daftar = $this->get(route('kegiatan.index'))->assertOk();
+        $daftar->assertSee('data-testid="aksi-cetak" data-kegiatan="2"', false)
+            ->assertSee(e(CetakDokumen::tautan(2, 'DIPA', ['cover', 'kak', 'rab'], otomatis: true)), false)
+            ->assertSee(e(route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'DIPA'])), false)
+            ->assertSee(e(route('cetak.index', ['pilih' => '2|DIPA'])), false);
+
+        $rab = $this->get(route('kegiatan.rab', 1))->assertOk();
+        $rab->assertSee('id="aksi-cetak-1-tab"', false)->assertSee('data-testid="aksi-cetak-set-Komite"', false);
+
+        $tanpaSumber = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Apel Pagi Madrasah', 'leading' => '1.6', 'user_id' => 1, 'status' => 'draf']);
+        $this->get(route('kegiatan.edit', $tanpaSumber))->assertOk()
+            ->assertSee('data-testid="aksi-cetak-set-kak"', false)
+            ->assertSee(e(CetakDokumen::tautan($tanpaSumber, null, ['cover', 'kak'], otomatis: true)), false)
+            ->assertDontSee('data-testid="aksi-rab-excel-', false);
+        $this->get(route('kegiatan.create'))->assertOk()->assertDontSee('data-testid="aksi-cetak"', false);
+    }
 }

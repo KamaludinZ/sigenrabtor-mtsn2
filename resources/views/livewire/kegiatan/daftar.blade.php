@@ -282,6 +282,7 @@
                                                aria-label="{{ $label }} {{ $b['nama'] }}"
                                                class="rounded-md px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 hover:text-brand-800">{{ $label }}</a>
                                         @endforeach
+                                        <x-dokumen.aksi-cetak :kegiatan-id="$b['id']" :sumber="$b['sumber']" ringkas />
                                     </div>
                                 </td>
                             </tr>

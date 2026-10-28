@@ -21,7 +21,8 @@
     ];
 @endphp
 
-<nav class="-mb-px flex gap-1 overflow-x-auto border-b border-stone-200" aria-label="Bagian kegiatan">
+<div class="flex items-center gap-2 border-b border-stone-200">
+<nav class="-mb-px flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label="Bagian kegiatan">
     @foreach ($tabs as $tab)
         @php
             $available = Route::has($tab['route']) && (! $tab['needs_id'] || $kegiatanId);
@@ -54,3 +55,10 @@
         @endif
     @endforeach
 </nav>
+@if ($kegiatanId)
+    {{-- Cetak & unduh dari tab mana pun (di luar nav yang bisa digeser agar menunya tidak terpotong). --}}
+    <div class="shrink-0 pb-1">
+        <x-dokumen.aksi-cetak :kegiatan-id="$kegiatanId" ringkas kunci="tab" />
+    </div>
+@endif
+</div>

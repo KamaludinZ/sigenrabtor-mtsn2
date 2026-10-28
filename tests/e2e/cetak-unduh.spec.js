@@ -45,4 +45,29 @@ test.describe('Cetak & Unduh', () => {
         await expect(daftar.locator('[data-kunci="2|DIPA"]')).toHaveCount(0);
         await expect(daftar.locator('[data-kunci="1|Komite"]')).toBeVisible();
     });
+
+    test('tombol aksi cetak di Data Kegiatan & ruang kerja', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan');
+        const aksi = page.getByTestId('tabel-kegiatan').locator('[data-testid="aksi-cetak"][data-kegiatan="2"]');
+        await aksi.getByTestId('buka-aksi-cetak').click();
+        const menu = aksi.getByTestId('menu-aksi-cetak');
+        await expect(menu).toBeVisible();
+        await expect(menu.locator('[data-sumber-aksi]')).toHaveCount(2);
+        await expect(menu.getByTestId('aksi-cetak-set-DIPA')).toHaveAttribute('href', /\/kegiatan\/2\/cetak\?.*otomatis=1/);
+        await page.keyboard.press('Escape');
+        await expect(menu).toBeHidden();
+        await aksi.getByTestId('buka-aksi-cetak').click();
+        await menu.getByTestId('aksi-atur-cetak').click();
+        await expect(page).toHaveURL(/\/cetak\?pilih=2(%7C|\|)DIPA/);
+        await expect(page.getByTestId('judul-terpilih')).toContainText('Supervisi');
+
+        await page.goto('/kegiatan/1/rab');
+        const tab = page.locator('[data-testid="aksi-cetak"][data-kegiatan="1"]');
+        await tab.getByTestId('buka-aksi-cetak').click();
+        await expect(tab.getByTestId('aksi-cetak-set-Komite')).toBeVisible();
+        await expect(tab.getByTestId('aksi-rab-excel-Komite')).toHaveAttribute('href', /\/kegiatan\/1\/rab\/excel\?sumber=Komite/);
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+    });
 });
