@@ -6,7 +6,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Rules\KalimatUtuh;
 use App\Support\Format;
-use App\Support\Master\IkskPerSk;
+use App\Support\Master\ValidasiKodeMaster;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Carbon\CarbonImmutable;
@@ -19,8 +19,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Validasi sisi server data kegiatan (bentuk data KegiatanRepository) — satu sumber aturan, pesan, dan label untuk form
  * Data Kegiatan (KegiatanForm, dipakai juga Kode & Klasifikasi dan Kalimat KAK) dan jalur simpan lain (impor Excel &
- * cascade Perkin). Draf boleh belum lengkap: yang diperiksa hanya bentuk & batas isian, kecocokan dengan master tahun
- * aktif, dan konsistensi antarkolom (tanggal, IKSK–SK); syarat pengajuan diperiksa terpisah (Form::ubahStatus).
+ * cascade Perkin). Draf boleh belum lengkap: yang diperiksa hanya bentuk & batas isian, kecocokan kode dengan master
+ * tahun anggaran kegiatannya (ValidasiKodeMaster), dan konsistensi antarkolom (tanggal, IKSK–SK); syarat pengajuan
+ * diperiksa terpisah (Form::ubahStatus).
  */
 final class ValidasiKegiatan
 {
@@ -61,11 +62,8 @@ final class ValidasiKegiatan
             'bulan_pelaksanaan' => ['array', 'max:12', self::bulanMencakupTanggal($mulai, $selesai)],
             'bulan_pelaksanaan.*' => ['integer', 'between:1,12'],
             'leading' => ['nullable', Rule::in(array_column(MasterKode::pilihanLeading($pengguna ?? StubData::currentUser(), $leadingTersimpan), 'kode'))],
-            'kode_rktm' => ['nullable', Rule::in(array_column(MasterKode::kodeRktm(), 'kode'))],
-            'kode_sk' => ['nullable', Rule::in(array_column(MasterKode::kodeSk(), 'kode'))],
-            'kode_iksk' => ['nullable', Rule::in(array_column(MasterKode::kodeIksk(), 'kode')), self::ikskSesuaiSk($data['kode_sk'] ?? null)],
-            'kode_edm' => ['nullable', Rule::in(array_column(MasterKode::kodeEdm(), 'kode'))],
-            'budaya_mutu' => ['nullable', Rule::in(array_column(MasterKode::budayaMutu(), 'nomor'))],
+            // Kode master tahun anggaran kegiatannya (isian tanpa tahun = tahun aktif).
+            ...ValidasiKodeMaster::aturan($data),
             'tempat' => ['nullable', 'string', 'max:255'],
             'peserta_jumlah' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'peserta_jenis' => ['nullable', 'string', 'max:150'],
@@ -240,15 +238,6 @@ final class ValidasiKegiatan
     }
 
     /** IKSK harus indikator SK terpilih (IkskPerSk::galat). */
-    private static function ikskSesuaiSk(?string $kodeSk): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) use ($kodeSk) {
-            if ($pesan = IkskPerSk::galat($kodeSk, filled($value) ? (string) $value : null)) {
-                $fail($pesan);
-            }
-        };
-    }
-
     private static function teksTanggal(CarbonImmutable $tanggal): string
     {
         return $tanggal->locale('id')->translatedFormat('j F Y');

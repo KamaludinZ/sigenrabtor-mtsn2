@@ -9,6 +9,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\SimpanPelaksanaan;
 use App\Support\Kegiatan\SusunanPanitia;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\Master\IkskPerSk;
 use App\Support\Rab\SimpanSumberDana;
@@ -146,7 +147,8 @@ class KegiatanForm extends Form
      */
     protected function rules(): array
     {
-        $bersama = ValidasiKegiatan::aturan($this->dataUntukDisimpan(), StubData::currentUser(), $this->leadingTersimpan());
+        // Kode dicocokkan dengan master tahun anggaran kegiatannya (ValidasiKodeMaster).
+        $bersama = ValidasiKegiatan::aturan($this->dataUntukDisimpan() + ['tahun_anggaran' => $this->tahunKegiatan()], StubData::currentUser(), $this->leadingTersimpan());
 
         return [
             ...array_diff_key($bersama, array_flip(['sumber_dana', 'sumber_dana.*.sumber', 'sumber_dana.*.pagu', 'data_pagu_id', 'status', 'asal'])),
@@ -179,6 +181,15 @@ class KegiatanForm extends Form
     /**
      * Leading yang tersimpan untuk kegiatan ini (dibaca dari penyimpanan, bukan isian) — tetap sah walau kini nonaktif.
      */
+    /** Tahun anggaran kegiatan tersimpan (TahunKegiatan); kegiatan baru = tahun aktif — tahun master kodenya. */
+    public function tahunKegiatan(): int
+    {
+        $id = $this->getComponent()->kegiatanId ?? null;
+        $tersimpan = $id ? app(KegiatanRepository::class)->temukan((int) $id) : null;
+
+        return $tersimpan === null ? StubData::tahunAktif()['tahun'] : TahunKegiatan::dari($tersimpan);
+    }
+
     public function leadingTersimpan(): ?string
     {
         $id = $this->getComponent()->kegiatanId ?? null;
@@ -504,7 +515,7 @@ class KegiatanForm extends Form
      */
     public function sinkronIksk(): bool
     {
-        ['iksk' => $this->kode_iksk, 'otomatis' => $otomatis] = IkskPerSk::sesudahGantiSk($this->kode_sk, $this->kode_iksk);
+        ['iksk' => $this->kode_iksk, 'otomatis' => $otomatis] = IkskPerSk::sesudahGantiSk($this->kode_sk, $this->kode_iksk, $this->tahunKegiatan());
 
         return $otomatis;
     }

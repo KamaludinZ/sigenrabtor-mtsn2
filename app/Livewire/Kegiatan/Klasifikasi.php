@@ -10,6 +10,7 @@ use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\RingkasanKode;
 use App\Support\Kegiatan\SimpanKlasifikasi;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
@@ -75,6 +76,13 @@ class Klasifikasi extends Component
         return $this->status()->dapatDiedit() && $this->tahunTerkunci === null;
     }
 
+    /** Tahun master kode kegiatan ini = tahun anggaran kegiatannya (ValidasiKodeMaster). */
+    #[Computed]
+    public function tahunMaster(): int
+    {
+        return TahunKegiatan::dari($this->dataKegiatan);
+    }
+
     /** Tahun anggaran kegiatan bila terkunci (KunciKegiatan) — isian hanya bisa dilihat. */
     #[Computed]
     public function tahunTerkunci(): ?int
@@ -138,11 +146,11 @@ class Klasifikasi extends Component
     public function pratinjauHeader(): array
     {
         $leading = MasterKode::leading($this->form->leading);
-        $rktm = MasterKode::cari(MasterKode::kodeRktm(), $this->form->kode_rktm);
-        $sk = MasterKode::cari(MasterKode::kodeSk(), $this->form->kode_sk);
-        $iksk = MasterKode::cari(MasterKode::kodeIksk(), $this->form->kode_iksk);
-        $edm = MasterKode::cari(MasterKode::kodeEdm(), $this->form->kode_edm);
-        $budaya = MasterKode::cari(MasterKode::budayaMutu(), $this->form->budaya_mutu, 'nomor');
+        $rktm = MasterKode::cari(MasterKode::kodeRktm($this->tahunMaster), $this->form->kode_rktm);
+        $sk = MasterKode::cari(MasterKode::kodeSk($this->tahunMaster), $this->form->kode_sk);
+        $iksk = MasterKode::cari(MasterKode::kodeIksk(null, $this->tahunMaster), $this->form->kode_iksk);
+        $edm = MasterKode::cari(MasterKode::kodeEdm($this->tahunMaster), $this->form->kode_edm);
+        $budaya = MasterKode::cari(MasterKode::budayaMutu($this->tahunMaster), $this->form->budaya_mutu, 'nomor');
 
         return [
             'leading' => ['label' => 'Leading sektor', 'nilai' => $leading['nama_unit'] ?? null],
@@ -186,7 +194,7 @@ class Klasifikasi extends Component
     #[Computed]
     public function ringkasanKode(): array
     {
-        return RingkasanKode::susun($this->form->only(RingkasanKode::ISIAN));
+        return RingkasanKode::susun($this->form->only(RingkasanKode::ISIAN), $this->tahunMaster);
     }
 
     /**

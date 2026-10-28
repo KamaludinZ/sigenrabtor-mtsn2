@@ -5,21 +5,22 @@
 @use('App\Support\Kegiatan\RingkasanKode')
 
 @php
-    $tahunMaster = $this->tahunAktif['tahun'];
-    $masterTersedia = MasterKode::tersedia();
+    // Master kode tahun anggaran kegiatannya — sama dengan validasi simpan (ValidasiKodeMaster).
+    $tahunMaster = $this->tahunMaster;
+    $masterTersedia = MasterKode::tersedia($tahunMaster);
     $opsiLeading = MasterKode::pilihanLeading(StubData::currentUser(), $form->leadingTersimpan());
-    $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
-    $skTerpilih = MasterKode::cari(MasterKode::kodeSk(), $form->kode_sk);
-    $opsiIksk = \App\Support\Master\IkskPerSk::pilihan($form->kode_sk);
+    $rktmTerpilih = MasterKode::cari(MasterKode::kodeRktm($tahunMaster), $form->kode_rktm);
+    $skTerpilih = MasterKode::cari(MasterKode::kodeSk($tahunMaster), $form->kode_sk);
+    $opsiIksk = \App\Support\Master\IkskPerSk::pilihan($form->kode_sk, $tahunMaster);
     $opsiIkskCari = array_map(fn ($i) => ['nilai' => $i['kode'], 'label' => $i['uraian'], 'keterangan' => null, 'grup' => null], $opsiIksk);
-    $ikskTerpilih = MasterKode::cari(MasterKode::kodeIksk(), $form->kode_iksk);
-    $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm(), $form->kode_edm);
+    $ikskTerpilih = MasterKode::cari(MasterKode::kodeIksk(null, $tahunMaster), $form->kode_iksk);
+    $edmTerpilih = MasterKode::cari(MasterKode::kodeEdm($tahunMaster), $form->kode_edm);
     $leadingTerpilih = MasterKode::leading($form->leading);
     $bisaUbah = $this->dapatDiedit();
-    $opsiRktmCari = array_map(fn ($r) => ['nilai' => $r['kode'], 'label' => $r['sub_kegiatan'], 'keterangan' => null, 'grup' => $r['snp'].' — '.$r['kegiatan']], MasterKode::kodeRktm());
-    $komponenEdm = MasterKode::komponenEdm();
-    $opsiSkCari = array_map(fn ($sk) => ['nilai' => $sk['kode'], 'label' => $sk['uraian'], 'keterangan' => count(MasterKode::kodeIksk($sk['kode'])).' indikator IKSK', 'grup' => null], MasterKode::kodeSk());
-    $opsiEdmCari = array_map(fn ($e) => ['nilai' => $e['kode'], 'label' => $e['uraian'], 'keterangan' => null, 'grup' => $e['komponen'].' · '.($komponenEdm[$e['komponen']] ?? '')], MasterKode::kodeEdm());
+    $opsiRktmCari = array_map(fn ($r) => ['nilai' => $r['kode'], 'label' => $r['sub_kegiatan'], 'keterangan' => null, 'grup' => $r['snp'].' — '.$r['kegiatan']], MasterKode::kodeRktm($tahunMaster));
+    $komponenEdm = MasterKode::komponenEdm($tahunMaster);
+    $opsiSkCari = array_map(fn ($sk) => ['nilai' => $sk['kode'], 'label' => $sk['uraian'], 'keterangan' => count(MasterKode::kodeIksk($sk['kode'], $tahunMaster)).' indikator IKSK', 'grup' => null], MasterKode::kodeSk($tahunMaster));
+    $opsiEdmCari = array_map(fn ($e) => ['nilai' => $e['kode'], 'label' => $e['uraian'], 'keterangan' => null, 'grup' => $e['komponen'].' · '.($komponenEdm[$e['komponen']] ?? '')], MasterKode::kodeEdm($tahunMaster));
     $kodeHilang = $this->kodeHilang();
     $hilangPer = array_column($kodeHilang, null, 'kolom');
 @endphp
@@ -94,7 +95,7 @@
             </p>
             <ul class="mt-1.5 ml-6 list-disc space-y-0.5 text-xs">
                 @foreach ($bentrok as $isian => [$lama, $baru])
-                    <li>{{ RingkasanKode::LABEL[$isian] }}: {{ RingkasanKode::tampilNilai($isian, $lama) }} → {{ RingkasanKode::tampilNilai($isian, $baru) }}</li>
+                    <li>{{ RingkasanKode::LABEL[$isian] }}: {{ RingkasanKode::tampilNilai($isian, $lama, $tahunMaster) }} → {{ RingkasanKode::tampilNilai($isian, $baru, $tahunMaster) }}</li>
                 @endforeach
             </ul>
             <div class="mt-3 ml-6 flex flex-wrap gap-2">
@@ -186,7 +187,7 @@
                                description="Nilai budaya kerja yang paling diperkuat oleh kegiatan."
                                :kelengkapan="$this->kelengkapan['budaya']">
                 <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="5 Budaya Mutu">
-                    @foreach (MasterKode::budayaMutu() as $butir)
+                    @foreach (MasterKode::budayaMutu($tahunMaster) as $butir)
                         <label @class([
                                 'cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition has-focus-visible:outline-2 has-focus-visible:outline-brand-600',
                                 'bg-brand-700 text-white ring-brand-700' => (int) $form->budaya_mutu === $butir['nomor'],
@@ -236,7 +237,7 @@
                                 <li>
                                     <p class="text-stone-500">{{ Carbon::parse($entri['pada'])->locale('id')->translatedFormat('j M Y, H.i') }} · {{ $entri['oleh'] }}</p>
                                     @foreach ($entri['perubahan'] as $isian => [$lama, $baru])
-                                        <p class="text-stone-700"><span class="font-medium">{{ RingkasanKode::LABEL[$isian] }}</span>: {{ RingkasanKode::tampilNilai($isian, $lama) }} → {{ RingkasanKode::tampilNilai($isian, $baru) }}</p>
+                                        <p class="text-stone-700"><span class="font-medium">{{ RingkasanKode::LABEL[$isian] }}</span>: {{ RingkasanKode::tampilNilai($isian, $lama, $tahunMaster) }} → {{ RingkasanKode::tampilNilai($isian, $baru, $tahunMaster) }}</p>
                                     @endforeach
                                 </li>
                             @endforeach

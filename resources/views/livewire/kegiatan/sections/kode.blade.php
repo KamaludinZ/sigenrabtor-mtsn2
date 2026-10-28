@@ -4,11 +4,11 @@
 
 @php
     // Ringkasan saja: kode & klasifikasi diatur di halaman tersendiri agar tidak ada dua editor untuk data yang sama.
-    $r = MasterKode::cari(MasterKode::kodeRktm(), $form->kode_rktm);
+    $r = MasterKode::cari(MasterKode::kodeRktm($form->tahunKegiatan()), $form->kode_rktm);
 @endphp
 
 <div class="space-y-4" data-testid="ringkasan-kode">
-    <x-kode.ringkasan :baris="RingkasanKode::susun($form->only(RingkasanKode::ISIAN))" kolom />
+    <x-kode.ringkasan :baris="RingkasanKode::susun($form->only(RingkasanKode::ISIAN), $form->tahunKegiatan())" kolom />
 
     @error('form.kode_sk')
         <p class="form-error" role="alert" data-testid="error-kode-sk">{{ $message }} Atur di halaman Kode &amp; Klasifikasi.</p>

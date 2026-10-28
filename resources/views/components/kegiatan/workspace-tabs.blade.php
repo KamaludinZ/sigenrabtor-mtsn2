@@ -6,7 +6,7 @@
 @php
     // Lencana kelengkapan di tab Kode: dari isian langsung bila dikirim halaman Kode, selain itu dari data tersimpan.
     if (! $statusKode && $kegiatanId && ($tersimpan = app(KegiatanRepository::class)->temukan($kegiatanId))) {
-        $statusKode = RingkasanKode::status(RingkasanKode::susun(array_intersect_key($tersimpan, array_flip(RingkasanKode::ISIAN))));
+        $statusKode = RingkasanKode::status(RingkasanKode::susun(array_intersect_key($tersimpan, array_flip(RingkasanKode::ISIAN)), \App\Support\Kegiatan\TahunKegiatan::dari($tersimpan)));
     }
 
     // Tab ruang kerja satu kegiatan. Tab tanpa rute (belum dibangun) atau yang butuh kegiatan tersimpan ditampilkan non-aktif.

@@ -25,15 +25,15 @@ class RingkasanKode
      * @param  array{leading?: ?string, kode_rktm?: ?string, kode_sk?: ?string, kode_iksk?: ?string, kode_edm?: ?string, budaya_mutu?: int|string|null}  $kode
      * @return list<array{kunci: string, label: string, kode: string|null, uraian: string|null, detail: string|null}>
      */
-    public static function susun(array $kode): array
+    public static function susun(array $kode, ?int $tahun = null): array
     {
         $leading = MasterKode::leading($kode['leading'] ?? null);
-        $rktm = MasterKode::cari(MasterKode::kodeRktm(), $kode['kode_rktm'] ?? null);
-        $sk = MasterKode::cari(MasterKode::kodeSk(), $kode['kode_sk'] ?? null);
-        $iksk = MasterKode::cari(MasterKode::kodeIksk(), $kode['kode_iksk'] ?? null);
-        $edm = MasterKode::cari(MasterKode::kodeEdm(), $kode['kode_edm'] ?? null);
-        $budaya = MasterKode::cari(MasterKode::budayaMutu(), $kode['budaya_mutu'] ?? null, 'nomor');
-        $komponen = MasterKode::komponenEdm();
+        $rktm = MasterKode::cari(MasterKode::kodeRktm($tahun), $kode['kode_rktm'] ?? null);
+        $sk = MasterKode::cari(MasterKode::kodeSk($tahun), $kode['kode_sk'] ?? null);
+        $iksk = MasterKode::cari(MasterKode::kodeIksk(null, $tahun), $kode['kode_iksk'] ?? null);
+        $edm = MasterKode::cari(MasterKode::kodeEdm($tahun), $kode['kode_edm'] ?? null);
+        $budaya = MasterKode::cari(MasterKode::budayaMutu($tahun), $kode['budaya_mutu'] ?? null, 'nomor');
+        $komponen = MasterKode::komponenEdm($tahun);
 
         return [
             ['kunci' => 'leading', 'label' => self::LABEL['leading'], 'kode' => $leading['kode'] ?? null, 'uraian' => $leading['nama_unit'] ?? null, 'detail' => isset($leading) ? 'Penanda tangan: '.$leading['jabatan_penanda_tangan'] : null],
@@ -72,14 +72,14 @@ class RingkasanKode
     }
 
     /** Nilai baku untuk dibaca manusia di riwayat/bentrok: null → "kosong", budaya mutu → "2. Profesionalitas". */
-    public static function tampilNilai(string $isian, string|int|null $nilai): string
+    public static function tampilNilai(string $isian, string|int|null $nilai, ?int $tahun = null): string
     {
         if ($nilai === null) {
             return 'kosong';
         }
 
         if ($isian === 'budaya_mutu') {
-            return $nilai.'. '.(MasterKode::cari(MasterKode::budayaMutu(), $nilai, 'nomor')['nama'] ?? '?');
+            return $nilai.'. '.(MasterKode::cari(MasterKode::budayaMutu($tahun), $nilai, 'nomor')['nama'] ?? '?');
         }
 
         return (string) $nilai;
