@@ -26,6 +26,7 @@ use App\Http\Controllers\DataPejabat;
 use App\Http\Controllers\DataPemeriksaan;
 use App\Http\Controllers\DataPengaturanAiAdmin;
 use App\Http\Controllers\DataPenyediaAi;
+use App\Http\Controllers\DataPratinjauKegiatan;
 use App\Http\Controllers\DataProfilMadrasah;
 use App\Http\Controllers\DataPromptAi;
 use App\Http\Controllers\DataRiwayatPengaturan;
@@ -179,6 +180,7 @@ Route::get('/kegiatan/{kegiatan}/rab/pdf', EksporRabPdfKegiatan::class)->whereNu
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
 Route::get('/kegiatan/{kegiatan}/dokumen', KegiatanSusunDokumen::class)->whereNumber('kegiatan')->name('kegiatan.dokumen');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
+Route::get('/kegiatan/{kegiatan}/pratinjau/data', DataPratinjauKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau.data');
 Route::get('/kegiatan/{kegiatan}/arsip', DataArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip.data');
 Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');
 Route::post('/kegiatan/{kegiatan}/arsip/{sumber}', UnggahArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip.unggah');
