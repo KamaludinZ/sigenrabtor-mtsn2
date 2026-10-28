@@ -142,6 +142,42 @@ class SuntingDokumenTest extends TestCase
         $halaman->call('bukaSunting', 'tujuan')->assertForbidden();
     }
 
+    public function test_status_simpan_dan_penjaga_perubahan_belum_disimpan(): void
+    {
+        $id = $this->kegiatanBaru();
+        $halaman = Livewire::test(PratinjauDokumen::class, ['kegiatan' => $id])->set('mode', 'sunting')
+            ->assertSet('terakhirDisimpan', null)
+            ->assertDontSeeHtml('data-testid="terakhir-disimpan"');
+
+        // Tombol yang mengganti tampilan dijaga konfirmasi selama ada sunting yang belum disimpan.
+        $html = $halaman->html();
+        $this->assertMatchesRegularExpression('/wire:click="\$set\(\'mode\', \'baca\'\)" x-jaga-sunting/', $html);
+        $this->assertMatchesRegularExpression('/wire:click="bukaSunting\(\'tujuan\'\)" x-jaga-sunting x-data="\{ draf: window\.SIRABTOR\.adaDrafSunting\('.$id.', \'tujuan\'\) \}"/', $html);
+        $this->assertStringContainsString('wire:click="bukaSunting(\'latar_belakang\')" x-jaga-sunting', $html);
+
+        // Penyunting: Alpine penyuntingTeks per kegiatan × bidang, draf lokal, pesan luring.
+        $halaman->call('bukaSunting', 'tujuan');
+        $html = $halaman->html();
+        $this->assertStringContainsString('x-data="penyuntingTeks('.$id.', \'tujuan\')"', $html);
+        $this->assertStringContainsString('data-sunting-kotor="tidak"', $html);
+        foreach (['belum-disimpan', 'draf-lokal', 'pulihkan-draf', 'buang-draf', 'sunting-luring', 'batal-sunting'] as $penanda) {
+            $this->assertStringContainsString('data-testid="'.$penanda.'"', $html, $penanda);
+        }
+        $this->assertStringContainsString('wire:offline', $html);
+
+        $halaman->set('teksSunting', 'menyusun rencana kerja tahunan yang terukur.')
+            ->call('simpanSunting')
+            ->assertDispatched('sunting-tersimpan', kunci: 'tujuan')
+            ->assertSet('terakhirDisimpan.label', 'Tujuan')
+            ->assertSeeHtml('data-testid="terakhir-disimpan"')
+            ->assertSee('Terakhir disimpan: Tujuan · pukul '.now()->format('H.i'));
+
+        // Gagal disimpan: draf lokal tetap (tanpa event).
+        $halaman->call('bukaSunting', 'sasaran')->set('teksSunting', 'sasaran yang')->call('simpanSunting')
+            ->assertHasErrors('teksSunting')
+            ->assertNotDispatched('sunting-tersimpan');
+    }
+
     public function test_kegiatan_terkunci_hanya_baca(): void
     {
         $id = $this->kegiatanBaru(['status' => 'diperiksa']);

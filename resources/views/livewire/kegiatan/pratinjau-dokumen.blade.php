@@ -19,7 +19,7 @@
     $isi = $this->isiDokumen;
     $kurangIsi = array_sum(array_column($isi, 'kurang'));
     $bisaUbah = $this->dapatDiubah();
-    $sunting = $mode === 'sunting' && $bisaUbah ? ['terbuka' => $suntingTerbuka] : null;
+    $sunting = $mode === 'sunting' && $bisaUbah ? ['terbuka' => $suntingTerbuka, 'kegiatan_id' => $kegiatanId] : null;
     $penanda = ['kegiatan_id' => $kegiatanId, 'pengguna' => \App\Support\Stub\StubData::currentUser(), 'isi' => $bisaUbah];
     $ringkasanKosong = \App\Support\Dokumen\PenandaKosong::ringkasan($this->penandaKosong);
     $tahunDokumen = \App\Support\Stub\StubData::tahunAktif()['tahun'];
@@ -64,7 +64,7 @@
             @if (count($kak->daftarSumber) > 1)
                 <div class="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-stone-200" role="group" aria-label="Sumber dana">
                     @foreach ($kak->daftarSumber as $s)
-                        <button type="button" wire:click="$set('sumber', '{{ $s }}')" aria-pressed="{{ $sumberAktif === $s ? 'true' : 'false' }}"
+                        <button type="button" wire:click="$set('sumber', '{{ $s }}')" x-jaga-sunting aria-pressed="{{ $sumberAktif === $s ? 'true' : 'false' }}"
                                 @class(['rounded-md px-3 py-1 text-sm font-semibold transition', 'bg-brand-700 text-white' => $sumberAktif === $s, 'text-stone-600 hover:text-stone-900' => $sumberAktif !== $s])>{{ $s }}</button>
                     @endforeach
                 </div>
@@ -83,7 +83,7 @@
                     @php
                         $bisaMode = $kunciMode === 'baca' || $bisaUbah;
                     @endphp
-                    <button type="button" wire:click="$set('mode', '{{ $kunciMode }}')" aria-pressed="{{ $mode === $kunciMode ? 'true' : 'false' }}" data-pilihan-mode="{{ $kunciMode }}"
+                    <button type="button" wire:click="$set('mode', '{{ $kunciMode }}')" x-jaga-sunting aria-pressed="{{ $mode === $kunciMode ? 'true' : 'false' }}" data-pilihan-mode="{{ $kunciMode }}"
                             @disabled(! $bisaMode) @unless ($bisaMode) title="{{ $this->alasanTerkunci() }}" @endunless
                             @class(['inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold transition', 'bg-brand-700 text-white' => $mode === $kunciMode, 'text-stone-600 hover:text-stone-900' => $mode !== $kunciMode && $bisaMode, 'cursor-not-allowed text-stone-400' => ! $bisaMode])>
                         <x-ui.icon :name="$kunciMode === 'baca' ? 'eye' : 'pencil'" class="size-3.5" /> {{ $labelMode }}
@@ -241,7 +241,12 @@
                 @if ($sunting !== null)
                     <div class="flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900 ring-1 ring-sky-200" data-testid="petunjuk-sunting">
                         <x-ui.icon name="pencil" class="mt-0.5 size-4 shrink-0" />
-                        <p>Mode sunting — pilih <span class="font-semibold">Sunting</span> pada teks berbingkai biru di KAK/TOR untuk memperbaiki kalimatnya; perubahan langsung tersimpan di data kegiatan. Angka, tanggal, kode, dan jabatan tetap disusun dari isiannya.</p>
+                        <div class="min-w-0 flex-1">
+                            <p>Mode sunting — pilih <span class="font-semibold">Sunting</span> pada teks berbingkai biru di KAK/TOR untuk memperbaiki kalimatnya; perubahan langsung tersimpan di data kegiatan. Angka, tanggal, kode, dan jabatan tetap disusun dari isiannya.</p>
+                            @if ($terakhirDisimpan)
+                                <p class="mt-1 text-xs text-sky-800" data-testid="terakhir-disimpan">Terakhir disimpan: {{ $terakhirDisimpan['label'] }} · pukul {{ $terakhirDisimpan['pada'] }}</p>
+                            @endif
+                        </div>
                     </div>
                 @endif
                 @foreach (['cover' => $statusDraf, 'kak' => $kak->statusDraf, 'rab' => $rab->statusDraf] as $lembar => $drafLembar)

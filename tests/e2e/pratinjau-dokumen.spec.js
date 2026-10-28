@@ -165,6 +165,8 @@ test.describe('Pratinjau dokumen', () => {
         await expect(teks).toBeFocused();
         const awal = await teks.inputValue();
         await teks.fill('Teks uji yang dibatalkan.');
+        // Ketikan belum disimpan: Esc meminta konfirmasi membuangnya.
+        page.once('dialog', (dialog) => dialog.accept());
         await teks.press('Escape');
         await expect(editor).toHaveCount(0);
         await expect(kak).not.toContainText('Teks uji yang dibatalkan');
@@ -188,6 +190,53 @@ test.describe('Pratinjau dokumen', () => {
         await expect(page).not.toHaveURL(/mode=/);
         await expect(kak.locator('[data-sunting]')).toHaveCount(0);
         await expect(page.getByTestId('petunjuk-sunting')).toHaveCount(0);
+    });
+
+    test('perubahan belum disimpan: penanda, konfirmasi berpindah, draf lokal dipulihkan lalu dibuang', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        const drafLokal = () => page.evaluate(() => Object.keys(window.localStorage).filter((k) => k.startsWith('sirabtor.sunting.')).length);
+        await page.evaluate(() => Object.keys(window.localStorage).filter((k) => k.startsWith('sirabtor.sunting.')).forEach((k) => window.localStorage.removeItem(k)));
+        await page.goto('/kegiatan/1/pratinjau?mode=sunting');
+        const kak = page.locator('[data-lembar="kak"]');
+        await kak.getByTestId('sunting-sasaran').click();
+        const editor = page.getByTestId('penyunting-sasaran');
+        const teks = editor.getByRole('textbox', { name: 'Sasaran' });
+        const awal = await teks.inputValue();
+        await expect(editor.getByTestId('belum-disimpan')).toBeHidden();
+        await teks.fill(`${awal} Tambahan uji.`);
+        await expect(editor.getByTestId('belum-disimpan')).toBeVisible();
+        await expect(editor).toHaveAttribute('data-sunting-kotor', 'ya');
+        expect(await drafLokal()).toBe(1);
+        await editor.screenshot({ path: `storage/playwright/shots/pratinjau-belum-disimpan-${testInfo.project.name}.png` });
+
+        // Ganti mode: konfirmasi ditolak → tetap menyunting.
+        page.once('dialog', (dialog) => dialog.dismiss());
+        await page.getByTestId('mode-pratinjau').getByRole('button', { name: 'Baca' }).click();
+        await expect(editor).toBeVisible();
+        await expect(page).toHaveURL(/mode=sunting/);
+
+        // Pindah bidang & setujui: ketikan sasaran tetap tersimpan sebagai draf lokal (titik di tombol Sunting).
+        page.once('dialog', (dialog) => dialog.accept());
+        await kak.getByTestId('sunting-tujuan').click();
+        await expect(page.getByTestId('penyunting-tujuan')).toBeVisible();
+        await page.getByTestId('penyunting-tujuan').getByTestId('batal-sunting').click();
+        await expect(page.getByTestId('penyunting-tujuan')).toHaveCount(0);
+        await expect(kak.getByTestId('sunting-sasaran').locator('[data-draf-lokal]')).toBeVisible();
+
+        // Buka lagi: tawarkan pulihkan.
+        await kak.getByTestId('sunting-sasaran').click();
+        await expect(editor.getByTestId('draf-lokal')).toBeVisible();
+        await editor.getByTestId('pulihkan-draf').click();
+        await expect(teks).toHaveValue(`${awal} Tambahan uji.`);
+        await expect(editor.getByTestId('belum-disimpan')).toBeVisible();
+
+        // Batal & setujui: draf lokal dibuang, data kegiatan tidak berubah.
+        page.once('dialog', (dialog) => dialog.accept());
+        await editor.getByTestId('batal-sunting').click();
+        await expect(editor).toHaveCount(0);
+        await expect(kak.getByTestId('sunting-sasaran').locator('[data-draf-lokal]')).toBeHidden();
+        await expect(kak.locator('[data-sunting="sasaran"]')).not.toContainText('Tambahan uji');
+        expect(await drafLokal()).toBe(0);
     });
 
     test('penanda isian kosong: lencana bagian, tautan melengkapi, navigasi kosong berikutnya', async ({ page }, testInfo) => {

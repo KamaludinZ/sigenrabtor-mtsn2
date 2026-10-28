@@ -62,6 +62,9 @@ class PratinjauDokumen extends Component
 
     public string $teksSunting = '';
 
+    /** Sunting terakhir yang tersimpan di halaman ini: {label, pada "21.05"}; null = belum ada. */
+    public ?array $terakhirDisimpan = null;
+
     /** Versi data kegiatan (UbahDataKegiatan::versi) saat penyunting dibuka. */
     #[Locked]
     public ?string $versiSunting = null;
@@ -160,7 +163,10 @@ class PratinjauDokumen extends Component
 
         $this->muatUlang();
         $this->suntingTerbuka = null;
+        $this->terakhirDisimpan = ['label' => SuntingDokumen::label($kunci), 'pada' => now()->format('H.i')];
         $this->dispatch('notify', message: $hasil['pesan'], type: $hasil['diubah'] === [] ? 'info' : 'success');
+        // Draf lokal ketikan bidang ini di peramban dibuang (resources/js/penyunting-teks.js).
+        $this->dispatch('sunting-tersimpan', kunci: $kunci);
     }
 
     /** Buang data & susunan yang dihitung agar tampilan memakai data tersimpan terbaru. */

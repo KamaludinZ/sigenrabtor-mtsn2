@@ -10,7 +10,7 @@
     Penanda pagu di bagian Pembiayaan hanya ada di pratinjau (bukan teks dokumen).
     $bagian (daftar nomor, mis. [4, 7]) menampilkan bagian itu saja tanpa cover — dipakai pratinjau Matrik & Jadwal.
     :cap="false" tanpa cap DRAF/Final (cuplikan per bagian di tab Susun KAK/TOR; capnya tampil sekali di kepala halaman).
-    :sunting="['terbuka' => kunci|null]" = mode sunting teks pratinjau: blok ber-`sunting`/`sunting_butir` (SuntingDokumen)
+    :sunting="['terbuka' => kunci|null, 'kegiatan_id' => id]" = mode sunting teks pratinjau: blok ber-`sunting`/`sunting_butir` (SuntingDokumen)
     berbingkai dengan tombol Sunting (`bukaSunting`), yang terbuka diganti <x-dokumen.penyunting-teks>, dan bidang yang belum
     tampil ditawarkan "Tambah …" (SuntingDokumen::tambahan). null = baca saja.
     :penanda="['kegiatan_id' => id, 'pengguna' => akun, 'isi' => bool]" = penanda kosong pratinjau (PenandaKosong): lencana
@@ -60,13 +60,13 @@
                             $kunciSunting = $sunting !== null ? ($blok['sunting'] ?? null) : null;
                         @endphp
                         @if ($kunciSunting !== null && $sunting['terbuka'] === $kunciSunting)
-                            <x-dokumen.penyunting-teks :kunci="$kunciSunting" />
+                            <x-dokumen.penyunting-teks :kunci="$kunciSunting" :kegiatan="$sunting['kegiatan_id']" />
                             @continue
                         @endif
                         @if ($kunciSunting !== null)
                             <div class="relative -mx-1.5 rounded-sm px-1.5 pt-5 pb-1 outline-1 outline-sky-300 outline-dashed hover:bg-sky-50/60" data-sunting="{{ $kunciSunting }}">
-                                <button type="button" wire:click="bukaSunting('{{ $kunciSunting }}')" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciSunting }}">
-                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciSunting) }}</span>
+                                <button type="button" wire:click="bukaSunting('{{ $kunciSunting }}')" x-jaga-sunting x-data="{ draf: window.SIRABTOR.adaDrafSunting({{ (int) $sunting['kegiatan_id'] }}, '{{ $kunciSunting }}') }" x-on:sunting-tersimpan.window="if ($event.detail.kunci === '{{ $kunciSunting }}') draf = false" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciSunting }}">
+                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciSunting) }}</span><span class="size-1.5 rounded-full bg-gold-300" x-cloak x-show="draf" title="Ada ketikan yang belum disimpan" data-draf-lokal></span>
                                 </button>
                         @endif
                         @switch($blok['jenis'])
@@ -88,12 +88,12 @@
                                             $kunciButir = $sunting !== null ? ($blok['sunting_butir'][$i] ?? null) : null;
                                         @endphp
                                         @if ($kunciButir !== null && $sunting['terbuka'] === $kunciButir)
-                                            <li><x-dokumen.penyunting-teks :kunci="$kunciButir" /></li>
+                                            <li><x-dokumen.penyunting-teks :kunci="$kunciButir" :kegiatan="$sunting['kegiatan_id']" /></li>
                                         @elseif ($kunciButir !== null)
                                             <li class="relative rounded-sm pt-5 outline-1 outline-sky-300 outline-dashed sm:text-justify cetak:text-justify" data-sunting="{{ $kunciButir }}">
                                                 {{ $butir }}
-                                                <button type="button" wire:click="bukaSunting('{{ $kunciButir }}')" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciButir }}">
-                                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciButir) }}</span>
+                                                <button type="button" wire:click="bukaSunting('{{ $kunciButir }}')" x-jaga-sunting x-data="{ draf: window.SIRABTOR.adaDrafSunting({{ (int) $sunting['kegiatan_id'] }}, '{{ $kunciButir }}') }" x-on:sunting-tersimpan.window="if ($event.detail.kunci === '{{ $kunciButir }}') draf = false" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciButir }}">
+                                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciButir) }}</span><span class="size-1.5 rounded-full bg-gold-300" x-cloak x-show="draf" title="Ada ketikan yang belum disimpan" data-draf-lokal></span>
                                                 </button>
                                             </li>
                                         @else
@@ -126,7 +126,7 @@
                                         @if ($bisaIsi || $tempatKosong)
                                             <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-5.5 text-xs print:hidden">
                                                 @if ($bisaIsi)
-                                                    <button type="button" wire:click="isiDiSini('{{ $blok['sunting'] }}')" class="inline-flex items-center gap-1 font-semibold text-sky-700 hover:text-sky-900" data-testid="isi-di-sini-{{ $blok['sunting'] }}"><x-ui.icon name="pencil" class="size-3" /> Isi di sini</button>
+                                                    <button type="button" wire:click="isiDiSini('{{ $blok['sunting'] }}')" x-jaga-sunting class="inline-flex items-center gap-1 font-semibold text-sky-700 hover:text-sky-900" data-testid="isi-di-sini-{{ $blok['sunting'] }}"><x-ui.icon name="pencil" class="size-3" /> Isi di sini</button>
                                                 @endif
                                                 @if ($tempatKosong && $tempatKosong['tautan'])
                                                     <a href="{{ $tempatKosong['tautan'] }}" @unless ($tempatKosong['admin']) wire:navigate @endunless class="font-semibold underline underline-offset-2 hover:no-underline" data-testid="lengkapi-kosong">Lengkapi di {{ $tempatKosong['label'] }}</a>
@@ -225,9 +225,9 @@
                         {{-- Bidang yang belum tampil di dokumen (mis. latar belakang khusus kosong). --}}
                         @foreach (SuntingDokumen::tambahan($isiBagian) as $kunciTambah)
                             @if ($sunting['terbuka'] === $kunciTambah)
-                                <x-dokumen.penyunting-teks :kunci="$kunciTambah" />
+                                <x-dokumen.penyunting-teks :kunci="$kunciTambah" :kegiatan="$sunting['kegiatan_id']" />
                             @else
-                                <button type="button" wire:click="bukaSunting('{{ $kunciTambah }}')" class="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-sky-300 px-2 py-1.5 font-sans text-xs font-semibold text-sky-700 hover:bg-sky-50 print:hidden" data-testid="tambah-{{ $kunciTambah }}">
+                                <button type="button" wire:click="bukaSunting('{{ $kunciTambah }}')" x-jaga-sunting class="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-sky-300 px-2 py-1.5 font-sans text-xs font-semibold text-sky-700 hover:bg-sky-50 print:hidden" data-testid="tambah-{{ $kunciTambah }}">
                                     <x-ui.icon name="plus" class="size-3.5" /> Tambah {{ mb_strtolower(SuntingDokumen::label($kunciTambah)) }}
                                 </button>
                             @endif
