@@ -7,9 +7,11 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\SumberDana;
 use App\Support\Dokumen\DaftarIsi;
 use App\Support\MasterKode;
-use App\Support\Pengaturan\RiwayatPengaturan;
+use App\Support\Pengaturan\KelolaDaftarIsi;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -53,37 +55,35 @@ class TemplateDaftarIsi extends Component
         $this->resetValidation();
     }
 
-    public function simpan(DaftarIsiRepository $repo): void
+    public function simpan(): void
     {
-        $konfigurasi = DaftarIsi::rapikan($this->konfigurasi);
-        $perubahan = RiwayatPengaturan::perubahan(self::tampilan($this->tersimpan()), self::tampilan($konfigurasi), [
-            'judul' => 'Judul', 'subjudul' => 'Subjudul', 'kolom' => 'Kolom', 'urutan' => 'Urutan', 'tampilkan_jumlah' => 'Baris jumlah', 'catatan' => 'Catatan',
-        ]);
+        try {
+            $konfigurasi = KelolaDaftarIsi::simpan($this->tahun(), $this->leading, $this->sumber, $this->konfigurasi, StubData::currentUser());
+        } catch (AuthorizationException|ValidationException $e) {
+            $this->dispatch('notify', message: $e instanceof ValidationException ? $e->errors()['buku'][0] : $e->getMessage(), type: 'error');
 
-        if ($this->leading === null) {
-            $repo->simpanBawaan($this->tahun(), $konfigurasi);
-            $pesan = 'Pengaturan bawaan daftar isi tersimpan.';
-            RiwayatPengaturan::catat('ubah_daftar_isi', 'Pengaturan bawaan daftar isi diubah'.($perubahan ? " — {$perubahan}" : '').'.');
-        } else {
-            $repo->simpanKhusus($this->tahun(), $this->leading, $this->sumber, $konfigurasi);
-            $pesan = "Daftar isi {$this->namaBuku()} tersimpan.";
-            RiwayatPengaturan::catat('ubah_daftar_isi', "Pengaturan khusus daftar isi {$this->namaBuku()} disimpan".($perubahan ? " — {$perubahan}" : ' (sama dengan bawaan)').'.');
+            return;
         }
 
         $this->konfigurasi = $konfigurasi;
         unset($this->khusus);
-        $this->dispatch('notify', message: $pesan, type: 'success');
+        $this->dispatch('notify', message: $this->leading === null ? 'Pengaturan bawaan daftar isi tersimpan.' : "Daftar isi {$this->namaBuku()} tersimpan.", type: 'success');
     }
 
     /** Buku ini kembali memakai pengaturan bawaan (pengaturan khususnya dihapus). */
-    public function kembalikanBawaan(DaftarIsiRepository $repo): void
+    public function kembalikanBawaan(): void
     {
         if ($this->leading === null) {
             return;
         }
 
-        $repo->hapusKhusus($this->tahun(), $this->leading, $this->sumber);
-        RiwayatPengaturan::catat('hapus_daftar_isi_khusus', "Daftar isi {$this->namaBuku()} kembali memakai pengaturan bawaan.");
+        try {
+            KelolaDaftarIsi::hapusKhusus($this->tahun(), $this->leading, $this->sumber, StubData::currentUser());
+        } catch (AuthorizationException|ValidationException $e) {
+            $this->dispatch('notify', message: $e instanceof ValidationException ? $e->errors()['buku'][0] : $e->getMessage(), type: 'error');
+
+            return;
+        }
         unset($this->khusus);
         $this->konfigurasi = $this->tersimpan();
         $this->dispatch('notify', message: "Daftar isi {$this->namaBuku()} kembali memakai pengaturan bawaan.", type: 'info');
@@ -192,7 +192,7 @@ class TemplateDaftarIsi extends Component
         $leading ??= $this->leading;
         $sumber ??= $this->sumber;
 
-        return (MasterKode::leading($leading)['nama_unit'] ?? $leading).' · '.$sumber;
+        return KelolaDaftarIsi::namaBuku($leading, $sumber);
     }
 
     public function tahun(): int
@@ -206,25 +206,10 @@ class TemplateDaftarIsi extends Component
     }
 
     /**
-     * Konfigurasi dengan label terbaca (kolom & urutan) untuk ringkasan riwayat.
-     *
-     * @param  array<string, mixed>  $konfigurasi
-     * @return array<string, mixed>
-     */
-    private static function tampilan(array $konfigurasi): array
-    {
-        return ['kolom' => array_map(fn (string $k) => DaftarIsi::KOLOM[$k][0], $konfigurasi['kolom']), 'urutan' => DaftarIsi::URUTAN[$konfigurasi['urutan']]] + $konfigurasi;
-    }
-
-    /**
      * @return array{judul: string, subjudul: string, kolom: list<string>, urutan: string, tampilkan_jumlah: bool, catatan: string}
      */
     private function tersimpan(): array
     {
-        $repo = app(DaftarIsiRepository::class);
-
-        return $this->leading === null
-            ? $repo->bawaan($this->tahun())
-            : ($repo->khusus($this->tahun())["{$this->leading}|{$this->sumber}"] ?? $repo->bawaan($this->tahun()));
+        return KelolaDaftarIsi::tersimpan($this->tahun(), $this->leading, $this->sumber);
     }
 }

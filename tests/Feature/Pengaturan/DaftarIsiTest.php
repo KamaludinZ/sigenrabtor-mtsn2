@@ -61,6 +61,8 @@ class DaftarIsiTest extends TestCase
 
     public function test_tab_daftar_isi_pratinjau_dan_simpan_bawaan(): void
     {
+        // Halaman khusus admin (middleware rute); simpan daftar isi juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         Livewire::withQueryParams(['tab' => 'daftar_isi'])->test(TemplateDokumen::class)
             ->assertSet('tab', 'daftar_isi')
             ->assertSeeLivewire(TemplateDaftarIsi::class);
@@ -92,6 +94,8 @@ class DaftarIsiTest extends TestCase
 
     public function test_pengaturan_khusus_per_buku_lalu_kembali_ke_bawaan(): void
     {
+        // Halaman khusus admin (middleware rute); simpan daftar isi juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $komponen = Livewire::test(TemplateDaftarIsi::class)
             ->call('pilih', '1.6', 'Komite')
             ->assertSet('leading', '1.6')
