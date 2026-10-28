@@ -7,6 +7,7 @@ use App\Http\Controllers\DataDasarHukum;
 use App\Http\Controllers\DataDashboard;
 use App\Http\Controllers\DataKegiatanMonitoring;
 use App\Http\Controllers\DataLatarBelakang;
+use App\Http\Controllers\DataLeading;
 use App\Http\Controllers\DataMonitoringAnggaran;
 use App\Http\Controllers\DataPaguMonitoring;
 use App\Http\Controllers\DataPejabat;
@@ -135,6 +136,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/madrasah/sk-rktm/data', DataSkRktm::class)->name('madrasah.sk_rktm.data');
     Route::get('/madrasah/pejabat', DataPejabat::class)->name('madrasah.pejabat');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
+    Route::get('/leading/data', DataLeading::class)->name('leading.data');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
     Route::get('/riwayat/data', DataRiwayatPengaturan::class)->name('riwayat.data');
     Route::get('/ai', PengaturanAi::class)->name('ai.index');
