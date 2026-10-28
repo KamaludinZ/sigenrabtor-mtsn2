@@ -9,9 +9,9 @@ use App\Support\Format;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\MekanismePembayaran;
+use App\Support\Rab\SimpanTermin;
+use App\Support\Rab\ValidasiTermin;
 use App\Support\Stub\StubData;
-use Carbon\CarbonImmutable;
-use Closure;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -268,7 +268,8 @@ class TerminPembayaran extends Component
             return;
         }
 
-        app(RabRepository::class)->simpanTermin($this->kegiatanId, $this->sumber, $mekanisme->termin);
+        // Server memeriksa ulang & menyimpan lewat SimpanTermin (status terkunci, aturan baris, jumlah = total RAB).
+        $mekanisme = SimpanTermin::simpan($this->kegiatanId, $this->sumber, $this->baris)['mekanisme'];
         $this->adaPerubahan = false;
         $this->terminTerhapus = null;
         $this->terminSebelumSekaligus = null;
@@ -280,16 +281,10 @@ class TerminPembayaran extends Component
             : "RAB {$this->sumber} dibayar sekaligus (tanpa termin).");
     }
 
-    /**
-     * Alasan termin belum boleh disimpan/diajukan (null bila sekaligus atau pas).
-     */
+    /** Alasan termin belum boleh disimpan/diajukan (SimpanTermin::pesanTidakPas). */
     public static function pesanTidakPas(MekanismePembayaran $mekanisme, string $sumber): ?string
     {
-        return match (true) {
-            ! $mekanisme->bertermin() || $mekanisme->status() === 'pas' => null,
-            $mekanisme->total === 0 => "RAB {$sumber} belum berisi rincian, jadi termin belum bisa disusun. Isi rincian belanja dulu atau pilih Sekaligus.",
-            default => "Jumlah termin harus sama dengan total RAB {$sumber} (".Format::rupiah($mekanisme->total).'); '.$mekanisme->teksStatusKalimat().'.',
-        };
+        return SimpanTermin::pesanTidakPas($mekanisme, $sumber);
     }
 
     public function batalkan(): void
@@ -299,35 +294,10 @@ class TerminPembayaran extends Component
         $this->dispatch('termin-berubah', sumber: null);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** Aturan & pesan bersama ValidasiTermin (juga dipakai SimpanTermin di server). */
     protected function rules(): array
     {
-        $tahun = StubData::tahunAktif()['tahun'];
-
-        return [
-            'baris' => ['array', 'max:'.MekanismePembayaran::MAKS_TERMIN],
-            'baris.*.tanggal' => ['required', 'date_format:Y-m-d', function (string $atribut, mixed $nilai, Closure $gagal) use ($tahun) {
-                $index = (int) explode('.', $atribut)[1];
-                $tanggal = rescue(fn () => CarbonImmutable::createFromFormat('Y-m-d', (string) $nilai), null, false);
-
-                if ($tanggal === null) {
-                    return;
-                }
-
-                if ($tanggal->year !== $tahun) {
-                    $gagal("Tanggal termin harus di Tahun Anggaran {$tahun}.");
-                } elseif ($index > 0 && filled($sebelum = $this->baris[$index - 1]['tanggal'] ?? null) && $nilai < $sebelum) {
-                    $gagal('Tanggal termin '.($index + 1).' tidak boleh sebelum termin '.$index.'.');
-                }
-            }],
-            'baris.*.nominal' => ['required', function (string $atribut, mixed $nilai, Closure $gagal) {
-                if ((int) Format::parseRupiah((string) $nilai) < 1) {
-                    $gagal('Nominal termin harus lebih dari Rp0.');
-                }
-            }],
-        ];
+        return ValidasiTermin::aturan($this->baris, StubData::tahunAktif()['tahun']);
     }
 
     /**
@@ -335,12 +305,7 @@ class TerminPembayaran extends Component
      */
     protected function messages(): array
     {
-        return [
-            'baris.max' => 'Termin paling banyak :max.',
-            'baris.*.tanggal.required' => 'Tanggal termin wajib diisi.',
-            'baris.*.tanggal.date_format' => 'Tanggal termin tidak valid.',
-            'baris.*.nominal.required' => 'Nominal termin wajib diisi.',
-        ];
+        return ValidasiTermin::pesan();
     }
 
     /**
