@@ -62,6 +62,9 @@
                         @foreach (MasterKode::leadings() as $l)
                             <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}</option>
                         @endforeach
+                        @if (filled($isian['leading']) && ! MasterKode::cari(MasterKode::leadings(), $isian['leading']) && ($lama = MasterKode::leading($isian['leading'])))
+                            <option value="{{ $lama['kode'] }}">{{ $lama['kode'] }} · {{ $lama['nama_unit'] }} (nonaktif)</option>
+                        @endif
                     </select>
                 </x-ui.field>
                 <x-ui.field class="sm:col-span-2 lg:col-span-1" label="Pagu DIPA" for="pagu-dipa" error="isian.pagu_dipa">
@@ -71,6 +74,24 @@
                     <x-ui.rupiah id="pagu-komite" model="isian.pagu_komite" terbilang :nilai-awal="$isian['pagu_komite']" />
                 </x-ui.field>
             </div>
+            @if ($pemakai = $this->pemakaiUbah)
+                <div class="border-t border-stone-100 px-5 py-4 sm:px-6" data-testid="terapkan-pagu">
+                    @if ($pemakai['dapat_diubah'])
+                        <label class="flex items-start gap-3 text-sm text-stone-700">
+                            <input type="checkbox" wire:model="terapkan" class="mt-0.5 size-4 rounded accent-brand-700" data-testid="centang-terapkan-pagu">
+                            <span>
+                                Perbarui juga pagu RAB kegiatan <span class="font-medium text-stone-900">"{{ $pemakai['nama'] }}"</span>
+                                <span class="block text-stone-500">Sumber dana & pagu kegiatan diganti dengan isian ini; sumber dana tanpa pagu tidak dipilih lagi (rinciannya tetap tersimpan). Tanpa centang, kegiatan tidak berubah.</span>
+                            </span>
+                        </label>
+                    @else
+                        <p class="flex items-start gap-2 text-sm text-stone-600">
+                            <x-ui.icon name="info" class="mt-0.5 size-4 shrink-0 text-stone-400" />
+                            <span>Kegiatan <span class="font-medium text-stone-900">"{{ $pemakai['nama'] }}"</span> berstatus {{ $pemakai['status'] }} sehingga pagunya tidak ikut berubah.</span>
+                        </p>
+                    @endif
+                </div>
+            @endif
             <div class="flex justify-end gap-2 border-t border-stone-100 px-5 py-3 sm:px-6">
                 <button type="button" wire:click="batal" class="btn-ghost">Batal</button>
                 <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpan"><x-ui.icon name="save" class="size-4" /> Simpan</button>
