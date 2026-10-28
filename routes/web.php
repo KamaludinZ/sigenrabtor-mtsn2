@@ -27,6 +27,7 @@ use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\PaguDanRabTahunan;
+use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\SalinMasterKodeTahun;
 use App\Http\Controllers\StatusCetakKegiatan;
@@ -117,6 +118,7 @@ Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(Han
 Route::get('/pemeriksaan', PemeriksaanDaftar::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.index');
 Route::get('/pemeriksaan/data', DataPemeriksaan::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.data');
 Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.periksa');
+Route::post('/pemeriksaan/{kegiatan}/keputusan', PutuskanPemeriksaan::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.putuskan');
 
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
 Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');

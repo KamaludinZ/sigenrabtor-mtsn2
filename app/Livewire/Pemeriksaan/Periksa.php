@@ -8,17 +8,16 @@ use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Kegiatan\ArsipFinal;
-use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
+use App\Support\Pemeriksaan\KeputusanPemeriksaan;
 use App\Support\Pemeriksaan\RiwayatPemeriksaan;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
-use App\Support\Rab\BatasPagu;
 use App\Support\Stub\StubData;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -39,7 +38,7 @@ class Periksa extends Component
     public const DOKUMEN = ['kak' => 'KAK/TOR', 'rab' => 'RAB'];
 
     /** Aksi alur status yang diputuskan di halaman ini. */
-    public const KEPUTUSAN = ['kembalikan', 'setujui', 'buka_kunci'];
+    public const KEPUTUSAN = KeputusanPemeriksaan::AKSI;
 
     #[Locked]
     public int $kegiatanId;
@@ -185,16 +184,16 @@ class Periksa extends Component
     }
 
     /**
-     * Keputusan yang tersedia dari status kegiatan saat ini untuk peran pengguna.
+     * Keputusan yang tersedia dari status kegiatan saat ini untuk peran pengguna (KeputusanPemeriksaan::tersedia).
      *
      * @return array<string, array{label: string, ke: StatusKegiatan, konfirmasi: string}>
      */
     public function keputusan(): array
     {
-        return array_intersect_key($this->ringkasan['status']->aksiUntuk(StubData::currentUser()['role']), array_flip(self::KEPUTUSAN));
+        return KeputusanPemeriksaan::tersedia($this->dataKegiatan, StubData::currentUser());
     }
 
-    /** Buka konfirmasi keputusan; catatan diperiksa lebih dulu agar kesalahan tampil sebelum konfirmasi. */
+    /** Buka konfirmasi keputusan; aturannya diperiksa lebih dulu agar kesalahan tampil sebelum konfirmasi. */
     public function minta(string $aksi): void
     {
         $this->resetErrorBag();
@@ -204,9 +203,7 @@ class Periksa extends Component
             return;
         }
 
-        $this->validasiCatatan($aksi);
-        $this->pastikanDalamPagu($aksi);
-        $this->pastikanTahunTerbuka();
+        $this->catatan = KeputusanPemeriksaan::periksa($this->dataKegiatan, $aksi, $this->catatan, StubData::currentUser());
         $this->konfirmasi = $aksi;
     }
 
@@ -222,35 +219,24 @@ class Periksa extends Component
         if ($this->berubahDiTempatLain()) {
             return;
         }
-
-        $definisi = $this->keputusan()[$aksi] ?? null;
-        if ($definisi === null) {
+        if (! isset($this->keputusan()[$aksi])) {
             $this->dispatch('notify', message: 'Keputusan ini tidak tersedia untuk status kegiatan saat ini.', type: 'error');
 
             return;
         }
 
-        $this->validasiCatatan($aksi);
-        $this->pastikanDalamPagu($aksi);
-        $this->pastikanTahunTerbuka();
+        try {
+            $hasil = KeputusanPemeriksaan::putuskan($this->kegiatanId, $aksi, $this->catatan, StubData::currentUser(), $this->versi);
+        } catch (PengaturanBerubah $e) {
+            unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan, $this->putaran);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
-        $data = $this->dataKegiatan;
-        $data['status'] = $definisi['ke']->value;
-        $entri = RiwayatStatus::entri($aksi, $definisi['ke'], StubData::currentUser(), $this->catatan);
-        if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {
-            // Titik awal perbaikan: bagian yang berubah sesudahnya ditandai untuk leading & pemeriksa berikutnya.
-            $entri['sidik'] = PerbaikanKegiatan::sidik($data);
+            return;
         }
-        $data['riwayat_status'] = [...array_values((array) ($data['riwayat_status'] ?? [])), $entri];
-        app(KegiatanRepository::class)->simpan($data, $this->kegiatanId);
 
         $this->catatan = '';
         unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan, $this->putaran);
-        $this->dispatch('notify', message: match ($aksi) {
-            'setujui' => 'Kegiatan disetujui — leading dapat mencetak dan menandatangani dokumennya.',
-            'buka_kunci' => 'Kunci dibuka — leading dapat memperbaiki data lalu mengajukan ulang.',
-            default => 'Kegiatan dikembalikan ke leading beserta catatan perbaikannya.',
-        });
+        $this->dispatch('notify', message: $hasil['pesan']);
     }
 
     /** Pengajuan terlama yang masih menunggu diperiksa selain kegiatan ini (tautan setelah memutuskan). */
@@ -260,20 +246,6 @@ class Periksa extends Component
         $kegiatan = array_values(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['status'] ?? null) === 'diperiksa' && (int) $k['id'] !== $this->kegiatanId && TahunKegiatan::dari($k) === $tahun));
 
         return AntreanPemeriksaan::untukTab(AntreanPemeriksaan::baris($kegiatan), 'diperiksa')[0]['id'] ?? null;
-    }
-
-    /** RAB yang melebihi pagu tidak bisa disetujui (PRD aturan 5, BatasPagu); dikembalikan tetap boleh. */
-    private function pastikanDalamPagu(string $aksi): void
-    {
-        if ($aksi === 'setujui' && ($terlampaui = BatasPagu::terlampaui(AnggaranKegiatan::untuk($this->dataKegiatan)))) {
-            throw ValidationException::withMessages(['keputusan' => implode(' ', $terlampaui)]);
-        }
-    }
-
-    private function validasiCatatan(string $aksi): void
-    {
-        $this->catatan = RiwayatStatus::rapikanCatatan($this->catatan);
-        $this->validate(...RiwayatStatus::validasiCatatan($aksi, 'catatan'));
     }
 
     private function berubahDiTempatLain(): bool
@@ -290,7 +262,7 @@ class Periksa extends Component
 
     private function sidik(): string
     {
-        return md5(json_encode([$this->dataKegiatan['status'] ?? null, $this->dataKegiatan['riwayat_status'] ?? [], $this->dataKegiatan['diperbarui_pada'] ?? null]));
+        return KeputusanPemeriksaan::versi($this->dataKegiatan);
     }
 
     private function rapikanPilihan(): void
@@ -307,14 +279,6 @@ class Periksa extends Component
     public function rendering(): void
     {
         $this->versi = $this->sidik();
-    }
-
-    /** Keputusan atas kegiatan tahun anggaran yang terkunci ditolak (KunciKegiatan) — galat di `keputusan`. */
-    private function pastikanTahunTerbuka(): void
-    {
-        if (($tahun = KunciKegiatan::tahunTerkunci($this->dataKegiatan)) !== null) {
-            throw ValidationException::withMessages(['keputusan' => KunciKegiatan::pesanTahun($tahun)]);
-        }
     }
 
     public function render()
