@@ -35,6 +35,7 @@ use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\PasangKunciFinal;
+use App\Http\Controllers\PeriksaCetakKegiatan;
 use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\RiwayatKunciKegiatan;
@@ -128,6 +129,7 @@ Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber(
 Route::get('/kegiatan/{kegiatan}/termin', TerminKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.termin');
 Route::get('/kegiatan/{kegiatan}/sumber-dana', SumberDanaKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.sumber_dana');
 Route::get('/kegiatan/{kegiatan}/status-cetak', StatusCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status_cetak');
+Route::get('/kegiatan/{kegiatan}/periksa-cetak', PeriksaCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.periksa_cetak');
 Route::get('/kegiatan/{kegiatan}/matrik-jadwal', MatrikJadwalKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.matrik_jadwal');
 // Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).
 Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('dokumen.cover.gambar');
