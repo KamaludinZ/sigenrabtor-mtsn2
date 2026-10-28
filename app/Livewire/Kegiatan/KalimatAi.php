@@ -14,7 +14,7 @@ use App\Support\Kegiatan\BatasAmanSaran;
 use App\Support\Kegiatan\GagalPenyediaAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
-use App\Support\Kegiatan\PermintaanSaranKalimat;
+use App\Support\Kegiatan\PayloadAi;
 use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\StatusKuotaAi;
@@ -287,16 +287,8 @@ class KalimatAi extends Component
             return false;
         }
 
-        $bahanBagian = array_column(array_filter(BagianAi::bahan($bagian, $kegiatan), fn (array $b) => $b['nilai'] !== null), 'nilai', 'label');
-        $permintaan = new PermintaanSaranKalimat(
-            kegiatanId: $this->kegiatanId,
-            bagian: $bagian,
-            teks: $acuan,
-            instruksi: $instruksi,
-            bahanBagian: $bahanBagian,
-            bahan: KonteksAi::teks($kegiatan),
-            namaKegiatan: (string) $kegiatan['nama_kegiatan'],
-        );
+        // Muatan AI lewat PayloadAi: NIP, nama pejabat, dan pagu tidak pernah ikut terkirim.
+        $permintaan = PayloadAi::saranKalimat($this->kegiatanId, $bagian, $kegiatan, $acuan, $instruksi);
 
         try {
             $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->sarankan($permintaan));

@@ -2,7 +2,6 @@
 
 namespace App\Support\Kegiatan;
 
-use App\Support\Format;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 
@@ -97,11 +96,12 @@ final class KonteksAi
     /** Catatan yang aman dikirim: NIP diganti penanda. */
     public static function redaksi(string $konteks): string
     {
-        return trim(preg_replace(['/\bNIP\.?\s*:?\s*/i', self::POLA_NIP], ['', '[NIP disembunyikan]'], $konteks));
+        // Idempoten: penanda "[NIP disembunyikan]" yang sudah ada tidak ikut terbuang bila dibersihkan ulang (PayloadAi).
+        return trim(preg_replace(['/(?<!\[)\bNIP\.?\s*:?\s*/i', self::POLA_NIP], ['', '[NIP disembunyikan]'], $konteks));
     }
 
     /**
-     * Bahan dari isian lain yang ikut dikirim ke AI (tanpa nama/NIP pejabat).
+     * Bahan dari isian lain yang ikut dikirim ke AI (tanpa nama/NIP pejabat, tanpa pagu).
      *
      * @param  array<string, mixed>  $kegiatan  Data form/kegiatan (kunci kolom activities).
      * @return list<array{label: string, nilai: string|null}>
@@ -113,9 +113,10 @@ final class KonteksAi
         $leading = MasterKode::leading($kegiatan['leading'] ?? null);
         $rktm = MasterKode::cari(MasterKode::kodeRktm(), $kegiatan['kode_rktm'] ?? null);
         $peserta = trim(($pelaksanaan->pesertaJumlah ? $pelaksanaan->pesertaJumlah.' orang ' : '').$pelaksanaan->pesertaJenis);
+        // Hanya nama sumber dana: pagu & rincian RAB tidak pernah dikirim ke AI (Pengaturan AI, PayloadAi).
         $sumber = array_map(
-            fn ($s) => $s['sumber'].($s['pagu'] ? ' '.Format::rupiah((int) $s['pagu']) : ''),
-            array_filter((array) ($kegiatan['sumber_dana'] ?? []), fn ($s) => is_array($s) && isset($s['sumber'])),
+            fn ($s) => (string) $s['sumber'],
+            array_values(array_filter((array) ($kegiatan['sumber_dana'] ?? []), fn ($s) => is_array($s) && isset($s['sumber']))),
         );
 
         return [

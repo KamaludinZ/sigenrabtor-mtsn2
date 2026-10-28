@@ -15,7 +15,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
-use App\Support\Kegiatan\PermintaanUsulanJadwal;
+use App\Support\Kegiatan\PayloadAi;
 use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\StatusKuotaAi;
@@ -331,13 +331,8 @@ class MatrikJadwal extends Component
             return;
         }
 
-        $permintaan = new PermintaanUsulanJadwal(
-            kegiatanId: $this->kegiatanId,
-            jenis: $this->usulJenis,
-            instruksi: Teks::rapikan($this->usulInstruksi),
-            acuan: $this->acuanBulan(),
-            bahan: KonteksAi::teks($this->dataKegiatan),
-        );
+        // Muatan AI lewat PayloadAi: NIP, nama pejabat, dan pagu tidak pernah ikut terkirim.
+        $permintaan = PayloadAi::usulanJadwal($this->kegiatanId, $this->dataKegiatan, $this->usulJenis, Teks::rapikan($this->usulInstruksi), $this->acuanBulan());
 
         try {
             $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->usulkan($permintaan));

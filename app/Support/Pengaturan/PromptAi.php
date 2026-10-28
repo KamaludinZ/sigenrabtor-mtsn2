@@ -6,6 +6,7 @@ use App\Contracts\PromptAiRepository;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\KonteksAi;
+use App\Support\Kegiatan\PayloadAi;
 use App\Support\Stub\StubData;
 
 /**
@@ -132,7 +133,7 @@ final class PromptAi
             'Bahan bagian:',
             ...array_map(fn (array $b) => "- {$b['label']}: {$b['nilai']}", $bahan),
             'Bahan kegiatan:',
-            KonteksAi::teks($kegiatan),
+            PayloadAi::bahan($kegiatan),
         ]);
     }
 }

@@ -39,7 +39,7 @@ class KonteksKegiatanTest extends TestCase
         $this->assertSame('Supervisi Akademik dan Refleksi Pembelajaran', $bahan['Nama kegiatan']);
         $this->assertSame('Tim Penjamin Mutu', $bahan['Leading']);
         $this->assertStringStartsWith('6.19.1 ', $bahan['Program RKTM']);
-        $this->assertSame(['Agustus – September 2026', '5 hari', 'Ruang Kelas dan Ruang Rapat Madrasah', '54 orang Guru', 'DIPA Rp6.000.000 · Komite Rp2.500.000'],
+        $this->assertSame(['Agustus – September 2026', '5 hari', 'Ruang Kelas dan Ruang Rapat Madrasah', '54 orang Guru', 'DIPA · Komite'],
             [$bahan['Waktu'], $bahan['Lama'], $bahan['Tempat'], $bahan['Peserta'], $bahan['Sumber dana']]);
 
         $kegiatan['konteks'] = 'Narasumber pengawas, NIP 197210082007101002.';

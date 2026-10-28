@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Perbaikan privasi AI: bahan yang dikirim ke AI (Buat dengan AI, minta perbaikan, usulan jadwal) tidak lagi memuat pagu DIPA/Komite — sebelumnya baris "Sumber dana" ikut menyebut pagunya padahal Pengaturan AI menyatakan pagu tidak pernah dikirim; kini hanya nama sumber dananya. Nama pejabat penanda tangan tahun aktif (Kepala, Ketua Komite, pejabat leading) dan NIP yang tertulis di catatan konteks, teks yang diperbaiki, maupun instruksi juga disembunyikan sebelum dikirim, dan Riwayat Saran AI mencatat bahan yang sudah dibersihkan itu.
 - Fondasi backend: **endpoint termin pembayaran** per kegiatan (`/kegiatan/{id}/termin`, JSON) — tiap sumber dana dengan status termin terhadap total RAB (pas, kurang, lebih, atau dibayar sekaligus), setiap termin beserta tanggal terbaca, nominal, terbilang, persen, dan kumulatifnya, nominal per bulan, serta baris blok Mekanisme Pembayaran persis seperti tercetak di RAB.
 - Fondasi backend: aturan termin pembayaran kini juga dijaga database — paling banyak 12 termin, nomor berurutan tanpa celah, tanggal tidak mundur dari termin sebelumnya, dan tanggal di tahun anggaran kegiatannya — sambil tetap memungkinkan seluruh termin satu sumber dana diganti sekaligus.
 - Simpan otomatis catatan konteks kini lewat layanan server tersendiri yang hanya menulis catatan itu (isian lain yang belum disimpan tidak ikut tersimpan), merapikan spasinya, memeriksa batas 3.000 karakter, tidak menulis ulang teks yang sama, dan menolak kegiatan yang sudah terkunci.
