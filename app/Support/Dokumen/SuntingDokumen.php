@@ -2,6 +2,7 @@
 
 namespace App\Support\Dokumen;
 
+use App\Contracts\KegiatanRepository;
 use App\Support\Kegiatan\TeksKhusus;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\Pengaturan\PengaturanBerubah;
@@ -15,8 +16,8 @@ use RuntimeException;
  * yang bisa disesuaikan (TeksKhusus::BIDANG). `BIDANG` kunci → [nomor bagian, asal isian|teks_khusus, petunjuk]; blok
  * SusunanKak yang menampilkannya membawa `sunting` (daftar: `sunting_butir`). Bidang opsional yang belum tampil di
  * dokumen (latar belakang khusus) ditawarkan sebagai "Tambah …" (`tambahan()`). Disimpan lewat UbahDataKegiatan (aturan,
- * kunci status/tahun, & bentrok versi yang sama dengan Data Kegiatan); kalimat lain (tanggal, peserta, jabatan, angka)
- * tetap disusun dari isian & master.
+ * kunci status/tahun, & bentrok versi yang sama dengan Data Kegiatan) dan dicatat RiwayatSunting bila teksnya berubah;
+ * kalimat lain (tanggal, peserta, jabatan, angka) tetap disusun dari isian & master.
  */
 final class SuntingDokumen
 {
@@ -49,6 +50,12 @@ final class SuntingDokumen
     public static function maks(string $kunci): int
     {
         return self::BIDANG[$kunci][1] === 'teks_khusus' ? TeksKhusus::BIDANG[$kunci][4] : IsianSusun::KOLOM[$kunci][2];
+    }
+
+    /** Panjang maksimal seluruh teks bidang (daftar: semua butir + pemisah baris) — batas jejak RiwayatSunting di database. */
+    public static function maksTeks(string $kunci): int
+    {
+        return self::jenis($kunci) === 'daftar' ? self::maks($kunci) * TeksKhusus::MAKS_BUTIR + TeksKhusus::MAKS_BUTIR - 1 : self::maks($kunci);
     }
 
     public static function petunjuk(string $kunci): string
@@ -130,7 +137,11 @@ final class SuntingDokumen
         if (! isset(self::BIDANG[$kunci])) {
             throw ValidationException::withMessages(['kunci' => 'Teks ini tidak bisa disunting di pratinjau.']);
         }
+        $sebelum = app(KegiatanRepository::class)->temukan($id) ?? $kegiatan;
         $hasil = UbahDataKegiatan::ubah($id, self::kiriman($kegiatan, $kunci, $teks), $pengguna, $versi);
+        if ($hasil['diubah'] !== []) {
+            RiwayatSunting::catat($id, $sebelum, $hasil['kegiatan'], $kunci, $pengguna);
+        }
         $label = self::label($kunci);
         $baku = self::BIDANG[$kunci][1] === 'teks_khusus' && ! TeksKhusus::disesuaikan($kunci, $hasil['kegiatan']);
 
