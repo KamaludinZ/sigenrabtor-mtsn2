@@ -6,7 +6,6 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\LeadingRepository;
 use App\Contracts\PenggunaRepository;
 use App\Support\Kegiatan\TahunKegiatan;
-use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
@@ -19,8 +18,7 @@ use Illuminate\Validation\ValidationException;
  *   `tambah_leading`/`ubah_leading`.
  * - `ubahStatus($kode, $aktif, …)`: aktif/nonaktif (minimal satu leading aktif) + riwayat `ubah_status_leading`;
  *   `dampakNonaktif()` = kegiatan semua tahun & akun aktif yang hanya tertaut ke leading itu.
- * - `tautkan($kode, $akunId, …)` / `lepas($kode, $akunId, …)`: tautan akun berperan leading (leading nonaktif hanya
- *   bisa dilepas) + riwayat `ubah_tautan_leading`.
+ * - `tautkan($kode, $akunId, …)` / `lepas($kode, $akunId, …)`: lewat TautanAkunLeading (aturan tautan bersama).
  * Setiap aksi tulis menerima `$versi` (`sidik()` isi data leading & akun saat ditampilkan; waktu masuk tidak dihitung) —
  * berbeda → PengaturanBerubah, sehingga perubahan dari tab/admin lain tidak tertimpa.
  */
@@ -112,7 +110,7 @@ final class KelolaLeading
     }
 
     /**
-     * Tautkan akun berperan leading ke leading aktif $kode.
+     * Tautkan akun berperan leading ke leading aktif $kode (TautanAkunLeading::tautkan).
      *
      * @param  array{role: string}  $pengguna
      * @return string Keterangan riwayat.
@@ -121,21 +119,11 @@ final class KelolaLeading
      */
     public static function tautkan(string $kode, int $akunId, array $pengguna, ?string $versi = null): string
     {
-        self::pastikanBoleh($pengguna, $versi);
-        $leading = self::cari(app(LeadingRepository::class)->semua(), $kode);
-        $akun = app(PenggunaRepository::class)->temukan($akunId);
-        if ($leading === null || $akun === null || $akun['role'] !== 'leading' || in_array($kode, $akun['leadings'], true)) {
-            throw ValidationException::withMessages(['akun' => 'Pilih akun leading yang akan ditautkan.']);
-        }
-        if (! $leading['is_active']) {
-            throw ValidationException::withMessages(['akun' => 'Leading nonaktif tidak bisa diberi tautan baru.']);
-        }
-
-        return self::simpanTautan($akun, [...$akun['leadings'], $kode], "Akun {$akun['name']} ditautkan ke {$kode} {$leading['nama_unit']}");
+        return TautanAkunLeading::tautkan($kode, $akunId, $pengguna, $versi);
     }
 
     /**
-     * Lepas tautan akun $akunId dari leading $kode.
+     * Lepas tautan akun $akunId dari leading $kode (TautanAkunLeading::lepas).
      *
      * @param  array{role: string}  $pengguna
      * @return array{keterangan: string, tanpa_tautan: bool} tanpa_tautan = akun aktif kini tidak tertaut ke leading mana pun.
@@ -144,15 +132,7 @@ final class KelolaLeading
      */
     public static function lepas(string $kode, int $akunId, array $pengguna, ?string $versi = null): array
     {
-        self::pastikanBoleh($pengguna, $versi);
-        $akun = app(PenggunaRepository::class)->temukan($akunId);
-        if ($akun === null || ! in_array($kode, $akun['leadings'], true)) {
-            throw ValidationException::withMessages(['akun' => 'Akun ini tidak tertaut ke leading tersebut.']);
-        }
-        $leading = MasterKode::leading($kode)['nama_unit'] ?? '';
-        $sisa = array_values(array_diff($akun['leadings'], [$kode]));
-
-        return ['keterangan' => self::simpanTautan($akun, $sisa, "Akun {$akun['name']} dilepas dari {$kode} {$leading}"), 'tanpa_tautan' => $sisa === [] && $akun['is_active']];
+        return TautanAkunLeading::lepas($kode, $akunId, $pengguna, $versi);
     }
 
     /** Banyaknya kegiatan (semua tahun) & akun yang memakai kode leading — kode yang terpakai tidak bisa diganti. */
@@ -199,19 +179,6 @@ final class KelolaLeading
                 'kode_terpakai' => self::kodeTerpakai($l['kode']) > 0,
             ], app(LeadingRepository::class)->semua()),
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $akun
-     * @param  list<string>  $leadings
-     */
-    private static function simpanTautan(array $akun, array $leadings, string $keterangan): string
-    {
-        $urutan = array_column(app(LeadingRepository::class)->semua(), 'kode');
-        app(PenggunaRepository::class)->simpan(['leadings' => array_values(array_intersect($urutan, $leadings))], $akun['id']);
-        RiwayatPengaturan::catat('ubah_tautan_leading', $keterangan);
-
-        return $keterangan;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Support\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatSaranAiRepository;
 use App\Support\Pengaturan\PromptAi;
+use App\Support\Pengaturan\TautanAkunLeading;
 use App\Support\Stub\StubPengaturan;
 
 /**
@@ -85,7 +86,7 @@ final class RiwayatSaranAi
 
         foreach (app(RiwayatSaranAiRepository::class)->semua() as $p) {
             $k = $kegiatan[$p['kegiatan_id']] ?? null;
-            if ($pengguna['role'] !== 'admin' && ! in_array($k['leading'] ?? null, $pengguna['leadings'], true)) {
+            if (! TautanAkunLeading::bolehAkses($pengguna, $k['leading'] ?? null)) {
                 continue;
             }
             $p['nama_kegiatan'] = trim((string) ($k['nama_kegiatan'] ?? '')) ?: 'Kegiatan tidak ditemukan';

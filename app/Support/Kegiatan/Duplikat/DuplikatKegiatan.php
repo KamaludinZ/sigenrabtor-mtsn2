@@ -16,6 +16,7 @@ use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
+use App\Support\Pengaturan\TautanAkunLeading;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 use Carbon\CarbonImmutable;
@@ -172,7 +173,7 @@ final class DuplikatKegiatan
         $baris = [];
         AnggaranKegiatan::muat($kegiatan);
         foreach ($kegiatan as $k) {
-            if (TahunKegiatan::dari($k) !== $tahun || ($pengguna['role'] !== 'admin' && ! in_array($k['leading'] ?? null, $pengguna['leadings'], true))) {
+            if (TahunKegiatan::dari($k) !== $tahun || ! TautanAkunLeading::bolehAkses($pengguna, $k['leading'] ?? null)) {
                 continue;
             }
             $anggaran = AnggaranKegiatan::untuk($k);

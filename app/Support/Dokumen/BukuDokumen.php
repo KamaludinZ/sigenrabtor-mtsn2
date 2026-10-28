@@ -9,6 +9,7 @@ use App\Enums\SumberDana;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PenandaTangan;
+use App\Support\Pengaturan\TautanAkunLeading;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 
@@ -32,7 +33,7 @@ final class BukuDokumen
 
         return array_values(array_filter(
             MasterKode::semuaLeading(),
-            fn (array $l) => ($pengguna['role'] === 'admin' || in_array($l['kode'], $pengguna['leadings'], true))
+            fn (array $l) => TautanAkunLeading::bolehAkses($pengguna, $l['kode'])
                 && ($l['is_active'] || in_array($l['kode'], $dipakai, true)),
         ));
     }

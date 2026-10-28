@@ -12,6 +12,7 @@ use App\Support\Pengaturan\KelolaAkun;
 use App\Support\Pengaturan\KelolaLeading;
 use App\Support\Pengaturan\Nip;
 use App\Support\Pengaturan\PengaturanBerubah;
+use App\Support\Pengaturan\TautanAkunLeading;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
@@ -508,11 +509,7 @@ class LeadingUser extends Component
      */
     public function calonTautan(string $kode): array
     {
-        return collect($this->akun)
-            ->filter(fn (array $a) => $a['role'] === 'leading' && ! in_array($kode, $a['leadings'], true))
-            ->sortBy([['is_active', 'desc'], ['name', 'asc']])
-            ->values()
-            ->all();
+        return TautanAkunLeading::calon($kode);
     }
 
     /** Tautkan akun terpilih ke leading yang panelnya terbuka (hanya leading aktif & akun berperan leading). */

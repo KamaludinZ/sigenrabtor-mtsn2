@@ -16,6 +16,7 @@ use App\Http\Controllers\DataProfilMadrasah;
 use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataSkRktm;
 use App\Http\Controllers\DataTahunAnggaran;
+use App\Http\Controllers\DataTautanAkun;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\EksporRabKegiatan;
@@ -139,6 +140,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/leading/data', DataLeading::class)->name('leading.data');
     Route::get('/akun/data', DataAkun::class)->name('akun.data');
+    Route::get('/akun/{akun}/leading', DataTautanAkun::class)->whereNumber('akun')->name('akun.leading');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
     Route::get('/riwayat/data', DataRiwayatPengaturan::class)->name('riwayat.data');
     Route::get('/ai', PengaturanAi::class)->name('ai.index');
