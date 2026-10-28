@@ -11,7 +11,7 @@ use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\KunciDokumen;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
-use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\StatusAnggaran;
 use App\Support\Rab\StatusPagu;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -29,13 +29,8 @@ class Daftar extends Component
 {
     public const SUMBER = ['dipa' => 'Dibiayai DIPA', 'komite' => 'Dibiayai Komite', 'keduanya' => 'DIPA dan Komite', 'belum' => 'Belum dipilih'];
 
-    public const STATUS_PAGU = [
-        'sesuai' => 'Sesuai pagu',
-        'sisa' => 'Di bawah pagu',
-        'melebihi' => 'Melebihi pagu',
-        'tanpa_pagu' => 'Pagu belum diisi',
-        'rab_kosong' => 'RAB belum diisi',
-    ];
+    /** Kondisi anggaran yang bisa disaring (StatusAnggaran, tanpa `tanpa_sumber`). */
+    public const STATUS_PAGU = StatusAnggaran::KONDISI_RAB;
 
     public const ASAL = ['impor' => 'Impor Excel', 'manual' => 'Diisi manual'];
 
@@ -114,7 +109,7 @@ class Daftar extends Component
                 'pagu' => array_sum(array_map(fn ($a) => (int) $a->pagu(), $anggaran)),
                 'total' => array_sum(array_map(fn ($a) => $a->total(), $anggaran)),
                 'item' => array_sum(array_map(fn ($a) => $a->jumlahItem(), $anggaran)),
-                'status_pagu' => self::statusPaguKegiatan($anggaran),
+                'status_pagu' => StatusAnggaran::kegiatan($anggaran),
                 'status' => StatusKegiatan::tryFrom($k['status'] ?? '') ?? StatusKegiatan::Draf,
                 'kunci' => KunciDokumen::dari($k),
                 'diperbarui' => $k['diperbarui_pada'] ?? null,
@@ -359,25 +354,6 @@ class Daftar extends Component
         if ($jumlah > 0) {
             $this->dispatch('notify', message: "{$jumlah} kegiatan hasil impor ditambahkan ke tabel.", type: 'success');
         }
-    }
-
-    /**
-     * Ringkasan kondisi anggaran satu kegiatan untuk filter & kolom Total RAB.
-     *
-     * @param  list<AnggaranSumber>  $anggaran
-     */
-    private static function statusPaguKegiatan(array $anggaran): string
-    {
-        $status = array_map(fn ($a) => $a->statusPagu(), $anggaran);
-
-        return match (true) {
-            $anggaran === [] => 'tanpa_sumber',
-            array_sum(array_map(fn ($a) => $a->jumlahItem(), $anggaran)) === 0 => 'rab_kosong',
-            in_array('melebihi', $status, true) => 'melebihi',
-            in_array('tanpa_pagu', $status, true) => 'tanpa_pagu',
-            array_unique($status) === ['sesuai'] => 'sesuai',
-            default => 'sisa',
-        };
     }
 
     /**

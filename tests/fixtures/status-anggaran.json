@@ -1,0 +1,11 @@
+[
+    {"catatan": "belum memilih sumber dana", "rab": [], "kondisi": "tanpa_sumber"},
+    {"catatan": "RAB sumber yang tidak dipilih tidak dihitung", "rab": [{"sumber": "DIPA", "dipilih": false, "pagu": 1000000, "total": 2000000}], "kondisi": "tanpa_sumber"},
+    {"catatan": "sumber dipilih tetapi belum ada rincian", "rab": [{"sumber": "DIPA", "pagu": 6000000, "total": 0}, {"sumber": "Komite", "pagu": null, "total": 0}], "kondisi": "rab_kosong"},
+    {"catatan": "satu RAB melebihi mengalahkan pagu kosong", "rab": [{"sumber": "DIPA", "pagu": null, "total": 900000}, {"sumber": "Komite", "pagu": 7500000, "total": 7950000}], "kondisi": "melebihi"},
+    {"catatan": "pagu belum diisi", "rab": [{"sumber": "DIPA", "pagu": null, "total": 900000}, {"sumber": "Komite", "pagu": 2500000, "total": 2500000}], "kondisi": "tanpa_pagu"},
+    {"catatan": "RAB kosong ber-pagu dihitung sisa bila sumber lain berisi", "rab": [{"sumber": "DIPA", "pagu": 6000000, "total": 0}, {"sumber": "Komite", "pagu": 2500000, "total": 2500000}], "kondisi": "sisa"},
+    {"catatan": "semua tepat pagu", "rab": [{"sumber": "DIPA", "pagu": 6000000, "total": 6000000}, {"sumber": "Komite", "pagu": 2500000, "total": 2500000}], "kondisi": "sesuai"},
+    {"catatan": "satu sisa, satu tepat", "rab": [{"sumber": "DIPA", "pagu": 6000000, "total": 5400000}, {"sumber": "Komite", "pagu": 2500000, "total": 2500000}], "kondisi": "sisa"},
+    {"catatan": "melebihi Rp1", "rab": [{"sumber": "Komite", "pagu": 10000000, "total": 10000001}], "kondisi": "melebihi"}
+]

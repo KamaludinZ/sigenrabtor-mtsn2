@@ -12,6 +12,7 @@ use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\RekapKelompok;
+use App\Support\Rab\StatusAnggaran;
 use App\Support\Rab\StatusPagu;
 use App\Support\Rab\TabelPagu;
 use Carbon\CarbonImmutable;
@@ -23,14 +24,8 @@ use Carbon\CarbonImmutable;
  */
 final readonly class RingkasanAnggaran
 {
-    /** Kondisi satu RAB terhadap pagunya (label sama dengan saringan kondisi anggaran Data Kegiatan). */
-    public const KONDISI_RAB = [
-        'sesuai' => 'Sesuai pagu',
-        'sisa' => 'Di bawah pagu',
-        'melebihi' => 'Melebihi pagu',
-        'tanpa_pagu' => 'Pagu belum diisi',
-        'rab_kosong' => 'RAB belum diisi',
-    ];
+    /** Kondisi satu RAB terhadap pagunya (StatusAnggaran; label sama dengan saringan kondisi anggaran Data Kegiatan). */
+    public const KONDISI_RAB = StatusAnggaran::KONDISI_RAB;
 
     /** Urutan tabel rincian per kegiatan → [label, arah bawaan]. Kelebihan = jumlah kelebihan RAB atas pagunya sendiri. */
     public const URUT_RINCIAN = [
@@ -216,11 +211,7 @@ final readonly class RingkasanAnggaran
                 $status = $a->keteranganPagu();
                 $baris['total_tanpa_pagu'] += $a->pagu() === null ? $a->total() : 0;
                 $baris['kelebihan'] += $status->melebihi() ? -$status->selisih : 0;
-                $baris['kondisi'][match (true) {
-                    $a->pagu() === null => 'tanpa_pagu',
-                    $a->jumlahItem() === 0 => 'rab_kosong',
-                    default => $status->status,
-                }]++;
+                $baris['kondisi'][StatusAnggaran::rab($a)]++;
                 unset($baris);
             }
         }

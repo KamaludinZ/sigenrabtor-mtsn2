@@ -3,6 +3,7 @@
 @use('App\Support\Format')
 @use('App\Support\Kegiatan\JadwalPelaksanaan')
 @use('App\Support\MasterKode')
+@use('App\Support\Rab\StatusAnggaran')
 @use('Illuminate\Support\Carbon')
 
 @php
@@ -14,12 +15,12 @@
     $sampai = min($jumlah, $halaman * $perHalaman);
     $jumlahHalaman = $this->jumlahHalaman();
     $statusPaguTampil = [
-        'tanpa_sumber' => ['Sumber dana belum dipilih', 'text-stone-400'],
-        'rab_kosong' => ['RAB belum diisi', 'text-gold-700'],
-        'tanpa_pagu' => ['Pagu belum diisi', 'text-stone-500'],
-        'sesuai' => ['Sesuai pagu', 'text-brand-700'],
-        'sisa' => ['Di bawah pagu', 'text-brand-700'],
-        'melebihi' => ['Melebihi pagu', 'text-red-600'],
+        'tanpa_sumber' => [StatusAnggaran::KONDISI_KEGIATAN['tanpa_sumber'], 'text-stone-400'],
+        'rab_kosong' => [StatusAnggaran::KONDISI_KEGIATAN['rab_kosong'], 'text-gold-700'],
+        'tanpa_pagu' => [StatusAnggaran::KONDISI_KEGIATAN['tanpa_pagu'], 'text-stone-500'],
+        'sesuai' => [StatusAnggaran::KONDISI_KEGIATAN['sesuai'], 'text-brand-700'],
+        'sisa' => [StatusAnggaran::KONDISI_KEGIATAN['sisa'], 'text-brand-700'],
+        'melebihi' => [StatusAnggaran::KONDISI_KEGIATAN['melebihi'], 'text-red-600'],
     ];
     $kepala = fn (string $kolom, string $label, string $kelas = '') => compact('kolom', 'label', 'kelas');
 @endphp
