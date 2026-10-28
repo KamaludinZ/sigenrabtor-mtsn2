@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\RingkasanKode;
@@ -61,7 +62,7 @@ class Klasifikasi extends Component
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
         $this->kegiatanId = $kegiatan;
-        $this->muatDari($repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.'));
+        $this->muatDari(AksesKegiatan::pastikan($kegiatan));
     }
 
     public function status(): StatusKegiatan

@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Livewire\Impor\ImporBertahap;
 use App\Support\Format;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\Impor\PembacaImporRab;
@@ -33,6 +34,7 @@ class ImporRab extends ImporBertahap
 
     public function mount(int $kegiatanId, string $sumber): void
     {
+        AksesKegiatan::pastikan($kegiatanId);
         $this->kegiatanId = $kegiatanId;
         $this->sumber = $sumber;
         $this->pastikanBolehImpor();

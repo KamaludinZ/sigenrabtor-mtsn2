@@ -10,6 +10,7 @@ use App\Enums\SumberDana;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
@@ -121,7 +122,7 @@ class Form extends Component
             return;
         }
 
-        $data = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
+        $data = AksesKegiatan::pastikan($kegiatan);
 
         $this->form->isiDari($data);
         $this->kegiatanId = $kegiatan;

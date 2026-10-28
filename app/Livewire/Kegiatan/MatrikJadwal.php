@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\DataMatrikJadwal;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\GagalUsulanAi;
@@ -109,7 +110,7 @@ class MatrikJadwal extends Component
 
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
-        $this->dataKegiatan = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
+        $this->dataKegiatan = AksesKegiatan::pastikan($kegiatan);
         $this->kegiatanId = $kegiatan;
         $this->muatIsian();
     }

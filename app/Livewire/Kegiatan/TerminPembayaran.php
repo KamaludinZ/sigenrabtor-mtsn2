@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Format;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -45,6 +46,7 @@ class TerminPembayaran extends Component
 
     public function mount(int $kegiatanId, string $sumber): void
     {
+        AksesKegiatan::pastikan($kegiatanId);
         $this->kegiatanId = $kegiatanId;
         $this->sumber = $sumber;
         $this->muatTersimpan();

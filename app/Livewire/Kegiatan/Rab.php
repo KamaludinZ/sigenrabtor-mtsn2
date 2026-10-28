@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Format;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -94,7 +95,7 @@ class Rab extends Component
 
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
-        $this->dataKegiatan = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
+        $this->dataKegiatan = AksesKegiatan::pastikan($kegiatan);
         $this->kegiatanId = $kegiatan;
 
         // Sumber & halaman dari URL dinormalkan sesuai sumber dana kegiatan (lihat TampilanRab).

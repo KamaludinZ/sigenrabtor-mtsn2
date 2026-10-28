@@ -8,6 +8,7 @@ use App\Contracts\PenyusunSaranKalimat;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\BatasAmanSaran;
@@ -100,7 +101,7 @@ class KalimatAi extends Component
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
         $this->kegiatanId = $kegiatan;
-        $this->muatDari($repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.'));
+        $this->muatDari(AksesKegiatan::pastikan($kegiatan));
     }
 
     public function status(): StatusKegiatan

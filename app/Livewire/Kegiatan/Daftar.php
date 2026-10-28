@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KodeHilang;
@@ -88,7 +89,8 @@ class Daftar extends Component
     {
         $tahun = StubData::tahunAktif()['tahun'];
         $leading = array_column(MasterKode::semuaLeading(), 'nama_unit', 'kode');
-        $semua = app(KegiatanRepository::class)->semua();
+        // Akun leading hanya melihat kegiatan leading-nya (atau buatannya); admin semua.
+        $semua = AksesKegiatan::saring(app(KegiatanRepository::class)->semua());
         AnggaranKegiatan::muat($semua);
 
         return array_map(function (array $k) use ($tahun, $leading) {
