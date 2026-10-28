@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Impor\GagalBacaImpor;
 use App\Support\Master\Impor\GagalSimpanMaster;
+use App\Support\Master\Impor\PemeriksaBudayaMutu;
 use App\Support\Master\Impor\ProsesBerkasMaster;
 use App\Support\Master\Impor\SimpanMasterKode;
 use App\Support\Master\JenisKode;
@@ -18,7 +19,8 @@ use Illuminate\Http\Request;
  * master tahun itu; tanpa `simpan` hanya pratinjau, dengan `simpan=1` disimpan bila tidak ada kendala. Jawaban JSON:
  * berkas, baris pratinjau, ringkasan, `induk` (IKSK: ringkasan per SK induk, SimpanMasterKode::indukIksk), `struktur`
  * (RKTM: standar → kegiatan → jumlah sub kegiatan, SimpanMasterKode::strukturRktm), `komponen` (EDM: nama komponen per
- * huruf yang akan tersimpan, SimpanMasterKode::komponenEdm), kendala,
+ * huruf yang akan tersimpan, SimpanMasterKode::komponenEdm), `butir` (5 Budaya Mutu: jumlah tersimpan & jumlah baku),
+ * kendala,
  * peringatan, siap, disimpan (+ id unggahan); berkas/kendala → 422, izin
  * (bukan admin, tahun terkunci/belum dibuat) → 403.
  */
@@ -55,6 +57,7 @@ class UnggahMasterKode extends Controller
             'induk' => $jenis === 'iksk' ? SimpanMasterKode::indukIksk($item['baris'], $tahun) : null,
             'struktur' => $jenis === 'rktm' ? SimpanMasterKode::strukturRktm($item['baris']) : null,
             'komponen' => $jenis === 'edm' ? SimpanMasterKode::komponenEdm($item['baris'], $tahun) : null,
+            'butir' => $jenis === 'budaya' ? ['jumlah' => count(array_filter($item['baris'], fn (array $b) => in_array($b['status'], ['baru', 'berubah', 'tetap'], true))), 'jumlah_baku' => PemeriksaBudayaMutu::JUMLAH_BAKU] : null,
             'kendala' => $hasil['disimpan'] ? [] : $kendala,
             'peringatan' => $hasil['peringatan'],
             'siap' => $hasil['disimpan'] || $kendala === [],

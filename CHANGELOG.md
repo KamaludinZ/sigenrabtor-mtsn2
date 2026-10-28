@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Master Kode: **Simpan master untuk 5 Budaya Mutu dan berkas master lengkap** — daftar 5 Budaya Mutu kini bisa disimpan dari sheet atau CSV (nomor boleh dikosongkan, nama ganda ditolak, jumlah selain lima hanya diberi peringatan), dan berkas master lengkap berisi semua sheet (SK, IKSK, RKTM, EDM, 5 Budaya Mutu) bisa disimpan sekaligus dari panel Unggah Excel setelah pratinjau.
 - Master Kode: **Simpan master untuk unggahan indikator EDM** — kode indikator, uraian, dan nama komponen per huruf (A Kedisiplinan, B …) kini bisa disimpan dari sheet EDM atau CSV; kolom Komponen boleh dikosongkan (memakai nama komponen master), tetapi huruf komponen baru tanpa nama ditahan sampai kolom Komponen diisi. API unggah EDM juga menampilkan nama komponen yang akan tersimpan beserta nama lamanya.
 - Master Kode: **Simpan master untuk unggahan kode RKTM** — kode RKTM beserta standar (SNP), kegiatan, dan sub kegiatan kini bisa disimpan dari sheet SNP atau CSV (sel SNP/kegiatan yang dikosongkan seperti sel gabungan Excel diisi dari baris di atasnya). API unggah RKTM juga menampilkan struktur standar → kegiatan → jumlah sub kegiatan.
 - Master Kode: **Simpan master untuk unggahan kode IKSK** — indikator beserta SK induknya kini bisa disimpan dari berkas Excel/CSV; IKSK yang SK induknya tidak ada di master ditolak sampai berkasnya diperbaiki, sedangkan nomor IKSK yang tidak sejalan dengan SK induknya hanya diberi peringatan. API unggah IKSK juga merangkum jumlah indikator per SK induk.

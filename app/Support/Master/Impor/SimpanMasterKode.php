@@ -23,8 +23,8 @@ use LogicException;
  */
 final class SimpanMasterKode
 {
-    /** Jenis yang sudah bisa disimpan dari unggahan. */
-    public const DIDUKUNG = ['sk', 'iksk', 'rktm', 'edm'];
+    /** Jenis yang sudah bisa disimpan dari unggahan (kini semua jenis JenisKode — berkas master lengkap pun bisa disimpan). */
+    public const DIDUKUNG = ['sk', 'iksk', 'rktm', 'edm', 'budaya'];
 
     /** Jenis → bagian master (MasterKodeRepository::ganti). */
     public const BAGIAN = ['sk' => 'kode_sk', 'iksk' => 'kode_iksk', 'rktm' => 'kode_rktm', 'edm' => 'kode_edm', 'budaya' => 'budaya_mutu'];
@@ -226,6 +226,7 @@ final class SimpanMasterKode
             'iksk' => ['kode' => $b['kode'], 'kode_sk' => $b['tampil']['kode_sk'], 'uraian' => $b['tampil']['uraian']],
             'rktm' => ['kode' => $b['kode'], 'snp' => $b['tampil']['snp'], 'kegiatan' => $b['tampil']['kegiatan'], 'sub_kegiatan' => $b['tampil']['sub_kegiatan']],
             'edm' => ['kode' => $b['kode'], 'komponen' => substr($b['kode'], 0, 1), 'uraian' => $b['tampil']['uraian']],
+            'budaya' => ['nomor' => (int) $b['kode'], 'nama' => $b['tampil']['nama']],
             default => throw new LogicException("Penyimpanan master {$jenis} belum tersedia."),
         };
     }
