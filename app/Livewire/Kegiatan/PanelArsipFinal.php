@@ -6,7 +6,10 @@ use App\Contracts\ArsipFinalRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\ArsipFinal;
+use App\Support\Kegiatan\KelolaArsipFinal;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -15,7 +18,8 @@ use Livewire\WithFileUploads;
 /**
  * Panel arsip final di Data Kegiatan (PRD F18): selama Disetujui, PDF bertanda tangan/pindaian diunggah per sumber dana
  * (diperiksa dulu di klien oleh Alpine `unggahArsip`, lalu langsung tersimpan begitu selesai terunggah; bisa diganti atau
- * dihapus); selama Final hanya bisa dilihat. Setiap perubahan men-dispatch `arsip-final-berubah` agar panel status
+ * dihapus — aturan lewat KelolaArsipFinal, sama dengan endpoint `kegiatan.arsip.unggah`/`hapus`); selama Final hanya bisa
+ * dilihat. Setiap perubahan men-dispatch `arsip-final-berubah` agar panel status
  * menghitung ulang syarat "Tandai final".
  */
 class PanelArsipFinal extends Component
@@ -58,41 +62,40 @@ class PanelArsipFinal extends Component
         return ArsipFinal::sumberWajib($this->kegiatan);
     }
 
-    /** Berkas selesai terunggah (sementara): periksa lalu simpan sebagai arsip sumber dana itu. */
+    /**
+     * Berkas selesai terunggah (sementara): periksa lalu simpan sebagai arsip sumber dana itu (KelolaArsipFinal — aturan
+     * berkas sama dengan pemeriksaan klien `galatArsip` agar pesannya sama walau klien dilewati).
+     */
     public function updatedBerkas(mixed $nilai, string $sumber): void
     {
         $this->resetErrorBag("berkas.{$sumber}");
-        if (! in_array($sumber, $this->sumber, true) || ! ArsipFinal::bolehUnggah($this->status)) {
-            $this->buangBerkas($sumber);
-            $this->dispatch('notify', message: 'Arsip final hanya bisa diunggah selama kegiatan berstatus Disetujui.', type: 'error');
+        try {
+            $hasil = KelolaArsipFinal::unggah($this->kegiatanId, $sumber, $this->berkas[$sumber] ?? null, StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;
-        }
-
-        // Aturan sama dengan pemeriksaan klien (galatArsip) agar pesannya sama walau klien dilewati.
-        $galat = is_object($this->berkas[$sumber] ?? null) ? ArsipFinal::galatUnggahan($this->berkas[$sumber]) : 'Pilih berkas PDF hasil pindaian.';
-        if ($galat !== null) {
-            $this->buangBerkas($sumber);
-            $this->addError("berkas.{$sumber}", $galat);
+        } catch (ValidationException $e) {
+            $this->addError("berkas.{$sumber}", collect($e->errors())->flatten()->first());
 
             return;
+        } finally {
+            $this->buangBerkas($sumber);
         }
 
-        $ganti = isset($this->arsip[$sumber]);
-        app(ArsipFinalRepository::class)->simpan($this->kegiatanId, $sumber, $this->berkas[$sumber], StubData::currentUser());
-        $this->buangBerkas($sumber);
-        $this->selesai(($ganti ? 'Arsip final RAB '.$sumber.' diganti.' : 'Arsip final RAB '.$sumber.' tersimpan.'));
+        $this->selesai($hasil['pesan']);
     }
 
     public function hapus(string $sumber): void
     {
         $this->konfirmasiHapus = null;
-        if (! isset($this->arsip[$sumber]) || ! ArsipFinal::bolehUnggah($this->status)) {
+        try {
+            $hasil = KelolaArsipFinal::hapus($this->kegiatanId, $sumber, StubData::currentUser());
+        } catch (AuthorizationException|ValidationException) {
             return;
         }
 
-        app(ArsipFinalRepository::class)->hapus($this->kegiatanId, $sumber);
-        $this->selesai('Arsip final RAB '.$sumber.' dihapus.', 'info');
+        $this->selesai($hasil['pesan'], 'info');
     }
 
     private function selesai(string $pesan, string $jenis = 'success'): void
