@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **pejabat penanda tangan per tahun di database** — Kepala Madrasah, Ketua Komite, dan pejabat tiap leading per tahun anggaran beserta pengaturan blok "Mengetahui" per sumber dana kini bisa disimpan di database dengan hasil yang sama persis dengan penyimpanan saat ini (NIP yang tidak 18 angka ditolak).
 - Fondasi backend: **pengelolaan profil madrasah di server** — simpan profil (dirapikan, riwayat hanya bila ada perubahan), unggah/hapus logo kop, dan aturan isiannya kini satu layanan yang dipakai halaman Profil & Pejabat (khusus admin); tersedia API baca profil madrasah beserta isian kop yang masih kosong.
 - Fondasi backend: **profil madrasah di database** — nama, nama singkat, kota, alamat, telepon, visi, dan logo kop kini bisa disimpan di database dengan hasil yang sama persis dengan penyimpanan saat ini; aturan isiannya (telepon, panjang visi) sama dengan formulir Profil & Pejabat.
 - RAB: tombol **Unduh PDF** di halaman RAB — RAB yang sama dengan unduhan Excel dicetak ke PDF A4 (angka & tanda DRAF identik); bila mesin dokumen tidak tersedia, halaman RAB menampilkan pesan galatnya.
