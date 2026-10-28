@@ -6,7 +6,7 @@
     $perSumber = $ringkasan->perSumber();
     $perStatus = $ringkasan->perStatus();
     // Admin: semua leading (termasuk yang belum punya kegiatan); akun leading: leading-nya saja.
-    $perLeading = array_values(array_filter($ringkasan->perLeading(), fn ($b) => $this->cakupan === null || in_array($b['kode'], $this->cakupan, true)));
+    $perLeading = \App\Support\Monitoring\RingkasanDashboard::perLeading($ringkasan, $this->cakupan);
     $maksLeading = max([1, ...array_column($perLeading, 'jumlah')]);
     $pengguna = \App\Support\Stub\StubData::currentUser();
 @endphp

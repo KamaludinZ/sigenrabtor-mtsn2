@@ -2,9 +2,8 @@
 
 namespace App\Livewire;
 
-use App\Contracts\KegiatanRepository;
-use App\Support\MasterKode;
 use App\Support\Monitoring\RingkasanAnggaran;
+use App\Support\Monitoring\RingkasanDashboard;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -12,7 +11,8 @@ use Livewire\Component;
 
 /**
  * Dashboard ringkas di halaman utama (PRD F26, §11 "Dashboard Ringkas"): kartu ringkasan anggaran, pemakaian pagu DIPA
- * vs Komite, status dokumen, dan kegiatan per leading. Admin melihat seluruh leading; akun leading hanya leading-nya.
+ * vs Komite, status dokumen, dan kegiatan per leading. Admin melihat seluruh leading; akun leading hanya leading-nya
+ * (RingkasanDashboard, sama dengan endpoint dashboard.data).
  */
 #[Layout('layouts.app')]
 class Dashboard extends Component
@@ -25,24 +25,18 @@ class Dashboard extends Component
     #[Computed]
     public function cakupan(): ?array
     {
-        $pengguna = StubData::currentUser();
-
-        return $pengguna['role'] === 'admin' ? null : $pengguna['leadings'];
+        return RingkasanDashboard::cakupan(StubData::currentUser());
     }
 
     #[Computed]
     public function ringkasan(): RingkasanAnggaran
     {
-        return RingkasanAnggaran::dari(app(KegiatanRepository::class)->semua(), ['tahun' => StubData::tahunAktif()['tahun'], 'leadings' => $this->cakupan]);
+        return RingkasanDashboard::ringkasan(StubData::currentUser());
     }
 
     public function namaCakupan(): string
     {
-        if ($this->cakupan === null) {
-            return 'Semua leading';
-        }
-
-        return implode(', ', array_map(fn (string $kode) => $kode.' · '.(MasterKode::leading($kode)['nama_unit'] ?? $kode), $this->cakupan));
+        return RingkasanDashboard::namaCakupan($this->cakupan);
     }
 
     public function render()

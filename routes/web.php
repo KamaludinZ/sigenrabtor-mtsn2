@@ -2,6 +2,7 @@
 
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\DataDashboard;
 use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\EksporMonitoringExcel;
@@ -54,6 +55,7 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/dashboard');
 
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
+Route::get('/dashboard/data', DataDashboard::class)->name('dashboard.data');
 
 Route::get('/kegiatan', KegiatanDaftar::class)->name('kegiatan.index');
 Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name('kegiatan.template');
