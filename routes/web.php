@@ -48,6 +48,7 @@ use App\Http\Controllers\HapusDrafDokumen;
 use App\Http\Controllers\HapusDrafSunting;
 use App\Http\Controllers\HasilDokumenKegiatan;
 use App\Http\Controllers\KegiatanBukuDokumen;
+use App\Http\Controllers\KelengkapanDokumenKegiatan;
 use App\Http\Controllers\KodeMasterKegiatan;
 use App\Http\Controllers\KonfigurasiAiBerlaku;
 use App\Http\Controllers\KonteksKegiatan;
@@ -185,6 +186,7 @@ Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNum
 Route::get('/kegiatan/{kegiatan}/dokumen', KegiatanSusunDokumen::class)->whereNumber('kegiatan')->name('kegiatan.dokumen');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
 Route::get('/kegiatan/{kegiatan}/pratinjau/data', DataPratinjauKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau.data');
+Route::get('/kegiatan/{kegiatan}/kelengkapan', KelengkapanDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.kelengkapan');
 Route::get('/kegiatan/{kegiatan}/pratinjau/sunting', DrafSuntingKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.sunting');
 Route::put('/kegiatan/{kegiatan}/pratinjau/sunting/{bidang}', SimpanDrafSunting::class)->whereNumber('kegiatan')->name('kegiatan.sunting.simpan');
 Route::delete('/kegiatan/{kegiatan}/pratinjau/sunting/{bidang}', HapusDrafSunting::class)->whereNumber('kegiatan')->name('kegiatan.sunting.hapus');
