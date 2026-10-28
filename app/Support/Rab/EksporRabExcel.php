@@ -47,9 +47,7 @@ final class EksporRabExcel
         }
         $buku->setActiveSheetIndex(0);
 
-        $nama = $sumber !== null
-            ? StatusCetak::dari($kegiatan, $sumber)->namaBerkas('RAB', 'xlsx')
-            : self::namaGabungan($kegiatan, $draf);
+        $nama = self::namaBerkas($kegiatan, $sumber, $draf, 'xlsx');
 
         return ['buku' => $buku, 'nama' => $nama];
     }
@@ -151,11 +149,16 @@ final class EksporRabExcel
         $lembar->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd($awalTabel, $awalTabel);
     }
 
-    /** "RAB_{nama}_{tahun}[_DRAF].xlsx" untuk ekspor semua sumber dana. */
-    private static function namaGabungan(array $kegiatan, bool $draf): string
+    /**
+     * Nama berkas: satu sumber = StatusCetak::namaBerkas('RAB', …); semua sumber = "RAB_{nama}_{tahun}[_DRAF].{ekstensi}".
+     */
+    public static function namaBerkas(array $kegiatan, ?string $sumber, bool $draf, string $ekstensi): string
     {
+        if ($sumber !== null) {
+            return StatusCetak::dari($kegiatan, $sumber)->namaBerkas('RAB', $ekstensi);
+        }
         $nama = trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', trim((string) ($kegiatan['nama_kegiatan'] ?? ''))), '_') ?: 'Kegiatan_'.($kegiatan['id'] ?? '');
 
-        return 'RAB_'.rtrim(mb_substr($nama, 0, 60), '_').'_'.StubData::tahunAktif()['tahun'].($draf ? '_'.StatusCetak::TANDA_AIR : '').'.xlsx';
+        return 'RAB_'.rtrim(mb_substr($nama, 0, 60), '_').'_'.StubData::tahunAktif()['tahun'].($draf ? '_'.StatusCetak::TANDA_AIR : '').'.'.$ekstensi;
     }
 }

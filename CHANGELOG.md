@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- RAB: tombol **Unduh PDF** di halaman RAB — RAB yang sama dengan unduhan Excel dicetak ke PDF A4 (angka & tanda DRAF identik); bila mesin dokumen tidak tersedia, halaman RAB menampilkan pesan galatnya.
 - RAB: tombol **Unduh Excel** di halaman RAB — RAB sumber dana yang sedang dibuka diunduh sebagai berkas Excel yang isinya sama dengan dokumen RAB (judul, header kegiatan & kode, rincian dengan angka yang bisa dihitung ulang, total & terbilang, mekanisme pembayaran, dan lembar pengesahan); tanda DRAF ikut tercantum selama dokumennya belum siap. Tersedia juga unduhan semua RAB satu kegiatan sekaligus (satu lembar per sumber dana).
 - Fondasi backend: **perhitungan selisih pagu & RAB disatukan** — selisih, persentase pemakaian, sisa, dan kelebihan pagu kini dihitung dengan satu aturan untuk tabel Pagu & RAB, Monitoring, Dashboard, dan API (selisih gabungan tidak dihitung selama ada RAB tanpa pagu; kelebihan satu RAB tidak pernah tertutup sisa RAB lain). Baris jumlah tabel Pagu & RAB kini juga mencatat total kelebihan pagu.
 - Fondasi backend: **API data Monitoring terfilter & terpaginasi** untuk admin — ringkasan, tabel total per leading (dengan urutannya), dan satu halaman rincian kegiatan (10/20/50/100 per halaman) dalam satu permintaan, dengan saringan & urutan yang sama persis dengan halaman Monitoring.

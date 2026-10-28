@@ -165,6 +165,11 @@
                                     <x-ui.icon name="download" class="size-4" />
                                     <span class="hidden sm:inline">Unduh Excel</span>
                                 </a>
+                                <a href="{{ route('kegiatan.rab.pdf', ['kegiatan' => $kegiatanId, 'sumber' => $sumber]) }}" class="btn-secondary"
+                                   title="Unduh RAB {{ $sumber }} sebagai PDF" data-testid="unduh-rab-pdf">
+                                    <x-ui.icon name="printer" class="size-4" />
+                                    <span class="hidden sm:inline">Unduh PDF</span>
+                                </a>
                             @endif
                             @if ($this->dapatDiedit())
                                 <button type="button" wire:click="bukaImpor" class="btn-secondary" aria-expanded="{{ $imporTerbuka ? 'true' : 'false' }}"
