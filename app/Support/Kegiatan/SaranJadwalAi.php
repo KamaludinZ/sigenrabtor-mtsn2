@@ -68,6 +68,8 @@ final class SaranJadwalAi
         // Muatan AI lewat PayloadAi: NIP, nama pejabat, dan pagu tidak pernah ikut terkirim.
         $permintaan = PayloadAi::usulanJadwal((int) $kegiatan['id'], $kegiatan, $jenis, Teks::rapikan($instruksi), $acuan);
 
+        // Penjaga terakhir sebelum terkirim: tidak ada data pribadi yang lolos PayloadAi.
+        KeamananAi::pastikanMuatanAman($permintaan->bahan, $permintaan->instruksi);
         try {
             $jalan = RantaiPenyediaAi::jalankan(fn () => app(PenyusunUsulanJadwal::class)->usulkan($permintaan));
         } catch (GagalPenyediaAi $e) {
@@ -113,7 +115,8 @@ final class SaranJadwalAi
      */
     public static function rapikan(array $versi): array
     {
-        $satuBaris = fn (mixed $teks) => trim((string) preg_replace('/\s+/u', ' ', is_scalar($teks) ? (string) $teks : ''));
+        // Keluaran model dibersihkan dulu (HTML, markdown, karakter kendali, NIP) lalu dijadikan satu baris.
+        $satuBaris = fn (mixed $teks) => trim((string) preg_replace('/\s+/u', ' ', is_scalar($teks) ? KeamananAi::bersihkanKeluaran((string) $teks) : ''));
         $maksVersi = min(3, ParameterAi::dari(StubPengaturan::pengaturanAi())['jumlah_versi']);
         $hasil = [];
 

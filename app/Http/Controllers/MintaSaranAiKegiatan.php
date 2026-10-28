@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Endpoint permintaan saran kalimat AI (`POST /kegiatan/{kegiatan}/saran-ai/{bagian}` {instruksi?, acuan?}, rute
  * `kegiatan.saran_ai.minta`): SaranKalimatAi::minta pada data kegiatan tersimpan → 201 {bagian, permintaan, versi,
- * catatan_penyedia, penyedia, kuota (StatusKuotaAi: batas, terpakai, sisa)}. Isian salah 422 {pesan, galat}; bagian
+ * peringatan (Batas Aman per versi), catatan_penyedia, penyedia, kuota (StatusKuotaAi: batas, terpakai, sisa)}. Isian salah 422 {pesan, galat}; bagian
  * nonaktif/nama kosong/batas habis/tanpa saran 422 {pesan}; penyedia gagal 503 {pesan, jenis}; bukan cakupan akun atau
  * terkunci 403; kegiatan tidak ada 404.
  */
@@ -47,6 +47,7 @@ class MintaSaranAiKegiatan extends Controller
             'bagian' => $bagian,
             'permintaan' => $hasil['permintaan'],
             'versi' => $hasil['versi'],
+            'peringatan' => $hasil['peringatan'],
             'catatan_penyedia' => $hasil['catatan'],
             'penyedia' => $hasil['penyedia'],
             'kuota' => array_intersect_key($kuota, array_flip(['batas', 'terpakai', 'sisa'])),
