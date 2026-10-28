@@ -8,6 +8,15 @@
     $statusCetak = $this->statusCetak;
     $draf = $this->draf();
     $sumberAktif = $kak->sumber;
+    $isi = $this->isi();
+    $adaKak = in_array('kak', $isi, true);
+    $adaRab = in_array('rab', $isi, true);
+    $adaCover = in_array('cover', $isi, true);
+    $statusDraf = $this->statusDraf();
+    $pemeriksaan = $this->pemeriksaan;
+    $template = $this->template();
+    $jangkarPratinjau = ['cover' => '#dok-cover', 'kak' => '#dok-kak', 'rab' => '#dok-rab'][$isi[0]];
+    $labelBagianTemplate = ['kak' => 'KAK/TOR', 'rab' => 'RAB'];
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $admin = \App\Support\Stub\StubData::currentUser()['role'] === 'admin';
     $nadaStatus = [
@@ -21,7 +30,8 @@
 {{--
     Susun KAK/TOR (PRD F4): sembilan bagian baku disusun otomatis dari data kegiatan, pengaturan tahun aktif, dan RAB.
     Tiap kartu bagian: status, asal isinya (bertaut ke tempat mengisi), isian yang kurang, dan cuplikan hasil susunan
-    (<x-dokumen.kak-tor :bagian="[n]" :cap="false">). Samping: kemajuan + daftar bagian, draf dokumen, master template.
+    (<x-dokumen.kak-tor :bagian="[n]" :cap="false">). Jenis dokumen (<x-dokumen.pilih-jenis>) menentukan bagian yang tampil:
+    cover, KAK/TOR, dan/atau RAB. Samping: kemajuan + daftar bagian, berkas cetak, draf dokumen, master template.
 --}}
 <div class="mx-auto max-w-7xl" x-data="{ semua: true }">
     {{-- Kepala halaman --}}
@@ -41,7 +51,7 @@
             <p class="mt-1 text-sm text-stone-500">Sembilan bagian KAK/TOR dan RAB disusun otomatis dari data kegiatan, pengaturan TA {{ $tahun }}, dan RAB — lengkapi isian yang ditandai, hasilnya langsung ikut.</p>
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <a href="{{ route('kegiatan.pratinjau', ['kegiatan' => $kegiatanId] + ($sumberAktif ? ['sumber' => $sumberAktif] : [])) }}" wire:navigate class="btn-secondary" data-testid="buka-pratinjau">
+            <a href="{{ route('kegiatan.pratinjau', ['kegiatan' => $kegiatanId] + ($sumberAktif ? ['sumber' => $sumberAktif] : [])).$jangkarPratinjau }}" wire:navigate class="btn-secondary" data-testid="buka-pratinjau">
                 <x-ui.icon name="eye" class="size-4" /> Pratinjau dokumen
             </a>
             <button type="button" class="btn-primary" disabled data-testid="simpan-draf-dokumen"><x-ui.icon name="save" class="size-4" /> Simpan draf <x-ui.segera /></button>
@@ -67,27 +77,51 @@
             @else
                 <span class="text-xs font-medium text-stone-500">Belum ada sumber dana</span>
             @endif
-            <span class="text-sm text-stone-600" data-testid="ringkasan-susun"><span class="font-semibold text-stone-900">{{ $susunan->lengkap }}</span> dari {{ $susunan->jumlah() }} bagian lengkap</span>
+            @if ($adaKak)
+                <span class="text-sm text-stone-600" data-testid="ringkasan-susun"><span class="font-semibold text-stone-900">{{ $susunan->lengkap }}</span> dari {{ $susunan->jumlah() }} bagian lengkap</span>
+            @else
+                <span class="text-sm text-stone-600" data-testid="ringkasan-susun">RAB · <span class="font-semibold text-stone-900">{{ $rab->anggaran?->jumlahItem() ?? 0 }}</span> baris rincian</span>
+            @endif
         </div>
-        <span @class(['inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', 'bg-red-50 text-red-700 ring-red-200' => $statusCetak->set->draf, 'bg-brand-50 text-brand-800 ring-brand-200' => ! $statusCetak->set->draf]) data-testid="keadaan-susun" data-draf="{{ $statusCetak->set->draf ? 'ya' : 'tidak' }}">
-            <x-ui.icon :name="$statusCetak->set->draf ? 'alert' : 'check-circle'" class="size-3.5" />
-            {{ $statusCetak->keadaan() }}
+        <span @class(['inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', 'bg-red-50 text-red-700 ring-red-200' => $statusDraf->draf, 'bg-brand-50 text-brand-800 ring-brand-200' => ! $statusDraf->draf]) data-testid="keadaan-susun" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}">
+            <x-ui.icon :name="$statusDraf->draf ? 'alert' : 'check-circle'" class="size-3.5" />
+            {{ $statusDraf->draf ? 'Tercetak sebagai DRAF' : 'Siap dicetak' }}
         </span>
     </div>
+
+    <x-dokumen.pilih-jenis class="mt-4" :pilihan="$this->pilihanJenis" :terpilih="$jenis" />
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="min-w-0 space-y-4">
             {{-- Daftar bagian di layar sempit (di layar lebar ada di panel samping). --}}
-            <nav class="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 lg:hidden" aria-label="Bagian KAK/TOR">
-                @foreach ($susunan->bagian as $b)
+            <nav class="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 lg:hidden" aria-label="Bagian dokumen">
+                @if ($adaCover)
+                    <a href="#susun-cover" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">Cover</a>
+                @endif
+                @foreach ($adaKak ? $susunan->bagian : [] as $b)
                     <a href="#susun-bagian-{{ $b['nomor'] }}" class="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
                         <span class="size-1.5 rounded-full {{ $nadaStatus[$b['status']]['titik'] }}" aria-hidden="true"></span>{{ $b['nomor'] }}. {{ $b['judul'] }}
                     </a>
                 @endforeach
-                <a href="#susun-rab" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">RAB</a>
+                @if ($adaRab)
+                    <a href="#susun-rab" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">RAB</a>
+                @endif
             </nav>
 
-            @foreach ($susunan->bagian as $b)
+            @if ($adaCover)
+                {{-- Cover kegiatan (set lengkap): desain cover tahun aktif berisi data kegiatan. --}}
+                <section id="susun-cover" class="scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="susun-cover" aria-labelledby="judul-susun-cover" wire:key="susun-cover-{{ $sumberAktif }}">
+                    <header class="px-4 py-3 sm:px-5">
+                        <h2 id="judul-susun-cover" class="text-sm font-semibold text-stone-900">Cover</h2>
+                        <p class="mt-1 text-xs text-stone-500">Desain cover TA {{ $tahun }} diatur admin; kotak teksnya diisi nama kegiatan, sumber dana, dan tahun anggaran.</p>
+                    </header>
+                    <div class="rounded-b-2xl border-t border-stone-100 bg-stone-50 p-2 sm:p-4">
+                        <x-dokumen.cover :gambar="$this->cover['gambar']" :teks="$this->cover['teks']" :nilai="$this->cover['nilai']" :jangkar="false" class="mx-auto max-w-[24rem]" />
+                    </div>
+                </section>
+            @endif
+
+            @foreach ($adaKak ? $susunan->bagian : [] as $b)
                 @php $nada = $nadaStatus[$b['status']]; @endphp
                 <section id="susun-bagian-{{ $b['nomor'] }}" class="scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200"
                          x-data="{ buka: true }" x-effect="buka = semua"
@@ -149,6 +183,7 @@
             @endforeach
 
             {{-- RAB otomatis: kepala dokumen RAB sumber dana ini. --}}
+            @if ($adaRab)
             <section id="susun-rab" class="scroll-mt-24 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-testid="susun-rab" aria-labelledby="judul-susun-rab">
                 <header class="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
                     <div class="min-w-0">
@@ -188,10 +223,12 @@
                     </dl>
                 @endif
             </section>
+            @endif
         </div>
 
         <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
             {{-- Kemajuan & daftar bagian --}}
+            @if ($adaKak)
             <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-kemajuan-susun" data-testid="kemajuan-susun">
                 <div class="flex items-center justify-between gap-2">
                     <h2 id="judul-kemajuan-susun" class="text-sm font-semibold text-stone-900">Kemajuan susunan</h2>
@@ -214,17 +251,35 @@
                             </a>
                         </li>
                     @endforeach
+                    @if ($adaRab)
                     <li>
                         <a href="#susun-rab" class="flex items-center gap-2 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900">
                             <span @class(['size-1.5 shrink-0 rounded-full', 'bg-gold-500' => $susunan->kurangRab !== [], 'bg-brand-600' => $susunan->kurangRab === []]) aria-hidden="true"></span>
                             <span class="min-w-0 flex-1 truncate">RAB {{ $sumberAktif }}</span>
                         </a>
                     </li>
+                    @endif
                 </ol>
                 <div class="mt-3 flex gap-2 border-t border-stone-100 pt-3">
                     <button type="button" class="btn-ghost flex-1 justify-center text-xs" x-on:click="semua = true" data-testid="buka-semua-bagian">Buka semua</button>
                     <button type="button" class="btn-ghost flex-1 justify-center text-xs" x-on:click="semua = false" data-testid="ciutkan-semua-bagian">Ciutkan semua</button>
                 </div>
+            </section>
+            @endif
+
+            {{-- Berkas cetak jenis terpilih (PemeriksaanCetak). --}}
+            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-berkas-jenis" data-testid="berkas-jenis" data-siap="{{ $pemeriksaan['siap'] ? 'ya' : 'tidak' }}">
+                <h2 id="judul-berkas-jenis" class="text-sm font-semibold text-stone-900">Berkas {{ $pemeriksaan['label_jenis'] }}</h2>
+                <p class="mt-1.5 break-all font-mono text-xs text-stone-700" data-testid="nama-berkas">{{ $pemeriksaan['nama_berkas'] }}</p>
+                <ul class="mt-2 space-y-1 text-xs">
+                    @foreach ($pemeriksaan['cek'] as $cek)
+                        <li class="flex items-start gap-1.5" data-cek="{{ $cek['kunci'] }}" data-lengkap="{{ $cek['lengkap'] ? 'ya' : 'tidak' }}">
+                            <x-ui.icon :name="$cek['lengkap'] ? 'check-circle' : 'circle'" :class="'mt-px size-3.5 shrink-0 '.($cek['lengkap'] ? 'text-brand-600' : 'text-stone-300')" />
+                            <span @class(['text-stone-700' => $cek['lengkap'], 'text-stone-500' => ! $cek['lengkap']])>{{ $cek['label'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="mt-2 text-xs text-stone-500">{{ $pemeriksaan['siap'] ? 'Siap dicetak tanpa cap DRAF.' : 'Tetap bisa dicetak, dengan cap DRAF sampai lengkap & disetujui.' }}</p>
             </section>
 
             {{-- Draf dokumen --}}
@@ -240,14 +295,21 @@
             </section>
 
             {{-- Master template KAK/TOR --}}
-            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-susun" data-testid="template-susun" data-ada="{{ $susunan->template ? 'ya' : 'tidak' }}">
+            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-susun" data-testid="template-susun" data-ada="{{ array_filter($template) !== [] ? 'ya' : 'tidak' }}">
                 <h2 id="judul-template-susun" class="text-sm font-semibold text-stone-900">Master template TA {{ $tahun }}</h2>
-                @if ($susunan->template)
-                    <p class="mt-1.5 text-sm text-stone-700">{{ $susunan->template['nama'] }}</p>
-                    <p class="mt-0.5 text-xs text-stone-500">{{ DokumenKegiatan::JENIS[$susunan->template['jenis']] ?? $susunan->template['jenis'] }} · {{ count($susunan->template['variabel']) }} variabel · diperbarui {{ $waktu($susunan->template['diperbarui_pada']) }}</p>
-                @else
-                    <p class="mt-1.5 text-sm text-stone-600">Belum ada master KAK/TOR — dokumen memakai susunan baku aplikasi.</p>
-                @endif
+                <dl class="mt-1.5 space-y-2">
+                    @foreach ($template as $bagianTemplate => $t)
+                        <div data-template="{{ $bagianTemplate }}">
+                            <dt class="text-[11px] font-semibold tracking-wide text-stone-500 uppercase">{{ $labelBagianTemplate[$bagianTemplate] }}</dt>
+                            @if ($t)
+                                <dd class="text-sm text-stone-700">{{ $t['nama'] }}</dd>
+                                <dd class="text-xs text-stone-500">{{ DokumenKegiatan::JENIS[$t['jenis']] ?? $t['jenis'] }} · {{ count($t['variabel']) }} variabel · diperbarui {{ $waktu($t['diperbarui_pada']) }}</dd>
+                            @else
+                                <dd class="text-sm text-stone-600">Belum ada master {{ $labelBagianTemplate[$bagianTemplate] }} — dokumen memakai susunan baku aplikasi.</dd>
+                            @endif
+                        </div>
+                    @endforeach
+                </dl>
                 @if ($admin)
                     <a href="{{ route('pengaturan.template.index', ['tab' => 'kak']) }}" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800">Atur master KAK/TOR <x-ui.icon name="chevron-right" class="size-3" /></a>
                 @else

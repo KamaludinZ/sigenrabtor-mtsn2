@@ -27,10 +27,11 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(page.locator('#isi-susun-3')).toBeVisible();
 
         // Daftar bagian (layar sempit: bilah atas; layar lebar: panel samping) menuju kartunya.
-        const navigasi = mobile ? page.getByRole('navigation', { name: 'Bagian KAK/TOR' }) : page.getByTestId('kemajuan-susun');
+        const navigasi = mobile ? page.getByRole('navigation', { name: 'Bagian dokumen' }) : page.getByTestId('kemajuan-susun');
         await navigasi.getByRole('link', { name: /7\. Jadwal Kegiatan/ }).click();
         await expect(page).toHaveURL(/#susun-bagian-7$/);
 
+        await expect(page.getByTestId('susun-cover')).toBeVisible();
         await expect(page.getByTestId('susun-rab')).toContainText('RAB otomatis');
         await expect(page.getByTestId('kepala-rab').first()).toContainText('Kementerian');
         await expect(page.getByTestId('draf-dokumen')).toHaveAttribute('data-ada', 'ya');
@@ -52,5 +53,32 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(sumber.getByRole('button', { name: 'Komite' })).toHaveAttribute('aria-pressed', 'true');
         await expect(page.getByTestId('susun-rab')).toContainText('Komite');
         await expect(page.getByTestId('draf-dokumen')).toHaveAttribute('data-ada', 'tidak');
+    });
+
+    test('jenis dokumen: RAB saja lalu KAK lewat keyboard, nama berkas & bagian mengikuti', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/dokumen');
+        const pilihan = page.getByTestId('pilih-jenis-dokumen');
+        await expect(pilihan.locator('[data-jenis]')).toHaveCount(5);
+        await expect(pilihan.locator('[data-jenis="lengkap"]')).toHaveAttribute('data-terpilih', 'ya');
+        await expect(page.getByTestId('nama-berkas')).toHaveText(/^KAK-TOR_RAB_/);
+
+        await pilihan.locator('[data-jenis="RAB"]').click();
+        await expect(page).toHaveURL(/jenis=RAB/);
+        await expect(pilihan.locator('[data-jenis="RAB"]')).toHaveAttribute('data-terpilih', 'ya');
+        await expect(page.getByTestId('bagian-susun')).toHaveCount(0);
+        await expect(page.getByTestId('susun-cover')).toHaveCount(0);
+        await expect(page.getByTestId('susun-rab')).toBeVisible();
+        await expect(page.getByTestId('nama-berkas')).toHaveText(/^RAB_/);
+        await pilihan.screenshot({ path: `storage/playwright/shots/pilih-jenis-dokumen-${testInfo.project.name}.png` });
+
+        // Radio asli: panah kiri berpindah ke jenis sebelumnya (TOR → KAK).
+        await pilihan.locator('[data-jenis="TOR"]').click();
+        await expect(pilihan.locator('[data-jenis="TOR"]')).toHaveAttribute('data-terpilih', 'ya');
+        await pilihan.locator('input[value="TOR"]').press('ArrowLeft');
+        await expect(page).toHaveURL(/jenis=KAK(&|$)/);
+        await expect(page.getByTestId('bagian-susun')).toHaveCount(9);
+        await expect(page.getByTestId('susun-rab')).toHaveCount(0);
+        await expect(page.getByTestId('nama-berkas')).toHaveText(/^KAK_/);
     });
 });

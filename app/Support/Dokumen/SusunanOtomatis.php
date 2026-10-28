@@ -2,7 +2,6 @@
 
 namespace App\Support\Dokumen;
 
-use App\Contracts\TemplateDokumenRepository;
 use App\Support\Pengaturan\ValidasiPejabat;
 
 /**
@@ -11,8 +10,8 @@ use App\Support\Pengaturan\ValidasiPejabat;
  * (SusunanKak::$kurangPerBagian), `periksa` bila lengkap tetapi ada temuan — penanda tangan ValidasiPejabat::pengesahan
  * di blok pengesahan, RAB melebihi pagu/pagu belum diisi (PeringatanPagu) di Pembiayaan — selain itu `lengkap`), dan
  * asal isinya (`ASAL` nomor bagian → `TEMPAT`: tempat mengisi + tautan; tempat yang
- * diatur admin hanya bertautan untuk admin), kemajuan, master template KAK/TOR yang dipakai (`template()`: default tahun
- * aktif KAK+TOR → KAK → TOR, atau null = susunan baku aplikasi), dan kepala RAB (SusunanRab::$kepala) beserta kekurangannya.
+ * diatur admin hanya bertautan untuk admin), kemajuan, dan kepala RAB (SusunanRab::$kepala) beserta kekurangannya.
+ * Master template per jenis dokumen lewat JenisDokumen::template().
  */
 final readonly class SusunanOtomatis
 {
@@ -45,19 +44,14 @@ final readonly class SusunanOtomatis
         9 => ['pejabat', 'identitas'],
     ];
 
-    /** Jenis master template KAK/TOR yang dipakai, urut pilihan. */
-    public const JENIS_TEMPLATE = ['KAK+TOR', 'KAK', 'TOR'];
-
     /**
      * @param  list<array{nomor: int, judul: string, status: string, kurang: list<string>, periksa: list<string>, asal: list<array{kunci: string, label: string, tautan: string|null, admin: bool}>}>  $bagian
-     * @param  array{id: string, nama: string, jenis: string, variabel: list<string>, diperbarui_pada: string}|null  $template
      * @param  list<array{label: string, nilai: string|null, uraian: string|null}>  $kepalaRab
      * @param  list<string>  $kurangRab
      */
     public function __construct(
         public array $bagian,
         public int $lengkap,
-        public ?array $template,
         public array $kepalaRab,
         public array $kurangRab,
     ) {}
@@ -66,7 +60,7 @@ final readonly class SusunanOtomatis
      * @param  array<string, mixed>  $kegiatan
      * @param  array{role: string}  $pengguna
      */
-    public static function dari(SusunanKak $kak, SusunanRab $rab, array $kegiatan, array $pengguna, int $tahun): self
+    public static function dari(SusunanKak $kak, SusunanRab $rab, array $kegiatan, array $pengguna): self
     {
         $id = filter_var($kegiatan['id'] ?? null, FILTER_VALIDATE_INT) ?: null;
         $admin = ($pengguna['role'] ?? null) === 'admin';
@@ -98,7 +92,6 @@ final readonly class SusunanOtomatis
         return new self(
             $bagian,
             count(array_filter($bagian, fn (array $b) => $b['status'] === 'lengkap')),
-            self::template($tahun),
             array_map(fn (array $baris) => ['label' => $baris['label'], 'nilai' => filled($baris['nilai'] ?? null) ? (string) $baris['nilai'] : null, 'uraian' => filled($baris['uraian'] ?? null) ? (string) $baris['uraian'] : null], $rab->kepala),
             array_values(array_unique($rab->kurang)),
         );
@@ -123,24 +116,6 @@ final readonly class SusunanOtomatis
         }
 
         return array_values(array_unique($temuan));
-    }
-
-    /**
-     * Master KAK/TOR default tahun itu (KAK+TOR, lalu KAK, lalu TOR); null = belum ada, dokumen memakai susunan baku.
-     *
-     * @return array{id: string, nama: string, jenis: string, variabel: list<string>, diperbarui_pada: string}|null
-     */
-    public static function template(int $tahun): ?array
-    {
-        $semua = app(TemplateDokumenRepository::class)->semua($tahun);
-        foreach (self::JENIS_TEMPLATE as $jenis) {
-            $t = collect($semua)->first(fn (array $t) => $t['jenis'] === $jenis && $t['is_default']);
-            if ($t !== null) {
-                return array_intersect_key($t, array_flip(['id', 'nama', 'jenis', 'variabel', 'diperbarui_pada']));
-            }
-        }
-
-        return null;
     }
 
     public function jumlah(): int
