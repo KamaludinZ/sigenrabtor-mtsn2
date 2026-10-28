@@ -22,7 +22,7 @@ class TemplateCoverTest extends TestCase
         $this->assertSame($bawaan, TeksCover::rapikan($bawaan));
 
         $this->assertSame([[
-            'field' => 'judul', 'x' => 100.0, 'y' => 0.0, 'width' => 5.0, 'font_size' => 48.0, 'align' => 'center', 'weight' => 'bold', 'color' => '#1c1917',
+            'field' => 'judul', 'x' => 95.0, 'y' => 0.0, 'width' => 5.0, 'font_size' => 48.0, 'align' => 'center', 'weight' => 'bold', 'color' => '#1c1917',
         ]], TeksCover::rapikan([
             ['field' => 'judul', 'x' => 120, 'y' => -5, 'width' => 50, 'font_size' => 99, 'align' => 'justify', 'weight' => 'berat', 'color' => 'red;background:url(x)'],
             ['field' => 'tidak-dikenal', 'x' => 10],

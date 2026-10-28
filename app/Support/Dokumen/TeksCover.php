@@ -67,7 +67,8 @@ final class TeksCover
                 continue;
             }
 
-            $x = $angka($item['x'] ?? null, 0, 100, 10);
+            // x paling jauh 95 agar kotak selebar minimum 5% tetap di dalam halaman (x + width ≤ 100, sama dengan editor).
+            $x = $angka($item['x'] ?? null, 0, 95, 10);
             $hasil[] = [
                 'field' => $item['field'],
                 'x' => $x,

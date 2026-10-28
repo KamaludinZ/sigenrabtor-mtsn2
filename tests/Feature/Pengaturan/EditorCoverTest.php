@@ -63,7 +63,7 @@ class EditorCoverTest extends TestCase
         $tersimpan = TeksCover::rapikan(app(TemplateCoverRepository::class)->temukan($id)['teks_items']);
         $this->assertNotContains('disusun_oleh', array_column($tersimpan, 'field'));
         $this->assertSame(['y' => 30.5, 'font_size' => 22.0, 'align' => 'left', 'color' => '#0f5e42'], array_intersect_key($tersimpan[1], array_flip(['y', 'font_size', 'align', 'color'])));
-        $this->assertSame([100.0, 5.0], [$tersimpan[2]['x'], $tersimpan[2]['width']]);
+        $this->assertSame([95.0, 5.0], [$tersimpan[2]['x'], $tersimpan[2]['width']], 'Kotak tetap di dalam halaman (x + width ≤ 100).');
     }
 
     public function test_tata_letak_kosong_ditolak_dan_hapus_menutup_editor(): void
