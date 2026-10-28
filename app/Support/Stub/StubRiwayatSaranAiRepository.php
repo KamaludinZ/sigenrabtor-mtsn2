@@ -52,6 +52,11 @@ class StubRiwayatSaranAiRepository implements RiwayatSaranAiRepository
         $this->tulis($semua);
     }
 
+    public function temukan(string $id): ?array
+    {
+        return collect($this->baca())->firstWhere('id', $id);
+    }
+
     public function semua(): array
     {
         $semua = $this->baca();

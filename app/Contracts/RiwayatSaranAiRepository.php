@@ -6,7 +6,7 @@ namespace App\Contracts;
  * Riwayat saran AI (PRD F25, tabel ai_suggestions): satu catatan per permintaan "Buat dengan AI"/usulan jadwal beserta
  * versinya — {id, kegiatan_id, bagian, prompt (bahan terkirim), instruksi, penyedia, user_id, pada, diputuskan_pada,
  * versi: [{judul, ciri, teks, status: menunggu|diterima|diedit|ditolak, teks_dipakai}]}. Hanya tambah & putuskan.
- * Backend menyimpannya sebagai baris ai_suggestions per versi yang berbagi id permintaan.
+ * Database: tabel ai_suggestions (satu baris per permintaan) + ai_suggestion_versions (EloquentRiwayatSaranAiRepository).
  */
 interface RiwayatSaranAiRepository
 {
@@ -22,6 +22,13 @@ interface RiwayatSaranAiRepository
      * sarannya) dan versi lain ditolak; $versi null = semua ditolak.
      */
     public function putuskan(string $id, ?int $versi, ?string $teksDipakai = null): void;
+
+    /**
+     * Satu permintaan beserta versinya; null bila tidak ada.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function temukan(string $id): ?array;
 
     /**
      * Semua permintaan, terbaru dulu.

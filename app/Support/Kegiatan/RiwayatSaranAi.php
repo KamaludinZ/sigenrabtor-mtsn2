@@ -92,6 +92,24 @@ final class RiwayatSaranAi
         app(RiwayatSaranAiRepository::class)->putuskan($id, $versi, $teksDipakai);
     }
 
+    /** Tempat bagian permintaan disunting: Matrik & Jadwal (jadwal) atau kartu bagiannya di Kalimat KAK. */
+    public static function tautan(array $permintaan): string
+    {
+        return $permintaan['bagian'] === 'jadwal'
+            ? route('kegiatan.matrik', ['kegiatan' => $permintaan['kegiatan_id']])
+            : route('kegiatan.kalimat', ['kegiatan' => $permintaan['kegiatan_id']]).'#kalimat-'.$permintaan['bagian'];
+    }
+
+    /** Keadaan keputusan satu permintaan: menunggu (belum diputuskan), dipakai (ada versi diterima/diedit), ditolak. */
+    public static function keputusan(array $permintaan): string
+    {
+        if (array_intersect(['diterima', 'diedit'], array_column($permintaan['versi'], 'status')) !== []) {
+            return 'dipakai';
+        }
+
+        return $permintaan['diputuskan_pada'] === null ? 'menunggu' : 'ditolak';
+    }
+
     /**
      * Permintaan dalam cakupan akun, dengan saringan kegiatan (id), bagian, status versi, dan cari (nama kegiatan/teks).
      * Tiap permintaan dilengkapi nama kegiatan & leading.

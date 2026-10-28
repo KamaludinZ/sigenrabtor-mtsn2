@@ -84,7 +84,7 @@
                 $b = BagianAi::BAGIAN[$p['bagian']] ?? ['judul' => $p['bagian'], 'kolom' => null];
                 $dipakai = collect($p['versi'])->first(fn ($v) => in_array($v['status'], ['diterima', 'diedit'], true));
                 $semuaDitolak = collect($p['versi'])->every(fn ($v) => $v['status'] === 'ditolak');
-                $tautan = $p['bagian'] === 'jadwal' ? route('kegiatan.matrik', ['kegiatan' => $p['kegiatan_id']]) : route('kegiatan.kalimat', ['kegiatan' => $p['kegiatan_id']]).'#kalimat-'.$p['bagian'];
+                $tautan = RiwayatSaranAi::tautan($p);
             @endphp
             <article class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" data-permintaan="{{ $p['id'] }}" data-bagian="{{ $p['bagian'] }}" wire:key="saran-{{ $p['id'] }}">
                 <header class="flex flex-col gap-2 border-b border-stone-100 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5">
