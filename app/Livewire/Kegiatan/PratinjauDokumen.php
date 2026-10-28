@@ -8,6 +8,7 @@ use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\ChecklistIsian;
 use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\KaidahDokumen;
+use App\Support\Dokumen\PenampilDokumen;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\StatusDraf;
 use App\Support\Dokumen\SusunanKak;
@@ -26,7 +27,9 @@ use Livewire\Component;
 /**
  * Tab ruang kerja "Pratinjau Dokumen" (PRD F15 & §17): satu set dokumen per sumber dana seperti hasil cetak — cover dari
  * template cover default tahun aktif, KAK/TOR sembilan bagian, dan RAB — berdampingan dengan panel kaidah dokumen
- * otomatis (KaidahDokumen). Sumber dana di `?sumber=` ('' = sumber pertama). Cetak & unduh menyusul.
+ * otomatis (KaidahDokumen). Sumber dana di `?sumber=` ('' = sumber pertama). Dokumen tampil di penampil lembar A4
+ * (PenampilDokumen: perbesaran, perkiraan batas halaman, penunjuk halaman, daftar isi `isiDokumen`). Cetak & unduh
+ * menyusul.
  */
 #[Layout('layouts.app')]
 class PratinjauDokumen extends Component
@@ -46,10 +49,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen);
         }
     }
 
@@ -97,6 +100,13 @@ class PratinjauDokumen extends Component
     public function statusDraf(): StatusDraf
     {
         return $this->statusCetak->set;
+    }
+
+    /** @return list<array{kunci: string, lembar: string, label: string, jangkar: string, kurang: int}> Daftar isi penampil. */
+    #[Computed]
+    public function isiDokumen(): array
+    {
+        return PenampilDokumen::isi($this->kak, $this->rab);
     }
 
     /** @return list<array<string, mixed>> Checklist isian wajib per tempat mengisinya (ChecklistIsian). */

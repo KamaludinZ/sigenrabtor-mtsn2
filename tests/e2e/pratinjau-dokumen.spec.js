@@ -73,6 +73,72 @@ test.describe('Pratinjau dokumen', () => {
         await page.screenshot({ path: `storage/playwright/shots/pratinjau-dokumen-${testInfo.project.name}.png`, fullPage: true });
     });
 
+    test('penampil seperti cetak: lembar A4 berperbesaran, perkiraan batas halaman, penunjuk halaman, daftar isi', async ({ page }, testInfo) => {
+        const mobile = testInfo.project.name.includes('mobile');
+        await page.goto('/demo/peran/leading');
+        await page.evaluate(() => window.localStorage.removeItem('sirabtor.pratinjau.perbesaran'));
+        await page.goto('/kegiatan/2/pratinjau');
+        const perbesaran = page.getByTestId('perbesaran');
+        const pilihan = page.getByTestId('pilihan-perbesaran');
+        await expect(perbesaran).toHaveAttribute('data-perbesaran', mobile ? 'layar' : 'pas');
+
+        // 100%: lembar selebar A4 (210 mm), cover tepat satu halaman, KAK/TOR bergaris batas halaman.
+        await perbesaran.click();
+        await pilihan.locator('[data-pilihan-perbesaran="100"]').click();
+        await expect(perbesaran).toHaveAttribute('data-perbesaran', '100');
+        await expect(perbesaran).toContainText('100%');
+        const cover = page.locator('[data-lembar="cover"]');
+        const kotak = await cover.boundingBox();
+        expect(Math.round(kotak.width)).toBe(794);
+        expect(kotak.height / kotak.width).toBeCloseTo(297 / 210, 2);
+        await expect(page.getByTestId('halaman-cover')).toHaveText('1 hlm');
+        await expect(page.getByTestId('halaman-kak')).toHaveText(/^\d+ hlm$/);
+        const nKak = Number((await page.getByTestId('halaman-kak').textContent()).replace(/\D/g, ''));
+        expect(nKak).toBeGreaterThan(1);
+        const kak = page.locator('[data-lembar="kak"]');
+        await expect(kak.locator('[data-batas-halaman]')).toHaveCount(nKak - 1);
+        await expect(kak.locator('[data-batas-halaman]').first()).toContainText('Halaman 2');
+        const total = Number(await page.getByTestId('halaman-total').textContent());
+        expect(total).toBeGreaterThanOrEqual(nKak + 2);
+        await expect(page.getByTestId('halaman-aktif')).toHaveText('1');
+        await kak.locator('[data-batas-halaman]').first().scrollIntoViewIfNeeded();
+        await expect(page.getByTestId('halaman-aktif')).not.toHaveText('1');
+        await page.screenshot({ path: `storage/playwright/shots/pratinjau-batas-halaman-${testInfo.project.name}.png` });
+
+        // 75%: lembar mengecil, jumlah halaman tetap.
+        await perbesaran.click();
+        await pilihan.locator('[data-pilihan-perbesaran="75"]').click();
+        await expect(perbesaran).toContainText('75%');
+        await expect.poll(async () => Math.round((await cover.boundingBox()).width)).toBe(595);
+        await expect(page.getByTestId('halaman-kak')).toHaveText(`${nKak} hlm`);
+
+        // Daftar isi: bagian yang kurang ditandai; lompat ke RAB, penunjuk halaman & bagian aktif mengikuti.
+        await page.getByTestId('buka-daftar-isi').click();
+        const daftar = page.getByTestId('daftar-isi-pratinjau');
+        await expect(daftar.locator('[data-isi]')).toHaveCount(11);
+        await expect(daftar.locator('[data-isi="kak-7"]')).toContainText('7. Jadwal Kegiatan');
+        await daftar.locator('[data-isi="rab"]').click();
+        await expect(page).toHaveURL(/#dok-rab$/);
+        await expect(daftar).toBeHidden();
+        await expect(page.getByTestId('halaman-aktif')).toHaveText(String(nKak + 2));
+        await page.getByTestId('buka-daftar-isi').click();
+        await expect(daftar.locator('[data-isi="rab"]')).toHaveAttribute('aria-current', 'location');
+        await page.keyboard.press('Escape');
+        await expect(daftar).toBeHidden();
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await page.screenshot({ path: `storage/playwright/shots/pratinjau-penampil-${testInfo.project.name}.png` });
+
+        // Pilihan diingat; lebar layar = tanpa lembar tetap & tanpa batas halaman.
+        await page.reload();
+        await expect(perbesaran).toHaveAttribute('data-perbesaran', '75');
+        await perbesaran.click();
+        await pilihan.locator('[data-pilihan-perbesaran="layar"]').click();
+        await expect(page.getByTestId('penunjuk-halaman')).toBeHidden();
+        await expect(kak.locator('[data-batas-halaman]').first()).toBeHidden();
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+    });
+
     test('kaidah: RAB yang melebihi pagu ditandai gagal', async ({ page }) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/3/pratinjau?sumber=Komite');

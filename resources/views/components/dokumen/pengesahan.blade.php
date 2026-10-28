@@ -1,7 +1,7 @@
 @props(['kolom'])
 
 {{-- Blok tanda tangan lembar pengesahan KAK & RAB (Mengetahui, Pembuat, Menyetujui) dari SusunanKak::pengesahan(). --}}
-<div {{ $attributes->class(['grid gap-6 pt-4 text-center text-sm sm:gap-4', 'sm:grid-cols-3' => count($kolom) === 3, 'sm:grid-cols-2' => count($kolom) === 2]) }}>
+<div {{ $attributes->class(['grid gap-6 pt-4 text-center text-sm sm:gap-4 cetak:gap-4', 'sm:grid-cols-3 cetak:grid-cols-3' => count($kolom) === 3, 'sm:grid-cols-2 cetak:grid-cols-2' => count($kolom) === 2]) }}>
     @foreach ($kolom as $ttd)
         <div class="flex flex-col">
             <p class="min-h-5">{{ $ttd['tempat_tanggal'] }}</p>

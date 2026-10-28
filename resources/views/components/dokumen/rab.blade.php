@@ -14,7 +14,7 @@
         <x-dokumen.cap-draf class="items-start pt-64" />
     @endif
 
-    <div class="space-y-6 px-5 py-8 sm:px-12 sm:py-10">
+    <div class="space-y-6 px-5 py-8 sm:px-12 sm:py-10 cetak:px-12 cetak:py-10">
         <header class="text-center">
             <h2 id="cetak-rab-judul" class="mx-auto max-w-xl scroll-mt-40 font-bold uppercase transition-colors target:bg-gold-100" data-tempat-cetak="rab-judul">{{ $susunan->judul }}</h2>
             @if ($susunan->draf)
@@ -22,10 +22,10 @@
             @endif
         </header>
 
-        <dl class="grid gap-x-3 gap-y-1 text-sm sm:grid-cols-[11rem_minmax(0,1fr)]" data-testid="kepala-rab">
+        <dl class="grid gap-x-3 gap-y-1 text-sm sm:grid-cols-[11rem_minmax(0,1fr)] cetak:grid-cols-[11rem_minmax(0,1fr)]" data-testid="kepala-rab">
             @foreach ($susunan->kepala as $baris)
-                <dt class="font-semibold sm:font-normal">{{ $baris['label'] }}<span class="hidden sm:inline"> :</span></dt>
-                <dd @class(['mb-1 sm:mb-0', 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($baris['tempat'])])
+                <dt class="font-semibold sm:font-normal cetak:font-normal">{{ $baris['label'] }}<span class="hidden sm:inline cetak:inline"> :</span></dt>
+                <dd @class(['mb-1 sm:mb-0 cetak:mb-0', 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($baris['tempat'])])
                     data-kepala="{{ $baris['label'] }}" @isset($baris['tempat']) id="cetak-{{ $baris['tempat'] }}" data-tempat-cetak="{{ $baris['tempat'] }}" @endisset>
                     @if ($baris['nilai'] !== null)
                         <span>{{ $baris['nilai'] }}</span>
@@ -44,7 +44,7 @@
 
         @if ($susunan->anggaran)
             {{-- Tabel lebih lebar dari kertas di layar sempit: digeser, bukan terpotong. --}}
-            <div id="cetak-rab-rincian" class="-mx-5 scroll-mt-40 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+            <div id="cetak-rab-rincian" class="-mx-5 scroll-mt-40 overflow-x-auto px-5 sm:mx-0 sm:px-0 cetak:mx-0 cetak:px-0">
                 <x-rab.tabel-rincian :anggaran="$susunan->anggaran" gaya="dokumen" class="min-w-[34rem] font-sans" />
             </div>
         @else

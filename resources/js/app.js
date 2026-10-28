@@ -7,6 +7,7 @@ import panelKonsistensi, { periksaKonsistensiBulan } from './konsistensi-bulan';
 import gridMatrik, { ringkasanMatrik } from './matrik';
 import paguKegiatan from './pagu-kegiatan';
 import pemilihBulan from './pemilih-bulan';
+import penampilDokumen from './penampil-dokumen';
 import pasangSiaranAnggaran from './siaran';
 import editorTeksBaku, { isiTeksBaku, penandaAsing } from './teks-baku';
 import jumlahTermin, { persenTermin, statusTermin } from './termin';
@@ -40,6 +41,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('unggahArsip', unggahArsip);
     window.Alpine.data('editorCover', editorCover);
     window.Alpine.data('formAi', formAi);
+    window.Alpine.data('penampilDokumen', penampilDokumen);
 
     // x-angka-bulat: isian angka bulat — tolak ketikan e/+/-/titik/koma dan sisakan digit saat menempel ("1.000" → "1000").
     window.Alpine.directive('angka-bulat', (el) => {

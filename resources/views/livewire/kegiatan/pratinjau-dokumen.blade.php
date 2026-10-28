@@ -1,4 +1,5 @@
 @use('App\Support\Dokumen\KaidahDokumen')
+@use('App\Support\Dokumen\PenampilDokumen')
 
 @php
     $kak = $this->kak;
@@ -14,12 +15,19 @@
         'gagal' => ['alert', 'text-red-600'],
         'info' => ['info', 'text-sky-700'],
     ];
-    $dokumen = ['cover' => 'Cover', 'kak' => 'KAK/TOR', 'rab' => 'RAB'];
+    $dokumen = PenampilDokumen::LEMBAR;
+    $isi = $this->isiDokumen;
+    $kurangIsi = array_sum(array_column($isi, 'kurang'));
     $tahunDokumen = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $kepalaTahun = fn (string $d) => \App\Support\Dokumen\TahunDokumen::untukDokumen($this->tahunCetak, $d);
 @endphp
 
-<div class="mx-auto max-w-7xl">
+{{--
+    Pratinjau Dokumen (PRD F5 "Tampilan Seperti Cetak"): penampil Alpine `penampilDokumen` (resources/js/penampil-dokumen.js)
+    menampilkan cover, KAK/TOR, dan RAB sebagai lembar A4 (`data-lembar`) berperbesaran dengan perkiraan batas halaman,
+    penunjuk halaman, dan daftar isi berjangkar (PenampilDokumen::isi); panel kaidah & checklist di samping.
+--}}
+<div class="mx-auto max-w-7xl" x-data="penampilDokumen(@js(array_map('strval', array_keys(PenampilDokumen::PERBESARAN))), @js(PenampilDokumen::BAWAAN), @js(array_map(fn ($b) => ['kunci' => $b['kunci'], 'jangkar' => $b['jangkar']], $isi)))">
     {{-- Kepala halaman --}}
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="min-w-0">
@@ -46,8 +54,8 @@
         <x-kegiatan.workspace-tabs active="pratinjau" :kegiatan-id="$kegiatanId" />
     </div>
 
-    {{-- Bilah dokumen: sumber dana, lompat ke dokumen, keadaan cetak. --}}
-    <div class="sticky top-16 z-20 -mx-4 mt-4 flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-stone-50/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-xl lg:border lg:px-3" data-testid="bilah-pratinjau">
+    {{-- Bilah dokumen: sumber dana, lompat ke dokumen, mode, keadaan cetak. --}}
+    <div class="-mx-4 mt-4 flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-stone-50 px-4 py-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-xl lg:border lg:px-3" data-testid="bilah-pratinjau">
         <div class="flex flex-wrap items-center gap-2">
             @if (count($kak->daftarSumber) > 1)
                 <div class="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-stone-200" role="group" aria-label="Sumber dana">
@@ -61,9 +69,15 @@
             @endif
             <nav class="flex items-center gap-1 text-sm" aria-label="Dokumen">
                 @foreach ($dokumen as $id => $label)
-                    <a href="#dok-{{ $id }}" class="rounded-md px-2 py-1 font-medium text-stone-600 hover:bg-white hover:text-stone-900">{{ $label }}</a>
+                    <a href="#dok-{{ $id }}" class="rounded-md px-2 py-1 font-medium text-stone-600 hover:bg-white hover:text-stone-900" data-dokumen="{{ $id }}">{{ $label }}<span class="ml-1 text-[11px] font-normal text-stone-400" aria-hidden="true" x-cloak x-show="cetak" x-text="(halaman['{{ $id }}'] ?? 1) + ' hlm'" data-testid="halaman-{{ $id }}"></span></a>
                 @endforeach
             </nav>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-stone-200" role="group" aria-label="Mode pratinjau" data-testid="mode-pratinjau">
+                <button type="button" aria-pressed="true" class="inline-flex items-center gap-1 rounded-md bg-brand-700 px-2.5 py-0.5 text-xs font-semibold text-white"><x-ui.icon name="eye" class="size-3.5" /> Baca</button>
+                <button type="button" aria-pressed="false" disabled class="inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold text-stone-400"><x-ui.icon name="pencil" class="size-3.5" /> Sunting teks <x-ui.segera /></button>
+            </div>
         </div>
         @php
             $statusCetak = $this->statusCetak;
@@ -101,7 +115,7 @@
 
     <div class="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {{-- Kaidah dokumen otomatis (PRD §8). Di layar sempit tampil sebelum dokumen. --}}
-        <aside class="space-y-4 lg:sticky lg:top-36 lg:col-start-2 lg:row-start-1" aria-labelledby="judul-kaidah" data-testid="panel-kaidah">
+        <aside class="space-y-4 lg:sticky lg:top-20 lg:col-start-2 lg:row-start-1" aria-labelledby="judul-kaidah" data-testid="panel-kaidah">
             <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200">
                 <div class="flex items-baseline justify-between gap-2">
                     <h2 id="judul-kaidah" class="text-sm font-semibold text-stone-900">Kaidah dokumen</h2>
@@ -137,25 +151,98 @@
             <x-dokumen.checklist-isian :grup="$this->checklist" />
         </aside>
 
-        {{-- Dokumen berurutan seperti dicetak. --}}
-        <div class="min-w-0 space-y-6 rounded-2xl bg-stone-100 p-3 ring-1 ring-stone-200 sm:p-6 lg:col-start-1 lg:row-start-1" wire:loading.class="opacity-60" wire:target="sumber" data-testid="dokumen-pratinjau">
-            <section id="dok-cover" class="scroll-mt-36" aria-label="Cover" wire:key="cover-{{ $sumberAktif }}">
-                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">Cover <x-dokumen.kepala-draf :status="$statusDraf" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('cover')" :tahun="$tahunDokumen" /></p>
-                <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" :draf="$statusDraf->draf" class="max-w-[210mm]" />
-            </section>
-
-            <section id="dok-kak" class="scroll-mt-36" aria-label="KAK/TOR" wire:key="kak-{{ $sumberAktif }}">
-                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">KAK/TOR <x-dokumen.kepala-draf :status="$kak->statusDraf" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('kak')" :tahun="$tahunDokumen" /></p>
-                @if ($kak->peringatanPagu)
-                    <x-rab.peringatan-pagu :sumber="$kak->sumber" :hasil="$kak->peringatanPagu->hasil" ringkas class="mx-auto mb-3 max-w-[210mm]" />
-                @endif
-                <x-dokumen.kak-tor :susunan="$kak" :bagian="range(1, 9)" />
-            </section>
-
-            <section id="dok-rab" class="scroll-mt-36" aria-label="RAB" wire:key="rab-{{ $sumberAktif }}">
-                <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">RAB{{ $sumberAktif ? ' '.$sumberAktif : '' }} <x-dokumen.kepala-draf :status="$rab->statusDraf" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun('rab')" :tahun="$tahunDokumen" /></p>
-                <x-dokumen.rab :susunan="$rab" />
-            </section>
+        {{-- Dokumen berurutan seperti dicetak: lembar A4 berperbesaran dengan perkiraan batas halaman. --}}
+        <div class="min-w-0 rounded-2xl bg-stone-200/70 ring-1 ring-stone-200 lg:col-start-1 lg:row-start-1" wire:loading.class="opacity-60" wire:target="sumber" data-testid="dokumen-pratinjau">
+            {{-- Kendali penampil (lengket di atas dokumen): daftar isi, penunjuk halaman, perbesaran. --}}
+            <div class="sticky top-16 z-20 flex flex-wrap items-center gap-1.5 rounded-t-2xl border-b border-stone-300/70 bg-stone-200/95 px-3 py-2 backdrop-blur sm:px-4" data-testid="kendali-penampil">
+                <div class="relative" x-on:click.outside="isiTerbuka = false"" x-on:keydown.escape="isiTerbuka = false">
+                    <button type="button" class="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200 hover:text-stone-900" x-on:click="isiTerbuka = ! isiTerbuka" x-bind:aria-expanded="isiTerbuka" aria-controls="daftar-isi-pratinjau" data-testid="buka-daftar-isi">
+                        <x-ui.icon name="menu" class="size-3.5" /> Daftar isi
+                        @if ($kurangIsi > 0)
+                            <span class="rounded-full bg-gold-100 px-1.5 text-[10px] font-bold text-gold-800" title="Isian yang belum lengkap">{{ $kurangIsi }}</span>
+                        @endif
+                    </button>
+                    <nav id="daftar-isi-pratinjau" x-cloak x-show="isiTerbuka" x-transition.origin.top.left aria-label="Daftar isi" data-testid="daftar-isi-pratinjau"
+                         class="absolute left-0 z-30 mt-2 max-h-[60vh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl bg-white p-2 text-sm shadow-lg ring-1 ring-stone-200">
+                        <ol class="space-y-0.5">
+                            @foreach ($isi as $butir)
+                                @if ($butir['kunci'] === 'kak-1')
+                                    <li class="px-2 pt-2 pb-0.5 text-[11px] font-semibold tracking-wide text-stone-500 uppercase" aria-hidden="true">KAK/TOR</li>
+                                @endif
+                                <li>
+                                    <a href="#{{ $butir['jangkar'] }}" x-on:click="isiTerbuka = false" data-isi="{{ $butir['kunci'] }}" data-kurang="{{ $butir['kurang'] }}"
+                                       x-bind:aria-current="bagianAktif === '{{ $butir['kunci'] }}' ? 'location' : null"
+                                       x-bind:class="{ 'bg-brand-50 text-brand-800': bagianAktif === '{{ $butir['kunci'] }}', 'text-stone-700 hover:bg-stone-50': bagianAktif !== '{{ $butir['kunci'] }}' }"
+                                       @class(['flex items-center gap-2 rounded-md py-1.5 pr-2', 'pl-5' => $butir['lembar'] === 'kak', 'pl-2 font-medium' => $butir['lembar'] !== 'kak'])>
+                                        <span class="min-w-0 flex-1 truncate">{{ $butir['label'] }}</span>
+                                        @if ($butir['kurang'] > 0)
+                                            <span class="shrink-0 text-[11px] font-semibold text-gold-700">{{ $butir['kurang'] }} kurang</span>
+                                        @endif
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ol>
+                    </nav>
+                </div>
+                <span class="rounded-lg bg-white px-2.5 py-1 text-xs text-stone-600 tabular-nums ring-1 ring-stone-200" x-cloak x-show="cetak" aria-live="polite" data-testid="penunjuk-halaman">
+                    Halaman <span class="font-semibold text-stone-900" x-text="halamanAktif" data-testid="halaman-aktif"></span> dari <span x-text="totalHalaman" data-testid="halaman-total"></span>
+                </span>
+                <div class="relative" x-data="{ buka: false }" x-on:click.outside="buka = false" x-on:keydown.escape="buka = false">
+                    <button type="button" class="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 tabular-nums ring-1 ring-stone-200 hover:text-stone-900" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" aria-controls="pilihan-perbesaran" data-testid="perbesaran" x-bind:data-perbesaran="perbesaran">
+                        <x-ui.icon name="search" class="size-3.5" /><span class="sr-only">Perbesaran: </span><span x-text="cetak ? persen + '%' : 'Lebar layar'">{{ PenampilDokumen::PERBESARAN[PenampilDokumen::BAWAAN] }}</span>
+                        <x-ui.icon name="chevron-down" class="size-3 opacity-60" />
+                    </button>
+                    <div id="pilihan-perbesaran" x-cloak x-show="buka" x-transition.origin.top.right role="group" aria-label="Perbesaran" data-testid="pilihan-perbesaran"
+                         class="absolute right-0 z-30 mt-2 w-44 rounded-xl bg-white p-1.5 text-sm shadow-lg ring-1 ring-stone-200">
+                        @foreach (PenampilDokumen::PERBESARAN as $kunciPerbesaran => $labelPerbesaran)
+                            <button type="button" x-on:click="perbesaran = '{{ $kunciPerbesaran }}'; buka = false" x-bind:aria-pressed="perbesaran === '{{ $kunciPerbesaran }}' ? 'true' : 'false'" data-pilihan-perbesaran="{{ $kunciPerbesaran }}"
+                                    x-bind:class="{ 'bg-brand-50 font-semibold text-brand-800': perbesaran === '{{ $kunciPerbesaran }}', 'text-stone-700 hover:bg-stone-50': perbesaran !== '{{ $kunciPerbesaran }}' }"
+                                    class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left">
+                                {{ $labelPerbesaran }}
+                                @if ($kunciPerbesaran === 'pas')
+                                    <span class="text-[11px] font-normal text-stone-400">selebar ruang</span>
+                                @elseif ($kunciPerbesaran === 'layar')
+                                    <span class="text-[11px] font-normal text-stone-400">tanpa lembar</span>
+                                @endif
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-6 overflow-x-auto p-3 sm:p-6" x-ref="ruang" data-testid="ruang-lembar">
+                @foreach (['cover' => $statusDraf, 'kak' => $kak->statusDraf, 'rab' => $rab->statusDraf] as $lembar => $drafLembar)
+                    <section id="dok-{{ $lembar }}" class="scroll-mt-36" aria-label="{{ $dokumen[$lembar] }}{{ $lembar === 'rab' && $sumberAktif ? ' '.$sumberAktif : '' }}" wire:key="{{ $lembar }}-{{ $sumberAktif }}">
+                        <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
+                            {{ $dokumen[$lembar] }}{{ $lembar === 'rab' && $sumberAktif ? ' '.$sumberAktif : '' }}
+                            <x-dokumen.kepala-draf :status="$drafLembar" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun($lembar)" :tahun="$tahunDokumen" />
+                            <span class="font-normal tracking-normal text-stone-400 normal-case" x-cloak x-show="cetak" x-text="(halaman['{{ $lembar }}'] ?? 1) + ' halaman A4' + ((halaman['{{ $lembar }}'] ?? 1) > 1 ? ' · garis putus-putus = perkiraan batas halaman' : '')"></span>
+                        </p>
+                        @if ($lembar === 'kak' && $kak->peringatanPagu)
+                            <x-rab.peringatan-pagu :sumber="$kak->sumber" :hasil="$kak->peringatanPagu->hasil" ringkas class="mx-auto mb-3 max-w-[210mm]" />
+                        @endif
+                        <div class="relative mx-auto shadow-md" x-bind:class="{ 'lembar-cetak': cetak, 'max-w-[210mm]': ! cetak }" x-bind:style="gayaLembar()" data-lembar="{{ $lembar }}">
+                            @switch($lembar)
+                                @case('cover')
+                                    <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" :draf="$statusDraf->draf" />
+                                    @break
+                                @case('kak')
+                                    <x-dokumen.kak-tor :susunan="$kak" :bagian="range(1, 9)" />
+                                    @break
+                                @default
+                                    <x-dokumen.rab :susunan="$rab" />
+                            @endswitch
+                            {{-- Perkiraan batas halaman A4 (dihitung klien dari tinggi lembar). --}}
+                            <div class="pointer-events-none absolute inset-0" aria-hidden="true" wire:ignore x-show="cetak">
+                                <template x-for="g in garis('{{ $lembar }}')" :key="g.ke">
+                                    <div class="absolute inset-x-0 border-t-2 border-dashed border-sky-400/70" x-bind:style="{ top: g.atas }" data-batas-halaman>
+                                        <span class="absolute left-2 -translate-y-1/2 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] font-semibold text-white" x-text="'Halaman ' + g.ke"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </section>
+                @endforeach
+            </div>
         </div>
     </div>
 </div>

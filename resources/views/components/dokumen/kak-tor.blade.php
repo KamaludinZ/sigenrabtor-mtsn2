@@ -22,7 +22,7 @@
 
     {{-- Cover --}}
     @if ($bagian === null)
-    <header class="border-b border-stone-200 px-8 py-12 text-center sm:px-14" data-testid="pratinjau-kak-cover">
+    <header class="border-b border-stone-200 px-8 py-12 text-center sm:px-14 cetak:px-14" data-testid="pratinjau-kak-cover">
         <p class="text-sm font-bold tracking-wide uppercase">{{ $susunan->cover['judul'] }}</p>
         <h2 class="mx-auto mt-4 max-w-xl text-lg font-bold uppercase">{{ $susunan->cover['kegiatan'] }}</h2>
         <p class="mt-4 text-sm font-semibold uppercase">{{ $susunan->cover['madrasah'] }}</p>
@@ -36,7 +36,7 @@
     </header>
     @endif
 
-    <div class="space-y-6 px-5 py-8 sm:px-14 sm:py-10">
+    <div class="space-y-6 px-5 py-8 sm:px-14 sm:py-10 cetak:px-14 cetak:py-10">
         @foreach ($daftarBagian as $isiBagian)
             <section data-bagian="{{ $isiBagian['nomor'] }}" id="cetak-kak-bagian-{{ $isiBagian['nomor'] }}" class="scroll-mt-40">
                 <h3 class="font-bold uppercase">{{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}</h3>
@@ -45,9 +45,9 @@
                         @switch($blok['jenis'])
                             @case('paragraf')
                                 @if (isset($blok['tempat']))
-                                    <p id="cetak-{{ $blok['tempat'] }}" class="scroll-mt-40 indent-8 transition-colors sm:text-justify target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400" data-tempat-cetak="{{ $blok['tempat'] }}">{{ $blok['teks'] }}</p>
+                                    <p id="cetak-{{ $blok['tempat'] }}" class="scroll-mt-40 indent-8 transition-colors sm:text-justify cetak:text-justify target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400" data-tempat-cetak="{{ $blok['tempat'] }}">{{ $blok['teks'] }}</p>
                                 @else
-                                    <p class="indent-8 sm:text-justify">{{ $blok['teks'] }}</p>
+                                    <p class="indent-8 sm:text-justify cetak:text-justify">{{ $blok['teks'] }}</p>
                                 @endif
                                 @break
                             @case('subjudul')
@@ -57,7 +57,7 @@
                                 <ol @class(['space-y-1 pl-6', 'list-decimal' => $blok['bernomor'], 'list-disc' => ! $blok['bernomor'], 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($blok['tempat'])])
                                     @isset($blok['tempat']) id="cetak-{{ $blok['tempat'] }}" data-tempat-cetak="{{ $blok['tempat'] }}" @endisset>
                                     @foreach ($blok['butir'] as $butir)
-                                        <li class="sm:text-justify">{{ $butir }}</li>
+                                        <li class="sm:text-justify cetak:text-justify">{{ $butir }}</li>
                                     @endforeach
                                 </ol>
                                 @break
@@ -82,7 +82,7 @@
                                 @break
                             @case('matrik')
                                 {{-- Tabel tahapan × bulan 1–12 seperti matrik KAK madrasah ("v" di kolom bulan). --}}
-                                <div class="-ml-5 overflow-x-auto sm:ml-0" data-testid="kak-matrik">
+                                <div class="-ml-5 overflow-x-auto sm:ml-0 cetak:ml-0" data-testid="kak-matrik">
                                     <table class="w-full min-w-[32rem] border-collapse text-[13px] leading-snug">
                                         <caption class="sr-only">Matrik tahapan kegiatan per bulan, Tahun Anggaran {{ $blok['tahun'] }}</caption>
                                         <thead>
@@ -115,7 +115,7 @@
                                 </div>
                                 @break
                             @case('jadwal')
-                                <div class="-ml-5 overflow-x-auto sm:ml-0" data-testid="kak-jadwal">
+                                <div class="-ml-5 overflow-x-auto sm:ml-0 cetak:ml-0" data-testid="kak-jadwal">
                                     <table class="w-full border-collapse text-[13px] leading-snug">
                                         <thead>
                                             <tr>

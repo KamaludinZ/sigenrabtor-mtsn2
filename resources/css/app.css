@@ -5,6 +5,8 @@
 @source '../../app/**/*.php';
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Di dalam lembar A4 penampil pratinjau (.lembar-cetak): tata letak kertas mengikuti ukuran cetak, bukan lebar layar. */
+@custom-variant cetak (&:where(.lembar-cetak *));
 
 @theme {
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
