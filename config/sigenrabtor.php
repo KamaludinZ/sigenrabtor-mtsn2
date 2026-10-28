@@ -34,6 +34,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin awal (instalasi baru)
+    |--------------------------------------------------------------------------
+    |
+    | Akun admin yang dibuat AkunAdminSeeder bila database belum punya admin aktif.
+    | Sandinya acak dan tidak ditampilkan — diatur ulang lewat alur lupa sandi saat
+    | autentikasi nyata dipasang.
+    |
+    */
+
+    'admin_awal' => [
+        'nama' => env('SIRABTOR_ADMIN_AWAL_NAMA', 'Admin Aplikasi'),
+        'email' => env('SIRABTOR_ADMIN_AWAL_EMAIL', 'admin@example.com'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Data tiruan (tahap frontend)
     |--------------------------------------------------------------------------
     |

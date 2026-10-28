@@ -15,6 +15,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Data baku madrasah untuk instalasi baru (idempoten). Akun & tahun anggaran dibuat admin lewat aplikasi.
-        $this->call(LeadingSeeder::class);
+        $this->call([LeadingSeeder::class, AkunAdminSeeder::class]);
     }
 }
