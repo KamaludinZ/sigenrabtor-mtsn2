@@ -2,6 +2,7 @@
 
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\BukaKunciFinal;
 use App\Http\Controllers\CatatanPemeriksaanKegiatan;
 use App\Http\Controllers\DataAgregasiMonitoring;
 use App\Http\Controllers\DataAkun;
@@ -31,11 +32,13 @@ use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\PaguDanRabTahunan;
+use App\Http\Controllers\PasangKunciFinal;
 use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\SalinMasterKodeTahun;
 use App\Http\Controllers\SimpanCatatanPemeriksaan;
 use App\Http\Controllers\StatusCetakKegiatan;
+use App\Http\Controllers\StatusKunciFinal;
 use App\Http\Controllers\SumberDanaKegiatan;
 use App\Http\Controllers\TerminKegiatan;
 use App\Http\Controllers\TotalAnggaranKegiatan;
@@ -107,6 +110,9 @@ Route::get('/kegiatan/{kegiatan}/arsip', DataArsipFinal::class)->whereNumber('ke
 Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');
 Route::post('/kegiatan/{kegiatan}/arsip/{sumber}', UnggahArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip.unggah');
 Route::delete('/kegiatan/{kegiatan}/arsip/{sumber}', HapusArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip.hapus');
+Route::get('/kegiatan/{kegiatan}/kunci', StatusKunciFinal::class)->whereNumber('kegiatan')->name('kegiatan.kunci');
+Route::post('/kegiatan/{kegiatan}/kunci', PasangKunciFinal::class)->whereNumber('kegiatan')->name('kegiatan.kunci.pasang');
+Route::delete('/kegiatan/{kegiatan}/kunci', BukaKunciFinal::class)->whereNumber('kegiatan')->name('kegiatan.kunci.buka');
 Route::get('/kegiatan/{kegiatan}/total-anggaran', TotalAnggaranKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.total_anggaran');
 Route::get('/kegiatan/{kegiatan}/rab-lengkap', RabLengkapKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab_lengkap');
 Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.konteks');

@@ -15,6 +15,7 @@ use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\KodeHilang;
+use App\Support\Kegiatan\KunciFinal;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
@@ -816,6 +817,12 @@ class Form extends Component
             }
         }
 
+        if (in_array($aksi, KunciFinal::AKSI, true)) {
+            $this->ubahKunci($aksi);
+
+            return;
+        }
+
         $this->status = $definisi['ke']->value;
         $this->catatRiwayat($aksi, $definisi['ke'], $wajibCatatan ? $this->catatanStatus : null);
         $this->catatanStatus = '';
@@ -832,6 +839,39 @@ class Form extends Component
         unset($this->aksiStatus, $this->drafTerbaru);
 
         $this->dispatch('notify', message: 'Status kegiatan: '.$definisi['ke']->label().'.');
+    }
+
+    /**
+     * Kunci final / buka kunci lewat KunciFinal — jalur yang sama dengan endpoint `kegiatan.kunci.pasang`/`buka`; status &
+     * riwayat diambil dari data tersimpan (isian form tidak ikut disimpan: selama Disetujui/Final isian terkunci).
+     */
+    private function ubahKunci(string $aksi): void
+    {
+        $pengguna = StubData::currentUser();
+        try {
+            $hasil = $aksi === 'finalkan' ? KunciFinal::kunci($this->kegiatanId, $pengguna) : KunciFinal::buka($this->kegiatanId, $this->catatanStatus, $pengguna);
+        } catch (ValidationException $e) {
+            if (isset($e->errors()['catatan'])) {
+                throw ValidationException::withMessages(['catatanStatus' => $e->errors()['catatan']]);
+            }
+            $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->arsipFinalBerubah();
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->status = $hasil['kegiatan']['status'];
+        $this->riwayatStatus = array_values((array) $hasil['kegiatan']['riwayat_status']);
+        $this->catatanStatus = '';
+        $this->adaPerubahan = false;
+        $this->diperbaruiPada = $hasil['kegiatan']['diperbarui_pada'] ?? now()->toIso8601String();
+        unset($this->aksiStatus, $this->drafTerbaru);
+
+        $this->dispatch('notify', message: 'Status kegiatan: '.StatusKegiatan::from($this->status)->label().'.');
     }
 
     /**
