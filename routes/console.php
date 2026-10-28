@@ -2,6 +2,7 @@
 
 use App\Support\Basisdata\PindahAkun;
 use App\Support\Basisdata\PindahLeading;
+use App\Support\Basisdata\PindahMasterKode;
 use App\Support\Basisdata\PindahStrukturAnggaran;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -57,3 +58,24 @@ Artisan::command('sigenrabtor:pindah-akun {--uji : Jalankan & verifikasi lalu ba
 
     return 0;
 })->purpose('Sinkronkan akun, tautan leading, dan riwayat masuk dari penyimpanan tiruan ke database (per id, lalu verifikasi)');
+
+Artisan::command('sigenrabtor:pindah-master {--uji : Jalankan & verifikasi lalu batalkan, tanpa menyimpan} {--tahun=* : Hanya tahun ini (boleh berulang)}', function () {
+    try {
+        $tahun = array_map('intval', (array) $this->option('tahun')) ?: null;
+        $hasil = PindahMasterKode::jalankan((bool) $this->option('uji'), $tahun);
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+
+    $this->table(['Hasil', 'Tahun'], [
+        ['Diganti', collect($hasil['ganti'])->map(fn (array $bagian, int $t) => "{$t} (".implode(', ', $bagian).')')->implode('; ') ?: '—'],
+        ['Sudah sama', implode(', ', $hasil['tetap']) ?: '—'],
+        ['Tahun anggaran belum ada (dilewati)', implode(', ', $hasil['tanpa_tahun']) ?: '—'],
+    ]);
+    $this->line("Jejak unggahan disalin: {$hasil['unggahan']}");
+    $this->info($this->option('uji') ? 'Uji sinkron master kode lolos verifikasi; tidak ada yang disimpan.' : 'Master kode disinkronkan ke database dan lolos verifikasi.');
+
+    return 0;
+})->purpose('Sinkronkan master kode tiruan per tahun anggaran ke database (ganti bagian yang berbeda, lalu verifikasi)');
