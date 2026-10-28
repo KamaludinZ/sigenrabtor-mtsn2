@@ -19,6 +19,7 @@ use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\PayloadAi;
 use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
+use App\Support\Kegiatan\SimpanMatrikJadwal;
 use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
@@ -486,11 +487,7 @@ class MatrikJadwal extends Component
         };
 
         return [
-            'matrik' => ['array'],
-            'matrik.*' => ['array'],
-            'matrik.*.*.uraian' => ['required', 'string', 'max:'.MatrikTahapan::MAKS_URAIAN],
-            'matrik.*.*.bulan' => ['array'],
-            'matrik.*.*.bulan.*' => ['integer', 'between:1,12'],
+            ...SimpanMatrikJadwal::aturanMatrik(),
             'jadwal' => ['array', 'max:'.JadwalKegiatan::MAKS_BARIS],
             // Baris boleh kosong; uraian baru wajib bila bulannya sudah dipilih (required_with bersifat implisit, tetap
             // diperiksa walau uraian kosong).
@@ -506,7 +503,7 @@ class MatrikJadwal extends Component
     protected function messages(): array
     {
         return [
-            'matrik.*.*.uraian.required' => 'Uraian butir tahapan wajib diisi.',
+            ...SimpanMatrikJadwal::pesanMatrik(),
             'jadwal.max' => 'Jadwal maksimal :max baris.',
             'jadwal.*.uraian.max' => 'Uraian jadwal maksimal :max karakter.',
             'jadwal.*.uraian.required_with' => 'Isi uraian kegiatan untuk bulan yang sudah dipilih.',
