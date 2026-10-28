@@ -24,7 +24,7 @@ final class KelolaPejabat
     /** Tahun anggaran terkunci (pejabatnya hanya dilihat). */
     public static function terkunci(int $tahun): bool
     {
-        return (bool) (collect(app(TahunAnggaranRepository::class)->semua())->firstWhere('tahun', $tahun)['is_locked'] ?? false);
+        return TahunDipilih::terkunci($tahun);
     }
 
     /**

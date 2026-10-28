@@ -15,6 +15,7 @@ use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\LatarBelakangBaku;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\SkRktm;
+use App\Support\Pengaturan\TahunDipilih;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -388,12 +389,12 @@ class DasarHukum extends Component
 
     public function tahunDilihat(): int
     {
-        return $this->tahun !== '' ? (int) $this->tahun : StubData::tahunAktif()['tahun'];
+        return TahunDipilih::dari($this->tahun) ?? StubData::tahunAktif()['tahun'];
     }
 
     public function tahunTerkunci(): bool
     {
-        return (bool) (collect($this->daftarTahun())->firstWhere('tahun', $this->tahunDilihat())['is_locked'] ?? false);
+        return TahunDipilih::terkunci($this->tahunDilihat());
     }
 
     /**
@@ -570,10 +571,7 @@ class DasarHukum extends Component
 
     private function rapikanTahun(): void
     {
-        $terdaftar = in_array((int) $this->tahun, array_column($this->daftarTahun(), 'tahun'), true);
-        if (! $terdaftar || (int) $this->tahun === StubData::tahunAktif()['tahun']) {
-            $this->tahun = '';
-        }
+        $this->tahun = TahunDipilih::parameter($this->tahun);
     }
 
     public function rendering(): void

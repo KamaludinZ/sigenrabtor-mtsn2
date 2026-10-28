@@ -3,7 +3,6 @@
 namespace App\Support\Pengaturan;
 
 use App\Contracts\DasarHukumRepository;
-use App\Contracts\TahunAnggaranRepository;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -159,7 +158,7 @@ final class KelolaDasarHukum
 
     public static function terkunci(int $tahun): bool
     {
-        return (bool) (collect(app(TahunAnggaranRepository::class)->semua())->firstWhere('tahun', $tahun)['is_locked'] ?? false);
+        return TahunDipilih::terkunci($tahun);
     }
 
     /**

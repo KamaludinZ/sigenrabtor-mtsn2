@@ -9,6 +9,7 @@ use App\Support\Pengaturan\KelolaPejabat;
 use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\Nip;
+use App\Support\Pengaturan\TahunDipilih;
 use App\Support\Pengaturan\ValidasiPejabat;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
@@ -146,7 +147,7 @@ class ProfilMadrasah extends Component
     /** Tahun pejabat yang sedang dilihat. */
     public function tahunDilihat(): int
     {
-        return $this->tahunPejabat !== '' ? (int) $this->tahunPejabat : StubData::tahunAktif()['tahun'];
+        return TahunDipilih::dari($this->tahunPejabat) ?? StubData::tahunAktif()['tahun'];
     }
 
     /**
@@ -205,10 +206,7 @@ class ProfilMadrasah extends Component
 
     private function rapikanTahunPejabat(): void
     {
-        $terdaftar = in_array((int) $this->tahunPejabat, array_column($this->daftarTahun(), 'tahun'), true);
-        if (! $terdaftar || (int) $this->tahunPejabat === StubData::tahunAktif()['tahun']) {
-            $this->tahunPejabat = '';
-        }
+        $this->tahunPejabat = TahunDipilih::parameter($this->tahunPejabat);
     }
 
     public function bukaUbahProfil(): void

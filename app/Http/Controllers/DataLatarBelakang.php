@@ -3,22 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\KegiatanRepository;
-use App\Contracts\TahunAnggaranRepository;
 use App\Support\Pengaturan\KelolaLatarBelakang;
-use App\Support\Stub\StubData;
+use App\Support\Pengaturan\TahunDipilih;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Endpoint baca latar belakang baku satu tahun anggaran (JSON, KelolaLatarBelakang::data; rute admin; `ta` tahun
- * terdaftar, bawaan tahun aktif; `kegiatan` = id kegiatan untuk contoh kalimat penutup tercetak), tidak di-cache.
+ * Endpoint baca latar belakang baku satu tahun anggaran (JSON, KelolaLatarBelakang::data; rute admin; `ta` lewat
+ * TahunDipilih — bawaan tahun aktif, tahun tak terdaftar 404; `kegiatan` = id kegiatan untuk contoh kalimat penutup tercetak), tidak di-cache.
  */
 class DataLatarBelakang extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $tahun = $request->filled('ta') ? filter_var($request->query('ta'), FILTER_VALIDATE_INT) : StubData::tahunAktif()['tahun'];
-        abort_unless($tahun !== false && collect(app(TahunAnggaranRepository::class)->semua())->contains('tahun', $tahun), 404);
+        $tahun = TahunDipilih::dariRequest($request);
 
         $kegiatan = null;
         if ($request->filled('kegiatan')) {
