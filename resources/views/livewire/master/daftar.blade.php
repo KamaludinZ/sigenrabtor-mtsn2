@@ -75,7 +75,12 @@
             <h2 class="mt-3 text-base font-semibold text-stone-900">Master kode TA {{ $ta }} belum diunggah</h2>
             <p class="mx-auto mt-1 max-w-xl text-sm text-stone-500">Selama belum ada, leading belum bisa memilih kode RKTM, SK, IKSK, EDM, dan 5 Budaya Mutu untuk kegiatan tahun ini.</p>
             @if (! $this->tahunTerkunci() && ! $unggahTerbuka)
-                <button type="button" wire:click="bukaUnggah" class="btn-primary mt-4"><x-ui.icon name="upload" class="size-4" /> Unggah master TA {{ $ta }}</button>
+                <div class="mt-4 flex flex-wrap justify-center gap-2">
+                    <button type="button" wire:click="bukaUnggah" class="btn-primary"><x-ui.icon name="upload" class="size-4" /> Unggah master TA {{ $ta }}</button>
+                    @if ($sumberSalin = $this->sumberSalin())
+                        <button type="button" wire:click="salinMaster({{ $sumberSalin }})" class="btn-secondary" wire:loading.attr="disabled" wire:target="salinMaster" data-testid="salin-master"><x-ui.icon name="copy" class="size-4" /> Salin dari TA {{ $sumberSalin }}</button>
+                    @endif
+                </div>
             @endif
             <ol class="mx-auto mt-5 grid max-w-2xl gap-3 text-left text-sm sm:grid-cols-3">
                 @foreach (['Unduh template Excel master kode', 'Isi sheet Perkin, SNP, EDM, dan 5 Budaya Mutu', 'Unggah, periksa pratinjau, lalu simpan'] as $i => $langkah)

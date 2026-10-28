@@ -7,13 +7,17 @@ use App\Contracts\MasterKodeRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\JenisKode;
+use App\Support\Master\SalinMasterKode;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * Master Kode Tahunan (PRD Fase 6 §14, F7): kode SK, IKSK, RKTM, EDM, dan 5 Budaya Mutu per tahun anggaran — tab per
@@ -76,6 +80,39 @@ class Daftar extends Component
             'is_locked' => $t['is_locked'],
             'tersedia' => MasterKode::tersedia($t['tahun']),
         ], app(TahunAnggaranRepository::class)->semua());
+    }
+
+    /** Tahun sumber yang disarankan untuk menyalin master ke tahun yang dilihat (SalinMasterKode::sumber). */
+    public function sumberSalin(): ?int
+    {
+        return $this->tahunTerkunci() ? null : SalinMasterKode::sumber($this->tahunDilihat());
+    }
+
+    /** Salin master tahun $dari ke tahun yang dilihat — hanya jenis yang masih kosong. */
+    public function salinMaster(int $dari): void
+    {
+        $ke = $this->tahunDilihat();
+        try {
+            $hasil = SalinMasterKode::salin($dari, $ke, StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: $e->validator->errors()->first(), type: 'error');
+
+            return;
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: "Master kode TA {$ke} gagal disalin — coba lagi.", type: 'error');
+
+            return;
+        }
+
+        unset($this->jumlah, $this->baris, $this->pemakaian, $this->daftarTahun);
+        $this->dispatch('notify', message: $hasil['disalin'] === []
+            ? "Master kode TA {$ke} sudah terisi — tidak ada yang disalin."
+            : "Master kode TA {$dari} disalin ke TA {$ke} (".array_sum($hasil['disalin']).' kode).', type: $hasil['disalin'] === [] ? 'info' : 'success');
     }
 
     /**

@@ -24,6 +24,7 @@ use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\RabLengkapKegiatan;
+use App\Http\Controllers\SalinMasterKodeTahun;
 use App\Http\Controllers\StatusCetakKegiatan;
 use App\Http\Controllers\SumberDanaKegiatan;
 use App\Http\Controllers\TerminKegiatan;
@@ -115,6 +116,7 @@ Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('k
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
 Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');
 Route::post('/master/{tahun}/unggah/{jenis}', UnggahMasterKode::class)->middleware(HanyaAdmin::class)->whereNumber('tahun')->name('master.unggah');
+Route::post('/master/{tahun}/salin', SalinMasterKodeTahun::class)->middleware(HanyaAdmin::class)->whereNumber('tahun')->name('master.salin');
 Route::get('/master-kode/{jenis}', AmbilMasterKode::class)->whereIn('jenis', array_keys(JenisKode::DAFTAR))->name('master.kode');
 
 // Logo kop madrasah: tampil di kop & pratinjau dokumen semua pengguna.
