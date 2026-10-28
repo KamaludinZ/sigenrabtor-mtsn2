@@ -36,6 +36,7 @@ use App\Http\Controllers\KodeMasterKegiatan;
 use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
+use App\Http\Controllers\MintaSaranAiKegiatan;
 use App\Http\Controllers\MulaiPdfBuku;
 use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\PasangKunciFinal;
@@ -133,6 +134,7 @@ Route::patch('/kegiatan/{kegiatan}', UbahKegiatan::class)->whereNumber('kegiatan
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
 Route::get('/kegiatan/{kegiatan}/kode-master', KodeMasterKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.kode_master');
 Route::get('/kegiatan/{kegiatan}/kalimat', KegiatanKalimatAi::class)->whereNumber('kegiatan')->name('kegiatan.kalimat');
+Route::post('/kegiatan/{kegiatan}/saran-ai/{bagian}', MintaSaranAiKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.saran_ai.minta');
 Route::get('/riwayat-saran-ai', SaranAiRiwayat::class)->name('saran_ai.index');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
 Route::get('/kegiatan/{kegiatan}/rab/excel', EksporRabKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab.excel');

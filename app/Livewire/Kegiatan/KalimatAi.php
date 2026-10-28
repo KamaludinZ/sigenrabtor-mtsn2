@@ -12,18 +12,16 @@ use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\BatasAmanSaran;
-use App\Support\Kegiatan\GagalPenyediaAi;
+use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\KunciKegiatan;
-use App\Support\Kegiatan\PayloadAi;
-use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
+use App\Support\Kegiatan\SaranKalimatAi;
 use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Kegiatan\TombolAi;
 use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PenyediaAi;
-use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use App\Support\Teks;
@@ -276,48 +274,19 @@ class KalimatAi extends Component
      */
     private function susunSaran(string $bagian, PenyusunSaranKalimat $penyusun, string $instruksi, string $acuan): bool
     {
-        $pengguna = StubData::currentUser();
-        $kegiatan = $this->kegiatanSekarang();
         unset($this->galatAi[$bagian]);
-
-        if (! PromptAi::aktif($bagian)) {
-            $this->galatAi[$bagian] = 'Bagian ini dinonaktifkan admin di Pengaturan AI.';
-
-            return false;
-        }
-        if (blank(trim((string) ($kegiatan['nama_kegiatan'] ?? '')))) {
-            $this->galatAi[$bagian] = 'Isi nama kegiatan dulu di Data Kegiatan.';
-
-            return false;
-        }
-        if (BatasAi::sisa($pengguna) <= 0) {
-            $this->galatAi[$bagian] = BatasAi::pesanHabis($pengguna);
-
-            return false;
-        }
-
-        // Muatan AI lewat PayloadAi: NIP, nama pejabat, dan pagu tidak pernah ikut terkirim.
-        $permintaan = PayloadAi::saranKalimat($this->kegiatanId, $bagian, $kegiatan, $acuan, $instruksi);
-
+        // Jalur yang sama dengan endpoint kegiatan.saran_ai.minta (SaranKalimatAi): bahan = teks di layar.
         try {
-            $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->sarankan($permintaan));
-        } catch (GagalPenyediaAi $e) {
-            $this->galatAi[$bagian] = $e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : '');
-
-            return false;
-        }
-        $saran = self::rapikanSaran($bagian, $jalan['hasil']);
-        $this->catatanPenyedia[$bagian] = RantaiPenyediaAi::catatan($jalan);
-
-        BatasAi::catat($pengguna, $bagian);
-        if ($saran === []) {
-            $this->galatAi[$bagian] = 'AI tidak memberi saran yang bisa dipakai. Coba lagi.';
+            $hasil = SaranKalimatAi::minta($this->kegiatanSekarang(), $bagian, StubData::currentUser(), $instruksi, $acuan, $penyusun);
+        } catch (GagalUsulanAi $e) {
+            $this->galatAi[$bagian] = $e->getMessage();
 
             return false;
         }
 
-        $this->saran[$bagian] = $saran;
-        $this->permintaanAi[$bagian] = RiwayatSaranAi::catat($this->kegiatanId, $bagian, RiwayatSaranAi::prompt($permintaan), $permintaan->instruksi, $saran, $pengguna, $jalan['penyedia']);
+        $this->saran[$bagian] = $hasil['versi'];
+        $this->catatanPenyedia[$bagian] = $hasil['catatan'];
+        $this->permintaanAi[$bagian] = $hasil['permintaan'];
         $this->bukaSaran($bagian);
 
         return true;
@@ -483,21 +452,7 @@ class KalimatAi extends Component
      */
     public static function rapikanSaran(string $bagian, array $saran): array
     {
-        $maks = ['nama_cover' => 255, 'latar_belakang' => 5000, 'tujuan' => 2000, 'sasaran' => 2000, 'pelaksanaan' => 3000][$bagian] ?? 2000;
-        $hasil = [];
-        foreach ($saran as $i => $s) {
-            if (! is_array($s)) {
-                continue;
-            }
-            $teks = $bagian === 'nama_cover' ? mb_strtoupper(Teks::rapikan(preg_replace('/\s+/u', ' ', (string) ($s['teks'] ?? '')))) : Teks::rapikan((string) ($s['teks'] ?? ''));
-            $teks = mb_substr($teks, 0, $maks);
-            if ($teks === '' || in_array($teks, array_column($hasil, 'teks'), true)) {
-                continue;
-            }
-            $hasil[] = ['judul' => Teks::rapikan((string) ($s['judul'] ?? '')) ?: 'Versi '.(count($hasil) + 1), 'ciri' => mb_substr(Teks::rapikan((string) ($s['ciri'] ?? '')), 0, 60), 'teks' => $teks];
-        }
-
-        return array_slice($hasil, 0, ParameterAi::dari(StubPengaturan::pengaturanAi())['jumlah_versi']);
+        return SaranKalimatAi::rapikan($bagian, $saran);
     }
 
     /** Data kegiatan dengan teks yang sedang disunting (bahan AI & pratinjau mengikuti layar). */
