@@ -6,12 +6,12 @@ use App\Contracts\DaftarModelAi;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PengaturanAiRepository;
 use App\Contracts\PromptAiRepository;
-use App\Contracts\RiwayatPengaturanRepository;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\KegagalanAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
+use App\Support\Pengaturan\DataPengaturanAi;
 use App\Support\Pengaturan\KelolaBatasAi;
 use App\Support\Pengaturan\KelolaModelAi;
 use App\Support\Pengaturan\KelolaPenyediaAi;
@@ -20,7 +20,6 @@ use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\PenyediaAi;
 use App\Support\Pengaturan\PromptAi;
-use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use Illuminate\Validation\ValidationException;
@@ -668,9 +667,7 @@ class PengaturanAi extends Component
      */
     public function terakhirDisimpan(): ?array
     {
-        $entri = collect(app(RiwayatPengaturanRepository::class)->semua())->first(fn (array $r) => (RiwayatPengaturan::AKSI[$r['aksi']][1] ?? null) === 'ai');
-
-        return $entri === null ? null : ['waktu' => $entri['waktu'], 'pengguna' => $entri['pengguna'], 'label' => RiwayatPengaturan::AKSI[$entri['aksi']][0]];
+        return DataPengaturanAi::terakhirDisimpan();
     }
 
     /**

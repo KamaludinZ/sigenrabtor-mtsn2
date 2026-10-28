@@ -19,6 +19,15 @@ final class PayloadAi
 {
     public const PENANDA_PEJABAT = '[nama pejabat disembunyikan]';
 
+    /** Data yang dikirim ke penyedia AI (tampil di Pengaturan AI & API konfigurasi). */
+    public const DIKIRIM = [
+        'Nama kegiatan, program RKTM, IKSK, EDM, waktu, tempat, peserta, dan catatan konteks.',
+        'Teks bagian yang sedang dibuat atau diperbaiki.',
+    ];
+
+    /** Data yang tidak pernah dikirim ke penyedia AI. */
+    public const TIDAK_PERNAH = ['NIP', 'nama pejabat', 'pagu dan rincian RAB'];
+
     /** Bahan umum permintaan AI: isian kegiatan terisi lalu catatan konteks, sudah dibersihkan. */
     public static function bahan(array $kegiatan): string
     {

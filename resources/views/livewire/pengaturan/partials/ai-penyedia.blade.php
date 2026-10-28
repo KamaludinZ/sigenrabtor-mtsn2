@@ -91,9 +91,10 @@
         <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-data-ai" data-testid="data-dikirim-ai">
             <h2 id="judul-data-ai" class="text-sm font-semibold text-stone-900">Data yang dikirim ke AI</h2>
             <ul class="mt-2 space-y-1.5 text-xs text-stone-600">
-                <li class="flex items-start gap-2"><x-ui.icon name="check" class="mt-px size-3.5 shrink-0 text-brand-600" /> Nama kegiatan, program RKTM, IKSK, EDM, waktu, tempat, peserta, dan catatan konteks.</li>
-                <li class="flex items-start gap-2"><x-ui.icon name="check" class="mt-px size-3.5 shrink-0 text-brand-600" /> Teks bagian yang sedang dibuat atau diperbaiki.</li>
-                <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> Tidak pernah: NIP, nama pejabat, pagu dan rincian RAB.</li>
+                @foreach (\App\Support\Kegiatan\PayloadAi::DIKIRIM as $dikirim)
+                    <li class="flex items-start gap-2"><x-ui.icon name="check" class="mt-px size-3.5 shrink-0 text-brand-600" /> {{ $dikirim }}</li>
+                @endforeach
+                <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> Tidak pernah: {{ implode(', ', \App\Support\Kegiatan\PayloadAi::TIDAK_PERNAH) }}.</li>
             </ul>
         </section>
         <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-antrean-ai">
