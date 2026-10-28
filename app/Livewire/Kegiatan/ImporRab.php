@@ -49,7 +49,7 @@ class ImporRab extends ImporBertahap
     {
         $tabel = PembacaImporRab::baca($path, $namaAsli);
         $this->totalBerkas = is_numeric($tabel['total_berkas']) ? (int) $tabel['total_berkas']
-            : Format::parseRupiah(preg_replace('/,(-|00)?\s*$/', '', (string) $tabel['total_berkas']));
+            : Format::parseRupiah((string) $tabel['total_berkas']);
 
         $diperiksa = PemeriksaImporRab::periksa($tabel['baris'], app(RabRepository::class)->rincian($this->kegiatanId, $this->sumber));
 

@@ -183,8 +183,8 @@ final class PemeriksaImporKegiatan
             }
             $pagu = (int) $nilai;
         } elseif (preg_match('/^\s*(rp\.?)?\s*[\d.\s]+(,-?|,00)?\s*$/i', (string) $nilai)) {
-            // "Rp6.000.000,-" / "6.000.000,00": akhiran sen dibuang dulu agar tidak ikut menjadi digit.
-            $pagu = Format::parseRupiah(preg_replace('/,(-|00)?\s*$/', '', (string) $nilai));
+            // "Rp6.000.000,-" / "6.000.000,00": akhiran sen dibuang parseRupiah.
+            $pagu = Format::parseRupiah((string) $nilai);
         } else {
             return [null, "{$label} \"{$nilai}\" bukan angka rupiah."];
         }

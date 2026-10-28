@@ -13,6 +13,9 @@ class Format
     /** Nilai baca parseRupiah() untuk angka yang melebihi batas terbilang (Terbilang::MAKSIMUM + 1). */
     public const MAKS_BACA_RUPIAH = 1_000_000_000_000_000;
 
+    /** Akhiran sen nol gaya dokumen: ",-", ",00", ",0", atau koma saja di akhir. */
+    private const AKHIRAN_SEN = '/,\s*(-|0{1,2})?\s*$/';
+
     /**
      * 10000000 → "10.000.000" (pemisah ribuan titik); pecahan memakai koma, mis. 1.5 → "1,5".
      */
@@ -42,7 +45,16 @@ class Format
     }
 
     /**
-     * Ambil nilai rupiah bulat dari teks ketikan ("Rp 10.000.000", "10000000"); null bila tidak ada angka.
+     * "Rp7.680.000,00" — gaya rupiah bersen nol (blok Mekanisme Pembayaran Form RAB).
+     */
+    public static function rupiahDesimal(int|float $nilai): string
+    {
+        return self::rupiah($nilai).',00';
+    }
+
+    /**
+     * Ambil nilai rupiah bulat dari teks ketikan ("Rp 10.000.000", "10000000"); null bila tidak ada angka. Akhiran sen
+     * gaya dokumen ("Rp10.000.000,-", "7.680.000,00") dibuang dulu agar tidak ikut menjadi digit.
      */
     public static function parseRupiah(string|int|null $teks): ?int
     {
@@ -50,7 +62,7 @@ class Format
             return $teks;
         }
 
-        $digit = preg_replace('/\D/', '', (string) $teks);
+        $digit = preg_replace('/\D/', '', preg_replace(self::AKHIRAN_SEN, '', (string) $teks));
 
         // Lebih dari 15 digit (> 999 triliun, batas Terbilang) dibaca sebagai 1.000 triliun: tetap ditolak validasi
         // "terlalu besar" tanpa meluapkan bilangan bulat saat dijumlahkan (mis. ketikan yang belum divalidasi).

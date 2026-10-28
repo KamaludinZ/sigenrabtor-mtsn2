@@ -220,7 +220,7 @@ final class PemeriksaImporRab
             return [null, "{$label} \"{$nilai}\" bukan angka rupiah."];
         }
 
-        return [Format::parseRupiah(preg_replace('/,(-|00)?\s*$/', '', (string) $nilai)), null];
+        return [Format::parseRupiah((string) $nilai), null];
     }
 
     private static function kunciItem(string $uraian, float $volume, int $harga): string

@@ -16,6 +16,8 @@ class SkemaTerbilangTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_28_000007_add_terbilang_constraints.php';
 
+    private const MIGRASI_FUNGSI = 'database/migrations/2026_10_28_000033_add_terbilang_functions.php';
+
     private int $kegiatan;
 
     protected function setUp(): void
@@ -67,6 +69,8 @@ class SkemaTerbilangTest extends TestCase
 
     public function test_migrasi_menghitung_ulang_salinan_lama(): void
     {
+        // Fungsi & CHECK terbilang database (000033) dibangun di atas CHECK 000007: dibatalkan lebih dulu.
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_FUNGSI])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
 
         // Salinan lama yang tidak sesuai rinciannya (mis. diubah langsung di database).
@@ -75,6 +79,7 @@ class SkemaTerbilangTest extends TestCase
         $kosong = $this->anggaran(['sumber_dana' => 'Komite', 'total_rab' => 0, 'terbilang' => 'Nol Rupiah']);
 
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_FUNGSI])->assertSuccessful();
 
         $this->assertSame([300_000, 'Tiga Ratus Ribu Rupiah'], [DB::table('anggaran_kegiatan')->find($basi)->total_rab, DB::table('anggaran_kegiatan')->find($basi)->terbilang]);
         $this->assertSame([0, null], [DB::table('anggaran_kegiatan')->find($kosong)->total_rab, DB::table('anggaran_kegiatan')->find($kosong)->terbilang]);

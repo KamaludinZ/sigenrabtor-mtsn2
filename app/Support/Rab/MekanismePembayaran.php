@@ -151,7 +151,7 @@ final readonly class MekanismePembayaran
     /** "Rp7.680.000,00" — gaya blok mekanisme pembayaran Form RAB. */
     public static function rupiah(int $nilai): string
     {
-        return 'Rp'.Format::angka($nilai).',00';
+        return Format::rupiahDesimal($nilai);
     }
 
     /** "2026-06-17" → "17/06/2026"; null bila kosong/tidak valid. */

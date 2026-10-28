@@ -26,6 +26,7 @@ use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\EksporRabKegiatan;
 use App\Http\Controllers\EksporRabPdfKegiatan;
+use App\Http\Controllers\FormatRupiahTerbilang;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\HapusArsipFinal;
 use App\Http\Controllers\KodeMasterKegiatan;
@@ -90,6 +91,7 @@ Route::get('/dashboard', Dashboard::class)->name('dashboard');
 Route::get('/dashboard/data', DataDashboard::class)->name('dashboard.data');
 
 Route::get('/tahun-aktif', TahunAnggaranAktif::class)->name('tahun_aktif');
+Route::get('/format/rupiah', FormatRupiahTerbilang::class)->name('format.rupiah');
 Route::get('/kegiatan', KegiatanDaftar::class)->name('kegiatan.index');
 Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name('kegiatan.template');
 Route::get('/kegiatan/format-rincian-rab', UnduhFormatRincianRab::class)->name('kegiatan.rab.template');
