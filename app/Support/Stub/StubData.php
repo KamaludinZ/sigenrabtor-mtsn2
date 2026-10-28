@@ -100,6 +100,22 @@ class StubData
     }
 
     /**
+     * Draf dokumen KAK/TOR tersimpan satu kegiatan (calon tabel `documents`, PRD F4 "Simpan Draf") — tiruan untuk tab
+     * Susun KAK/TOR sebelum penyimpanan draf tersedia: contoh kegiatan 1 punya draf KAK/TOR Komite fiktif; lainnya null.
+     *
+     * @return array{jenis: string, sumber: string|null, disimpan_pada: string, oleh: string}|null
+     */
+    public static function drafDokumen(int $kegiatanId): ?array
+    {
+        $tahun = self::tahunAktif()['tahun'];
+
+        return match ($kegiatanId) {
+            1 => ['jenis' => 'KAK+TOR', 'sumber' => 'Komite', 'disimpan_pada' => "{$tahun}-01-08T10:15:00.000000+07:00", 'oleh' => 'Muslimin, M.Pd.'],
+            default => null,
+        };
+    }
+
+    /**
      * Dasar hukum KAK tahun $tahun (DasarHukumRepository, diatur admin), urut cetak, siap cetak lewat
      * DaftarDasarHukum::cetak() (penanda tahun terisi, tanda baca akhir menurut urutan).
      *

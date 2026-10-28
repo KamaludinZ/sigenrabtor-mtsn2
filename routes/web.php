@@ -101,6 +101,7 @@ use App\Livewire\Kegiatan\MatrikJadwal as KegiatanMatrikJadwal;
 use App\Livewire\Kegiatan\PratinjauDokumen as KegiatanPratinjauDokumen;
 use App\Livewire\Kegiatan\Rab as KegiatanRab;
 use App\Livewire\Kegiatan\SalinImpor as KegiatanSalinImpor;
+use App\Livewire\Kegiatan\SusunDokumen as KegiatanSusunDokumen;
 use App\Livewire\Master\Daftar as MasterKodeDaftar;
 use App\Livewire\Monitoring\Anggaran as MonitoringAnggaran;
 use App\Livewire\Pagu\Daftar as DataPaguDaftar;
@@ -168,6 +169,7 @@ Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiata
 Route::get('/kegiatan/{kegiatan}/rab/excel', EksporRabKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab.excel');
 Route::get('/kegiatan/{kegiatan}/rab/pdf', EksporRabPdfKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab.pdf');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
+Route::get('/kegiatan/{kegiatan}/dokumen', KegiatanSusunDokumen::class)->whereNumber('kegiatan')->name('kegiatan.dokumen');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
 Route::get('/kegiatan/{kegiatan}/arsip', DataArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip.data');
 Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');

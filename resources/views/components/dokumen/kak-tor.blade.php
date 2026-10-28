@@ -1,4 +1,4 @@
-@props(['susunan', 'bagian' => null])
+@props(['susunan', 'bagian' => null, 'cap' => true])
 
 {{--
     Pratinjau KAK/TOR bergaya kertas A4: cover lalu sembilan bagian baku dari App\Support\Dokumen\SusunanKak.
@@ -6,16 +6,17 @@
     tampil abu-abu. Cap "DRAF" muncul selama kegiatan belum disetujui, belum lengkap, atau RAB-nya melebihi pagu.
     Penanda pagu di bagian Pembiayaan hanya ada di pratinjau (bukan teks dokumen).
     $bagian (daftar nomor, mis. [4, 7]) menampilkan bagian itu saja tanpa cover — dipakai pratinjau Matrik & Jadwal.
+    :cap="false" tanpa cap DRAF/Final (cuplikan per bagian di tab Susun KAK/TOR; capnya tampil sekali di kepala halaman).
 --}}
 @php
     $daftarBagian = $bagian === null ? $susunan->bagian : array_values(array_filter($susunan->bagian, fn ($b) => in_array($b['nomor'], $bagian, true)));
 @endphp
 <article {{ $attributes->class(['relative mx-auto w-full max-w-[210mm] overflow-hidden bg-white font-serif text-[15px] leading-relaxed text-stone-900 shadow-sm ring-1 ring-stone-200']) }}
          data-testid="pratinjau-kak">
-    @if ($susunan->kunci)
+    @if ($cap && $susunan->kunci)
         <x-dokumen.cap-final :kunci="$susunan->kunci" />
     @endif
-    @if ($susunan->draf)
+    @if ($cap && $susunan->draf)
         <x-dokumen.cap-draf class="items-start pt-64" />
     @endif
 

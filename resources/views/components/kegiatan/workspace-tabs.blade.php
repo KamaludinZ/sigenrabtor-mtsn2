@@ -16,6 +16,7 @@
         ['key' => 'rab', 'label' => 'RAB', 'icon' => 'coins', 'route' => 'kegiatan.rab', 'needs_id' => true],
         ['key' => 'matrik', 'label' => 'Matrik & Jadwal', 'icon' => 'calendar', 'route' => 'kegiatan.matrik', 'needs_id' => true],
         ['key' => 'kalimat', 'label' => 'Kalimat KAK', 'icon' => 'sparkles', 'route' => 'kegiatan.kalimat', 'needs_id' => true],
+        ['key' => 'dokumen', 'label' => 'Susun KAK/TOR', 'icon' => 'file-text', 'route' => 'kegiatan.dokumen', 'needs_id' => true],
         ['key' => 'pratinjau', 'label' => 'Pratinjau Dokumen', 'icon' => 'eye', 'route' => 'kegiatan.pratinjau', 'needs_id' => true],
     ];
 @endphp
