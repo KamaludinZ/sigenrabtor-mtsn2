@@ -12,6 +12,7 @@ use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\KegagalanAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
+use App\Support\Pengaturan\KelolaBatasAi;
 use App\Support\Pengaturan\KelolaModelAi;
 use App\Support\Pengaturan\KelolaPenyediaAi;
 use App\Support\Pengaturan\KelolaPromptAi;
@@ -295,23 +296,14 @@ class PengaturanAi extends Component
     {
         $this->bagianSimpan = 'batas';
         $this->resetErrorBag();
-        if ($galat = BatasAi::galat($this->isianBatas)) {
-            $this->addError('isianBatas', $galat);
-
+        // Aturan & penulisan bersama endpoint pengaturan.ai.batas.simpan (KelolaBatasAi).
+        $hasil = $this->jalankanSimpan(fn () => KelolaBatasAi::simpanUmum($this->isianBatas, StubData::currentUser(), $this->versiBatas), ['batas' => 'isianBatas'], 'versiBatas');
+        if ($hasil === false) {
             return;
         }
-
-        $batas = (int) $this->isianBatas;
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        $this->versi = $this->versiBatas;
-        $ringkas = fn (array $p) => ['batas' => $p['batas_per_user_per_hari'].' per akun per hari'];
-        if (! $this->simpanPengaturan($lama, ['batas_per_user_per_hari' => $batas] + $lama, $ringkas, ['batas' => 'Batas umum'], '', null, 'ubah_batas_ai')) {
-            $this->versiBatas = $this->versi;
-
-            return;
-        }
-        $this->isianBatas = $batas;
-        $this->dispatch('notify', message: "Batas umum tersimpan: {$batas} permintaan AI per akun per hari.", type: 'success');
+        $this->isianBatas = $hasil['batas'];
+        $this->versiBatas = $this->versi;
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     public function pilihPresetBatas(int $batas): void
@@ -343,21 +335,15 @@ class PengaturanAi extends Component
         $id = $this->khususTerbuka;
         abort_unless($id !== null, 404);
         $this->resetErrorBag();
-        if ($galat = BatasAi::galat($this->isianKhusus)) {
-            $this->addError('isianKhusus', $galat);
-
-            return;
+        if ($this->ubahBatasKhusus($id, $this->isianKhusus, ['batas' => 'isianKhusus', 'akun' => 'isianKhusus'])) {
+            $this->khususTerbuka = null;
         }
-
-        $batas = (int) $this->isianKhusus;
-        $this->ubahBatasKhusus($id, $batas === BatasAi::batas() ? null : $batas);
-        $this->khususTerbuka = null;
     }
 
     /** Kembalikan akun ke batas umum. */
     public function hapusKhusus(int $id): void
     {
-        $this->ubahBatasKhusus($id, null);
+        $this->ubahBatasKhusus($id, null, ['akun' => 'isianKhusus']);
         $this->khususTerbuka = null;
     }
 
@@ -694,13 +680,7 @@ class PengaturanAi extends Component
      */
     public function pemakaianHariIni(): array
     {
-        $baris = array_map(fn (array $p) => [
-            'id' => (int) $p['id'], 'nama' => $p['name'], 'peran' => $p['role'],
-            'terpakai' => BatasAi::terpakai($p), 'batas' => BatasAi::batas($p), 'khusus' => BatasAi::khusus($p), 'sisa' => BatasAi::sisa($p),
-        ], array_values(array_filter(StubPengaturan::pengguna(), fn (array $p) => $p['is_active'])));
-        usort($baris, fn (array $a, array $b) => [$b['terpakai'], $a['nama']] <=> [$a['terpakai'], $b['nama']]);
-
-        return $baris;
+        return KelolaBatasAi::data()['akun'];
     }
 
     /** @return list<array<string, mixed>> */
@@ -715,21 +695,21 @@ class PengaturanAi extends Component
         return RiwayatSaranAi::ringkasan(RiwayatSaranAi::untuk(StubData::currentUser()));
     }
 
-    /** Simpan/buang batas khusus satu akun beserta riwayatnya. */
-    private function ubahBatasKhusus(int $id, ?int $batas): void
+    /** Simpan/buang batas khusus satu akun lewat KelolaBatasAi; true bila tersimpan. */
+    private function ubahBatasKhusus(int $id, mixed $batas, array $galatKe): bool
     {
         $this->bagianSimpan = 'khusus';
-        $akun = collect(StubPengaturan::pengguna())->firstWhere('id', $id);
-        abort_unless($akun !== null, 404);
+        abort_unless(collect(StubPengaturan::pengguna())->firstWhere('id', $id) !== null, 404);
 
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        $baru = $lama;
-        $baru['batas_khusus'] = array_filter(array_replace((array) ($lama['batas_khusus'] ?? []), [(string) $id => $batas]), fn ($n) => $n !== null);
-        $this->versi = $lama['diperbarui_pada'];
-        $ringkas = fn (array $p) => ['khusus' => isset($p['batas_khusus'][(string) $id]) ? $p['batas_khusus'][(string) $id].' per hari' : 'batas umum'];
-        if ($this->simpanPengaturan($lama, $baru, $ringkas, ['khusus' => 'Batas'], $akun['name'].' — ', null, 'ubah_batas_ai')) {
-            $this->dispatch('notify', message: $batas === null ? "{$akun['name']} kembali memakai batas umum." : "Batas khusus {$akun['name']}: {$batas} permintaan per hari.", type: 'success');
+        // Batas khusus disunting per baris tanpa formulir bervers: memakai versi terbaru.
+        $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
+        $hasil = $this->jalankanSimpan(fn () => KelolaBatasAi::simpanKhusus($id, $batas, StubData::currentUser(), $this->versi), $galatKe);
+        if ($hasil === false) {
+            return false;
         }
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
+
+        return true;
     }
 
     private function muatParameter(): void
