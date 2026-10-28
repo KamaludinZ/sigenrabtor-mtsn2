@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **penyimpanan sumber dana** tersendiri di server — memilih DIPA/Komite beserta pagunya tanpa menyentuh isian lain, diperiksa dengan aturan yang sama dengan Data Kegiatan, ditolak untuk kegiatan yang terkunci, dan memberi tahu bila RAB sumber dana yang tidak dipilih lagi masih tersimpan (tidak ikut dicetak sampai dipilih kembali).
 - Fondasi backend: rangkuman RAB per sumber dana di database kini membawa nama dan urutan baku sumber dana dari tabel sumber dana, sehingga laporan selalu menampilkan DIPA lalu Komite.
 - Fondasi backend: **skema Data Pagu** — nama kegiatan beserta pagu DIPA/Komite per tahun anggaran tersimpan di database dengan nama yang tidak boleh ganda dalam satu tahun (tanpa membedakan huruf besar/kecil dan spasi), pagu per sumber dana yang selalu lebih dari Rp0, dan tautan kegiatan ke data pagunya yang otomatis dilepas bila data pagu dihapus.
 - Fondasi backend: **skema sumber dana** — daftar sumber dana (DIPA dan Komite, beserta keterangan dan urutan tampil) kini tersimpan sebagai tabel rujukan di database, dan setiap RAB merujuk sumber dananya sehingga sumber dana yang tidak dikenal tidak bisa tersimpan dan sumber dana yang masih dipakai tidak bisa terhapus.

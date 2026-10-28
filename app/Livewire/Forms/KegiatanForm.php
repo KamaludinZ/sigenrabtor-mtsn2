@@ -11,6 +11,7 @@ use App\Support\Kegiatan\SimpanPelaksanaan;
 use App\Support\Kegiatan\SusunanPanitia;
 use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\Master\IkskPerSk;
+use App\Support\Rab\SimpanSumberDana;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Carbon\CarbonImmutable;
@@ -477,17 +478,8 @@ class KegiatanForm extends Form
      */
     public function sumberDana(): array
     {
-        $sumber = [];
-
-        if ($this->dana_dipa) {
-            $sumber[] = ['sumber' => 'DIPA', 'pagu' => Format::parseRupiah($this->pagu_dipa)];
-        }
-
-        if ($this->dana_komite) {
-            $sumber[] = ['sumber' => 'Komite', 'pagu' => Format::parseRupiah($this->pagu_komite)];
-        }
-
-        return $sumber;
+        // Perapian yang sama dengan penerima server (SimpanSumberDana::rapikan): urut baku, pagu rupiah → angka.
+        return SimpanSumberDana::rapikan(array_filter(['DIPA' => $this->dana_dipa ? $this->pagu_dipa : false, 'Komite' => $this->dana_komite ? $this->pagu_komite : false], fn ($pagu) => $pagu !== false));
     }
 
     public function totalPagu(): int
