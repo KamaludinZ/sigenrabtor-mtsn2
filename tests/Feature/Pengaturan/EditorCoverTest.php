@@ -44,6 +44,8 @@ class EditorCoverTest extends TestCase
 
     public function test_simpan_tata_letak_dirapikan(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus cover juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $id = $this->coverContoh();
         $kotak = TeksCover::bawaan();
         $kotak[1] = ['y' => 30.5, 'font_size' => 22, 'align' => 'left', 'color' => '#0F5E42'] + $kotak[1];
@@ -68,6 +70,8 @@ class EditorCoverTest extends TestCase
 
     public function test_tata_letak_kosong_ditolak_dan_hapus_menutup_editor(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus cover juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $id = $this->coverContoh();
 
         $komponen = Livewire::test(TemplateDokumen::class)

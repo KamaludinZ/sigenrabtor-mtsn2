@@ -10,7 +10,7 @@ use App\Support\Dokumen\NilaiVariabel;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\TeksCover;
-use App\Support\Pengaturan\RiwayatPengaturan;
+use App\Support\Pengaturan\SimpanTemplateCover;
 use App\Support\Pengaturan\UnggahMasterTemplate;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
@@ -43,8 +43,8 @@ class TemplateDokumen extends Component
     /** Tab yang sudah tersedia. */
     public const TAB_TERSEDIA = ['cover', 'kak', 'daftar_isi', 'nomor_halaman'];
 
-    /** Batas ukuran gambar cover (KB). */
-    public const MAKS_KB = 5120;
+    /** Batas ukuran gambar cover (KB) — SimpanTemplateCover::MAKS_KB. */
+    public const MAKS_KB = SimpanTemplateCover::MAKS_KB;
 
     /** Batas ukuran master .docx (KB) — UnggahMasterTemplate::MAKS_KB. */
     public const MAKS_KB_MASTER = UnggahMasterTemplate::MAKS_KB;
@@ -132,13 +132,23 @@ class TemplateDokumen extends Component
         $this->contohSumber = in_array($this->contohSumber, $sumber, true) ? $this->contohSumber : ($sumber[0] ?? null);
     }
 
-    public function simpanCover(TemplateCoverRepository $repo): void
+    public function simpanCover(): void
     {
         $this->validate(Arr::only($this->rules(), ['gambar', 'namaCover']));
 
-        $id = $repo->tambah($this->tahun(), trim($this->namaCover), $this->gambar, TeksCover::bawaan());
-        $cover = $repo->temukan($id);
-        RiwayatPengaturan::catat('unggah_cover', "Cover “{$cover['nama']}” diunggah ({$cover['lebar']} × {$cover['tinggi']} piksel)".($cover['is_default'] ? ', menjadi cover default' : '').'.');
+        try {
+            $id = SimpanTemplateCover::tambah($this->tahun(), $this->gambar, $this->namaCover, StubData::currentUser())['id'];
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError($kolom === 'nama' ? 'namaCover' : $kolom, $pesan[0]);
+            }
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
         $this->gambar->delete();
         $this->reset('gambar');
         $this->coverDipilih = $id;
@@ -186,7 +196,7 @@ class TemplateDokumen extends Component
     }
 
     /** Simpan susunan dari editor; nilai dari klien selalu dirapikan (kolom dikenal, posisi & ukuran dalam batas). */
-    public function simpanTataLetak(TemplateCoverRepository $repo): void
+    public function simpanTataLetak(): void
     {
         $cover = collect($this->covers)->firstWhere('id', $this->coverDiatur);
 
@@ -194,16 +204,17 @@ class TemplateDokumen extends Component
             return;
         }
 
-        $kotak = TeksCover::rapikan($this->kotak);
+        try {
+            SimpanTemplateCover::simpanTataLetak($cover['id'], $this->kotak, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->addError('kotak', $e->errors()['kotak'][0]);
 
-        if ($kotak === []) {
-            $this->addError('kotak', 'Tampilkan minimal satu kotak teks di cover.');
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;
         }
-
-        $repo->ubahTeks($cover['id'], $kotak);
-        RiwayatPengaturan::catat('ubah_tata_letak_cover', "Tata letak “{$cover['nama']}” diubah — ".self::ringkasTataLetak(TeksCover::rapikan($cover['teks_items']), $kotak).'.');
         $this->batalAtur();
         unset($this->covers);
         $this->dispatch('notify', message: "Tata letak “{$cover['nama']}” tersimpan.", type: 'success');
@@ -219,7 +230,7 @@ class TemplateDokumen extends Component
         $this->akanDihapus = null;
     }
 
-    public function hapusCover(TemplateCoverRepository $repo): void
+    public function hapusCover(): void
     {
         $cover = collect($this->covers)->firstWhere('id', $this->akanDihapus);
 
@@ -227,9 +238,13 @@ class TemplateDokumen extends Component
             return;
         }
 
-        $repo->hapus($cover['id']);
-        $pengganti = $cover['is_default'] ? collect($repo->semua($this->tahun()))->firstWhere('is_default', true) : null;
-        RiwayatPengaturan::catat('hapus_cover', "Cover “{$cover['nama']}” dihapus".($pengganti ? "; “{$pengganti['nama']}” menjadi cover default" : '').'.');
+        try {
+            SimpanTemplateCover::hapus($cover['id'], StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
         $this->akanDihapus = null;
         if ($this->coverDiatur === $cover['id']) {
             $this->batalAtur();
@@ -463,8 +478,8 @@ class TemplateDokumen extends Component
     protected function rules(): array
     {
         return [
-            'gambar' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:'.self::MAKS_KB, 'dimensions:min_width=600,min_height=600'],
-            'namaCover' => ['required', 'string', 'max:100'],
+            'gambar' => SimpanTemplateCover::aturan()['gambar'],
+            'namaCover' => SimpanTemplateCover::aturan()['nama'],
             'berkasMaster' => UnggahMasterTemplate::aturan()['berkas'],
             'namaMaster' => UnggahMasterTemplate::aturan()['nama'],
             'jenisMaster' => UnggahMasterTemplate::aturan()['jenis'],
@@ -477,13 +492,7 @@ class TemplateDokumen extends Component
     protected function messages(): array
     {
         return [
-            'gambar.required' => 'Pilih gambar desain cover.',
-            'gambar.image' => 'Berkas harus berupa gambar JPG atau PNG.',
-            'gambar.mimes' => 'Berkas harus berupa gambar JPG atau PNG.',
-            'gambar.max' => 'Ukuran gambar maksimal '.(self::MAKS_KB / 1024).' MB.',
-            'gambar.dimensions' => 'Gambar terlalu kecil — minimal 600 piksel di setiap sisi agar tajam saat dicetak.',
-            'namaCover.required' => 'Beri nama cover, mis. “Cover default 2026”.',
-            'namaCover.max' => 'Nama cover maksimal 100 karakter.',
+            ...collect(SimpanTemplateCover::pesan())->mapWithKeys(fn (string $pesan, string $kunci) => [preg_replace('/^nama\./', 'namaCover.', $kunci) => $pesan])->all(),
             ...collect(UnggahMasterTemplate::pesan())->mapWithKeys(fn (string $pesan, string $kunci) => [preg_replace('/^(berkas|nama|jenis)\./', '$1Master.', $kunci) => $pesan])->all(),
         ];
     }
@@ -496,30 +505,6 @@ class TemplateDokumen extends Component
     private function namaBaku(): string
     {
         return $this->covers === [] ? 'Cover default '.$this->tahun() : 'Cover '.(count($this->covers) + 1).' '.$this->tahun();
-    }
-
-    /**
-     * "3 kotak diubah, disembunyikan: “Disusun oleh”" — ringkasan perbedaan dua susunan kotak teks.
-     *
-     * @param  list<array<string, mixed>>  $lama
-     * @param  list<array<string, mixed>>  $baru
-     */
-    private static function ringkasTataLetak(array $lama, array $baru): string
-    {
-        $perKolom = fn (array $kotak) => array_column($kotak, null, 'field');
-        [$lama, $baru] = [$perKolom($lama), $perKolom($baru)];
-        $nama = fn (array $kolom) => implode(', ', array_map(fn ($f) => '“'.str_replace(['“', '”'], '', TeksCover::FIELD[$f]).'”', $kolom));
-        $diubah = count(array_filter(array_keys(array_intersect_key($baru, $lama)), fn ($f) => $baru[$f] !== $lama[$f]));
-        $bagian = [$diubah.' kotak diubah'];
-
-        if (($hilang = array_keys(array_diff_key($lama, $baru))) !== []) {
-            $bagian[] = 'disembunyikan: '.$nama($hilang);
-        }
-        if (($muncul = array_keys(array_diff_key($baru, $lama))) !== []) {
-            $bagian[] = 'ditampilkan: '.$nama($muncul);
-        }
-
-        return implode(', ', $bagian);
     }
 
     private function namaMasterBaku(): string

@@ -55,6 +55,8 @@ class TemplateCoverTest extends TestCase
 
     public function test_unggah_pratinjau_lalu_simpan_sebagai_cover_default(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus cover juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $komponen = Livewire::test(TemplateDokumen::class)
             ->set('gambar', UploadedFile::fake()->image('desain-cover.png', 1240, 1754))
             ->assertHasNoErrors()
@@ -83,7 +85,7 @@ class TemplateCoverTest extends TestCase
             ->assertSee('Default');
 
         // Gambar tersimpan dilayani untuk admin saja.
-        $this->get(route('pengaturan.template.cover.gambar', $covers[0]['id']))->assertForbidden();
+        $this->withSession(['stub_role' => 'leading'])->get(route('pengaturan.template.cover.gambar', $covers[0]['id']))->assertForbidden();
         $this->withSession(['stub_role' => 'admin'])->get(route('pengaturan.template.cover.gambar', $covers[0]['id']))->assertOk()->assertHeader('Content-Type', 'image/png');
         $this->get(route('pengaturan.template.cover.gambar', '00000000-0000-0000-0000-000000000000'))->assertNotFound();
 
@@ -117,6 +119,8 @@ class TemplateCoverTest extends TestCase
 
     public function test_pilih_pratinjau_dan_hapus_cover(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus cover juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $repo = app(TemplateCoverRepository::class);
         $pertama = $repo->tambah(2026, 'Cover A', UploadedFile::fake()->image('a.png', 1240, 1754), TeksCover::bawaan());
         $this->travel(1)->minutes();
