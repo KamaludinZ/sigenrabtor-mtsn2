@@ -8,6 +8,7 @@ use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\ChecklistIsian;
 use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\KaidahDokumen;
+use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\StatusDraf;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
@@ -44,10 +45,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusDraf);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusDraf);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak);
         }
     }
 
@@ -84,11 +85,17 @@ class PratinjauDokumen extends Component
         return $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
     }
 
-    /** Cap DRAF set dokumen (cover + KAK/TOR + RAB) beserta alasannya. */
+    /** Keputusan cetak set dokumen (cover + KAK/TOR + RAB): cap DRAF, alasan, dan saran menghilangkannya. */
     #[Computed]
+    public function statusCetak(): StatusCetak
+    {
+        return StatusCetak::dari($this->dataKegiatan, $this->sumber ?: null, $this->kak, $this->rab);
+    }
+
+    /** Cap DRAF set dokumen (cover + KAK/TOR + RAB) beserta alasannya. */
     public function statusDraf(): StatusDraf
     {
-        return StatusDraf::gabung($this->kak->statusDraf, $this->rab->statusDraf);
+        return $this->statusCetak->set;
     }
 
     /** @return list<array<string, mixed>> Checklist isian wajib per tempat mengisinya (ChecklistIsian). */

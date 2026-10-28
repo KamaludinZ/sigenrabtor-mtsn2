@@ -88,7 +88,7 @@ final class BukuDokumen
 
             return $b + [
                 'status' => $status,
-                'draf' => SusunanKak::dari($data, $sumber)->draf || SusunanRab::dari($data, $sumber)->draf,
+                'draf' => StatusCetak::dari($data, $sumber)->draf(),
                 'halaman' => $simulasi['mulai'][$i] ?? null,
             ];
         }, $baris, array_keys($baris));

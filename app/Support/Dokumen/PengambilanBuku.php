@@ -18,7 +18,7 @@ final class PengambilanBuku
      */
     public static function ambil(array $kegiatan, string $sumber, ?int $halaman): array
     {
-        $status = StatusDraf::gabung(SusunanKak::dari($kegiatan, $sumber)->statusDraf, SusunanRab::dari($kegiatan, $sumber)->statusDraf);
+        $status = StatusCetak::dari($kegiatan, $sumber)->set;
 
         return [
             'id' => (int) $kegiatan['id'],
