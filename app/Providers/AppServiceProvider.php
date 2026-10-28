@@ -19,6 +19,7 @@ use App\Contracts\PejabatRepository;
 use App\Contracts\PemakaianAiRepository;
 use App\Contracts\PembuatPdfBuku;
 use App\Contracts\PengaturanAiRepository;
+use App\Contracts\PenggabungPdf;
 use App\Contracts\PenggunaRepository;
 use App\Contracts\PengubahPdf;
 use App\Contracts\PenyusunSaranKalimat;
@@ -32,6 +33,7 @@ use App\Contracts\RiwayatSaranAiRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
+use App\Support\Dokumen\PenggabungPdfPoppler;
 use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Stub\StubArsipFinalRepository;
 use App\Support\Stub\StubBukuDokumenRepository;
@@ -108,6 +110,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Konversi PDF (ekspor Monitoring; kelak cetak KAK/RAB & buku) lewat LibreOffice headless.
         $this->app->singleton(PengubahPdf::class, PengubahPdfLibreOffice::class);
+        $this->app->singleton(PenggabungPdf::class, PenggabungPdfPoppler::class);
     }
 
     /**

@@ -29,6 +29,8 @@ return [
 
     'pdf' => [
         'soffice' => env('SIRABTOR_SOFFICE', 'soffice'),
+        'pdfunite' => env('SIRABTOR_PDFUNITE', 'pdfunite'),
+        'pdfinfo' => env('SIRABTOR_PDFINFO', 'pdfinfo'),
         'batas_detik' => (int) env('SIRABTOR_PDF_BATAS_DETIK', 90),
     ],
 

@@ -5,14 +5,23 @@ namespace Tests\Feature\Buku;
 use App\Contracts\BukuDokumenRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PembuatPdfBuku;
+use App\Contracts\PenggabungPdf;
 use App\Livewire\Buku\Daftar;
 use App\Support\Dokumen\ProsesPdfBuku;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Tests\Support\PenggabungPdfPalsu;
 use Tests\TestCase;
 
 class PdfBukuTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Tanpa poppler-utils: penggabungan bagian buku dipalsukan (uji poppler sungguhan di GabungPdfBukuTest).
+        $this->app->instance(PenggabungPdf::class, new PenggabungPdfPalsu);
+    }
+
     public function test_tahap_pembuatan_pdf(): void
     {
         $this->assertSame(['susun', 'konversi', null], [ProsesPdfBuku::berikutnya('antre'), ProsesPdfBuku::berikutnya('susun'), ProsesPdfBuku::berikutnya('nomor')]);
@@ -45,7 +54,7 @@ class PdfBukuTest extends TestCase
         $this->assertSame(['1.6', 'DIPA', 'selesai'], [$buku['leading'], $buku['sumber'], $buku['pdf']['status']]);
         $isi = Storage::disk('local')->get($buku['file_pdf_path']);
         $this->assertStringStartsWith('%PDF-', $isi);
-        $this->assertStringContainsString('Review RKJM dan Penyusunan RKTM', $isi);
+        $this->assertSame($buku['halaman'], (new PenggabungPdfPalsu)->jumlahHalaman(Storage::disk('local')->path($buku['file_pdf_path'])), 'Bagian buku tergabung sejumlah halaman susunannya.');
 
         $this->get(route('buku.unduh', ['buku' => $buku['id']]))
             ->assertOk()
