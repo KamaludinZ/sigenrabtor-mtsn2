@@ -3,6 +3,7 @@
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
 use App\Http\Controllers\DataAgregasiMonitoring;
+use App\Http\Controllers\DataDasarHukum;
 use App\Http\Controllers\DataDashboard;
 use App\Http\Controllers\DataKegiatanMonitoring;
 use App\Http\Controllers\DataMonitoringAnggaran;
@@ -123,6 +124,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/tahun/data', DataTahunAnggaran::class)->name('tahun.data');
     Route::get('/madrasah', PengaturanProfilMadrasah::class)->name('madrasah.index');
     Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
+    Route::get('/madrasah/dasar-hukum/data', DataDasarHukum::class)->name('madrasah.dasar_hukum.data');
     Route::get('/madrasah/pejabat', DataPejabat::class)->name('madrasah.pejabat');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
