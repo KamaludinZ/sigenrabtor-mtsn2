@@ -12,13 +12,15 @@ use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\KegagalanAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
+use App\Support\Pengaturan\KelolaPenyediaAi;
 use App\Support\Pengaturan\ParameterAi;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\PenyediaAi;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
-use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -177,29 +179,14 @@ class PengaturanAi extends Component
     {
         $this->bagianSimpan = 'lokal';
         $this->resetErrorBag();
-        ['data' => $data, 'galat' => $galat] = AturanPenyediaAi::lokal($this->isianLokal);
-        if ($galat !== []) {
-            foreach ($galat as $kolom => $pesan) {
-                $this->addError("isianLokal.{$kolom}", $pesan);
-            }
-
-            return;
-        }
-
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        $baru = AturanPenyediaAi::terapkanPeran($lama, 'ollama', $data['peran']);
-        $baru['penyedia']['ollama'] = ['base_url' => $data['base_url'], 'model' => $data['model'], 'batas_waktu' => $data['batas_waktu']] + ($lama['penyedia']['ollama'] ?? []);
-
-        $ringkas = fn (array $p) => [
-            'base_url' => $p['penyedia']['ollama']['base_url'] ?? '', 'model' => $p['penyedia']['ollama']['model'] ?? '', 'batas_waktu' => $p['penyedia']['ollama']['batas_waktu'] ?? null,
-        ] + self::ringkasPeran($p);
-        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['base_url' => 'Alamat server', 'model' => 'Model', 'batas_waktu' => 'Batas waktu (detik)'], 'Server sekolah (Ollama) — ')) {
+        // Aturan & penulisan bersama endpoint pengaturan.ai.penyedia.simpan (KelolaPenyediaAi).
+        $hasil = $this->jalankanSimpan(fn () => KelolaPenyediaAi::simpanLokal($this->isianLokal, StubData::currentUser(), $this->versi), 'isianLokal');
+        if ($hasil === false) {
             return;
         }
 
         $this->lokalTerbuka = false;
-        $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === 'ollama';
-        $this->dispatch('notify', message: $naik ? 'Konfigurasi server sekolah tersimpan — belum ada penyedia aktif, jadi server sekolah dipakai sebagai penyedia aktif.' : 'Konfigurasi server sekolah tersimpan.', type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     public function ubahGaya(): void
@@ -562,42 +549,19 @@ class PengaturanAi extends Component
         abort_unless($penyedia !== null, 404);
         $this->resetErrorBag();
 
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        $tersimpan = $lama['penyedia'][$penyedia] ?? [];
-        ['data' => $data, 'galat' => $galat, 'peringatan' => $peringatan] = AturanPenyediaAi::cloud($penyedia, $this->isianCloud, $tersimpan);
-        if ($galat !== []) {
-            foreach ($galat as $kolom => $pesan) {
-                $this->addError("isianCloud.{$kolom}", $pesan);
-            }
-
+        // Peringatan awalan kunci tampil sekali; simpan berikutnya (tanpa mengubah kunci) dianggap "Tetap simpan".
+        $hasil = $this->jalankanSimpan(fn () => KelolaPenyediaAi::simpanCloud($penyedia, $this->isianCloud, StubData::currentUser(), $this->versi, tetapSimpan: $this->peringatanCloud !== []), 'isianCloud');
+        if ($hasil === false) {
             return;
         }
-        if ($peringatan !== [] && $this->peringatanCloud === []) {
-            $this->peringatanCloud = $peringatan;
+        if (! $hasil['tersimpan']) {
+            $this->peringatanCloud = $hasil['peringatan'];
 
-            return;
-        }
-
-        $konfigurasi = ['model' => $data['model'], 'base_url' => $data['base_url']] + $tersimpan;
-        $catatanKunci = null;
-        if ($data['kunci'] !== null) {
-            $konfigurasi = ['ada_kunci' => true, 'kunci_akhir' => mb_substr($data['kunci'], -4), 'kunci_terenkripsi' => Crypt::encryptString($data['kunci'])] + $konfigurasi;
-            $catatanKunci = 'Kunci API: '.(($tersimpan['ada_kunci'] ?? false) ? 'diganti' : 'diisi');
-        } elseif ($data['hapus_kunci'] && ($tersimpan['ada_kunci'] ?? false)) {
-            $konfigurasi = ['ada_kunci' => false, 'kunci_akhir' => null, 'kunci_terenkripsi' => null] + $konfigurasi;
-            $catatanKunci = 'Kunci API: dihapus';
-        }
-
-        $baru = AturanPenyediaAi::terapkanPeran($lama, $penyedia, $data['peran']);
-        $baru['penyedia'][$penyedia] = $konfigurasi;
-        $ringkas = fn (array $p) => ['model' => $p['penyedia'][$penyedia]['model'] ?? '', 'base_url' => ($p['penyedia'][$penyedia]['base_url'] ?? '') ?: 'alamat resmi'] + self::ringkasPeran($p);
-        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['model' => 'Model', 'base_url' => 'Alamat API'], PenyediaAi::nama($penyedia).' — ', $catatanKunci)) {
             return;
         }
 
         $this->batalCloud();
-        $naik = $data['peran'] === 'cadangan' && $baru['provider_aktif'] === $penyedia;
-        $this->dispatch('notify', message: 'Konfigurasi '.PenyediaAi::nama($penyedia).' tersimpan'.($naik ? ' — belum ada penyedia aktif, jadi dipakai sebagai penyedia aktif.' : '.'), type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     /** Buka pemilihan penyedia aktif & cadangan berisi pilihan tersimpan. */
@@ -630,24 +594,13 @@ class PengaturanAi extends Component
     {
         $this->bagianSimpan = 'pilihan';
         $this->resetErrorBag();
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        ['pengaturan' => $baru, 'galat' => $galat] = AturanPenyediaAi::pilih($lama, $this->pilihan['aktif'] ?? null, $this->pilihan['cadangan'] ?? null);
-        if ($galat !== []) {
-            foreach ($galat as $peran => $pesan) {
-                $this->addError("pilihan.{$peran}", $pesan);
-            }
-
-            return;
-        }
-
-        if (! $this->simpanPengaturan($lama, $baru, fn (array $p) => self::ringkasPeran($p), [], '')) {
+        $hasil = $this->jalankanSimpan(fn () => KelolaPenyediaAi::pilih($this->pilihan['aktif'] ?? null, $this->pilihan['cadangan'] ?? null, StubData::currentUser(), $this->versi), 'pilihan');
+        if ($hasil === false) {
             return;
         }
 
         $this->pilihTerbuka = false;
-        $this->dispatch('notify', message: $baru['provider_aktif'] === null
-            ? 'Tanpa penyedia AI — tombol “Buat dengan AI” memakai saran contoh (tiruan).'
-            : 'Penyedia AI tersimpan: '.PenyediaAi::nama($baru['provider_aktif']).($baru['provider_cadangan'] ? ', cadangan '.PenyediaAi::nama($baru['provider_cadangan']) : ', tanpa cadangan').'.', type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     /**
@@ -674,47 +627,62 @@ class PengaturanAi extends Component
      */
     private function simpanPengaturan(array $lama, array $baru, \Closure $ringkas, array $label, string $awalan, ?string $tambahan = null, string $aksi = 'ubah_penyedia_ai'): bool
     {
-        if ($lama['diperbarui_pada'] !== $this->versi) {
-            $this->versi = $lama['diperbarui_pada'];
-            $this->dispatch('notify', message: 'Pengaturan AI baru diubah di tempat lain — tampilan dimuat ulang, isian Anda tetap. Periksa lalu simpan lagi.', type: 'error');
+        return $this->jalankanSimpan(function () use ($lama, $baru, $ringkas, $label, $awalan, $tambahan, $aksi) {
+            KelolaPenyediaAi::pastikanVersi($lama, $this->versi);
+
+            return KelolaPenyediaAi::tulis($lama, $baru, $ringkas, $label, $awalan, $tambahan, $aksi);
+        }) !== false;
+    }
+
+    /**
+     * Jalankan satu simpan Pengaturan AI: galat isian → error berawalan $awalanGalat; bentrok (PengaturanBerubah) →
+     * versi dimuat ulang + notify, isian tetap; gagal simpan → `$gagalSimpan` + notify. Hasil `tersimpan: false`
+     * (peringatan kunci) bukan simpan. Mengembalikan hasil $simpan atau false.
+     */
+    private function jalankanSimpan(\Closure $simpan, ?string $awalanGalat = null): mixed
+    {
+        $versiLama = $this->versi;
+        $this->gagalSimpan = null;
+        try {
+            $hasil = $simpan();
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError($awalanGalat !== null ? "{$awalanGalat}.{$kolom}" : $kolom, $pesan[0]);
+            }
 
             return false;
-        }
+        } catch (PengaturanBerubah $e) {
+            $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
-        unset($baru['diperbarui_pada']);
-        $this->gagalSimpan = null;
-        $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), $label + ['aktif' => 'Penyedia aktif', 'cadangan' => 'Penyedia cadangan']);
-        // Kunci API tidak pernah ikut dicatat; hanya keterangan diisi/diganti/dihapus.
-        $perubahan = implode('; ', array_filter([$perubahan, $tambahan])) ?: null;
-        try {
-            app(PengaturanAiRepository::class)->simpan($baru);
+            return false;
         } catch (RuntimeException $e) {
             $this->gagalSimpan = ['bagian' => $this->bagianSimpan, 'pesan' => $e->getMessage()];
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return false;
         }
-        $this->dispatch('pengaturan-ai-tersimpan', bagian: $this->bagianSimpan);
-
-        if ($perubahan !== null) {
-            RiwayatPengaturan::catat($aksi, $awalan.$perubahan);
+        if (is_array($hasil) && ($hasil['tersimpan'] ?? true) === false) {
+            return $hasil;
         }
+
+        $this->dispatch('pengaturan-ai-tersimpan', bagian: $this->bagianSimpan);
         $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
-        // Simpan dari halaman ini sendiri tidak membuat isian parameter yang terbuka dianggap bentrok.
-        if ($this->versiParameter === $lama['diperbarui_pada']) {
+        // Simpan dari halaman ini sendiri tidak membuat isian parameter/batas yang terbuka dianggap bentrok.
+        if ($this->versiParameter === $versiLama) {
             $this->versiParameter = $this->versi;
         }
-        if ($this->versiBatas === $lama['diperbarui_pada']) {
+        if ($this->versiBatas === $versiLama) {
             $this->versiBatas = $this->versi;
         }
 
-        return true;
+        return $hasil;
     }
 
     /** @return array{aktif: string, cadangan: string} */
     private static function ringkasPeran(array $pengaturan): array
     {
-        return ['aktif' => PenyediaAi::nama($pengaturan['provider_aktif']) ?? 'belum dipilih', 'cadangan' => PenyediaAi::nama($pengaturan['provider_cadangan']) ?? 'belum dipilih'];
+        return KelolaPenyediaAi::ringkasPeran($pengaturan);
     }
 
     /**
