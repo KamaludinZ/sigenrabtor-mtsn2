@@ -4,13 +4,15 @@ namespace App\Support\Kegiatan;
 
 use App\Contracts\PejabatRepository;
 use App\Support\Stub\StubData;
+use App\Support\Stub\StubPengaturan;
 
 /**
  * Satu-satunya tempat menyiapkan muatan (payload) permintaan AI dari data kegiatan (PRD §9 & N8), sesuai janji di
  * Pengaturan AI "Tidak pernah dikirim: NIP, nama pejabat, pagu dan rincian RAB": bahan umum KonteksAi::teks() (isian
  * kegiatan — sumber dana tanpa pagu — dan catatan konteks), bahan bagian BagianAi::bahan(), teks acuan, dan instruksi
- * semuanya lewat `bersihkan()` — NIP (KonteksAi::redaksi) dan nama pejabat penanda tangan tahun aktif (Kepala, Ketua
- * Komite, pejabat leading) diganti penanda — sebelum dirakit menjadi PermintaanSaranKalimat/PermintaanUsulanJadwal.
+ * semuanya lewat `bersihkan()` — NIP (KonteksAi::redaksi), nama pejabat penanda tangan tahun aktif (Kepala, Ketua
+ * Komite, pejabat leading), lalu data pribadi lain (SanitasiPii: surel, rekening, NIK, telepon, nama akun pengguna &
+ * panitia kegiatan) diganti penanda — sebelum dirakit menjadi PermintaanSaranKalimat/PermintaanUsulanJadwal.
  * Riwayat saran AI mencatat muatan yang sama.
  */
 final class PayloadAi
@@ -20,11 +22,16 @@ final class PayloadAi
     /** Bahan umum permintaan AI: isian kegiatan terisi lalu catatan konteks, sudah dibersihkan. */
     public static function bahan(array $kegiatan): string
     {
-        return self::bersihkan(KonteksAi::teks($kegiatan));
+        return self::bersihkan(KonteksAi::teks($kegiatan), $kegiatan);
     }
 
-    /** Sembunyikan NIP dan nama pejabat penanda tangan tahun aktif dari teks apa pun yang akan dikirim ke AI. */
-    public static function bersihkan(string $teks): string
+    /**
+     * Sembunyikan NIP, nama pejabat penanda tangan tahun aktif, dan data pribadi lain (SanitasiPii) dari teks apa pun yang
+     * akan dikirim ke AI; $kegiatan menambahkan nama panitia kegiatan itu.
+     *
+     * @param  array<string, mixed>  $kegiatan
+     */
+    public static function bersihkan(string $teks, array $kegiatan = []): string
     {
         $teks = KonteksAi::redaksi($teks);
 
@@ -32,7 +39,7 @@ final class PayloadAi
             $teks = str_ireplace($nama, self::PENANDA_PEJABAT, $teks);
         }
 
-        return $teks;
+        return SanitasiPii::bersihkan($teks, self::namaOrang($kegiatan));
     }
 
     /**
@@ -48,9 +55,9 @@ final class PayloadAi
         return new PermintaanSaranKalimat(
             kegiatanId: $kegiatanId,
             bagian: $bagian,
-            teks: self::bersihkan($teks),
-            instruksi: self::bersihkan($instruksi),
-            bahanBagian: array_map(self::bersihkan(...), $bahanBagian),
+            teks: self::bersihkan($teks, $kegiatan),
+            instruksi: self::bersihkan($instruksi, $kegiatan),
+            bahanBagian: array_map(fn (string $nilai) => self::bersihkan($nilai, $kegiatan), $bahanBagian),
             bahan: self::bahan($kegiatan),
             namaKegiatan: (string) ($kegiatan['nama_kegiatan'] ?? ''),
             aspekKurang: $konteks['kurang'],
@@ -69,10 +76,24 @@ final class PayloadAi
         return new PermintaanUsulanJadwal(
             kegiatanId: $kegiatanId,
             jenis: $jenis,
-            instruksi: self::bersihkan($instruksi),
+            instruksi: self::bersihkan($instruksi, $kegiatan),
             acuan: $acuan,
             bahan: self::bahan($kegiatan),
         );
+    }
+
+    /**
+     * Nama orang yang dikenal aplikasi selain pejabat: akun pengguna dan susunan panitia kegiatan.
+     *
+     * @param  array<string, mixed>  $kegiatan
+     * @return list<string>
+     */
+    private static function namaOrang(array $kegiatan): array
+    {
+        return array_values(array_filter([
+            ...array_map(fn (array $akun) => (string) ($akun['name'] ?? ''), StubPengaturan::pengguna()),
+            ...array_map(fn ($anggota) => is_array($anggota) ? (string) ($anggota['nama'] ?? '') : '', (array) ($kegiatan['panitia'] ?? [])),
+        ]));
     }
 
     /**
