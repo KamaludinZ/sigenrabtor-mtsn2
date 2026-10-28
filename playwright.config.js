@@ -7,6 +7,7 @@ export const E2E_MATRIK_FILE = 'stub/matrik-jadwal-e2e.json';
 export const E2E_TAHUN_FILE = 'stub/tahun-anggaran-e2e.json';
 export const E2E_COVER_FILE = 'stub/cover-template-e2e.json';
 export const E2E_MASTER_FILE = 'stub/master-template-e2e.json';
+export const E2E_MASTER_KODE_FILE = 'stub/master-kode-e2e.json';
 export const E2E_DAFTAR_ISI_FILE = 'stub/daftar-isi-e2e.json';
 export const E2E_NOMOR_HALAMAN_FILE = 'stub/nomor-halaman-e2e.json';
 export const E2E_RIWAYAT_FILE = 'stub/riwayat-pengaturan-e2e.json';
@@ -63,6 +64,7 @@ export default defineConfig({
             STUB_TAHUN_FILE: E2E_TAHUN_FILE,
             STUB_COVER_FILE: E2E_COVER_FILE,
             STUB_MASTER_FILE: E2E_MASTER_FILE,
+            STUB_MASTER_KODE_FILE: E2E_MASTER_KODE_FILE,
             STUB_DAFTAR_ISI_FILE: E2E_DAFTAR_ISI_FILE,
             STUB_NOMOR_HALAMAN_FILE: E2E_NOMOR_HALAMAN_FILE,
             STUB_RIWAYAT_FILE: E2E_RIWAYAT_FILE,

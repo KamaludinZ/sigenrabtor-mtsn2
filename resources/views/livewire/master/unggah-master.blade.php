@@ -132,6 +132,17 @@
         </div>
     @endif
 
+    @if ($tahap === 'pratinjau' && $this->bisaDisimpan() && $this->kendalaSimpan() !== [])
+        <div class="border-t border-gold-200 bg-gold-50 px-5 py-3 sm:px-6" role="status" data-testid="kendala-simpan">
+            <p class="flex items-center gap-2 text-sm font-semibold text-gold-800"><x-ui.icon name="alert" class="size-4 shrink-0" /> Master belum bisa disimpan</p>
+            <ul class="mt-1 list-disc space-y-0.5 pl-10 text-sm text-stone-800">
+                @foreach ($this->kendalaSimpan() as $pesan)
+                    <li>{{ $pesan }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <footer class="flex flex-col-reverse gap-2 border-t border-stone-100 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p class="text-xs text-stone-500">
             @if ($tahap === 'pratinjau')
@@ -146,7 +157,13 @@
                 @unless ($konfirmasiBatal)
                     <button type="button" wire:click="tutup" class="btn-ghost text-red-700 hover:bg-red-50">Batalkan</button>
                 @endunless
-                <button type="button" class="btn-primary" disabled title="Sedang disiapkan"><x-ui.icon name="save" class="size-4" /> Simpan master <x-ui.segera /></button>
+                @if (! $this->bisaDisimpan())
+                    <button type="button" class="btn-primary" disabled title="Sedang disiapkan" wire:key="simpan-segera"><x-ui.icon name="save" class="size-4" /> Simpan master <x-ui.segera /></button>
+                @elseif ($this->kendalaSimpan() === [])
+                    <button type="button" wire:click="simpan" class="btn-primary" wire:key="simpan-siap" wire:loading.attr="disabled" wire:target="simpan" data-testid="simpan-master"><x-ui.icon name="save" class="size-4" /> Simpan master</button>
+                @else
+                    <button type="button" class="btn-primary" disabled wire:key="simpan-belum" title="Selesaikan kendala di atas lebih dulu"><x-ui.icon name="save" class="size-4" /> Simpan master</button>
+                @endif
             @else
                 @if ($terpilih)
                     <button type="button" wire:click="gantiBerkas" class="btn-ghost">Batal pilih</button>

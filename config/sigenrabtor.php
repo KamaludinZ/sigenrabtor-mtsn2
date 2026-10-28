@@ -49,6 +49,7 @@ return [
         'tahun_file' => env('STUB_TAHUN_FILE', 'stub/tahun-anggaran.json'),
         'cover_file' => env('STUB_COVER_FILE', 'stub/cover-template.json'),
         'master_file' => env('STUB_MASTER_FILE', 'stub/master-template.json'),
+        'master_kode_file' => env('STUB_MASTER_KODE_FILE', 'stub/master-kode.json'),
         'daftar_isi_file' => env('STUB_DAFTAR_ISI_FILE', 'stub/daftar-isi.json'),
         'nomor_halaman_file' => env('STUB_NOMOR_HALAMAN_FILE', 'stub/nomor-halaman.json'),
         'riwayat_file' => env('STUB_RIWAYAT_FILE', 'stub/riwayat-pengaturan.json'),

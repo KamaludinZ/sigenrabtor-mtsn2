@@ -7,20 +7,24 @@ use App\Contracts\TahunAnggaranRepository;
 use App\Support\Impor\GagalBacaImpor;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\Impor\BerkasMaster;
+use App\Support\Master\Impor\GagalSimpanMaster;
 use App\Support\Master\Impor\PratinjauMaster;
 use App\Support\Master\Impor\ProsesBerkasMaster;
+use App\Support\Master\Impor\SimpanMasterKode;
 use App\Support\Master\JenisKode;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use RuntimeException;
 
 /**
  * Formulir unggah berkas master kode (PRD §14) untuk satu tahun anggaran: pilih cakupan (berkas master lengkap atau
  * satu jenis), pilih/seret berkas Excel, lalu sheet tiap jenis dikenali dari namanya (BerkasMaster). Berkas sementara
  * disimpan sampai dibatalkan. *Lanjut ke pratinjau* membaca isi tiap sheet (PratinjauMaster) dan membandingkannya dengan
- * master tahun ini per jenis (tab, saringan status). Batal kapan saja tanpa mengubah data (konfirmasi bila pratinjau berisi
+ * master tahun ini per jenis (tab, saringan status). *Simpan master* (jenis SimpanMasterKode::DIDUKUNG, selama tidak ada
+ * kendala) menyimpannya lalu menutup panel. Batal kapan saja tanpa mengubah data (konfirmasi bila pratinjau berisi
  * perubahan; berkas sementara dibuang). Khusus admin; tahun terkunci tidak bisa diunggah.
  */
 class UnggahMaster extends Component
@@ -117,6 +121,62 @@ class UnggahMaster extends Component
         $this->tahap = 'pratinjau';
         $this->tabPratinjau = (string) array_key_first($this->pratinjau);
         $this->saring = 'semua';
+    }
+
+    /** Simpan pratinjau menjadi master tahun ini (SimpanMasterKode — berkas dibaca ulang; ditolak selama ada kendala). */
+    public function simpan(): void
+    {
+        $this->pastikanBoleh();
+        if ($this->tahap !== 'pratinjau' || ! $this->bisaDisimpan()) {
+            return;
+        }
+        if (! $this->berkas instanceof TemporaryUploadedFile || ! is_file($this->berkas->getRealPath())) {
+            $this->kembali();
+            $this->reset('terpilih');
+            $this->galat = 'Berkas sementara sudah tidak ada. Pilih berkasnya lagi.';
+
+            return;
+        }
+
+        try {
+            $hasil = SimpanMasterKode::simpan($this->berkas->getRealPath(), $this->terpilih['nama'], $this->cakupan, $this->tahun, StubData::currentUser());
+        } catch (GagalSimpanMaster $e) {
+            $this->dispatch('notify', message: $e->kendala[0], type: 'error');
+
+            return;
+        } catch (GagalBacaImpor $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: "Master kode TA {$this->tahun} gagal disimpan — master lama tetap. Coba simpan lagi.", type: 'error');
+
+            return;
+        }
+
+        $ringkasan = SimpanMasterKode::teksRingkasan(array_map(fn (array $item) => $item['ringkasan'], $hasil['pratinjau']));
+        $this->buangBerkas();
+        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal');
+        $this->tahap = 'unggah';
+        $this->dispatch('notify', message: "Master kode TA {$this->tahun} tersimpan — {$ringkasan}.", type: 'success');
+        $this->dispatch('unggah-master-ditutup', dibatalkan: false);
+    }
+
+    /** Semua jenis di pratinjau sudah bisa disimpan lewat panel (SimpanMasterKode::DIDUKUNG). */
+    public function bisaDisimpan(): bool
+    {
+        return SimpanMasterKode::didukung(array_keys($this->pratinjau));
+    }
+
+    /**
+     * Alasan pratinjau belum bisa disimpan (kosong = siap).
+     *
+     * @return list<string>
+     */
+    public function kendalaSimpan(): array
+    {
+        return $this->pratinjau === [] ? [] : SimpanMasterKode::kendala($this->pratinjau, $this->tahun);
     }
 
     /** Kembali ke pilihan berkas (berkas & cakupan tetap). */

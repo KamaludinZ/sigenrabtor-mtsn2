@@ -34,6 +34,7 @@ use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhMasterTemplate;
 use App\Http\Controllers\UnduhTemplateDataPagu;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
+use App\Http\Controllers\UnggahMasterKode;
 use App\Http\Middleware\HanyaAdmin;
 use App\Livewire\Buku\Daftar as BukuDaftar;
 use App\Livewire\Dashboard;
@@ -113,6 +114,7 @@ Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('k
 
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
 Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');
+Route::post('/master/{tahun}/unggah/{jenis}', UnggahMasterKode::class)->middleware(HanyaAdmin::class)->whereNumber('tahun')->name('master.unggah');
 Route::get('/master-kode/{jenis}', AmbilMasterKode::class)->whereIn('jenis', array_keys(JenisKode::DAFTAR))->name('master.kode');
 
 // Logo kop madrasah: tampil di kop & pratinjau dokumen semua pengguna.

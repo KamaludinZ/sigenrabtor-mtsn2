@@ -45,6 +45,7 @@ final class RiwayatPengaturan
         'ubah_prompt_ai' => ['Ubah prompt AI', 'ai'],
         'ubah_batas_ai' => ['Ubah batas pemakaian AI', 'ai'],
         'ubah_simulasi_ai' => ['Ubah simulasi kegagalan AI', 'ai'],
+        'unggah_master_kode' => ['Unggah master kode', 'master'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */
