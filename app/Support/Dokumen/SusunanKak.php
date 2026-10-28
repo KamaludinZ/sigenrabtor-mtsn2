@@ -30,6 +30,8 @@ use Carbon\CarbonImmutable;
  * menunggu {pesan} (bagian yang datanya berasal dari fitur yang belum tersedia), pengesahan {kolom},
  * matrik {tahun, tahapan: [{nomor, judul, butir: [{uraian, bulan}]}]} (bagian 4), jadwal {baris: [{nomor, uraian, waktu}]}
  * (bagian 7), pagu (penanda batas pagu di bagian Pembiayaan; isinya dari $peringatanPagu, tidak ikut tercetak).
+ * Blok yang isinya berasal dari satu isian/teks khusus membawa `sunting` (kunci SuntingDokumen::BIDANG; daftar:
+ * `sunting_butir` per butir) agar bisa disunting langsung di pratinjau — tidak ikut tercetak.
  *
  * Matrik & jadwal dibaca dari MatrikJadwalRepository (kegiatan tersimpan) kecuali diberikan langsung — halaman
  * Matrik & Jadwal memberikan isian yang sedang disunting agar pratinjaunya ikut perubahan yang belum disimpan.
@@ -100,7 +102,7 @@ final readonly class SusunanKak
         $kurangBaku = $teksBaku->kurang();
         $latar = [['jenis' => 'paragraf', 'teks' => $teksBaku->latarBelakang]];
         if (filled($kegiatan['latar_belakang'] ?? null)) {
-            $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang'])];
+            $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang']), 'sunting' => 'latar_belakang'];
         }
         if ($nama === '…') {
             $latar[] = $kosong('nama kegiatan');
@@ -125,24 +127,28 @@ final readonly class SusunanKak
         $nomor = 3;
         $bagian[] = ['nomor' => 3, 'judul' => 'Tujuan dan Sasaran', 'isi' => [
             ['jenis' => 'subjudul', 'teks' => 'A. Tujuan'],
-            $isi(filled($kegiatan['tujuan'] ?? null) ? KalimatKak::tujuan($nama, $kegiatan['tujuan']) : null, 'tujuan kegiatan'),
+            ['sunting' => 'tujuan'] + $isi(filled($kegiatan['tujuan'] ?? null) ? KalimatKak::tujuan($nama, $kegiatan['tujuan']) : null, 'tujuan kegiatan'),
             ['jenis' => 'subjudul', 'teks' => 'B. Sasaran'],
-            $isi(filled($kegiatan['sasaran'] ?? null) ? KalimatKak::sasaran($kegiatan['sasaran']) : null, 'sasaran kegiatan'),
+            ['sunting' => 'sasaran'] + $isi(filled($kegiatan['sasaran'] ?? null) ? KalimatKak::sasaran($kegiatan['sasaran']) : null, 'sasaran kegiatan'),
         ]];
 
         // 4. Tahapan: pelaksanaan & pelaporan bergantung pada jadwal.
         $nomor = 4;
         $pelaksanaan = DataPelaksanaan::dari($kegiatan);
         $batasLaporan = self::tanggal($kegiatan['tanggal_laporan'] ?? null);
+        $kalimatPelaksanaan = $pelaksanaan->kalimatPelaksanaan($nama);
 
         $tahapan = [
             ['jenis' => 'subjudul', 'teks' => 'a. Persiapan'],
             // Teks baku yang bisa disesuaikan per kegiatan (TeksKhusus); tanpa penyesuaian = KalimatKak.
-            ['jenis' => 'daftar', 'bernomor' => true, 'butir' => TeksKhusus::cetak('persiapan', $kegiatan)],
+            ['jenis' => 'daftar', 'bernomor' => true, 'butir' => TeksKhusus::cetak('persiapan', $kegiatan), 'sunting' => 'persiapan'],
             ['jenis' => 'subjudul', 'teks' => 'b. Pelaksanaan'],
-            ['tempat' => 'kak-pelaksanaan'] + $isi($pelaksanaan->kalimatPelaksanaan($nama), 'tanggal mulai & lama kegiatan'),
+            ['tempat' => 'kak-pelaksanaan'] + ($kalimatPelaksanaan !== null
+                ? ['jenis' => 'paragraf', 'teks' => $kalimatPelaksanaan, 'sunting' => 'uraian_pelaksanaan']
+                : $kosong('tanggal mulai & lama kegiatan')),
             ['jenis' => 'subjudul', 'teks' => 'c. Pelaporan'],
-            ['jenis' => 'daftar', 'bernomor' => true, 'tempat' => 'kak-pelaporan', 'butir' => array_values(array_filter([
+            // sunting_butir: butir ke-n yang bisa disunting di pratinjau (SuntingDokumen) — butir 1 = analisis hasil.
+            ['jenis' => 'daftar', 'bernomor' => true, 'tempat' => 'kak-pelaporan', 'sunting_butir' => ['analisis_hasil'], 'butir' => array_values(array_filter([
                 TeksKhusus::cetak('analisis_hasil', $kegiatan),
                 $batasLaporan ? KalimatKak::pelaporan($nama, $batasLaporan) : null,
             ]))],
@@ -155,7 +161,7 @@ final readonly class SusunanKak
 
         $nomor = 5;
         $bagian[] = ['nomor' => 5, 'judul' => 'Tempat Pelaksanaan', 'isi' => [
-            $isi($pelaksanaan->kalimatTempat($nama), 'tempat pelaksanaan'),
+            ['sunting' => 'tempat'] + $isi($pelaksanaan->kalimatTempat($nama), 'tempat pelaksanaan'),
         ]];
 
         $nomor = 6;
@@ -164,7 +170,7 @@ final readonly class SusunanKak
             ['jenis' => 'subjudul', 'teks' => 'a. Pelaksana'],
             $isi($leading ? KalimatKak::pelaksana($nama, $leading['jabatan_penanda_tangan']) : null, 'leading penanggung jawab (Kode & Klasifikasi)'),
             ['jenis' => 'subjudul', 'teks' => 'b. Pengarah'],
-            ['jenis' => 'paragraf', 'teks' => TeksKhusus::cetak('pengarah', $kegiatan)],
+            ['jenis' => 'paragraf', 'teks' => TeksKhusus::cetak('pengarah', $kegiatan), 'sunting' => 'pengarah'],
         ]];
 
         $nomor = 7;

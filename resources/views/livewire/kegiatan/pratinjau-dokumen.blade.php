@@ -18,6 +18,8 @@
     $dokumen = PenampilDokumen::LEMBAR;
     $isi = $this->isiDokumen;
     $kurangIsi = array_sum(array_column($isi, 'kurang'));
+    $bisaUbah = $this->dapatDiubah();
+    $sunting = $mode === 'sunting' && $bisaUbah ? ['terbuka' => $suntingTerbuka] : null;
     $tahunDokumen = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $kepalaTahun = fn (string $d) => \App\Support\Dokumen\TahunDokumen::untukDokumen($this->tahunCetak, $d);
 @endphp
@@ -74,9 +76,17 @@
             </nav>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <div class="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-stone-200" role="group" aria-label="Mode pratinjau" data-testid="mode-pratinjau">
-                <button type="button" aria-pressed="true" class="inline-flex items-center gap-1 rounded-md bg-brand-700 px-2.5 py-0.5 text-xs font-semibold text-white"><x-ui.icon name="eye" class="size-3.5" /> Baca</button>
-                <button type="button" aria-pressed="false" disabled class="inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold text-stone-400"><x-ui.icon name="pencil" class="size-3.5" /> Sunting teks <x-ui.segera /></button>
+            <div class="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-stone-200" role="group" aria-label="Mode pratinjau" data-testid="mode-pratinjau" data-mode="{{ $mode }}">
+                @foreach (\App\Livewire\Kegiatan\PratinjauDokumen::MODE as $kunciMode => $labelMode)
+                    @php
+                        $bisaMode = $kunciMode === 'baca' || $bisaUbah;
+                    @endphp
+                    <button type="button" wire:click="$set('mode', '{{ $kunciMode }}')" aria-pressed="{{ $mode === $kunciMode ? 'true' : 'false' }}" data-pilihan-mode="{{ $kunciMode }}"
+                            @disabled(! $bisaMode) @unless ($bisaMode) title="{{ $this->alasanTerkunci() }}" @endunless
+                            @class(['inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold transition', 'bg-brand-700 text-white' => $mode === $kunciMode, 'text-stone-600 hover:text-stone-900' => $mode !== $kunciMode && $bisaMode, 'cursor-not-allowed text-stone-400' => ! $bisaMode])>
+                        <x-ui.icon :name="$kunciMode === 'baca' ? 'eye' : 'pencil'" class="size-3.5" /> {{ $labelMode }}
+                    </button>
+                @endforeach
             </div>
         </div>
         @php
@@ -210,6 +220,12 @@
                 </div>
             </div>
             <div class="space-y-6 overflow-x-auto p-3 sm:p-6" x-ref="ruang" data-testid="ruang-lembar">
+                @if ($sunting !== null)
+                    <div class="flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900 ring-1 ring-sky-200" data-testid="petunjuk-sunting">
+                        <x-ui.icon name="pencil" class="mt-0.5 size-4 shrink-0" />
+                        <p>Mode sunting — pilih <span class="font-semibold">Sunting</span> pada teks berbingkai biru di KAK/TOR untuk memperbaiki kalimatnya; perubahan langsung tersimpan di data kegiatan. Angka, tanggal, kode, dan jabatan tetap disusun dari isiannya.</p>
+                    </div>
+                @endif
                 @foreach (['cover' => $statusDraf, 'kak' => $kak->statusDraf, 'rab' => $rab->statusDraf] as $lembar => $drafLembar)
                     <section id="dok-{{ $lembar }}" class="scroll-mt-36" aria-label="{{ $dokumen[$lembar] }}{{ $lembar === 'rab' && $sumberAktif ? ' '.$sumberAktif : '' }}" wire:key="{{ $lembar }}-{{ $sumberAktif }}">
                         <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
@@ -226,7 +242,7 @@
                                     <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" :draf="$statusDraf->draf" />
                                     @break
                                 @case('kak')
-                                    <x-dokumen.kak-tor :susunan="$kak" :bagian="range(1, 9)" />
+                                    <x-dokumen.kak-tor :susunan="$kak" :bagian="range(1, 9)" :sunting="$sunting" />
                                     @break
                                 @default
                                     <x-dokumen.rab :susunan="$rab" />

@@ -49,8 +49,10 @@ class PenampilDokumenTest extends TestCase
         // Tata letak kertas mengikuti ukuran cetak di dalam lembar A4 (varian cetak:), bukan lebar layar.
         $this->assertStringContainsString('cetak:px-14', $html);
         $this->assertStringContainsString('cetak:grid-cols-3', $html);
-        // Mode sunting menyusul.
-        $this->assertMatchesRegularExpression('/aria-pressed="false" disabled[^>]*>.*?Sunting teks/s', $html);
+        // Mode baca/sunting (kegiatan Draf: sunting bisa dipilih).
+        $this->assertStringContainsString('data-testid="mode-pratinjau" data-mode="baca"', $html);
+        $this->assertSame(1, preg_match('/<button[^>]*data-pilihan-mode="sunting"[^>]*>/', $html, $tombol));
+        $this->assertStringNotContainsString('disabled', $tombol[0]);
 
         // Ganti sumber dana: daftar isi mengikuti RAB sumber itu.
         $halaman->set('sumber', 'Komite')->assertSeeHtml('data-isi="rab" data-kurang="0"')->assertSee('RAB Komite');

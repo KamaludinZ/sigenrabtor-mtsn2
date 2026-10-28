@@ -145,6 +145,51 @@ test.describe('Pratinjau dokumen', () => {
         expect(lebar).toBeLessThanOrEqual(0);
     });
 
+    test('sunting teks langsung: tujuan disunting di lembar KAK lalu dipulihkan, Esc membatalkan, mode baca tanpa bingkai', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/pratinjau');
+        const mode = page.getByTestId('mode-pratinjau');
+        await mode.getByRole('button', { name: 'Sunting teks' }).click();
+        await expect(page).toHaveURL(/mode=sunting/);
+        await expect(mode.getByRole('button', { name: 'Sunting teks' })).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByTestId('petunjuk-sunting')).toBeVisible();
+        const kak = page.locator('[data-lembar="kak"]');
+        // Delapan bidang: blok bersunting, atau tombol "Tambah" bila belum tampil (mis. latar belakang khusus kosong).
+        await expect(kak.locator('[data-sunting], [data-testid^="tambah-"]')).toHaveCount(8);
+
+        const blok = kak.locator('[data-sunting="tujuan"]');
+        const kalimatAwal = (await blok.textContent()).replace(/Sunting\s+Tujuan/, '').trim();
+        await blok.getByTestId('sunting-tujuan').click();
+        const editor = page.getByTestId('penyunting-tujuan');
+        const teks = editor.getByRole('textbox', { name: 'Tujuan' });
+        await expect(teks).toBeFocused();
+        const awal = await teks.inputValue();
+        await teks.fill('Teks uji yang dibatalkan.');
+        await teks.press('Escape');
+        await expect(editor).toHaveCount(0);
+        await expect(kak).not.toContainText('Teks uji yang dibatalkan');
+
+        await kak.getByTestId('sunting-tujuan').click();
+        await teks.fill('meningkatkan mutu kurikulum madrasah secara partisipatif.');
+        await editor.getByTestId('simpan-sunting').click();
+        await expect(editor).toHaveCount(0);
+        await expect(kak.locator('[data-sunting="tujuan"]')).toContainText('bertujuan meningkatkan mutu kurikulum madrasah secara partisipatif.');
+        await kak.locator('[data-sunting="tujuan"]').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `storage/playwright/shots/pratinjau-sunting-${testInfo.project.name}.png` });
+
+        // Pulihkan data bersama.
+        await kak.getByTestId('sunting-tujuan').click();
+        await teks.fill(awal);
+        await editor.getByTestId('simpan-sunting').click();
+        await expect(editor).toHaveCount(0);
+        await expect(kak.locator('[data-sunting="tujuan"]')).toContainText(kalimatAwal);
+
+        await mode.getByRole('button', { name: 'Baca' }).click();
+        await expect(page).not.toHaveURL(/mode=/);
+        await expect(kak.locator('[data-sunting]')).toHaveCount(0);
+        await expect(page.getByTestId('petunjuk-sunting')).toHaveCount(0);
+    });
+
     test('kaidah: RAB yang melebihi pagu ditandai gagal', async ({ page }) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/3/pratinjau?sumber=Komite');

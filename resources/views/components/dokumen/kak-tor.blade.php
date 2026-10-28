@@ -1,4 +1,6 @@
-@props(['susunan', 'bagian' => null, 'cap' => true])
+@props(['susunan', 'bagian' => null, 'cap' => true, 'sunting' => null])
+
+@use('App\Support\Dokumen\SuntingDokumen')
 
 {{--
     Pratinjau KAK/TOR bergaya kertas A4: cover lalu sembilan bagian baku dari App\Support\Dokumen\SusunanKak.
@@ -7,6 +9,9 @@
     Penanda pagu di bagian Pembiayaan hanya ada di pratinjau (bukan teks dokumen).
     $bagian (daftar nomor, mis. [4, 7]) menampilkan bagian itu saja tanpa cover — dipakai pratinjau Matrik & Jadwal.
     :cap="false" tanpa cap DRAF/Final (cuplikan per bagian di tab Susun KAK/TOR; capnya tampil sekali di kepala halaman).
+    :sunting="['terbuka' => kunci|null]" = mode sunting teks pratinjau: blok ber-`sunting`/`sunting_butir` (SuntingDokumen)
+    berbingkai dengan tombol Sunting (`bukaSunting`), yang terbuka diganti <x-dokumen.penyunting-teks>, dan bidang yang belum
+    tampil ditawarkan "Tambah …" (SuntingDokumen::tambahan). null = baca saja.
 --}}
 @php
     $daftarBagian = $bagian === null ? $susunan->bagian : array_values(array_filter($susunan->bagian, fn ($b) => in_array($b['nomor'], $bagian, true)));
@@ -42,6 +47,19 @@
                 <h3 class="font-bold uppercase">{{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}</h3>
                 <div class="mt-2 space-y-2 pl-5">
                     @foreach ($isiBagian['isi'] as $blok)
+                        @php
+                            $kunciSunting = $sunting !== null ? ($blok['sunting'] ?? null) : null;
+                        @endphp
+                        @if ($kunciSunting !== null && $sunting['terbuka'] === $kunciSunting)
+                            <x-dokumen.penyunting-teks :kunci="$kunciSunting" />
+                            @continue
+                        @endif
+                        @if ($kunciSunting !== null)
+                            <div class="relative -mx-1.5 rounded-sm px-1.5 pt-5 pb-1 outline-1 outline-sky-300 outline-dashed hover:bg-sky-50/60" data-sunting="{{ $kunciSunting }}">
+                                <button type="button" wire:click="bukaSunting('{{ $kunciSunting }}')" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciSunting }}">
+                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciSunting) }}</span>
+                                </button>
+                        @endif
                         @switch($blok['jenis'])
                             @case('paragraf')
                                 @if (isset($blok['tempat']))
@@ -56,8 +74,22 @@
                             @case('daftar')
                                 <ol @class(['space-y-1 pl-6', 'list-decimal' => $blok['bernomor'], 'list-disc' => ! $blok['bernomor'], 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($blok['tempat'])])
                                     @isset($blok['tempat']) id="cetak-{{ $blok['tempat'] }}" data-tempat-cetak="{{ $blok['tempat'] }}" @endisset>
-                                    @foreach ($blok['butir'] as $butir)
-                                        <li class="sm:text-justify cetak:text-justify">{{ $butir }}</li>
+                                    @foreach ($blok['butir'] as $i => $butir)
+                                        @php
+                                            $kunciButir = $sunting !== null ? ($blok['sunting_butir'][$i] ?? null) : null;
+                                        @endphp
+                                        @if ($kunciButir !== null && $sunting['terbuka'] === $kunciButir)
+                                            <li><x-dokumen.penyunting-teks :kunci="$kunciButir" /></li>
+                                        @elseif ($kunciButir !== null)
+                                            <li class="relative rounded-sm pt-5 outline-1 outline-sky-300 outline-dashed sm:text-justify cetak:text-justify" data-sunting="{{ $kunciButir }}">
+                                                {{ $butir }}
+                                                <button type="button" wire:click="bukaSunting('{{ $kunciButir }}')" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciButir }}">
+                                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciButir) }}</span>
+                                                </button>
+                                            </li>
+                                        @else
+                                            <li class="sm:text-justify cetak:text-justify">{{ $butir }}</li>
+                                        @endif
                                     @endforeach
                                 </ol>
                                 @break
@@ -146,7 +178,22 @@
                                 <x-dokumen.pengesahan :kolom="$blok['kolom']" id="cetak-kak-pengesahan" class="scroll-mt-40 transition-colors target:bg-gold-100" data-tempat-cetak="kak-pengesahan" />
                                 @break
                         @endswitch
+                        @if ($kunciSunting !== null)
+                            </div>
+                        @endif
                     @endforeach
+                    @if ($sunting !== null)
+                        {{-- Bidang yang belum tampil di dokumen (mis. latar belakang khusus kosong). --}}
+                        @foreach (SuntingDokumen::tambahan($isiBagian) as $kunciTambah)
+                            @if ($sunting['terbuka'] === $kunciTambah)
+                                <x-dokumen.penyunting-teks :kunci="$kunciTambah" />
+                            @else
+                                <button type="button" wire:click="bukaSunting('{{ $kunciTambah }}')" class="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-sky-300 px-2 py-1.5 font-sans text-xs font-semibold text-sky-700 hover:bg-sky-50 print:hidden" data-testid="tambah-{{ $kunciTambah }}">
+                                    <x-ui.icon name="plus" class="size-3.5" /> Tambah {{ mb_strtolower(SuntingDokumen::label($kunciTambah)) }}
+                                </button>
+                            @endif
+                        @endforeach
+                    @endif
                 </div>
             </section>
         @endforeach

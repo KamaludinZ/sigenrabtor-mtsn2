@@ -11,13 +11,19 @@ use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\PenampilDokumen;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\StatusDraf;
+use App\Support\Dokumen\SuntingDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Dokumen\TahunDokumen;
 use App\Support\Dokumen\TanggalDokumen;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Kegiatan\AksesKegiatan;
+use App\Support\Kegiatan\KunciKegiatan;
+use App\Support\Kegiatan\UbahDataKegiatan;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -28,7 +34,9 @@ use Livewire\Component;
  * Tab ruang kerja "Pratinjau Dokumen" (PRD F15 & §17): satu set dokumen per sumber dana seperti hasil cetak — cover dari
  * template cover default tahun aktif, KAK/TOR sembilan bagian, dan RAB — berdampingan dengan panel kaidah dokumen
  * otomatis (KaidahDokumen). Sumber dana di `?sumber=` ('' = sumber pertama). Dokumen tampil di penampil lembar A4
- * (PenampilDokumen: perbesaran, perkiraan batas halaman, penunjuk halaman, daftar isi `isiDokumen`). Cetak & unduh
+ * (PenampilDokumen: perbesaran, perkiraan batas halaman, penunjuk halaman, daftar isi `isiDokumen`). Mode `?mode=`
+ * (`MODE`): baca, atau sunting teks — kalimat KAK/TOR dari isian/teks khusus (SuntingDokumen) disunting langsung di
+ * lembar (`bukaSunting($kunci)` → `simpanSunting()`, versi data saat dibuka) selama kegiatan bisa diubah. Cetak & unduh
  * menyusul.
  */
 #[Layout('layouts.app')]
@@ -40,10 +48,109 @@ class PratinjauDokumen extends Component
     #[Url(except: '')]
     public string $sumber = '';
 
+    /** Mode pratinjau → label. */
+    public const MODE = ['baca' => 'Baca', 'sunting' => 'Sunting teks'];
+
+    #[Url(except: 'baca')]
+    public string $mode = 'baca';
+
+    /** Kunci SuntingDokumen::BIDANG yang sedang disunting; null = tertutup. */
+    public ?string $suntingTerbuka = null;
+
+    public string $teksSunting = '';
+
+    /** Versi data kegiatan (UbahDataKegiatan::versi) saat penyunting dibuka. */
+    #[Locked]
+    public ?string $versiSunting = null;
+
     public function mount(KegiatanRepository $repo, int $kegiatan): void
     {
         AksesKegiatan::pastikan($kegiatan);
         $this->kegiatanId = $kegiatan;
+        $this->updatedSumber();
+        $this->updatedMode();
+    }
+
+    /** Mode tak dikenal → baca; mode sunting hanya selama kegiatan bisa diubah. */
+    public function updatedMode(): void
+    {
+        if (! isset(self::MODE[$this->mode])) {
+            $this->mode = 'baca';
+        }
+        if ($this->mode === 'sunting' && ! $this->dapatDiubah()) {
+            $this->mode = 'baca';
+            $this->dispatch('notify', message: $this->alasanTerkunci(), type: 'error');
+        }
+        $this->tutupSunting();
+    }
+
+    /** Kegiatan masih bisa diubah (status Draf/Dikembalikan & tahun anggaran terbuka). */
+    public function dapatDiubah(): bool
+    {
+        return KunciKegiatan::dapatDiubah($this->dataKegiatan);
+    }
+
+    public function alasanTerkunci(): string
+    {
+        $tahun = KunciKegiatan::tahunTerkunci($this->dataKegiatan);
+
+        return $tahun !== null ? KunciKegiatan::pesanTahun($tahun) : 'Kegiatan berstatus '.$this->status()->label().' sehingga teksnya hanya bisa dibaca.';
+    }
+
+    /** Buka penyunting satu teks di lembar KAK/TOR (mode sunting). */
+    public function bukaSunting(string $kunci): void
+    {
+        abort_unless(isset(SuntingDokumen::BIDANG[$kunci]), 404);
+        abort_unless($this->mode === 'sunting' && $this->dapatDiubah(), 403, 'Teks dokumen ini hanya bisa dibaca.');
+        $this->teksSunting = SuntingDokumen::teks($this->dataKegiatan, $kunci);
+        $this->versiSunting = UbahDataKegiatan::versi($this->dataKegiatan);
+        $this->resetErrorBag();
+        $this->suntingTerbuka = $kunci;
+    }
+
+    public function tutupSunting(): void
+    {
+        $this->suntingTerbuka = null;
+        $this->resetErrorBag();
+    }
+
+    /** Simpan teks yang disunting ke data kegiatan; galat di bawah isian, perubahan dari tempat lain tidak tertimpa. */
+    public function simpanSunting(): void
+    {
+        $kunci = $this->suntingTerbuka;
+        abort_unless($kunci !== null, 404);
+        $this->resetErrorBag();
+
+        try {
+            $hasil = SuntingDokumen::simpan($this->kegiatanId, $this->dataKegiatan, $kunci, $this->teksSunting, StubData::currentUser(), $this->versiSunting);
+        } catch (ValidationException $e) {
+            $this->addError('teksSunting', collect($e->errors())->flatten()->first());
+
+            return;
+        } catch (PengaturanBerubah $e) {
+            $this->muatUlang();
+            $this->versiSunting = UbahDataKegiatan::versi($this->dataKegiatan);
+            $this->dispatch('notify', message: $e->getMessage().' Teks Anda masih di penyunting — periksa lalu simpan lagi.', type: 'error');
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->muatUlang();
+            $this->mode = 'baca';
+            $this->suntingTerbuka = null;
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $this->suntingTerbuka = null;
+        $this->dispatch('notify', message: $hasil['pesan'], type: $hasil['diubah'] === [] ? 'info' : 'success');
+    }
+
+    /** Buang data & susunan yang dihitung agar tampilan memakai data tersimpan terbaru. */
+    private function muatUlang(): void
+    {
+        unset($this->dataKegiatan, $this->checklist);
         $this->updatedSumber();
     }
 
