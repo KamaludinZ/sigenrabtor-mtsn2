@@ -20,6 +20,7 @@ use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\SaranPelaksanaan;
 use App\Support\Kegiatan\SimpanKonteks;
+use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
 use App\Support\Pengaturan\TeksBaku;
@@ -30,6 +31,7 @@ use App\Support\Rab\HasilRab;
 use App\Support\Rab\MekanismePembayaran;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -507,6 +509,9 @@ class Form extends Component
         $this->pastikanDapatDiedit();
         $baru = $this->kegiatanId === null;
         $id = $this->simpan();
+        if ($id === null) {
+            return;
+        }
 
         if ($baru) {
             session()->flash('notify', ['message' => 'Kegiatan baru tersimpan sebagai draf.', 'type' => 'success']);
@@ -531,6 +536,9 @@ class Form extends Component
         }
 
         $id = $this->dapatDiedit() ? $this->simpan() : $this->kegiatanId;
+        if ($id === null) {
+            return;
+        }
 
         if (! Route::has('kegiatan.rab')) {
             $this->dispatch('notify', message: 'Data tersimpan. Halaman RAB sedang disiapkan pada tahap berikutnya.', type: 'info');
@@ -546,9 +554,11 @@ class Form extends Component
     }
 
     /**
-     * Validasi & simpan data kegiatan; mengembalikan id kegiatan.
+     * Validasi & simpan data kegiatan; mengembalikan id kegiatan, atau null bila kegiatan terkunci di tempat lain sejak
+     * halaman dimuat (mis. diajukan dari tab lain — status & riwayat tersimpan tidak ditimpa). Kegiatan tersimpan diubah
+     * lewat UbahDataKegiatan (hanya isian data kegiatan; status, riwayat, dan kolom lain tersimpan tetap).
      */
-    private function simpan(): int
+    private function simpan(): ?int
     {
         try {
             $this->form->validate();
@@ -562,9 +572,24 @@ class Form extends Component
 
         if ($this->kegiatanId === null) {
             $this->catatRiwayat('dibuat', StatusKegiatan::Draf);
-        }
+            $id = $repo->simpan($this->dataUntukDisimpan());
+        } else {
+            try {
+                UbahDataKegiatan::ubah($id = $this->kegiatanId, $this->form->dataUntukDisimpan(), StubData::currentUser());
+            } catch (AuthorizationException $e) {
+                $tersimpan = $repo->temukan($this->kegiatanId) ?? [];
+                $this->status = StatusKegiatan::tryFrom($tersimpan['status'] ?? '')?->value ?? $this->status;
+                $this->riwayatStatus = array_values((array) ($tersimpan['riwayat_status'] ?? $this->riwayatStatus));
+                unset($this->aksiStatus, $this->tahunTerkunci);
+                $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
-        $id = $repo->simpan($this->dataUntukDisimpan(), $this->kegiatanId);
+                return null;
+            } catch (ValidationException $e) {
+                $this->dispatch('notify', message: 'Periksa kembali isian yang ditandai merah.', type: 'error');
+
+                throw ValidationException::withMessages(collect($e->errors())->mapWithKeys(fn (array $pesan, string $isian) => ['form.'.$isian => $pesan])->all());
+            }
+        }
 
         $this->adaPerubahan = false;
         $this->form->rapikanPanitia();
