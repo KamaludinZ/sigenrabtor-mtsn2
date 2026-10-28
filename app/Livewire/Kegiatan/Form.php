@@ -14,6 +14,7 @@ use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\KodeHilang;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\SaranPelaksanaan;
@@ -137,7 +138,14 @@ class Form extends Component
 
     public function dapatDiedit(): bool
     {
-        return $this->statusKegiatan()->dapatDiedit();
+        return $this->statusKegiatan()->dapatDiedit() && $this->tahunTerkunci === null;
+    }
+
+    /** Tahun anggaran kegiatan bila terkunci (KunciKegiatan) — isian hanya bisa dilihat. */
+    #[Computed]
+    public function tahunTerkunci(): ?int
+    {
+        return KunciKegiatan::tahunTerkunci($this->kegiatanId ? (app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? []) : []);
     }
 
     /**
@@ -744,6 +752,12 @@ class Form extends Component
 
         if ($definisi === null) {
             $this->dispatch('notify', message: 'Aksi tidak tersedia untuk status atau peran ini.', type: 'error');
+
+            return;
+        }
+
+        if ($this->tahunTerkunci !== null) {
+            $this->dispatch('notify', message: KunciKegiatan::pesanTahun($this->tahunTerkunci), type: 'error');
 
             return;
         }

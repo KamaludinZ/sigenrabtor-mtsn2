@@ -4,15 +4,30 @@
 @use('App\Contracts\KegiatanRepository')
 @use('App\Enums\StatusKegiatan')
 @use('App\Support\Kegiatan\KunciDokumen')
+@use('App\Support\Kegiatan\KunciKegiatan')
 
 @php
     // Banner isian terkunci yang sama di semua tab ruang kerja kegiatan. Final: siapa & kapan dikunci (KunciDokumen)
-    // dan tautan arsip final; status terkunci lain (Diperiksa/Disetujui): keterangan statusnya.
+    // dan tautan arsip final; status terkunci lain (Diperiksa/Disetujui): keterangan statusnya; status masih bisa
+    // diubah tetapi tahun anggarannya dikunci admin (KunciKegiatan): keterangan tahun.
     $statusEnum = StatusKegiatan::tryFrom($status) ?? StatusKegiatan::Draf;
     $final = $statusEnum === StatusKegiatan::Final;
-    $kunci = $final ? KunciDokumen::dari(app(KegiatanRepository::class)->temukan($kegiatanId) ?? []) : null;
+    $data = $kegiatanId ? (app(KegiatanRepository::class)->temukan($kegiatanId) ?? []) : [];
+    $kunci = $final ? KunciDokumen::dari($data) : null;
     $arsip = $final ? app(ArsipFinalRepository::class)->untukKegiatan($kegiatanId) : [];
+    $tahunKunci = $statusEnum->dapatDiedit() ? KunciKegiatan::tahunTerkunci($data) : null;
 @endphp
+
+@if ($tahunKunci !== null)
+    <div {{ $attributes->class(['flex items-start gap-3 rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-800 ring-1 ring-stone-300']) }}
+         role="status" data-testid="banner-terkunci" data-status="tahun-terkunci">
+        <span class="mt-0.5 grid shrink-0 place-items-center"><x-ui.icon name="lock" class="size-4" /></span>
+        <div class="min-w-0 flex-1">
+            <p class="font-semibold">{{ $subjek }} terkunci — Tahun Anggaran {{ $tahunKunci }} dikunci</p>
+            <p class="mt-0.5 text-stone-600">Kegiatan tahun yang dikunci hanya bisa dilihat. Admin dapat membuka kuncinya di Pengaturan › Tahun Anggaran.</p>
+        </div>
+    </div>
+@endif
 
 @unless ($statusEnum->dapatDiedit())
     <div {{ $attributes->class([

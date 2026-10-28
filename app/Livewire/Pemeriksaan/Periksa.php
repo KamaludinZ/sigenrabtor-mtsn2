@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Kegiatan\ArsipFinal;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
@@ -205,6 +206,7 @@ class Periksa extends Component
 
         $this->validasiCatatan($aksi);
         $this->pastikanDalamPagu($aksi);
+        $this->pastikanTahunTerbuka();
         $this->konfirmasi = $aksi;
     }
 
@@ -230,6 +232,7 @@ class Periksa extends Component
 
         $this->validasiCatatan($aksi);
         $this->pastikanDalamPagu($aksi);
+        $this->pastikanTahunTerbuka();
 
         $data = $this->dataKegiatan;
         $data['status'] = $definisi['ke']->value;
@@ -304,6 +307,14 @@ class Periksa extends Component
     public function rendering(): void
     {
         $this->versi = $this->sidik();
+    }
+
+    /** Keputusan atas kegiatan tahun anggaran yang terkunci ditolak (KunciKegiatan) — galat di `keputusan`. */
+    private function pastikanTahunTerbuka(): void
+    {
+        if (($tahun = KunciKegiatan::tahunTerkunci($this->dataKegiatan)) !== null) {
+            throw ValidationException::withMessages(['keputusan' => KunciKegiatan::pesanTahun($tahun)]);
+        }
     }
 
     public function render()

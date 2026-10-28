@@ -259,6 +259,7 @@ final class SimpanMatrikJadwal
         if (! $status->dapatDiedit()) {
             throw new AuthorizationException("Matrik & jadwal terkunci karena kegiatan berstatus {$status->label()}.");
         }
+        KunciKegiatan::pastikanTahunTerbuka($kegiatan);
 
         return $kegiatan;
     }

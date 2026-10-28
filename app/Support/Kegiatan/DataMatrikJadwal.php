@@ -71,7 +71,7 @@ final class DataMatrikJadwal
             'nama_kegiatan' => (string) ($kegiatan['nama_kegiatan'] ?? ''),
             'tahun' => $tahun,
             'status' => $status->value,
-            'dapat_diubah' => $status->dapatDiedit(),
+            'dapat_diubah' => KunciKegiatan::dapatDiubah($kegiatan),
             'pelaksanaan' => [
                 'bulan' => $pelaksanaan->bulan,
                 'teks_bulan' => $pelaksanaan->teksBulan($tahun),

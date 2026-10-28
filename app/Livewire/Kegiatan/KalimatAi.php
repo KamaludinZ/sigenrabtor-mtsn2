@@ -14,6 +14,7 @@ use App\Support\Kegiatan\BatasAmanSaran;
 use App\Support\Kegiatan\GagalPenyediaAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PayloadAi;
 use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
@@ -109,7 +110,14 @@ class KalimatAi extends Component
 
     public function dapatDiedit(): bool
     {
-        return $this->status()->dapatDiedit();
+        return $this->status()->dapatDiedit() && $this->tahunTerkunci === null;
+    }
+
+    /** Tahun anggaran kegiatan bila terkunci (KunciKegiatan) — isian hanya bisa dilihat. */
+    #[Computed]
+    public function tahunTerkunci(): ?int
+    {
+        return KunciKegiatan::tahunTerkunci($this->dataKegiatan);
     }
 
     public function updating(string $property): void

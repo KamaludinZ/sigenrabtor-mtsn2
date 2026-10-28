@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Format;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -294,7 +295,14 @@ class Rab extends Component
 
     public function dapatDiedit(): bool
     {
-        return $this->status()->dapatDiedit();
+        return $this->status()->dapatDiedit() && $this->tahunTerkunci === null;
+    }
+
+    /** Tahun anggaran kegiatan bila terkunci (KunciKegiatan) — isian hanya bisa dilihat. */
+    #[Computed]
+    public function tahunTerkunci(): ?int
+    {
+        return KunciKegiatan::tahunTerkunci($this->dataKegiatan);
     }
 
     public function bukaFormItem(): void

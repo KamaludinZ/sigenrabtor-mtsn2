@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Format;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\ValidasiKegiatan;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
@@ -57,6 +58,7 @@ final class SimpanSumberDana
         if (! $status->dapatDiedit()) {
             throw new AuthorizationException('Kegiatan berstatus '.$status->label().' sehingga isiannya terkunci.');
         }
+        KunciKegiatan::pastikanTahunTerbuka($tersimpan);
 
         $sumberDana = self::rapikan($isian);
         ValidasiKegiatan::periksa(['sumber_dana' => $sumberDana] + $tersimpan, ['sumber_dana']);

@@ -73,11 +73,13 @@ final class KontrolTahunAktif
 
     /**
      * Aktifkan $tahun (konfirmasi dilakukan pemanggil): simpan, catat riwayat, dan siapkan notifikasi untuk halaman
-     * berikutnya. Mengembalikan false bila tahun itu tidak ada atau sudah aktif.
+     * berikutnya. $kunciSebelumnya sekaligus mengunci tahun yang sebelumnya aktif (bila belum terkunci) — "tahun lalu
+     * dikunci" (PRD F6) dalam satu langkah, tercatat di keterangan riwayat yang sama. Mengembalikan false bila tahun itu
+     * tidak ada atau sudah aktif.
      *
      * @param  array{name: string}  $pengguna
      */
-    public static function aktifkan(int $tahun, array $pengguna): bool
+    public static function aktifkan(int $tahun, array $pengguna, bool $kunciSebelumnya = false): bool
     {
         $repo = app(TahunAnggaranRepository::class);
         $daftar = collect($repo->semua());
@@ -86,10 +88,17 @@ final class KontrolTahunAktif
             return false;
         }
 
-        $sebelumnya = $daftar->firstWhere('is_active', true)['tahun'] ?? null;
+        $sebelumnya = $daftar->firstWhere('is_active', true);
         $repo->aktifkan($tahun, $pengguna['name']);
-        RiwayatPengaturan::catat('ganti_tahun', "Tahun Anggaran {$tahun} diaktifkan".($sebelumnya ? " (sebelumnya {$sebelumnya})" : '').'.');
-        session()->flash('notify', ['message' => "Tahun Anggaran {$tahun} aktif. Seluruh dokumen kini memakai tahun {$tahun}.", 'type' => 'success']);
+        $dikunci = $kunciSebelumnya && $sebelumnya !== null && ! $sebelumnya['is_locked'];
+        if ($dikunci) {
+            $repo->kunci($sebelumnya['tahun'], true);
+        }
+        RiwayatPengaturan::catat('ganti_tahun', "Tahun Anggaran {$tahun} diaktifkan"
+            .($sebelumnya ? " (sebelumnya {$sebelumnya['tahun']})" : '')
+            .($dikunci ? "; {$sebelumnya['tahun']} dikunci" : '').'.');
+        session()->flash('notify', ['message' => "Tahun Anggaran {$tahun} aktif. Seluruh dokumen kini memakai tahun {$tahun}."
+            .($dikunci ? " Tahun {$sebelumnya['tahun']} dikunci — datanya hanya bisa dilihat." : ''), 'type' => 'success']);
 
         return true;
     }

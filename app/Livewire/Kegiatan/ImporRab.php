@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Livewire\Impor\ImporBertahap;
 use App\Support\Format;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\Impor\PembacaImporRab;
 use App\Support\Rab\Impor\PemeriksaImporRab;
@@ -98,6 +99,9 @@ class ImporRab extends ImporBertahap
 
         if (! $status->dapatDiedit()) {
             abort(403, 'Kegiatan berstatus '.$status->label().' sehingga RAB-nya terkunci.');
+        }
+        if (($tahun = KunciKegiatan::tahunTerkunci($kegiatan)) !== null) {
+            abort(403, KunciKegiatan::pesanTahun($tahun));
         }
     }
 

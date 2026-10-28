@@ -33,6 +33,7 @@ final class SimpanKonteks
         if (! $status->dapatDiedit()) {
             throw new AuthorizationException('Kegiatan berstatus '.$status->label().' sehingga isiannya terkunci.');
         }
+        KunciKegiatan::pastikanTahunTerbuka($tersimpan);
 
         $bersih = Teks::rapikan($teks);
         ValidasiKegiatan::periksa(['konteks' => $bersih] + $tersimpan, ['konteks']);

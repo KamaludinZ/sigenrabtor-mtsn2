@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Format;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -85,6 +86,9 @@ final class SimpanDataPagu
         $status = StatusKegiatan::tryFrom((string) ($kegiatan['status'] ?? '')) ?? StatusKegiatan::Draf;
         if (! $status->dapatDiedit()) {
             return ['alasan' => "Kegiatan \"{$pemakai['nama']}\" berstatus {$status->label()} sehingga pagunya tidak diubah."] + $hasil;
+        }
+        if (($tahunKunci = KunciKegiatan::tahunTerkunci($kegiatan)) !== null) {
+            return ['alasan' => "Kegiatan \"{$pemakai['nama']}\" milik Tahun Anggaran {$tahunKunci} yang terkunci sehingga pagunya tidak diubah."] + $hasil;
         }
 
         $simpan = SimpanSumberDana::simpan($pemakai['id'], DataPagu::sumberDana($tersimpan));

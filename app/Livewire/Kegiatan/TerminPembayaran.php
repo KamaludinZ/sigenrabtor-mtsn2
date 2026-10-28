@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\RabRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Format;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\MekanismePembayaran;
@@ -92,7 +93,14 @@ class TerminPembayaran extends Component
 
     public function dapatDiedit(): bool
     {
-        return $this->status->dapatDiedit();
+        return $this->status->dapatDiedit() && $this->tahunTerkunci === null;
+    }
+
+    /** Tahun anggaran kegiatan bila terkunci (KunciKegiatan) — isian hanya bisa dilihat. */
+    #[Computed]
+    public function tahunTerkunci(): ?int
+    {
+        return KunciKegiatan::tahunTerkunci(app(KegiatanRepository::class)->temukan($this->kegiatanId) ?? []);
     }
 
     public function updated(string $properti): void

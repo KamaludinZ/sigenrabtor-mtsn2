@@ -26,6 +26,9 @@ class TahunAnggaran extends Component
     #[Locked]
     public ?int $akanDiaktifkan = null;
 
+    /** Kunci tahun yang sebelumnya aktif sekaligus (bawaan: ya bila beralih ke tahun yang lebih baru). */
+    public bool $kunciSebelumnya = false;
+
     /** Isian "Tambah tahun anggaran". */
     public string $tahunBaru = '';
 
@@ -81,6 +84,8 @@ class TahunAnggaran extends Component
         }
 
         $this->akanDiaktifkan = $tahun;
+        $aktif = $this->aktif;
+        $this->kunciSebelumnya = $aktif !== null && ! $aktif['is_locked'] && $tahun > $aktif['tahun'];
     }
 
     public function batalPilih(): void
@@ -160,7 +165,7 @@ class TahunAnggaran extends Component
     {
         $calon = $this->calon;
 
-        if ($calon === null || ! KontrolTahunAktif::aktifkan($calon['tahun'], StubData::currentUser())) {
+        if ($calon === null || ! KontrolTahunAktif::aktifkan($calon['tahun'], StubData::currentUser(), $this->kunciSebelumnya)) {
             return;
         }
 

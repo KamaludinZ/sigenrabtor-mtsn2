@@ -3,9 +3,9 @@
 namespace App\Support\Rab;
 
 use App\Contracts\DataPaguRepository;
-use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pagu\DataPagu;
 use App\Support\Stub\StubData;
@@ -31,7 +31,6 @@ final class DataSumberDana
         foreach (AnggaranKegiatan::untuk($kegiatan, sertakanTerlepas: true) as $a) {
             $anggaran[$a->sumber] = $a;
         }
-        $status = StatusKegiatan::tryFrom((string) ($kegiatan['status'] ?? '')) ?? StatusKegiatan::Draf;
         $tahun = StubData::tahunAktif()['tahun'];
         $madrasah = StubData::madrasah()['nama_singkat'];
         $dataPagu = self::dataPagu($kegiatan);
@@ -68,7 +67,7 @@ final class DataSumberDana
         return [
             'kegiatan_id' => (int) $kegiatan['id'],
             'nama_kegiatan' => (string) ($kegiatan['nama_kegiatan'] ?? ''),
-            'dapat_diubah' => $status->dapatDiedit(),
+            'dapat_diubah' => KunciKegiatan::dapatDiubah($kegiatan),
             'sumber' => $sumber,
             'dipilih' => array_values(array_column(array_filter($sumber, fn (array $s) => $s['dipilih']), 'sumber')),
             'gabungan' => $gabungan + ['terbilang' => Terbilang::tampil($gabungan['total'])],

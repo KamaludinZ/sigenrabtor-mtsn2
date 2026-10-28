@@ -8,6 +8,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Livewire\Forms\ItemBelanjaForm;
 use App\Support\Format;
+use App\Support\Kegiatan\KunciKegiatan;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -118,6 +119,7 @@ final class RincianRab
         if (! $status->dapatDiedit()) {
             throw new AuthorizationException('RAB kegiatan berstatus '.$status->label().' sehingga terkunci.');
         }
+        KunciKegiatan::pastikanTahunTerbuka($kegiatan);
         if (SumberDana::tryFrom($sumber) === null) {
             throw ValidationException::withMessages(['sumber' => 'Sumber dana harus DIPA atau Komite.']);
         }

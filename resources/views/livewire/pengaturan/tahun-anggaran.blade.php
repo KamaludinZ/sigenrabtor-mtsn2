@@ -190,6 +190,12 @@
                         <li class="flex items-start gap-2 text-gold-700" data-testid="peringatan-master"><x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> Master kode {{ $calon['tahun'] }} belum diunggah — leading belum bisa memilih kode.</li>
                     @endunless
                 </ul>
+                @if ($aktif && ! $aktif['is_locked'])
+                    <label class="mt-4 flex items-start gap-2.5 rounded-lg bg-stone-50 px-3 py-2.5 text-sm text-stone-700 ring-1 ring-stone-200">
+                        <input type="checkbox" wire:model="kunciSebelumnya" class="mt-0.5 size-4 rounded accent-brand-700" data-testid="kunci-sebelumnya">
+                        <span>Kunci TA {{ $aktif['tahun'] }} sesudah beralih <span class="block text-xs text-stone-500">Kegiatan &amp; pengaturan tahun itu hanya bisa dilihat; admin bisa membuka kuncinya kapan saja.</span></span>
+                    </label>
+                @endif
                 <div class="mt-5 flex flex-wrap justify-end gap-2">
                     <button type="button" class="btn-ghost" wire:click="batalPilih">Batal</button>
                     <button type="button" class="btn-primary" wire:click="aktifkan" wire:loading.attr="disabled" wire:target="aktifkan">

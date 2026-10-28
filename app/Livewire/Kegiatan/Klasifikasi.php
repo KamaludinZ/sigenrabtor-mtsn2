@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
 use App\Support\Kegiatan\KodeHilang;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\RingkasanKode;
 use App\Support\Kegiatan\SimpanKlasifikasi;
 use App\Support\MasterKode;
@@ -70,7 +71,14 @@ class Klasifikasi extends Component
 
     public function dapatDiedit(): bool
     {
-        return $this->status()->dapatDiedit();
+        return $this->status()->dapatDiedit() && $this->tahunTerkunci === null;
+    }
+
+    /** Tahun anggaran kegiatan bila terkunci (KunciKegiatan) — isian hanya bisa dilihat. */
+    #[Computed]
+    public function tahunTerkunci(): ?int
+    {
+        return KunciKegiatan::tahunTerkunci($this->dataKegiatan);
     }
 
     public function updating(string $property): void

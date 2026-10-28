@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Format;
+use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Pagu\DataPagu;
 use App\Support\Pagu\SimpanDataPagu;
 use App\Support\Stub\StubData;
@@ -204,7 +205,7 @@ class Daftar extends Component
         }
         $status = StatusKegiatan::tryFrom((string) (app(KegiatanRepository::class)->temukan($pemakai['id'])['status'] ?? '')) ?? StatusKegiatan::Draf;
 
-        return $pemakai + ['dapat_diubah' => $status->dapatDiedit(), 'status' => $status->label()];
+        return $pemakai + ['dapat_diubah' => KunciKegiatan::dapatDiubah(app(KegiatanRepository::class)->temukan($pemakai['id']) ?? []), 'status' => $status->label()];
     }
 
     public function mintaHapus(string $id): void
