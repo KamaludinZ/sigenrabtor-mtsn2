@@ -65,6 +65,39 @@ class StubTahunAnggaranRepository implements TahunAnggaranRepository
         ];
     }
 
+    public function tambah(int $tahun): void
+    {
+        $semua = $this->baca();
+        if (collect($semua)->contains('tahun', $tahun)) {
+            throw new InvalidArgumentException("Tahun anggaran {$tahun} sudah ada.");
+        }
+
+        $this->tulis([...$semua, [
+            'id' => max([0, ...array_column($semua, 'id')]) + 1, 'tahun' => $tahun, 'is_active' => false, 'is_locked' => false,
+            'no_sk_rktm' => null, 'tanggal_sk_rktm' => null, 'diaktifkan_oleh' => null, 'diaktifkan_pada' => null,
+        ]]);
+    }
+
+    public function kunci(int $tahun, bool $terkunci): void
+    {
+        $semua = $this->baca();
+        if (! collect($semua)->contains('tahun', $tahun)) {
+            throw new InvalidArgumentException("Tahun anggaran {$tahun} belum dibuat.");
+        }
+
+        $this->tulis(array_map(fn (array $t) => $t['tahun'] === $tahun ? ['is_locked' => $terkunci] + $t : $t, $semua));
+    }
+
+    public function hapus(int $tahun): void
+    {
+        $semua = $this->baca();
+        if (! collect($semua)->contains('tahun', $tahun)) {
+            throw new InvalidArgumentException("Tahun anggaran {$tahun} belum dibuat.");
+        }
+
+        $this->tulis(array_values(array_filter($semua, fn (array $t) => $t['tahun'] !== $tahun)));
+    }
+
     /**
      * @return list<array<string, mixed>>
      */

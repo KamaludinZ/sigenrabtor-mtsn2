@@ -9,7 +9,9 @@ use InvalidArgumentException;
 
 /**
  * Tahun anggaran di PostgreSQL (tabel tahun_anggaran), padanan StubTahunAnggaranRepository dengan bentuk data yang sama
- * (terbaru dulu; tanggal SK Y-m-d; diaktifkan_pada ISO-8601 zona aplikasi). `aktifkan()` dalam satu transaksi:
+ * (terbaru dulu; tanggal SK Y-m-d; diaktifkan_pada ISO-8601 zona aplikasi). `tambah()` tahun baru tidak aktif & tidak
+ * terkunci; `hapus()` ikut menghapus pengaturan tahun itu (pejabat, dasar hukum, …) — pemakaiannya diperiksa
+ * KelolaTahunAnggaran, rujukan kegiatan/master/data pagu ditolak database saat commit. `aktifkan()` dalam satu transaksi:
  * tahun lain dinonaktifkan lebih dulu sehingga indeks "tepat satu aktif" tidak pernah dilanggar. Tahun yang belum dibuat
  * → InvalidArgumentException; penyimpanan yang ditolak database (mis. SK tanpa tanggal) → QueryException (RuntimeException).
  */
@@ -40,10 +42,32 @@ class EloquentTahunAnggaranRepository implements TahunAnggaranRepository
 
     public function simpanSk(int $tahun, ?string $nomor, ?string $tanggal): void
     {
-        $baris = TahunAnggaran::query()->where('tahun', $tahun)->first()
-            ?? throw new InvalidArgumentException("Tahun anggaran {$tahun} belum dibuat.");
+        $this->temukan($tahun)->update(['no_sk_rktm' => $nomor, 'tanggal_sk_rktm' => $tanggal]);
+    }
 
-        $baris->update(['no_sk_rktm' => $nomor, 'tanggal_sk_rktm' => $tanggal]);
+    public function tambah(int $tahun): void
+    {
+        if (TahunAnggaran::query()->where('tahun', $tahun)->exists()) {
+            throw new InvalidArgumentException("Tahun anggaran {$tahun} sudah ada.");
+        }
+
+        TahunAnggaran::query()->create(['tahun' => $tahun]);
+    }
+
+    public function kunci(int $tahun, bool $terkunci): void
+    {
+        $this->temukan($tahun)->update(['is_locked' => $terkunci]);
+    }
+
+    public function hapus(int $tahun): void
+    {
+        $this->temukan($tahun)->delete();
+    }
+
+    private function temukan(int $tahun): TahunAnggaran
+    {
+        return TahunAnggaran::query()->where('tahun', $tahun)->first()
+            ?? throw new InvalidArgumentException("Tahun anggaran {$tahun} belum dibuat.");
     }
 
     /**

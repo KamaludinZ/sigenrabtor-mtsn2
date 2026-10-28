@@ -13,6 +13,9 @@ final class RiwayatPengaturan
     /** Aksi: kunci → [label, bagian BagianPengaturan]. */
     public const AKSI = [
         'ganti_tahun' => ['Ganti tahun aktif', 'tahun'],
+        'tambah_tahun' => ['Tambah tahun anggaran', 'tahun'],
+        'kunci_tahun' => ['Kunci/buka kunci tahun anggaran', 'tahun'],
+        'hapus_tahun' => ['Hapus tahun anggaran', 'tahun'],
         'unggah_cover' => ['Unggah cover', 'template'],
         'ubah_tata_letak_cover' => ['Ubah tata letak cover', 'template'],
         'hapus_cover' => ['Hapus cover', 'template'],

@@ -37,4 +37,28 @@ interface TahunAnggaranRepository
      * @throws \RuntimeException Penyimpanan gagal.
      */
     public function simpanSk(int $tahun, ?string $nomor, ?string $tanggal): void;
+
+    /**
+     * Tambah tahun anggaran baru (tidak aktif, tidak terkunci, tanpa SK).
+     *
+     * @throws \InvalidArgumentException Tahun sudah ada.
+     * @throws \RuntimeException Penyimpanan gagal.
+     */
+    public function tambah(int $tahun): void;
+
+    /**
+     * Kunci (hanya bisa dilihat) atau buka kunci tahun $tahun.
+     *
+     * @throws \InvalidArgumentException Tahun belum dibuat.
+     * @throws \RuntimeException Penyimpanan gagal.
+     */
+    public function kunci(int $tahun, bool $terkunci): void;
+
+    /**
+     * Hapus tahun $tahun (pemanggil memastikan tidak aktif dan tidak dipakai — KelolaTahunAnggaran).
+     *
+     * @throws \InvalidArgumentException Tahun belum dibuat.
+     * @throws \RuntimeException Penyimpanan gagal.
+     */
+    public function hapus(int $tahun): void;
 }

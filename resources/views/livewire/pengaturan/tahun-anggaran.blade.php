@@ -111,15 +111,34 @@
                                 <span class="text-stone-400 md:hidden">Master: </span>
                                 {{ $t['master_tersedia'] ? $t['jumlah_rktm'].' kode RKTM' : 'belum diunggah' }}
                             </p>
-                            <div class="col-start-2 row-span-3 row-start-1 flex justify-end md:col-start-auto md:row-span-1 md:row-start-auto">
+                            <div class="col-start-2 row-span-3 row-start-1 flex flex-wrap items-center justify-end gap-1 md:col-start-auto md:row-span-1 md:row-start-auto">
                                 @if ($t['is_active'])
                                     <span class="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"><x-ui.icon name="check" class="size-4" /> Sedang aktif</span>
                                 @else
                                     <button type="button" class="btn-secondary px-3 py-1.5 text-xs" wire:click="pilih({{ $t['tahun'] }})" aria-label="Jadikan {{ $t['tahun'] }} tahun aktif">
                                         Jadikan aktif
                                     </button>
+                                    <button type="button" class="btn-ghost p-1.5" wire:click="ubahKunci({{ $t['tahun'] }})" data-testid="kunci-{{ $t['tahun'] }}"
+                                            title="{{ $t['is_locked'] ? 'Buka kunci' : 'Kunci' }} {{ $t['tahun'] }}" aria-label="{{ $t['is_locked'] ? 'Buka kunci' : 'Kunci' }} tahun {{ $t['tahun'] }}">
+                                        <x-ui.icon name="lock" @class(['size-4', 'text-stone-700' => $t['is_locked'], 'text-stone-400' => ! $t['is_locked']]) />
+                                    </button>
+                                    @if ($t['boleh_dihapus'])
+                                        <button type="button" class="btn-ghost p-1.5 text-red-600 hover:text-red-700" wire:click="mintaHapus({{ $t['tahun'] }})" data-testid="hapus-{{ $t['tahun'] }}"
+                                                title="Hapus {{ $t['tahun'] }}" aria-label="Hapus tahun {{ $t['tahun'] }}">
+                                            <x-ui.icon name="trash" class="size-4" />
+                                        </button>
+                                    @endif
                                 @endif
                             </div>
+                            @if ($this->akanDihapus === $t['tahun'])
+                                <div class="col-span-full flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800 ring-1 ring-red-200" role="alert" data-testid="konfirmasi-hapus-tahun">
+                                    <span>Hapus Tahun Anggaran {{ $t['tahun'] }}? Tahun ini belum dipakai kegiatan, master kode, Data Pagu, pejabat, maupun dasar hukum.</span>
+                                    <span class="flex gap-2">
+                                        <button type="button" class="btn-ghost px-2 py-1 text-xs" wire:click="batalHapus">Batal</button>
+                                        <button type="button" class="btn-danger px-2 py-1 text-xs" wire:click="hapusTahun" wire:loading.attr="disabled" wire:target="hapusTahun">Hapus</button>
+                                    </span>
+                                </div>
+                            @endif
                         </li>
                     @endforeach
                 </ul>
@@ -127,13 +146,26 @@
         </div>
 
         <aside class="space-y-4">
+            <form wire:submit="tambahTahun" class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-tambah-tahun" data-testid="tambah-tahun">
+                <h2 id="judul-tambah-tahun" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Tambah tahun anggaran</h2>
+                <p class="mt-1 text-xs text-stone-500">Tahun baru tidak langsung aktif; isi master kode, pejabat, dan dasar hukumnya dulu, lalu aktifkan.</p>
+                <div class="mt-3 flex gap-2">
+                    <label for="tahun-baru" class="sr-only">Tahun</label>
+                    <input type="text" id="tahun-baru" wire:model="tahunBaru" inputmode="numeric" maxlength="4" placeholder="mis. {{ ($aktif['tahun'] ?? now()->year) + 1 }}"
+                           class="form-input w-28 tabular-nums" autocomplete="off" @error('tahunBaru') aria-invalid="true" aria-describedby="tahun-baru-error" @enderror>
+                    <button type="submit" class="btn-secondary px-3 text-xs" wire:loading.attr="disabled" wire:target="tambahTahun"><x-ui.icon name="plus" class="size-4" /> Tambah</button>
+                </div>
+                @error('tahunBaru') <p id="tahun-baru-error" class="mt-1.5 text-xs text-red-600">{{ $message }}</p> @enderror
+            </form>
+
             <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-aturan-tahun">
                 <h2 id="judul-aturan-tahun" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Aturan tahun aktif</h2>
                 <ul class="mt-3 space-y-2.5 text-xs text-stone-600">
                     <li class="flex items-start gap-2"><x-ui.icon name="check-circle" class="mt-px size-3.5 shrink-0 text-brand-600" /> Tepat satu tahun aktif; tahunnya tercetak di seluruh dokumen.</li>
                     <li class="flex items-start gap-2"><x-ui.icon name="check-circle" class="mt-px size-3.5 shrink-0 text-brand-600" /> Pejabat penanda tangan dan master kode mengikuti tahun aktif.</li>
                     <li class="flex items-start gap-2"><x-ui.icon name="check-circle" class="mt-px size-3.5 shrink-0 text-brand-600" /> Mengganti tahun tidak menghapus kegiatan &amp; dokumen tahun lain.</li>
-                    <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> Tahun terkunci hanya bisa dilihat.</li>
+                    <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> Tahun terkunci hanya bisa dilihat; tahun aktif tidak bisa dikunci.</li>
+                    <li class="flex items-start gap-2"><x-ui.icon name="trash" class="mt-px size-3.5 shrink-0 text-stone-400" /> Hanya tahun yang belum dipakai yang bisa dihapus.</li>
                 </ul>
             </section>
         </aside>

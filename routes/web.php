@@ -2,6 +2,7 @@
 
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
@@ -101,6 +102,7 @@ Route::get('/madrasah/logo', LogoMadrasah::class)->name('madrasah.logo');
 Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')->group(function () {
     Route::get('/', PengaturanIkhtisar::class)->name('index');
     Route::get('/tahun', PengaturanTahunAnggaran::class)->name('tahun.index');
+    Route::get('/tahun/data', DataTahunAnggaran::class)->name('tahun.data');
     Route::get('/madrasah', PengaturanProfilMadrasah::class)->name('madrasah.index');
     Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
