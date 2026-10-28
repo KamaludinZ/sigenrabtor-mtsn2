@@ -11,6 +11,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\KunciDokumen;
 use App\Support\Kegiatan\MatrikTahapan;
+use App\Support\Kegiatan\TeksKhusus;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PejabatBerlaku;
 use App\Support\Pengaturan\TeksBakuTercetak;
@@ -136,12 +137,13 @@ final readonly class SusunanKak
 
         $tahapan = [
             ['jenis' => 'subjudul', 'teks' => 'a. Persiapan'],
-            ['jenis' => 'daftar', 'bernomor' => true, 'butir' => KalimatKak::persiapan($nama)],
+            // Teks baku yang bisa disesuaikan per kegiatan (TeksKhusus); tanpa penyesuaian = KalimatKak.
+            ['jenis' => 'daftar', 'bernomor' => true, 'butir' => TeksKhusus::cetak('persiapan', $kegiatan)],
             ['jenis' => 'subjudul', 'teks' => 'b. Pelaksanaan'],
             ['tempat' => 'kak-pelaksanaan'] + $isi($pelaksanaan->kalimatPelaksanaan($nama), 'tanggal mulai & lama kegiatan'),
             ['jenis' => 'subjudul', 'teks' => 'c. Pelaporan'],
             ['jenis' => 'daftar', 'bernomor' => true, 'tempat' => 'kak-pelaporan', 'butir' => array_values(array_filter([
-                KalimatKak::analisisHasil($nama),
+                TeksKhusus::cetak('analisis_hasil', $kegiatan),
                 $batasLaporan ? KalimatKak::pelaporan($nama, $batasLaporan) : null,
             ]))],
         ];
@@ -162,7 +164,7 @@ final readonly class SusunanKak
             ['jenis' => 'subjudul', 'teks' => 'a. Pelaksana'],
             $isi($leading ? KalimatKak::pelaksana($nama, $leading['jabatan_penanda_tangan']) : null, 'leading penanggung jawab (Kode & Klasifikasi)'),
             ['jenis' => 'subjudul', 'teks' => 'b. Pengarah'],
-            ['jenis' => 'paragraf', 'teks' => KalimatKak::pengarah($nama, $madrasah['nama'])],
+            ['jenis' => 'paragraf', 'teks' => TeksKhusus::cetak('pengarah', $kegiatan)],
         ]];
 
         $nomor = 7;

@@ -151,7 +151,8 @@ class KegiatanForm extends Form
         $bersama = ValidasiKegiatan::aturan($this->dataUntukDisimpan() + ['tahun_anggaran' => $this->tahunKegiatan()], StubData::currentUser(), $this->leadingTersimpan());
 
         return [
-            ...array_diff_key($bersama, array_flip(['sumber_dana', 'sumber_dana.*.sumber', 'sumber_dana.*.pagu', 'data_pagu_id', 'status', 'asal'])),
+            // Teks khusus disesuaikan di tab Susun KAK/TOR (UbahDataKegiatan), bukan isian formulir ini.
+            ...array_diff_key($bersama, array_flip(['sumber_dana', 'sumber_dana.*.sumber', 'sumber_dana.*.pagu', 'data_pagu_id', 'status', 'asal', 'teks_khusus'])),
             'dana_dipa' => ['boolean'],
             'dana_komite' => ['boolean'],
             'pagu_dipa' => $this->aturanPagu($this->dana_dipa),

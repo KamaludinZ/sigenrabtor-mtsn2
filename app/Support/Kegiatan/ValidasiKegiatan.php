@@ -68,6 +68,11 @@ final class ValidasiKegiatan
             'peserta_jumlah' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'peserta_jenis' => ['nullable', 'string', 'max:150'],
             'uraian_pelaksanaan' => ['nullable', 'string', 'max:3000', new KalimatUtuh],
+            'teks_khusus' => ['nullable', 'array', function (string $attribute, mixed $value, Closure $fail) {
+                foreach (TeksKhusus::galat((array) $value) as $pesan) {
+                    $fail($pesan);
+                }
+            }],
             'konteks' => ['nullable', 'string', 'max:'.DataKonteks::BATAS],
             'sumber_dana' => ['array', 'max:'.count(SumberDana::cases())],
             'sumber_dana.*.sumber' => ['required', 'distinct', Rule::enum(SumberDana::class)],

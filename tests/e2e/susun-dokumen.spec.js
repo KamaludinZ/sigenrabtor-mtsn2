@@ -147,4 +147,42 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(page.getByTestId('bagian-susun')).toHaveCount(9);
         await expect(page).not.toHaveURL(/tampilan=/);
     });
+
+    test('sesuaikan teks baku: kalimat pengarah tercetak di KAK lalu dikembalikan ke teks baku', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/dokumen?jenis=KAK');
+        const bagian6 = page.locator('#susun-bagian-6');
+        const baris = bagian6.locator('[data-teks="pengarah"]');
+        const kak = bagian6.getByTestId('pratinjau-kak');
+        await expect(baris).toHaveAttribute('data-disesuaikan', 'tidak');
+        await expect(page.locator('#susun-bagian-4 [data-teks]')).toHaveCount(2);
+
+        // Penyunting dibuka dengan teks baku berpenanda; Esc menutup tanpa menyimpan.
+        await baris.getByTestId('sesuaikan-teks-pengarah').click();
+        const editor = page.getByTestId('penyunting-teks-pengarah');
+        const teks = editor.getByRole('textbox', { name: 'Kalimat pengarah (6b)' });
+        await expect(teks).toHaveValue(/^Pengarah kegiatan \{nama_kegiatan\} adalah Kepala /);
+        await teks.press('Escape');
+        await expect(editor).toHaveCount(0);
+
+        await baris.getByTestId('sesuaikan-teks-pengarah').click();
+        await teks.fill('Pengarah kegiatan {nama_kegiatan} adalah {kepala}.');
+        await page.getByTestId('simpan-teks').click();
+        await expect(editor.locator('.form-error')).toContainText('{nama_kegiatan}');
+
+        await teks.fill('Pengarah kegiatan {nama_kegiatan} adalah Kepala MTsN 2 Kota Malang bersama Komite Madrasah.');
+        await page.getByTestId('simpan-teks').click();
+        await expect(editor).toHaveCount(0);
+        await expect(baris).toHaveAttribute('data-disesuaikan', 'ya');
+        await expect(bagian6.getByTestId('bagian-disesuaikan')).toBeVisible();
+        await expect(kak).toContainText('bersama Komite Madrasah.');
+        await expect(kak).not.toContainText('{nama_kegiatan}');
+        await bagian6.screenshot({ path: `storage/playwright/shots/susun-teks-khusus-${testInfo.project.name}.png` });
+
+        // Pulihkan data bersama.
+        await baris.getByTestId('kembalikan-teks-pengarah').click();
+        await expect(baris).toHaveAttribute('data-disesuaikan', 'tidak');
+        await expect(kak).not.toContainText('bersama Komite Madrasah');
+        await expect(bagian6.getByTestId('bagian-disesuaikan')).toHaveCount(0);
+    });
 });

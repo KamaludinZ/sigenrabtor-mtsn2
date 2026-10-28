@@ -2,12 +2,13 @@
 
 namespace App\Support\Dokumen;
 
+use App\Support\Kegiatan\TeksKhusus;
 use App\Support\Stub\StubData;
 
 /**
  * Sinkronisasi tahun di dokumen satu kegiatan × sumber dana (PRD aturan 3 "Satu tahun untuk semua"): tempat tahun
  * tercetak di header/judul yang disusun sistem (cover, judul RAB, sebutan sumber dana, jadwal) — selalu tahun aktif —
- * dan tahun yang terketik di isian bebas (nama kegiatan, latar belakang, tujuan, sasaran, uraian, rincian RAB) yang
+ * dan tahun yang terketik di isian bebas (nama kegiatan, latar belakang, tujuan, sasaran, uraian, teks khusus, rincian RAB) yang
  * mungkin sisa dokumen tahun lalu. Kunci = jangkar `#cetak-{kunci}` di pratinjau.
  */
 final class TahunDokumen
@@ -62,6 +63,10 @@ final class TahunDokumen
         // Isian bebas yang menyebut tahun.
         foreach (self::ISIAN as $kolom => [$di, $dokumen, $bagian, $jangkar]) {
             $tambah($jangkar, $di, $dokumen, $bagian, trim((string) ($kegiatan[$kolom] ?? '')), 'isian');
+        }
+        foreach (TeksKhusus::dari($kegiatan) as $kunci => $teks) {
+            [$nomor, $label] = TeksKhusus::BIDANG[$kunci];
+            $tambah("kak-bagian-{$nomor}", ['kak'], 'KAK', $label, implode(' ', (array) $teks), 'isian');
         }
         foreach ($rab->anggaran?->hasil->rincian ?? [] as $item) {
             $tambah('rab-rincian', ['rab'], 'RAB', 'Rincian: '.mb_strimwidth((string) $item['uraian'], 0, 60, '…'), (string) $item['uraian'], 'isian');

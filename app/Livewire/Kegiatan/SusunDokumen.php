@@ -17,6 +17,7 @@ use App\Support\Dokumen\TeksCover;
 use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
+use App\Support\Kegiatan\TeksKhusus;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Rab\RincianRab;
@@ -69,6 +70,12 @@ class SusunDokumen extends Component
     #[Locked]
     public ?string $versiIsian = null;
 
+    /** Kunci teks baku (TeksKhusus::BIDANG) yang sedang disesuaikan; null = tertutup. */
+    public ?string $teksTerbuka = null;
+
+    /** Isian teks yang disesuaikan (daftar: satu butir per baris). */
+    public string $teksIsian = '';
+
     /** @var array{uraian: string, kategori: string, volume: string, satuan: string, harga_satuan: string} */
     public array $rincianBaru = ['uraian' => '', 'kategori' => '', 'volume' => '', 'satuan' => '', 'harga_satuan' => ''];
 
@@ -87,6 +94,7 @@ class SusunDokumen extends Component
             $this->tampilan = 'bagian';
         }
         $this->isianTerbuka = null;
+        $this->teksTerbuka = null;
         $this->resetErrorBag();
     }
 
@@ -121,6 +129,7 @@ class SusunDokumen extends Component
         $this->isian = IsianSusun::isian($this->dataKegiatan, $nomor);
         $this->versiIsian = UbahDataKegiatan::versi($this->dataKegiatan);
         $this->resetErrorBag();
+        $this->teksTerbuka = null;
         $this->isianTerbuka = $nomor;
     }
 
@@ -162,6 +171,83 @@ class SusunDokumen extends Component
         $this->muatUlang();
         $this->isianTerbuka = null;
         $this->dispatch('notify', message: $hasil['diubah'] === [] ? $hasil['pesan'] : 'Bagian '.$nomor.' diperbarui — susunan KAK/TOR mengikuti isian baru.', type: $hasil['diubah'] === [] ? 'info' : 'success');
+    }
+
+    /** Buka penyunting satu teks baku: teks tersimpan atau teks baku berpenanda {nama_kegiatan}. */
+    public function bukaTeks(string $kunci): void
+    {
+        abort_unless(isset(TeksKhusus::BIDANG[$kunci]), 404);
+        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — teksnya hanya bisa dilihat.');
+        $teks = TeksKhusus::dari($this->dataKegiatan)[$kunci] ?? TeksKhusus::bakuMentah($kunci);
+        $this->teksIsian = is_array($teks) ? implode("\n", $teks) : $teks;
+        $this->versiIsian = UbahDataKegiatan::versi($this->dataKegiatan);
+        $this->isianTerbuka = null;
+        $this->resetErrorBag();
+        $this->teksTerbuka = $kunci;
+    }
+
+    public function tutupTeks(): void
+    {
+        $this->teksTerbuka = null;
+        $this->resetErrorBag();
+    }
+
+    public function simpanTeks(): void
+    {
+        abort_unless($this->teksTerbuka !== null, 404);
+        $this->simpanTeksKhusus($this->teksTerbuka, $this->teksIsian);
+    }
+
+    /** Buang penyesuaian satu teks: kembali ke teks baku. */
+    public function kembalikanTeks(string $kunci): void
+    {
+        abort_unless(isset(TeksKhusus::BIDANG[$kunci]), 404);
+        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — teksnya hanya bisa dilihat.');
+        $this->simpanTeksKhusus($kunci, null);
+    }
+
+    /** Simpan teks khusus kegiatan (teks lain yang sudah disesuaikan tetap) lewat UbahDataKegiatan; null = dibuang. */
+    private function simpanTeksKhusus(string $kunci, ?string $teks): void
+    {
+        $semua = TeksKhusus::dari($this->dataKegiatan);
+        if ($teks === null) {
+            unset($semua[$kunci]);
+        } else {
+            $semua[$kunci] = $teks;
+        }
+        $sunting = $this->teksTerbuka === $kunci;
+        $this->resetErrorBag();
+
+        try {
+            $hasil = UbahDataKegiatan::ubah($this->kegiatanId, ['teks_khusus' => $semua], StubData::currentUser(), $sunting ? $this->versiIsian : UbahDataKegiatan::versi($this->dataKegiatan));
+        } catch (ValidationException $e) {
+            $this->addError('teksIsian', collect($e->errors())->flatten()->first());
+
+            return;
+        } catch (PengaturanBerubah $e) {
+            $this->muatUlang();
+            if ($sunting) {
+                $this->versiIsian = UbahDataKegiatan::versi($this->dataKegiatan);
+            }
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->muatUlang();
+            $this->teksTerbuka = null;
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $this->teksTerbuka = null;
+        $label = TeksKhusus::BIDANG[$kunci][1];
+        $this->dispatch('notify', ...match (true) {
+            $hasil['diubah'] === [] => ['message' => "{$label} tidak berubah.", 'type' => 'info'],
+            TeksKhusus::disesuaikan($kunci, $this->dataKegiatan) => ['message' => "{$label} disesuaikan untuk kegiatan ini.", 'type' => 'success'],
+            default => ['message' => "{$label} kembali memakai teks baku.", 'type' => 'success'],
+        });
     }
 
     /** Tambah satu rincian ke RAB sumber dana yang ditampilkan (RincianRab: dirapikan & diperiksa seperti halaman RAB). */

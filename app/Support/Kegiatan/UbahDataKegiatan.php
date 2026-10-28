@@ -35,11 +35,11 @@ final class UbahDataKegiatan
         'nama_kegiatan', 'nama_kegiatan_cover', 'cover_manual', 'latar_belakang', 'tujuan', 'sasaran', 'tanggal_dokumen',
         ...SimpanPelaksanaan::ISIAN,
         'leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu',
-        'konteks', 'sumber_dana', 'data_pagu_id', 'panitia',
+        'konteks', 'sumber_dana', 'data_pagu_id', 'panitia', 'teks_khusus',
     ];
 
     /** Bagian di luar PerbaikanKegiatan::BAGIAN untuk ringkasan bagian yang berubah. */
-    private const BAGIAN_LAIN = ['konteks' => 'Catatan konteks', 'data_pagu_id' => 'Sumber dana & pagu'];
+    private const BAGIAN_LAIN = ['konteks' => 'Catatan konteks', 'data_pagu_id' => 'Sumber dana & pagu', 'teks_khusus' => 'Teks KAK/TOR yang disesuaikan'];
 
     /**
      * Sidik data kegiatan tersimpan — berubah bila kegiatan diubah di tempat lain.
@@ -143,6 +143,9 @@ final class UbahDataKegiatan
         }
         if ($ada('sumber_dana')) {
             $hasil['sumber_dana'] = is_array($isian['sumber_dana']) ? SimpanSumberDana::rapikan($isian['sumber_dana']) : $isian['sumber_dana'];
+        }
+        if ($ada('teks_khusus')) {
+            $hasil['teks_khusus'] = is_array($isian['teks_khusus']) ? TeksKhusus::rapikan($isian['teks_khusus']) : $isian['teks_khusus'];
         }
         if ($ada('panitia')) {
             $sah = is_array($isian['panitia']) && array_filter($isian['panitia'], fn ($a) => ! is_array($a)) === [];

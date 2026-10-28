@@ -1,5 +1,6 @@
 @use('App\Support\Dokumen\DokumenKegiatan')
 @use('App\Support\Dokumen\IsianSusun')
+@use('App\Support\Kegiatan\TeksKhusus')
 @use('App\Livewire\Forms\ItemBelanjaForm')
 @use('Illuminate\Support\Carbon')
 
@@ -186,6 +187,9 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <h2 id="judul-susun-{{ $b['nomor'] }}" class="text-sm font-semibold text-stone-900">{{ $b['judul'] }}</h2>
+                                @if (collect(TeksKhusus::untukBagian($b['nomor']))->contains(fn ($k) => TeksKhusus::disesuaikan($k, $this->dataKegiatan)))
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 ring-inset" data-testid="bagian-disesuaikan"><x-ui.icon name="pencil" class="size-3" /> Teks disesuaikan</span>
+                                @endif
                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset {{ $nada['kelas'] }}" data-testid="status-bagian">
                                     <x-ui.icon :name="$nada['ikon']" class="size-3" /> {{ $nada['label'] }}@if ($b['kurang'] !== [] || $b['periksa'] !== []) · {{ count($b['kurang']) ?: count($b['periksa']) }}@endif
                                 </span>
@@ -261,6 +265,52 @@
                                         <li>{{ $apa }}.</li>
                                     @endforeach
                                 </ul>
+                            </div>
+                        @endif
+                        @if (TeksKhusus::untukBagian($b['nomor']) !== [])
+                            {{-- Teks baku yang bisa disesuaikan untuk kegiatan ini (TeksKhusus); angka, tanggal & jabatan tetap dari isian. --}}
+                            <div class="mx-4 mb-3 divide-y divide-stone-100 rounded-xl ring-1 ring-stone-200 sm:mx-5" data-testid="teks-khusus-{{ $b['nomor'] }}">
+                                @foreach (TeksKhusus::untukBagian($b['nomor']) as $kunciTeks)
+                                    @php
+                                        [, $labelTeks, $jenisTeks] = TeksKhusus::BIDANG[$kunciTeks];
+                                        $sesuai = TeksKhusus::disesuaikan($kunciTeks, $this->dataKegiatan);
+                                        $baku = TeksKhusus::bakuMentah($kunciTeks);
+                                    @endphp
+                                    <div class="px-3 py-2.5" data-teks="{{ $kunciTeks }}" data-disesuaikan="{{ $sesuai ? 'ya' : 'tidak' }}" wire:key="teks-{{ $kunciTeks }}">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <p class="flex flex-wrap items-center gap-2 text-xs">
+                                                <span class="font-semibold text-stone-800">{{ $labelTeks }}</span>
+                                                <span @class(['rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset', 'bg-indigo-50 text-indigo-700 ring-indigo-200' => $sesuai, 'bg-stone-100 text-stone-600 ring-stone-200' => ! $sesuai]) data-testid="status-teks">{{ $sesuai ? 'Disesuaikan' : 'Teks baku' }}</span>
+                                            </p>
+                                            @if ($bisaUbah && $teksTerbuka !== $kunciTeks)
+                                                <span class="flex flex-wrap items-center gap-1">
+                                                    @if ($sesuai)
+                                                        <button type="button" class="btn-ghost px-2 py-1 text-xs" wire:click="kembalikanTeks('{{ $kunciTeks }}')" data-testid="kembalikan-teks-{{ $kunciTeks }}">Kembalikan ke teks baku</button>
+                                                    @endif
+                                                    <button type="button" class="btn-secondary px-2.5 py-1 text-xs" wire:click="bukaTeks('{{ $kunciTeks }}')" x-on:click="buka = true" data-testid="sesuaikan-teks-{{ $kunciTeks }}"><x-ui.icon name="pencil" class="size-3.5" /> Sesuaikan</button>
+                                                </span>
+                                            @endif
+                                        </div>
+                                        @if ($teksTerbuka === $kunciTeks)
+                                            <form wire:submit="simpanTeks" x-on:keydown.escape.prevent="$wire.tutupTeks()" class="mt-2 space-y-2" data-testid="penyunting-teks-{{ $kunciTeks }}">
+                                                <label for="teks-{{ $kunciTeks }}" class="sr-only">{{ $labelTeks }}</label>
+                                                <textarea id="teks-{{ $kunciTeks }}" wire:model="teksIsian" rows="{{ $jenisTeks === 'daftar' ? 5 : 3 }}" class="form-input text-sm" @error('teksIsian') aria-invalid="true" aria-describedby="teks-{{ $kunciTeks }}-galat" @enderror></textarea>
+                                                @error('teksIsian')<p id="teks-{{ $kunciTeks }}-galat" class="form-error" role="alert">{{ $message }}</p>@enderror
+                                                <p class="text-xs text-stone-500">{{ $jenisTeks === 'daftar' ? 'Satu butir per baris (maks. '.TeksKhusus::MAKS_BUTIR.' butir). ' : '' }}Tulis <code class="rounded bg-stone-100 px-1">{{ TeksKhusus::PENANDA }}</code> agar diisi nama kegiatan saat dicetak. Sama dengan teks baku = memakai teks baku.</p>
+                                                <details class="text-xs text-stone-500">
+                                                    <summary class="cursor-pointer font-medium text-stone-600">Lihat teks baku</summary>
+                                                    <div class="mt-1 rounded-lg bg-stone-50 p-2 whitespace-pre-line text-stone-700" data-testid="teks-baku-{{ $kunciTeks }}">{{ is_array($baku) ? implode("\n", $baku) : $baku }}</div>
+                                                </details>
+                                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                                    <button type="button" class="btn-ghost text-sm" wire:click="tutupTeks">Batal</button>
+                                                    <button type="submit" class="btn-primary text-sm" wire:loading.attr="disabled" wire:target="simpanTeks" data-testid="simpan-teks">
+                                                        <span wire:loading.remove wire:target="simpanTeks">Simpan teks</span><span wire:loading wire:target="simpanTeks">Menyimpan…</span>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @endforeach
                             </div>
                         @endif
                         <div class="rounded-b-2xl border-t border-stone-100 bg-stone-50 p-2 sm:p-4">
