@@ -9,9 +9,11 @@ use App\Enums\SumberDana;
 use App\Support\Dokumen\DaftarIsi;
 use App\Support\Dokumen\NomorHalaman;
 use App\Support\MasterKode;
-use App\Support\Pengaturan\RiwayatPengaturan;
+use App\Support\Pengaturan\KelolaNomorHalaman;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -38,23 +40,20 @@ class TemplateNomorHalaman extends Component
         $this->muat();
     }
 
-    public function simpan(NomorHalamanRepository $repo): void
+    public function simpan(): void
     {
-        if (($galat = NomorHalaman::galatFormat($this->format())) !== null) {
-            $this->addError('formatLain', $galat);
+        try {
+            KelolaNomorHalaman::simpan($this->tahun(), ['format' => $this->format()] + $this->aturan, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->addError('formatLain', $e->errors()['format'][0]);
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;
         }
 
-        $lama = $repo->untuk($this->tahun());
-        $baru = $this->hasil();
-        $posisi = fn (array $a) => ['posisi' => NomorHalaman::POSISI[$a['posisi']]] + $a;
-        $perubahan = RiwayatPengaturan::perubahan($posisi($lama), $posisi($baru), [
-            'format' => 'Format', 'posisi' => 'Posisi', 'mulai_dari' => 'Nomor pertama', 'sampul_tanpa_nomor' => 'Sampul tanpa nomor',
-            'daftar_isi_tanpa_nomor' => 'Daftar isi tanpa nomor', 'hitung_tanpa_nomor' => 'Hitung halaman tanpa nomor', 'urut_mengikuti_daftar' => 'Urut mengikuti daftar isi',
-        ]);
-        $repo->simpan($this->tahun(), $baru);
-        RiwayatPengaturan::catat('ubah_nomor_halaman', 'Aturan nomor halaman diubah'.($perubahan ? " — {$perubahan}" : '').'.');
         $this->muat();
         $this->dispatch('notify', message: 'Aturan nomor halaman tersimpan.', type: 'success');
     }

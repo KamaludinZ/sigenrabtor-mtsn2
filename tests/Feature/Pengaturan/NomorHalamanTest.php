@@ -45,6 +45,8 @@ class NomorHalamanTest extends TestCase
 
     public function test_tab_nomor_halaman_simulasi_dan_simpan(): void
     {
+        // Halaman khusus admin (middleware rute); simpan aturan juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         Livewire::withQueryParams(['tab' => 'nomor_halaman'])->test(TemplateDokumen::class)
             ->assertSet('tab', 'nomor_halaman')
             ->assertSeeLivewire(TemplateNomorHalaman::class)
@@ -74,6 +76,8 @@ class NomorHalamanTest extends TestCase
 
     public function test_format_sendiri_divalidasi(): void
     {
+        // Halaman khusus admin (middleware rute); simpan aturan juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         Livewire::test(TemplateNomorHalaman::class)
             ->set('pilihanFormat', TemplateNomorHalaman::FORMAT_LAIN)
             ->assertSeeHtml('id="format-lain"')
