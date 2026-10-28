@@ -224,7 +224,7 @@ class ProfilMadrasahTest extends TestCase
         $this->assertSame(['Ketua Tim Penjamin Mutu', 'Muslimin, M.Pd.'], NilaiVariabel::untuk($kegiatan, 'DIPA')['ttd_leading'], 'Sebelum diisi: nama akun leading.');
 
         session(['stub_role' => 'admin']);
-        $this->assertNull(NilaiVariabel::untuk($kegiatan, 'DIPA')['ttd_leading'], 'Admin bukan pemegang leading → pembuat kosong.');
+        $this->assertSame(['Ketua Tim Penjamin Mutu', 'Muslimin, M.Pd.'], NilaiVariabel::untuk($kegiatan, 'DIPA')['ttd_leading'], 'Admin melihat pembuat yang sama: satu-satunya akun leading 1.6.');
         Livewire::withQueryParams(['tab' => 'pejabat'])->test(ProfilMadrasah::class)
             ->call('bukaUbahPejabat', 'leading:1.6')
             ->assertSet('isianPejabat.jabatan', 'Ketua Tim Penjamin Mutu')

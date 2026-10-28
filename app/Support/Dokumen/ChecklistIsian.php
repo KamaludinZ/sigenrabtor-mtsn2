@@ -9,7 +9,7 @@ use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KelengkapanKode;
 use App\Support\Kegiatan\MatrikTahapan;
-use App\Support\Pengaturan\PenandaTangan;
+use App\Support\Pengaturan\PejabatBerlaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\BatasPagu;
 use App\Support\Rab\MekanismePembayaran;
@@ -101,8 +101,9 @@ final class ChecklistIsian
             $butir('jadwal', 'Jadwal kegiatan', $jadwal->lengkap()),
         ]];
 
-        $pimpinan = PenandaTangan::pimpinan();
-        $pembuat = PenandaTangan::pembuat($kegiatan);
+        $berlaku = PejabatBerlaku::tahun();
+        $pimpinan = $berlaku->pimpinan();
+        $pembuat = $berlaku->pembuat($kegiatan);
         $sk = app(TahunAnggaranRepository::class)->aktif();
         $grup[] = ['kunci' => 'pengaturan', 'judul' => 'Diatur admin', 'tautan' => StubData::currentUser()['role'] === 'admin' ? route('pengaturan.madrasah.index', ['tab' => 'pejabat']) : null, 'butir' => [
             $butir('kepala', 'Kepala Madrasah (nama & NIP)', filled($pimpinan['kepala']['nama']) && filled($pimpinan['kepala']['nip'])),

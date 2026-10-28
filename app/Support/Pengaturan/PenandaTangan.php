@@ -2,14 +2,12 @@
 
 namespace App\Support\Pengaturan;
 
-use App\Contracts\PejabatRepository;
-use App\Support\MasterKode;
-use App\Support\Stub\StubData;
-
 /**
- * Penanda tangan dokumen satu kegiatan (PRD F8 "Penanda tangan terikat"): pejabat yang berlaku pada tahun aktif dari
- * PejabatRepository. Kolom "Pembuat" = pejabat leading kegiatan; selama nama pejabat leading belum diisi admin, memakai
- * nama akun leading yang memegang leading itu (sedang masuk). NIP selalu dalam format cetak (Nip::format).
+ * Penanda tangan dokumen satu kegiatan (PRD F8 "Penanda tangan terikat"): pejabat yang berlaku pada tahun $tahun (bawaan
+ * tahun aktif) lewat PejabatBerlaku. Kolom "Pembuat" = pejabat leading kegiatan; selama nama pejabat leading belum diisi
+ * admin, memakai nama akun leading pembuat kegiatan (atau satu-satunya akun leading aktif yang tertaut ke leading itu).
+ * NIP selalu dalam format cetak (Nip::format). Untuk beberapa pertanyaan pada satu dokumen, pakai satu objek
+ * PejabatBerlaku::tahun() agar pejabat dibaca sekali.
  */
 final class PenandaTangan
 {
@@ -17,46 +15,30 @@ final class PenandaTangan
      * @param  array<string, mixed>  $kegiatan
      * @return array{jabatan: string, nama: string|null, nip: string|null}|null Null bila leading kegiatan belum dipilih/tidak dikenal.
      */
-    public static function pembuat(array $kegiatan): ?array
+    public static function pembuat(array $kegiatan, ?int $tahun = null): ?array
     {
-        $kode = $kegiatan['leading'] ?? null;
-        $leading = MasterKode::leading($kode);
-        if ($leading === null) {
-            return null;
-        }
-
-        $pejabat = StubData::pejabatLeading()[$kode] ?? ['jabatan' => $leading['jabatan_penanda_tangan'], 'nama' => null, 'nip' => null];
-        if ($pejabat['nama']) {
-            return ['jabatan' => $pejabat['jabatan'], 'nama' => $pejabat['nama'], 'nip' => $pejabat['nip'] ? Nip::format($pejabat['nip']) : null];
-        }
-
-        $pengguna = StubData::currentUser();
-        $akunLeading = $pengguna['role'] === 'leading' && in_array($kode, $pengguna['leadings'], true);
-
-        return ['jabatan' => $pejabat['jabatan'], 'nama' => $akunLeading ? $pengguna['name'] : null, 'nip' => null];
+        return PejabatBerlaku::tahun($tahun)->pembuat($kegiatan);
     }
 
     /**
-     * Penanda tangan blok "Mengetahui" (Ketua Komite) dokumen sumber dana $sumber menurut pengaturan tahun aktif
+     * Penanda tangan blok "Mengetahui" (Ketua Komite) dokumen sumber dana $sumber menurut pengaturan tahun itu
      * (PejabatRepository::aturanMengetahui; bawaan DIPA & Komite); null bila blok tidak ditampilkan. Tanpa sumber dana:
      * tampil.
      *
      * @return array{jabatan: string, nama: string|null, nip: string|null}|null
      */
-    public static function mengetahui(?string $sumber): ?array
+    public static function mengetahui(?string $sumber, ?int $tahun = null): ?array
     {
-        $aturan = app(PejabatRepository::class)->aturanMengetahui(StubData::tahunAktif()['tahun']);
-
-        return $sumber === null || ($aturan[$sumber] ?? true) ? self::pimpinan()['komite'] : null;
+        return PejabatBerlaku::tahun($tahun)->mengetahui($sumber);
     }
 
     /**
-     * Kepala Madrasah & Ketua Komite tahun aktif dengan NIP berformat cetak.
+     * Kepala Madrasah & Ketua Komite tahun itu dengan NIP berformat cetak.
      *
      * @return array{kepala: array{jabatan: string, nama: string|null, nip: string|null}, komite: array{jabatan: string, nama: string|null, nip: string|null}}
      */
-    public static function pimpinan(): array
+    public static function pimpinan(?int $tahun = null): array
     {
-        return array_map(fn (array $p) => ['nip' => $p['nip'] ? Nip::format($p['nip']) : null] + $p, StubData::pejabat());
+        return PejabatBerlaku::tahun($tahun)->pimpinan();
     }
 }

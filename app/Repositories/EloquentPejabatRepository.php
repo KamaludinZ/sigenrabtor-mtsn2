@@ -53,6 +53,13 @@ class EloquentPejabatRepository implements PejabatRepository
         });
     }
 
+    public function leadingTersimpan(int $tahun, string $kode): ?array
+    {
+        $b = DB::table('pejabat_penanda_tangan')->where('tahun_anggaran', $tahun)->where('peran', 'leading')->where('kode_leading', $kode)->first();
+
+        return $b ? ['jabatan' => $b->jabatan, 'nama' => $b->nama, 'nip' => $b->nip] : null;
+    }
+
     public function aturanMengetahui(int $tahun): array
     {
         $tersimpan = DB::table('aturan_mengetahui')->where('tahun_anggaran', $tahun)->pluck('tampil', 'sumber_dana')->map(fn ($v) => (bool) $v)->all();

@@ -4,11 +4,11 @@ namespace App\Support\Stub;
 
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\LeadingRepository;
-use App\Contracts\PejabatRepository;
 use App\Contracts\PenggunaRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\Pengaturan\DaftarDasarHukum;
+use App\Support\Pengaturan\PejabatBerlaku;
 use App\Support\Pengaturan\TeksBaku;
 
 /**
@@ -128,9 +128,9 @@ class StubData
      */
     public static function pejabat(): array
     {
-        $pejabat = app(PejabatRepository::class)->untukTahun(self::tahunAktif()['tahun']);
+        $pejabat = PejabatBerlaku::tahun();
 
-        return ['kepala' => $pejabat['kepala'], 'komite' => $pejabat['komite']];
+        return ['kepala' => $pejabat->kepala, 'komite' => $pejabat->komite];
     }
 
     /**
@@ -141,7 +141,7 @@ class StubData
      */
     public static function pejabatLeading(): array
     {
-        return app(PejabatRepository::class)->untukTahun(self::tahunAktif()['tahun'])['leading'];
+        return PejabatBerlaku::tahun()->leading;
     }
 
     /**

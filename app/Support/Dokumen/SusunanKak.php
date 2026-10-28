@@ -13,7 +13,7 @@ use App\Support\Kegiatan\KunciDokumen;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\DaftarDasarHukum;
-use App\Support\Pengaturan\PenandaTangan;
+use App\Support\Pengaturan\PejabatBerlaku;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -181,7 +181,7 @@ final readonly class SusunanKak
         $bagian[] = ['nomor' => 8, 'judul' => 'Pembiayaan', 'isi' => $pembiayaan];
 
         $nomor = 9;
-        $bagian[] = ['nomor' => 9, 'judul' => 'Lembar Pengesahan', 'isi' => [self::pengesahan($kegiatan, $sumber, $madrasah['kota'], $kosong)]];
+        $bagian[] = ['nomor' => 9, 'judul' => 'Lembar Pengesahan', 'isi' => [self::pengesahan($kegiatan, $sumber, $madrasah['kota'], $kosong, $tahun)]];
 
         $status = StatusKegiatan::tryFrom($kegiatan['status'] ?? '') ?? StatusKegiatan::Draf;
         $cover = [
@@ -259,17 +259,19 @@ final readonly class SusunanKak
     }
 
     /**
-     * Blok tanda tangan: Mengetahui (Ketua Komite; per sumber dana menurut PenandaTangan::mengetahui, bawaan DIPA & Komite),
-     * Pembuat (pejabat leading), Menyetujui (Kepala). Lembar pengesahan RAB memakai blok yang sama (SusunanRab).
+     * Blok tanda tangan: Mengetahui (Ketua Komite; per sumber dana menurut PejabatBerlaku::mengetahui, bawaan DIPA & Komite),
+     * Pembuat (pejabat leading), Menyetujui (Kepala) — pejabat yang berlaku pada tahun $tahun (bawaan tahun aktif). Lembar
+     * pengesahan RAB memakai blok yang sama (SusunanRab).
      *
      * @param  array<string, mixed>  $kegiatan
      * @param  callable(string): mixed  $kosong  Pencatat isian yang belum lengkap (tanggal dokumen).
      * @return array{jenis: string, kolom: list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null}>}
      */
-    public static function pengesahan(array $kegiatan, ?string $sumber, string $kota, callable $kosong): array
+    public static function pengesahan(array $kegiatan, ?string $sumber, string $kota, callable $kosong, ?int $tahun = null): array
     {
-        $pejabat = PenandaTangan::pimpinan();
-        $pembuat = PenandaTangan::pembuat($kegiatan);
+        $berlaku = PejabatBerlaku::tahun($tahun);
+        $pejabat = $berlaku->pimpinan();
+        $pembuat = $berlaku->pembuat($kegiatan);
         $tanggal = Format::tanggal($kegiatan['tanggal_dokumen'] ?? null);
 
         if (! $tanggal) {
@@ -277,7 +279,7 @@ final readonly class SusunanKak
         }
 
         $kolom = [];
-        if (($mengetahui = PenandaTangan::mengetahui($sumber)) !== null) {
+        if (($mengetahui = $berlaku->mengetahui($sumber)) !== null) {
             $kolom[] = ['peran' => 'Mengetahui,', 'jabatan' => $mengetahui['jabatan'], 'nama' => $mengetahui['nama'], 'nip' => $mengetahui['nip'], 'tempat_tanggal' => null];
         }
         $kolom[] = ['peran' => 'Pembuat,', 'jabatan' => $pembuat['jabatan'] ?? 'Pejabat leading', 'nama' => $pembuat['nama'] ?? null, 'nip' => $pembuat['nip'] ?? null, 'tempat_tanggal' => $kota.', '.($tanggal ?? '……………')];

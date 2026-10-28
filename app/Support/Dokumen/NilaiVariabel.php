@@ -8,7 +8,7 @@ use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
-use App\Support\Pengaturan\PenandaTangan;
+use App\Support\Pengaturan\PejabatBerlaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 
@@ -48,7 +48,8 @@ final class NilaiVariabel
     {
         $tahun = StubData::tahunAktif()['tahun'];
         $madrasah = StubData::madrasah();
-        $pejabat = PenandaTangan::pimpinan();
+        $berlaku = PejabatBerlaku::tahun($tahun);
+        $pejabat = $berlaku->pimpinan();
         $teks = fn (string $kunci) => ($isi = trim((string) ($kegiatan[$kunci] ?? ''))) === '' ? null : $isi;
         $nama = $teks('nama_kegiatan');
         $kode = fn (array $daftar, string $kunci, string $cari = 'kode') => MasterKode::cari($daftar, $kegiatan[$kunci] ?? null, $cari);
@@ -70,7 +71,7 @@ final class NilaiVariabel
         $jumlahPeserta = filter_var($kegiatan['peserta_jumlah'] ?? null, FILTER_VALIDATE_INT) ?: null;
         $jenisPeserta = $teks('peserta_jenis');
         $ttd = fn (array $p) => $p['nama'] ? array_values(array_filter([$p['jabatan'], $p['nama'], $p['nip'] ? 'NIP. '.$p['nip'] : null])) : null;
-        $pembuat = PenandaTangan::pembuat($kegiatan);
+        $pembuat = $berlaku->pembuat($kegiatan);
 
         return [
             'tahun_anggaran' => (string) $tahun,

@@ -51,6 +51,13 @@ class StubPejabatRepository implements PejabatRepository
         $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 
+    public function leadingTersimpan(int $tahun, string $kode): ?array
+    {
+        $isi = $this->baca()[(string) $tahun]['leading'][$kode] ?? null;
+
+        return is_array($isi) ? ['jabatan' => (string) ($isi['jabatan'] ?? ''), 'nama' => ($isi['nama'] ?? null) ?: null, 'nip' => ($isi['nip'] ?? null) ?: null] : null;
+    }
+
     public function aturanMengetahui(int $tahun): array
     {
         $tersimpan = $this->baca()[(string) $tahun]['mengetahui'] ?? [];

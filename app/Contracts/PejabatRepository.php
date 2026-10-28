@@ -23,6 +23,14 @@ interface PejabatRepository
     public function simpan(int $tahun, string $peran, ?string $leading, array $pejabat): void;
 
     /**
+     * Pejabat leading $kode yang tersimpan untuk tahun $tahun — juga untuk leading yang kini nonaktif (untukTahun hanya
+     * memuat leading aktif); null bila belum pernah disimpan.
+     *
+     * @return array{jabatan: string, nama: string|null, nip: string|null}|null
+     */
+    public function leadingTersimpan(int $tahun, string $kode): ?array;
+
+    /**
      * Pengaturan blok "Mengetahui" (Ketua Komite) di lembar pengesahan tahun $tahun: tampil atau tidak per sumber dana
      * (kunci SumberDana). Bawaan PRD §12: tampil di dokumen DIPA maupun Komite.
      *
