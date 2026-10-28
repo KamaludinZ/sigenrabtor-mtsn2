@@ -8,10 +8,10 @@ use App\Contracts\PenggunaRepository;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pengaturan\AturanAkun;
 use App\Support\Pengaturan\AturanLeading;
+use App\Support\Pengaturan\KelolaAkun;
 use App\Support\Pengaturan\KelolaLeading;
 use App\Support\Pengaturan\Nip;
 use App\Support\Pengaturan\PengaturanBerubah;
-use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
@@ -173,52 +173,31 @@ class LeadingUser extends Component
         $this->resetErrorBag(array_map(fn (string $k) => "isianAkun.{$k}", array_keys($this->isianAkun)));
     }
 
-    public function simpanAkun(PenggunaRepository $repo): void
+    public function simpanAkun(): void
     {
-        if ($this->berubahDiTempatLain()) {
+        if ($this->berubahDiTempatLain() || $this->suntingAkun === null) {
             return;
         }
         $id = $this->suntingAkun === 'baru' ? null : (int) $this->suntingAkun;
-        $lama = $id === null ? null : collect($this->akun)->firstWhere('id', $id);
-        if ($this->suntingAkun === null || ($id !== null && $lama === null)) {
-            return;
-        }
 
         $this->resetErrorBag(array_map(fn (string $k) => "isianAkun.{$k}", array_keys($this->isianAkun)));
-        $urutanLeading = array_column($this->leading, 'kode');
-        $isian = [
-            'name' => AturanAkun::rapikan((string) $this->isianAkun['name']),
-            'email' => mb_strtolower(AturanAkun::rapikan((string) $this->isianAkun['email'])),
-            'role' => (string) $this->isianAkun['role'],
-            'jabatan' => AturanAkun::rapikan((string) $this->isianAkun['jabatan']),
-            'nip' => Nip::bersihkan((string) $this->isianAkun['nip']),
-            // Urut seperti daftar leading, tanpa dobel.
-            'leadings' => array_values(array_intersect($urutanLeading, array_map('strval', (array) $this->isianAkun['leadings']))),
-        ];
-        $this->isianAkun = $isian;
-        $aktif = array_column(array_filter($this->leading, fn (array $l) => $l['is_active']), 'kode');
-        $galat = AturanAkun::galat($isian, $this->akun, $aktif, $id, StubData::currentUser()['id']);
-        foreach ($galat as $kolom => $pesan) {
-            $this->addError("isianAkun.{$kolom}", $pesan);
-        }
-        if ($galat !== []) {
-            return;
-        }
-
-        $baru = ['name' => $isian['name'], 'email' => $isian['email'], 'role' => $isian['role'], 'jabatan' => $isian['jabatan'] ?: null, 'nip' => $isian['nip'] ?: null, 'leadings' => $isian['role'] === 'admin' ? [] : $isian['leadings']];
-        $tampil = fn (array $a) => ['role' => self::PERAN[$a['role']]['label'], 'nip' => $a['nip'] ? Nip::format($a['nip']) : null] + $a;
-        if ($lama !== null) {
-            $ringkasan = RiwayatPengaturan::perubahan($tampil($lama), $tampil($baru), ['name' => 'Nama', 'email' => 'Surel', 'role' => 'Peran', 'jabatan' => 'Jabatan', 'nip' => 'NIP', 'leadings' => 'Leading']);
-            if ($ringkasan === null) {
-                $this->batalAkun();
-                $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
-
-                return;
-            }
-        }
-
+        $this->isianAkun = KelolaAkun::rapikan($this->isianAkun);
         try {
-            $idBaru = $repo->simpan($baru, $id);
+            $hasil = KelolaAkun::simpan($this->isianAkun, $id, StubData::currentUser(), $this->versi);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $kolom === 'id' ? $this->dispatch('notify', message: $pesan[0], type: 'error') : $this->addError("isianAkun.{$kolom}", $pesan[0]);
+            }
+
+            return;
+        } catch (PengaturanBerubah) {
+            $this->muatUlang();
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
         } catch (RuntimeException $e) {
             report($e);
             $this->dispatch('notify', message: 'Akun gagal disimpan. Isian masih ada di layar — coba simpan lagi.', type: 'error');
@@ -226,20 +205,22 @@ class LeadingUser extends Component
             return;
         }
 
-        RiwayatPengaturan::catat($lama === null ? 'tambah_akun' : 'ubah_akun', $lama === null
-            ? "Akun {$baru['name']} ({$baru['email']}) — ".self::PERAN[$baru['role']]['label'].($baru['leadings'] ? ' '.implode(', ', $baru['leadings']) : '')
-            : "Akun {$lama['name']} — {$ringkasan}");
-        unset($this->akun);
         $this->batalAkun();
-        $this->dispatch('notify', message: 'Akun '.$baru['name'].($lama === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
-        $this->dispatch('akun-disimpan', id: $idBaru);
+        if ($hasil['ringkasan'] === null) {
+            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+            return;
+        }
+        unset($this->akun);
+        $this->dispatch('notify', message: 'Akun '.$hasil['akun']['name'].($id === null ? ' ditambahkan.' : ' diperbarui.'), type: 'success');
+        $this->dispatch('akun-disimpan', id: $hasil['id']);
     }
 
     /**
      * Nonaktifkan akun (konfirmasi dulu) atau aktifkan kembali. Akun sendiri & admin aktif terakhir tidak bisa
      * dinonaktifkan; akun nonaktif tetap tercatat sebagai pembuat kegiatannya.
      */
-    public function ubahStatusAkun(int $id, PenggunaRepository $repo): void
+    public function ubahStatusAkun(int $id): void
     {
         if ($this->berubahDiTempatLain()) {
             return;
@@ -250,12 +231,7 @@ class LeadingUser extends Component
         }
 
         if ($akun['is_active']) {
-            $tolak = match (true) {
-                $id === StubData::currentUser()['id'] => 'Akun Anda sendiri tidak bisa dinonaktifkan.',
-                $akun['role'] === 'admin' && count(array_filter($this->akun, fn (array $a) => $a['role'] === 'admin' && $a['is_active'])) === 1 => 'Minimal satu admin aktif harus tetap ada.',
-                default => null,
-            };
-            if ($tolak !== null) {
+            if (($tolak = KelolaAkun::alasanTolakNonaktif($akun, $this->akun, StubData::currentUser()['id'])) !== null) {
                 $this->konfirmasiNonaktifAkun = null;
                 $this->dispatch('notify', message: $tolak, type: 'error');
 
@@ -269,9 +245,22 @@ class LeadingUser extends Component
             }
         }
 
+        $this->konfirmasiNonaktifAkun = null;
         $aktif = ! $akun['is_active'];
         try {
-            $repo->simpan(['is_active' => $aktif], $id);
+            $hasil = KelolaAkun::ubahStatus($id, $aktif, StubData::currentUser(), $this->versi);
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+
+            return;
+        } catch (PengaturanBerubah) {
+            $this->muatUlang();
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
         } catch (RuntimeException $e) {
             report($e);
             $this->dispatch('notify', message: 'Status akun gagal disimpan — coba lagi.', type: 'error');
@@ -279,20 +268,16 @@ class LeadingUser extends Component
             return;
         }
 
-        RiwayatPengaturan::catat('ubah_status_akun', "Akun {$akun['name']}".($aktif ? ' diaktifkan kembali' : ' dinonaktifkan'));
         unset($this->akun);
-        $this->konfirmasiNonaktifAkun = null;
-        $tanpaLeadingAktif = $aktif && $akun['role'] === 'leading'
-            && array_intersect($akun['leadings'], array_column(array_filter($this->leading, fn (array $l) => $l['is_active']), 'kode')) === [];
         $this->dispatch('notify', message: "Akun {$akun['name']}".($aktif
-            ? ($tanpaLeadingAktif ? ' aktif kembali, tetapi belum tertaut ke leading aktif — tautkan dulu agar bisa membuat kegiatan.' : ' aktif kembali — bisa masuk lagi.')
-            : ' dinonaktifkan — tidak bisa masuk lagi.'), type: $tanpaLeadingAktif ? 'info' : 'success');
+            ? ($hasil['tanpa_leading_aktif'] ? ' aktif kembali, tetapi belum tertaut ke leading aktif — tautkan dulu agar bisa membuat kegiatan.' : ' aktif kembali — bisa masuk lagi.')
+            : ' dinonaktifkan — tidak bisa masuk lagi.'), type: $hasil['tanpa_leading_aktif'] ? 'info' : 'success');
     }
 
     /** Jumlah kegiatan (semua tahun) yang dibuat akun $id — tetap tercatat atas namanya bila akun dinonaktifkan. */
     public function kegiatanBuatan(int $id): int
     {
-        return count(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => (int) ($k['user_id'] ?? 0) === $id));
+        return KelolaAkun::kegiatanBuatan($id);
     }
 
     public function hapusSaringanAkun(): void
