@@ -148,6 +148,46 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(page).not.toHaveURL(/tampilan=/);
     });
 
+    test('simpan draf: lanjutkan draf lain yang berubah, simpan lalu hapus draf set lengkap, alasan cap DRAF', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/dokumen');
+        const kartu = page.getByTestId('draf-dokumen');
+        await expect(page.getByTestId('status-draf-dokumen')).toHaveAttribute('data-keadaan', 'belum');
+        await expect(kartu).toHaveAttribute('data-keadaan', 'belum');
+
+        // Contoh: draf KAK/TOR Komite disimpan sebelum tempat pelaksanaan diganti.
+        const lain = kartu.getByTestId('draf-lain').locator('[data-draf="KAK+TOR|Komite"]');
+        await expect(lain).toContainText('Muslimin, M.Pd.');
+        await lain.getByTestId('lanjutkan-draf').click();
+        await expect(page).toHaveURL(/jenis=KAK%2BTOR&sumber=Komite/);
+        await expect(kartu).toHaveAttribute('data-keadaan', 'berubah');
+        await expect(kartu.getByTestId('banding-draf')).toContainText('Saat disimpan');
+        await kartu.getByTestId('berubah-sejak-draf').getByRole('link', { name: '5. Tempat Pelaksanaan' }).click();
+        await expect(page).toHaveURL(/#susun-bagian-5$/);
+        await kartu.screenshot({ path: `storage/playwright/shots/susun-draf-berubah-${testInfo.project.name}.png` });
+
+        // Alasan cap DRAF beserta cara menghilangkannya.
+        await page.getByTestId('keadaan-susun').click();
+        await expect(page).toHaveURL(/#berkas-jenis$/);
+        await expect(page.getByTestId('alasan-draf-susun').locator('[data-alasan="status"]')).toContainText('Ajukan pemeriksaan');
+
+        await page.goto('/kegiatan/1/dokumen');
+        await page.getByTestId('simpan-draf-dokumen').click();
+        await expect(kartu).toHaveAttribute('data-keadaan', 'sesuai');
+        await expect(page.getByTestId('status-draf-dokumen')).toHaveText('Draf sesuai data terbaru');
+        await expect(page.getByTestId('simpan-draf-dokumen')).toContainText('Perbarui draf');
+
+        // Pulihkan data bersama: hapus draf set lengkap (konfirmasi di tempat, Esc membatalkan).
+        await kartu.getByTestId('hapus-draf').click();
+        await expect(kartu.getByTestId('konfirmasi-hapus-draf')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(kartu.getByTestId('konfirmasi-hapus-draf')).toBeHidden();
+        await kartu.getByTestId('hapus-draf').click();
+        await kartu.getByTestId('ya-hapus-draf').click();
+        await expect(kartu).toHaveAttribute('data-keadaan', 'belum');
+        await expect(kartu.getByTestId('draf-lain').locator('[data-draf]')).toHaveCount(1);
+    });
+
     test('sesuaikan teks baku: kalimat pengarah tercetak di KAK lalu dikembalikan ke teks baku', async ({ page }, testInfo) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/1/dokumen?jenis=KAK');

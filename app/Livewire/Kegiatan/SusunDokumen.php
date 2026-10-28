@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Kegiatan;
 
+use App\Contracts\DrafDokumenRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\CoverDokumen;
+use App\Support\Dokumen\DrafDokumen;
 use App\Support\Dokumen\IsianSusun;
 use App\Support\Dokumen\JenisDokumen;
 use App\Support\Dokumen\PemeriksaanCetak;
@@ -34,7 +36,8 @@ use Livewire\Component;
  * Tab ruang kerja "Susun KAK/TOR" (PRD F4 "Buat KAK/TOR Otomatis"): sembilan bagian KAK/TOR disusun otomatis dari data
  * kegiatan, master & pengaturan tahun aktif, dan RAB — tiap bagian dengan status, isian yang kurang, asal isinya, dan
  * cuplikan hasil susunannya (SusunanOtomatis) — beserta kepala RAB otomatis, master template yang dipakai, dan draf
- * dokumen tersimpan (tiruan StubData::drafDokumen sampai Simpan Draf tersedia). Sumber dana di `?sumber=`
+ * dokumen (DrafDokumen: `simpanDraf()`/`hapusDraf()` untuk jenis × sumber yang tampil, keadaan sesuai/berubah sejak
+ * draf, draf lain bertautan). Sumber dana di `?sumber=`
  * ('' = sumber pertama); jenis dokumen di `?jenis=` (JenisDokumen, pilihan <x-dokumen.pilih-jenis>) menentukan bagian yang
  * tampil (cover/KAK-TOR/RAB), master template, cap DRAF, dan pemeriksaan cetak (PemeriksaanCetak: nama berkas & butir cek).
  * Isian yang menentukan bagian bisa dilengkapi di tempat (`bukaIsian($nomor)` → `simpanIsian()`, kolom IsianSusun, lewat
@@ -113,7 +116,7 @@ class SusunDokumen extends Component
     {
         $jenis = JenisDokumen::rapikan($this->jenis);
         $this->jenis = JenisDokumen::perluSumber($jenis) && $this->kak->sumber === null ? JenisDokumen::TANPA_SUMBER : $jenis;
-        unset($this->pemeriksaan, $this->pilihanJenis);
+        unset($this->pemeriksaan, $this->pilihanJenis, $this->keadaanDraf);
     }
 
     /** Kegiatan masih bisa diubah (status Draf/Dikembalikan & tahun anggaran terbuka). */
@@ -279,6 +282,43 @@ class SusunDokumen extends Component
         }
     }
 
+    /** Simpan (atau perbarui) draf dokumen jenis × sumber dana yang sedang disusun (DrafDokumen). */
+    public function simpanDraf(): void
+    {
+        try {
+            $draf = DrafDokumen::simpan($this->kegiatanId, $this->jenis, $this->kak->sumber, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->muatUlang();
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $this->dispatch('notify', message: 'Draf '.DrafDokumen::nama($draf['jenis'], $draf['sumber']).' tersimpan — lanjutkan kapan saja dari tab ini.', type: 'success');
+    }
+
+    /** Hapus draf jenis × sumber yang tampil; isi dokumen & data kegiatan tidak berubah. */
+    public function hapusDraf(): void
+    {
+        $nama = DrafDokumen::nama($this->jenis, $this->kak->sumber);
+        try {
+            $ada = DrafDokumen::hapus($this->kegiatanId, $this->jenis, $this->kak->sumber, StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->muatUlang();
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $this->dispatch('notify', message: $ada ? "Draf {$nama} dihapus." : "Draf {$nama} sudah tidak ada.", type: 'info');
+    }
+
     /** Buang data & susunan yang dihitung agar tampilan memakai data tersimpan terbaru. */
     private function muatUlang(): void
     {
@@ -288,7 +328,7 @@ class SusunDokumen extends Component
 
     private function lupakan(): void
     {
-        unset($this->kak, $this->rab, $this->susunan, $this->statusCetak, $this->pemeriksaan, $this->pilihanJenis, $this->cover);
+        unset($this->kak, $this->rab, $this->susunan, $this->statusCetak, $this->pemeriksaan, $this->pilihanJenis, $this->cover, $this->drafSemua, $this->keadaanDraf);
     }
 
     /** @return array<string, mixed> */
@@ -371,10 +411,24 @@ class SusunDokumen extends Component
         return StatusCetak::dari($this->dataKegiatan, $this->sumber ?: null, $this->kak, $this->rab);
     }
 
-    /** @return array{jenis: string, sumber: string|null, disimpan_pada: string, oleh: string}|null */
-    public function draf(): ?array
+    /** @return list<array<string, mixed>> Draf dokumen kegiatan ini, terbaru dulu. */
+    #[Computed]
+    public function drafSemua(): array
     {
-        return StubData::drafDokumen($this->kegiatanId);
+        return app(DrafDokumenRepository::class)->untukKegiatan($this->kegiatanId);
+    }
+
+    /** @return array<string, mixed>|null Draf jenis × sumber dana yang sedang tampil. */
+    public function drafAktif(): ?array
+    {
+        return collect($this->drafSemua)->first(fn (array $d) => $d['jenis'] === $this->jenis && $d['sumber'] === $this->kak->sumber);
+    }
+
+    /** @return array{keadaan: string, label: string, keterangan: string, berubah: list<array{kunci: string, label: string, jangkar: string}>} */
+    #[Computed]
+    public function keadaanDraf(): array
+    {
+        return DrafDokumen::keadaan($this->drafAktif(), DrafDokumen::sidik($this->jenis, $this->kak, $this->rab, $this->cover['nilai']), $this->kak);
     }
 
     public function render()

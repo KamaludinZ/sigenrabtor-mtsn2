@@ -1,4 +1,6 @@
 @use('App\Support\Dokumen\DokumenKegiatan')
+@use('App\Support\Dokumen\DrafDokumen')
+@use('App\Support\Dokumen\StatusCetak')
 @use('App\Support\Dokumen\IsianSusun')
 @use('App\Support\Kegiatan\TeksKhusus')
 @use('App\Livewire\Forms\ItemBelanjaForm')
@@ -9,7 +11,9 @@
     $rab = $this->rab;
     $susunan = $this->susunan;
     $statusCetak = $this->statusCetak;
-    $draf = $this->draf();
+    $drafAktif = $this->drafAktif();
+    $keadaanDraf = $this->keadaanDraf;
+    $drafLain = collect($this->drafSemua)->reject(fn (array $d) => $d['id'] === ($drafAktif['id'] ?? null))->values();
     $sumberAktif = $kak->sumber;
     $isi = $this->isi();
     $adaKak = in_array('kak', $isi, true);
@@ -25,6 +29,20 @@
     $dokumen = $tampilan === 'dokumen';
     $ke = ['cover' => $dokumen ? '#hasil-cover' : '#susun-cover', 'rab' => $dokumen ? '#hasil-rab' : '#susun-rab'];
     $keBagian = fn (int $n) => ($dokumen ? '#cetak-kak-bagian-' : '#susun-bagian-').$n;
+    // Jangkar bagian yang berubah sejak draf (kunci DrafDokumen::keadaan): cover, kak-{n}, rab.
+    $keBerubah = fn (string $kunci) => str_starts_with($kunci, 'kak-') ? $keBagian((int) substr($kunci, 4)) : $ke[$kunci];
+    // Cara menghilangkan cap DRAF (StatusCetak::SARAN) per alasan StatusDraf.
+    $bagianKurang = collect($adaKak ? $susunan->bagian : [])->firstWhere('status', 'kurang')['nomor'] ?? null;
+    $tautanSaran = [
+        'status' => route('kegiatan.edit', ['kegiatan' => $kegiatanId]),
+        'kurang' => $bagianKurang ? $keBagian($bagianKurang) : ($adaRab && $susunan->kurangRab !== [] ? $ke['rab'] : null),
+        'pagu' => route('kegiatan.rab', array_filter(['kegiatan' => $kegiatanId, 'sumber' => $sumberAktif])),
+    ];
+    $nadaDraf = [
+        'belum' => 'bg-stone-100 text-stone-600 ring-stone-200',
+        'sesuai' => 'bg-brand-50 text-brand-800 ring-brand-200',
+        'berubah' => 'bg-gold-50 text-gold-700 ring-gold-200',
+    ];
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $admin = \App\Support\Stub\StubData::currentUser()['role'] === 'admin';
     $nadaStatus = [
@@ -62,7 +80,13 @@
             <a href="{{ route('kegiatan.pratinjau', ['kegiatan' => $kegiatanId] + ($sumberAktif ? ['sumber' => $sumberAktif] : [])).$jangkarPratinjau }}" wire:navigate class="btn-secondary" data-testid="buka-pratinjau">
                 <x-ui.icon name="eye" class="size-4" /> Pratinjau dokumen
             </a>
-            <button type="button" class="btn-primary" disabled data-testid="simpan-draf-dokumen"><x-ui.icon name="save" class="size-4" /> Simpan draf <x-ui.segera /></button>
+            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 {{ $nadaDraf[$keadaanDraf['keadaan']] }}" data-testid="status-draf-dokumen" data-keadaan="{{ $keadaanDraf['keadaan'] }}">{{ $keadaanDraf['label'] }}</span>
+            @if ($bisaUbah)
+                <button type="button" class="btn-primary" wire:click="simpanDraf" wire:loading.attr="disabled" wire:target="simpanDraf" data-testid="simpan-draf-dokumen">
+                    <x-ui.icon name="save" class="size-4" />
+                    <span wire:loading.remove wire:target="simpanDraf">{{ $drafAktif ? 'Perbarui draf' : 'Simpan draf' }}</span><span wire:loading wire:target="simpanDraf">Menyimpan…</span>
+                </button>
+            @endif
         </div>
     </div>
 
@@ -100,10 +124,10 @@
                     </button>
                 @endforeach
             </div>
-            <span @class(['inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', 'bg-red-50 text-red-700 ring-red-200' => $statusDraf->draf, 'bg-brand-50 text-brand-800 ring-brand-200' => ! $statusDraf->draf]) data-testid="keadaan-susun" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}">
+            <a href="#berkas-jenis" @class(['inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100' => $statusDraf->draf, 'bg-brand-50 text-brand-800 ring-brand-200 hover:bg-brand-100' => ! $statusDraf->draf]) data-testid="keadaan-susun" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}">
                 <x-ui.icon :name="$statusDraf->draf ? 'alert' : 'check-circle'" class="size-3.5" />
-                {{ $statusDraf->draf ? 'Tercetak sebagai DRAF' : 'Siap dicetak' }}
-            </span>
+                {{ $statusDraf->draf ? 'Tercetak sebagai DRAF' : 'Siap dicetak' }}@if ($statusDraf->draf) <span class="font-normal">· {{ count($statusDraf->alasan) }} alasan</span>@endif
+            </a>
         </div>
     </div>
 
@@ -464,7 +488,7 @@
             @endif
 
             {{-- Berkas cetak jenis terpilih (PemeriksaanCetak). --}}
-            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-berkas-jenis" data-testid="berkas-jenis" data-siap="{{ $pemeriksaan['siap'] ? 'ya' : 'tidak' }}">
+            <section id="berkas-jenis" class="scroll-mt-24 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 target:ring-2 target:ring-brand-400" aria-labelledby="judul-berkas-jenis" data-testid="berkas-jenis" data-siap="{{ $pemeriksaan['siap'] ? 'ya' : 'tidak' }}">
                 <h2 id="judul-berkas-jenis" class="text-sm font-semibold text-stone-900">Berkas {{ $pemeriksaan['label_jenis'] }}</h2>
                 <p class="mt-1.5 break-all font-mono text-xs text-stone-700" data-testid="nama-berkas">{{ $pemeriksaan['nama_berkas'] }}</p>
                 <ul class="mt-2 space-y-1 text-xs">
@@ -475,19 +499,98 @@
                         </li>
                     @endforeach
                 </ul>
-                <p class="mt-2 text-xs text-stone-500">{{ $pemeriksaan['siap'] ? 'Siap dicetak tanpa cap DRAF.' : 'Tetap bisa dicetak, dengan cap DRAF sampai lengkap & disetujui.' }}</p>
+                @if ($statusDraf->draf)
+                    {{-- Alasan cap DRAF jenis terpilih (StatusDraf) + cara menghilangkannya. --}}
+                    <div class="mt-3 rounded-lg bg-red-50/60 px-3 py-2 ring-1 ring-red-100" data-testid="alasan-draf-susun">
+                        <p class="text-xs font-semibold text-red-800">Bercap DRAF karena:</p>
+                        <ul class="mt-1 space-y-1.5 text-xs">
+                            @foreach ($statusDraf->alasan as $alasan)
+                                <li data-alasan="{{ $alasan['kunci'] }}">
+                                    <span class="text-stone-800">{{ $alasan['teks'] }}</span>
+                                    @if ($tautanSaran[$alasan['kunci']])
+                                        <a href="{{ $tautanSaran[$alasan['kunci']] }}" @if (! str_starts_with($tautanSaran[$alasan['kunci']], '#')) wire:navigate @endif class="block font-medium text-brand-700 hover:text-brand-800">{{ StatusCetak::SARAN[$alasan['kunci']] }}</a>
+                                    @else
+                                        <span class="block text-stone-500">{{ StatusCetak::SARAN[$alasan['kunci']] }}</span>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    <p class="mt-2 text-xs text-stone-500">Tetap bisa dicetak — cap DRAF hilang sendiri setelah lengkap & disetujui.</p>
+                @else
+                    <p class="mt-2 text-xs text-stone-500">Siap dicetak tanpa cap DRAF.</p>
+                @endif
             </section>
 
-            {{-- Draf dokumen --}}
-            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-draf-dokumen" data-testid="draf-dokumen" data-ada="{{ $draf ? 'ya' : 'tidak' }}">
-                <h2 id="judul-draf-dokumen" class="text-sm font-semibold text-stone-900">Draf dokumen</h2>
-                @if ($draf)
-                    <p class="mt-1.5 text-sm text-stone-700">{{ DokumenKegiatan::JENIS[$draf['jenis']] ?? $draf['jenis'] }}@if ($draf['sumber']) · {{ $draf['sumber'] }}@endif</p>
-                    <p class="mt-0.5 text-xs text-stone-500">Tersimpan {{ $waktu($draf['disimpan_pada']) }} oleh {{ $draf['oleh'] }}</p>
-                @else
-                    <p class="mt-1.5 text-sm text-stone-600">Belum ada draf dokumen tersimpan.</p>
+            {{-- Draf dokumen jenis × sumber yang tampil (DrafDokumen) + draf lain kegiatan ini. --}}
+            <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-draf-dokumen" data-testid="draf-dokumen" data-ada="{{ $this->drafSemua !== [] ? 'ya' : 'tidak' }}" data-keadaan="{{ $keadaanDraf['keadaan'] }}"
+                     x-data="{ hapus: false }"" wire:key="draf-{{ $jenis }}-{{ $sumberAktif }}-{{ $drafAktif['disimpan_pada'] ?? 'belum' }}">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 id="judul-draf-dokumen" class="text-sm font-semibold text-stone-900">Draf dokumen</h2>
+                    <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 {{ $nadaDraf[$keadaanDraf['keadaan']] }}" data-testid="keadaan-draf">{{ $keadaanDraf['label'] }}</span>
+                </div>
+                <p class="mt-1.5 text-sm text-stone-700">{{ DrafDokumen::nama($jenis, $sumberAktif) }}</p>
+                @if ($drafAktif)
+                    <p class="mt-0.5 text-xs text-stone-500" data-testid="waktu-draf">Tersimpan {{ $waktu($drafAktif['disimpan_pada']) }} oleh {{ $drafAktif['oleh'] }}</p>
+                    <dl class="mt-3 grid grid-cols-2 gap-2 text-xs" data-testid="banding-draf">
+                        @foreach (['Saat disimpan' => [$drafAktif['lengkap'], $drafAktif['bertanda_draf'], $drafAktif['status']], 'Sekarang' => [$adaKak ? $susunan->lengkap : null, $statusDraf->draf, $this->status()->value]] as $judulBanding => [$lengkapBanding, $capBanding, $statusBanding])
+                            <div class="rounded-lg bg-stone-50 px-2.5 py-2 ring-1 ring-stone-100">
+                                <dt class="text-[11px] font-semibold tracking-wide text-stone-500 uppercase">{{ $judulBanding }}</dt>
+                                @if ($lengkapBanding !== null)
+                                    <dd class="mt-0.5 text-stone-800"><span class="font-semibold">{{ $lengkapBanding }}</span>/{{ $susunan->jumlah() }} bagian lengkap</dd>
+                                @endif
+                                <dd @class(['mt-0.5 font-medium', 'text-red-700' => $capBanding, 'text-brand-800' => ! $capBanding])>{{ $capBanding ? 'Bercap DRAF' : 'Siap dicetak' }}</dd>
+                                <dd class="mt-0.5 text-stone-500">Status {{ \App\Enums\StatusKegiatan::tryFrom($statusBanding)?->label() ?? $statusBanding }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                    @if ($keadaanDraf['berubah'] !== [])
+                        <div class="mt-3" data-testid="berubah-sejak-draf">
+                            <p class="text-xs font-semibold text-gold-800">Berubah sejak draf disimpan:</p>
+                            <ul class="mt-1 flex flex-wrap gap-1.5">
+                                @foreach ($keadaanDraf['berubah'] as $ubah)
+                                    <li><a href="{{ $keBerubah($ubah['kunci']) }}" class="inline-flex rounded-md bg-gold-50 px-1.5 py-0.5 text-xs font-medium text-gold-800 ring-1 ring-gold-200 hover:bg-gold-100" data-berubah="{{ $ubah['kunci'] }}">{{ $ubah['label'] }}</a></li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                 @endif
-                <p class="mt-2 text-xs text-stone-500">Isi dokumen selalu mengikuti data terbaru. Simpan draf untuk menandai titik lanjut penyusunan.</p>
+                <p class="mt-2 text-xs text-stone-500">{{ $keadaanDraf['keterangan'] }}</p>
+                @if ($bisaUbah)
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <button type="button" class="btn-secondary text-xs" wire:click="simpanDraf" wire:loading.attr="disabled" wire:target="simpanDraf" data-testid="simpan-draf-samping">
+                            <x-ui.icon name="save" class="size-3.5" /> {{ $drafAktif ? 'Perbarui draf' : 'Simpan draf' }}
+                        </button>
+                        @if ($drafAktif)
+                            <button type="button" class="btn-ghost text-xs text-red-700" x-show="! hapus" x-on:click="hapus = true" data-testid="hapus-draf">Hapus draf</button>
+                        @endif
+                    </div>
+                    @if ($drafAktif)
+                        <div class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs ring-1 ring-red-200" x-show="hapus" x-cloak x-on:keydown.escape.window="hapus = false" role="alertdialog" aria-labelledby="tanya-hapus-draf" data-testid="konfirmasi-hapus-draf">
+                            <p id="tanya-hapus-draf" class="text-red-900">Hapus draf {{ DrafDokumen::nama($jenis, $sumberAktif) }}? Isi dokumen dan data kegiatan tidak berubah.</p>
+                            <div class="mt-2 flex justify-end gap-2">
+                                <button type="button" class="btn-ghost text-xs" x-on:click="hapus = false">Batal</button>
+                                <button type="button" class="btn-danger text-xs" wire:click="hapusDraf" x-on:click="hapus = false" data-testid="ya-hapus-draf">Hapus draf</button>
+                            </div>
+                        </div>
+                    @endif
+                @endif
+                @if ($drafLain->isNotEmpty())
+                    <div class="mt-3 border-t border-stone-100 pt-3" data-testid="draf-lain">
+                        <p class="text-[11px] font-semibold tracking-wide text-stone-500 uppercase">Draf lain</p>
+                        <ul class="mt-1.5 space-y-1.5">
+                            @foreach ($drafLain as $lain)
+                                <li class="flex items-start justify-between gap-2 text-xs" data-draf="{{ $lain['jenis'] }}|{{ $lain['sumber'] }}">
+                                    <span class="min-w-0">
+                                        <span class="block font-medium text-stone-800">{{ DrafDokumen::nama($lain['jenis'], $lain['sumber']) }}</span>
+                                        <span class="block text-stone-500">{{ $waktu($lain['disimpan_pada']) }} · {{ $lain['oleh'] }}</span>
+                                    </span>
+                                    <a href="{{ DrafDokumen::tautan($lain) }}" wire:navigate class="shrink-0 font-semibold text-brand-700 hover:text-brand-800" data-testid="lanjutkan-draf">Lanjutkan</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             </section>
 
             {{-- Master template KAK/TOR --}}

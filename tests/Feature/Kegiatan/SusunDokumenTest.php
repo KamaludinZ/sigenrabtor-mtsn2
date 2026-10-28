@@ -136,7 +136,7 @@ class SusunDokumenTest extends TestCase
         $halaman = Livewire::test(SusunDokumen::class, ['kegiatan' => 1])
             ->assertSeeHtml('data-testid="bilah-susun"')
             ->assertSeeHtml('data-testid="draf-dokumen" data-ada="ya"')
-            ->assertSee('Tersimpan 8 Januari 2026, 10.15 oleh Muslimin, M.Pd.')
+            ->assertSee('8 Januari 2026, 10.15 · Muslimin, M.Pd.')
             ->assertSeeHtml('data-testid="template-susun" data-ada="tidak"')
             ->assertSee('Belum ada master KAK/TOR — dokumen memakai susunan baku aplikasi.')
             ->assertSee('Master template diatur admin.')
