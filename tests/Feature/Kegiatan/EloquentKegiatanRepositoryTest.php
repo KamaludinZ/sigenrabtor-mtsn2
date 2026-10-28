@@ -35,6 +35,8 @@ class EloquentKegiatanRepositoryTest extends TestCase
     public function test_bentuk_data_sama_dengan_tiruan(): void
     {
         $tiruan = new StubKegiatanRepository;
+        // Tautan Data Pagu wajib menunjuk data pagu yang ada (FK activities.data_pagu_id).
+        DB::table('data_pagu')->insert(['id' => '0b5c2a7e-3a8f-4c1d-9e2b-6f1a2d3c4b5a', 'tahun_anggaran' => 2026, 'nama_kegiatan' => 'Data pagu uji']);
         foreach (StubKegiatanRepository::contohSemua() as $contoh) {
             $data = self::isian($contoh) + [
                 'status' => 'diperiksa',
