@@ -31,9 +31,16 @@ interface PenggunaRepository
     public function simpan(array $data, ?int $id = null): int;
 
     /**
-     * Catat waktu masuk terakhir akun $id (dipanggil saat masuk berhasil).
+     * Catat masuk akun $id (dipanggil saat masuk berhasil): waktu masuk terakhir + satu entri riwayat masuk.
      *
      * @throws \RuntimeException Penyimpanan gagal.
      */
-    public function catatMasuk(int $id): void;
+    public function catatMasuk(int $id, ?string $alamatIp = null, ?string $agen = null): void;
+
+    /**
+     * Riwayat masuk akun $id, terbaru dulu (paling banyak $batas entri).
+     *
+     * @return list<array{waktu: string, alamat_ip: string|null, agen: string|null}>
+     */
+    public function riwayatMasuk(int $id, int $batas = 20): array;
 }

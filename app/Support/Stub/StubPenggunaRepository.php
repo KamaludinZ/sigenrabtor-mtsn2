@@ -14,6 +14,9 @@ use RuntimeException;
  */
 class StubPenggunaRepository implements PenggunaRepository
 {
+    /** Entri riwayat masuk yang disimpan per akun tiruan. */
+    public const MAKS_RIWAYAT_MASUK = 20;
+
     public function semua(): array
     {
         $semua = array_map(self::rapikan(...), $this->baca());
@@ -45,11 +48,27 @@ class StubPenggunaRepository implements PenggunaRepository
         return $id;
     }
 
-    public function catatMasuk(int $id): void
+    public function catatMasuk(int $id, ?string $alamatIp = null, ?string $agen = null): void
     {
-        if ($this->temukan($id) !== null) {
-            $this->simpan(['terakhir_masuk' => now()->toIso8601String()], $id);
+        $semua = $this->baca();
+        $indeks = array_search($id, array_map('intval', array_column($semua, 'id')), true);
+        if ($indeks === false) {
+            return;
         }
+        $waktu = now()->format('Y-m-d\\TH:i:s.uP');
+        $semua[$indeks]['terakhir_masuk'] = now()->toIso8601String();
+        $semua[$indeks]['riwayat_masuk'] = array_slice([
+            ['waktu' => $waktu, 'alamat_ip' => $alamatIp, 'agen' => $agen === null ? null : mb_substr($agen, 0, 255)],
+            ...(array) ($semua[$indeks]['riwayat_masuk'] ?? []),
+        ], 0, self::MAKS_RIWAYAT_MASUK);
+        $this->tulis($semua);
+    }
+
+    public function riwayatMasuk(int $id, int $batas = 20): array
+    {
+        $akun = collect($this->baca())->first(fn (array $a) => (int) $a['id'] === $id);
+
+        return array_slice(array_values((array) ($akun['riwayat_masuk'] ?? [])), 0, $batas);
     }
 
     /**
@@ -82,11 +101,24 @@ class StubPenggunaRepository implements PenggunaRepository
             'role' => $role,
             'nip' => filled($a['nip'] ?? null) ? (string) $a['nip'] : null,
             'jabatan' => filled($a['jabatan'] ?? null) ? (string) $a['jabatan'] : null,
-            'leadings' => $role === 'admin' ? [] : array_values(array_map('strval', (array) ($a['leadings'] ?? []))),
+            'leadings' => $role === 'admin' ? [] : self::urutKode(array_values(array_unique(array_map('strval', (array) ($a['leadings'] ?? []))))),
             'is_active' => (bool) ($a['is_active'] ?? true),
             'terakhir_masuk' => $a['terakhir_masuk'] ?? null,
             'dibuat_pada' => $a['dibuat_pada'] ?? null,
         ];
+    }
+
+    /**
+     * Kode leading urut alami (1.2 sebelum 1.10).
+     *
+     * @param  list<string>  $kode
+     * @return list<string>
+     */
+    public static function urutKode(array $kode): array
+    {
+        usort($kode, 'version_compare');
+
+        return $kode;
     }
 
     /**

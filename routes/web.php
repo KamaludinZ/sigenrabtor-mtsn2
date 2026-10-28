@@ -148,7 +148,7 @@ Route::get('/demo/peran/{role}', function (string $role) {
     session(['stub_role' => $role]);
     // Padanan peristiwa masuk: waktu masuk terakhir akun persona tercatat di Pengaturan › Leading & User.
     try {
-        app(PenggunaRepository::class)->catatMasuk(StubData::currentUser()['id']);
+        app(PenggunaRepository::class)->catatMasuk(StubData::currentUser()['id'], request()->ip(), request()->userAgent());
     } catch (RuntimeException $e) {
         report($e);
     }

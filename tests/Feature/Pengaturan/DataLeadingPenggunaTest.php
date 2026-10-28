@@ -66,9 +66,9 @@ class DataLeadingPenggunaTest extends TestCase
 
         $repo->simpan(['name' => 'Muslimin, S.Pd., M.Pd.', 'leadings' => ['1.6', '1.1']], 1);
         $akun = $repo->temukan(1);
-        $this->assertSame(['Muslimin, S.Pd., M.Pd.', 'muslimin@example.com', ['1.6', '1.1']], [$akun['name'], $akun['email'], $akun['leadings']]);
+        $this->assertSame(['Muslimin, S.Pd., M.Pd.', 'muslimin@example.com', ['1.1', '1.6']], [$akun['name'], $akun['email'], $akun['leadings']], 'Tautan urut alami.');
 
-        $this->assertSame(['id' => 1, 'name' => 'Muslimin, S.Pd., M.Pd.', 'role' => 'leading', 'jabatan' => 'Tim Penjamin Mutu', 'leadings' => ['1.6', '1.1']], StubData::currentUser());
+        $this->assertSame(['id' => 1, 'name' => 'Muslimin, S.Pd., M.Pd.', 'role' => 'leading', 'jabatan' => 'Tim Penjamin Mutu', 'leadings' => ['1.1', '1.6']], StubData::currentUser());
         session(['stub_role' => 'admin']);
         $this->assertSame(['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin', 'jabatan' => 'Admin Aplikasi', 'leadings' => []], StubData::currentUser());
         $this->assertNull($repo->temukan(99));
