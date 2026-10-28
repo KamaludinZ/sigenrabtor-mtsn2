@@ -12,7 +12,9 @@ use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\KegagalanAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Pengaturan\AturanPenyediaAi;
+use App\Support\Pengaturan\KelolaModelAi;
 use App\Support\Pengaturan\KelolaPenyediaAi;
+use App\Support\Pengaturan\KelolaPromptAi;
 use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\PenyediaAi;
@@ -209,24 +211,18 @@ class PengaturanAi extends Component
         $this->isianGaya = PromptAi::GAYA_BAHASA;
     }
 
-    /** Simpan gaya bahasa baku semua bagian (kosong = bawaan). */
+    /** Simpan gaya bahasa baku semua bagian (sama dengan bawaan = tidak disimpan). */
     public function simpanGaya(): void
     {
         $this->bagianSimpan = 'gaya';
         $this->resetErrorBag();
-        $gaya = trim(preg_replace('/\s+/u', ' ', $this->isianGaya));
-        if ($gaya === '' || mb_strlen($gaya) > PromptAi::MAKS_GAYA) {
-            $this->addError('isianGaya', 'Gaya bahasa 1–'.PromptAi::MAKS_GAYA.' karakter.');
-
-            return;
-        }
-
-        $lama = PromptAi::gayaBahasa();
-        if (! $this->simpanPrompt(fn (array $d) => ['gaya_bahasa' => $gaya === PromptAi::GAYA_BAHASA ? null : $gaya] + $d, $lama !== $gaya ? 'Gaya bahasa baku diubah' : null)) {
+        // Aturan & penulisan bersama endpoint pengaturan.ai.prompt.gaya (KelolaPromptAi).
+        $hasil = $this->jalankanSimpanPrompt(fn () => KelolaPromptAi::simpanGaya($this->isianGaya, StubData::currentUser(), $this->versiPrompt), ['gaya_bahasa' => 'isianGaya']);
+        if ($hasil === false) {
             return;
         }
         $this->gayaTerbuka = false;
-        $this->dispatch('notify', message: 'Gaya bahasa baku tersimpan.', type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     /** Buka penyunting template prompt satu bagian. */
@@ -263,44 +259,17 @@ class PengaturanAi extends Component
         abort_unless($bagian !== null, 404);
         $this->resetErrorBag();
 
-        $instruksi = trim(preg_replace('/[ \t]+/u', ' ', $this->isianPrompt['instruksi'] ?? ''));
-        $gaya = ($this->isianPrompt['gaya_khusus'] ?? false) ? trim(preg_replace('/\s+/u', ' ', $this->isianPrompt['gaya_bahasa'] ?? '')) : null;
-        $galat = PromptAi::galat($instruksi, $gaya);
-        if ($gaya === '') {
-            $galat['gaya_bahasa'] = 'Tulis gaya bahasa khusus, atau matikan pilihan gaya khusus.';
-        }
-        if ($galat !== []) {
-            foreach ($galat as $kolom => $pesan) {
-                $this->addError("isianPrompt.{$kolom}", $pesan);
-            }
-
-            return;
-        }
-
-        $lama = PromptAi::untuk($bagian);
-        $aktif = (bool) ($this->isianPrompt['aktif'] ?? true);
-        $baru = ['instruksi' => $instruksi, 'gaya_bahasa' => $gaya, 'aktif' => $aktif];
-        $ringkas = fn (array $t) => ['instruksi' => $t['instruksi'] === PromptAi::BAWAAN[$bagian] ? 'bawaan' : 'diubah', 'gaya' => $t['gaya_bahasa'] ?? 'gaya baku', 'aktif' => $t['aktif'] ? 'aktif' : 'nonaktif'];
-        $perubahan = RiwayatPengaturan::perubahan($ringkas($lama), $ringkas($baru), ['instruksi' => 'Instruksi', 'gaya' => 'Gaya bahasa', 'aktif' => 'Status']);
-        if ($perubahan === null && $lama['instruksi'] !== $instruksi) {
-            $perubahan = 'Instruksi diubah';
-        }
-
-        $bawaan = $instruksi === PromptAi::BAWAAN[$bagian] && $gaya === null && $aktif;
-        $simpan = function (array $d) use ($bagian, $baru, $bawaan) {
-            if ($bawaan) {
-                unset($d['bagian'][$bagian]);
-            } else {
-                $d['bagian'][$bagian] = $baru;
-            }
-
-            return $d;
-        };
-        if (! $this->simpanPrompt($simpan, $perubahan !== null ? BagianAi::BAGIAN[$bagian]['judul'].' — '.$perubahan : null)) {
+        $isian = [
+            'instruksi' => $this->isianPrompt['instruksi'] ?? '',
+            'gaya_bahasa' => ($this->isianPrompt['gaya_khusus'] ?? false) ? (string) ($this->isianPrompt['gaya_bahasa'] ?? '') : null,
+            'aktif' => (bool) ($this->isianPrompt['aktif'] ?? true),
+        ];
+        $hasil = $this->jalankanSimpanPrompt(fn () => KelolaPromptAi::simpanBagian($bagian, $isian, StubData::currentUser(), $this->versiPrompt), 'isianPrompt');
+        if ($hasil === false) {
             return;
         }
         $this->promptTerbuka = null;
-        $this->dispatch('notify', message: 'Prompt '.mb_strtolower(BagianAi::BAGIAN[$bagian]['judul']).' tersimpan'.($aktif ? '.' : ' — tombol “Buat dengan AI” bagian ini dinonaktifkan.'), type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     /**
@@ -445,15 +414,14 @@ class PengaturanAi extends Component
     public function pakaiModel(string $penyedia, string $model): void
     {
         $this->bagianSimpan = 'model';
-        abort_unless(in_array($model, array_column($this->daftarModel[$penyedia]['model'] ?? [], 'nama'), true), 404);
+        $dimuat = array_column($this->daftarModel[$penyedia]['model'] ?? [], 'nama');
+        abort_unless(in_array($model, $dimuat, true), 404);
 
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        $baru = $lama;
-        $baru['penyedia'][$penyedia] = ['model' => $model] + ($lama['penyedia'][$penyedia] ?? []);
-        $this->versi = $lama['diperbarui_pada'];
-        $ringkas = fn (array $p) => ['model' => ($p['penyedia'][$penyedia]['model'] ?? '') ?: 'belum diisi'];
-        if ($this->simpanPengaturan($lama, $baru, $ringkas, ['model' => 'Model'], PenyediaAi::nama($penyedia).' — ', null, 'ubah_model_ai')) {
-            $this->dispatch('notify', message: "Model {$model} dipakai untuk ".PenyediaAi::nama($penyedia).'.', type: 'success');
+        // Model dipilih dari daftar yang baru dimuat: tanpa pemeriksaan versi formulir.
+        $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
+        $hasil = $this->jalankanSimpan(fn () => KelolaModelAi::pakai($penyedia, $model, StubData::currentUser(), null, false, $dimuat));
+        if ($hasil !== false) {
+            $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
         }
     }
 
@@ -462,31 +430,14 @@ class PengaturanAi extends Component
     {
         $this->bagianSimpan = 'parameter';
         $this->resetErrorBag();
-        ['data' => $data, 'galat' => $galat] = ParameterAi::rapikan($this->isianParameter);
-        if ($galat !== []) {
-            foreach ($galat as $kolom => $pesan) {
-                $this->addError("isianParameter.{$kolom}", $pesan);
-            }
-
+        $hasil = $this->jalankanSimpan(fn () => KelolaModelAi::simpanParameter($this->isianParameter, StubData::currentUser(), $this->versiParameter), 'isianParameter', 'versiParameter');
+        if ($hasil === false) {
             return;
         }
 
-        $lama = app(PengaturanAiRepository::class)->ambil();
-        $baru = ['parameter' => $data] + $lama;
-        $this->versi = $this->versiParameter;
-        $ringkas = fn (array $p) => [
-            'suhu' => number_format(ParameterAi::dari($p)['suhu'], 1, ',', ''), 'maks_token' => ParameterAi::MAKS_TOKEN[ParameterAi::dari($p)['maks_token']] ?? ParameterAi::dari($p)['maks_token'],
-            'jumlah_versi' => ParameterAi::dari($p)['jumlah_versi'].' versi',
-        ];
-        if (! $this->simpanPengaturan($lama, $baru, $ringkas, ['suhu' => 'Kreativitas', 'maks_token' => 'Panjang jawaban', 'jumlah_versi' => 'Jumlah versi'], 'Parameter jawaban — ', null, 'ubah_model_ai')) {
-            $this->versiParameter = $this->versi;
-
-            return;
-        }
-
-        $this->isianParameter = $data;
+        $this->isianParameter = $hasil['parameter'];
         $this->versiParameter = $this->versi;
-        $this->dispatch('notify', message: 'Parameter jawaban AI tersimpan.', type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     /** Isi kembali parameter bawaan (tersimpan setelah Simpan). */
@@ -629,8 +580,9 @@ class PengaturanAi extends Component
     {
         return $this->jalankanSimpan(function () use ($lama, $baru, $ringkas, $label, $awalan, $tambahan, $aksi) {
             KelolaPenyediaAi::pastikanVersi($lama, $this->versi);
+            KelolaPenyediaAi::tulis($lama, $baru, $ringkas, $label, $awalan, $tambahan, $aksi);
 
-            return KelolaPenyediaAi::tulis($lama, $baru, $ringkas, $label, $awalan, $tambahan, $aksi);
+            return true;
         }) !== false;
     }
 
@@ -639,20 +591,18 @@ class PengaturanAi extends Component
      * versi dimuat ulang + notify, isian tetap; gagal simpan → `$gagalSimpan` + notify. Hasil `tersimpan: false`
      * (peringatan kunci) bukan simpan. Mengembalikan hasil $simpan atau false.
      */
-    private function jalankanSimpan(\Closure $simpan, ?string $awalanGalat = null): mixed
+    private function jalankanSimpan(\Closure $simpan, string|array|null $galatKe = null, string $versiProp = 'versi'): mixed
     {
-        $versiLama = $this->versi;
+        $versiLama = $this->{$versiProp};
         $this->gagalSimpan = null;
         try {
             $hasil = $simpan();
         } catch (ValidationException $e) {
-            foreach ($e->errors() as $kolom => $pesan) {
-                $this->addError($awalanGalat !== null ? "{$awalanGalat}.{$kolom}" : $kolom, $pesan[0]);
-            }
+            $this->petakanGalat($e, $galatKe);
 
             return false;
         } catch (PengaturanBerubah $e) {
-            $this->versi = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
+            $this->{$versiProp} = app(PengaturanAiRepository::class)->ambil()['diperbarui_pada'];
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return false;
@@ -677,6 +627,46 @@ class PengaturanAi extends Component
         }
 
         return $hasil;
+    }
+
+    /** Seperti jalankanSimpan untuk template prompt (versi `$versiPrompt` dari PromptAiRepository). */
+    private function jalankanSimpanPrompt(\Closure $simpan, string|array $galatKe): mixed
+    {
+        $this->gagalSimpan = null;
+        try {
+            $hasil = $simpan();
+        } catch (ValidationException $e) {
+            $this->petakanGalat($e, $galatKe);
+
+            return false;
+        } catch (PengaturanBerubah $e) {
+            $this->versiPrompt = app(PromptAiRepository::class)->ambil()['diperbarui_pada'];
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return false;
+        } catch (RuntimeException $e) {
+            $this->gagalSimpan = ['bagian' => $this->bagianSimpan, 'pesan' => $e->getMessage()];
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return false;
+        }
+        $this->dispatch('pengaturan-ai-tersimpan', bagian: $this->bagianSimpan);
+        $this->versiPrompt = app(PromptAiRepository::class)->ambil()['diperbarui_pada'];
+
+        return $hasil;
+    }
+
+    /** Galat layanan → error Livewire: awalan ("isianLokal" → isianLokal.model) atau peta kolom → nama error. */
+    private function petakanGalat(ValidationException $e, string|array|null $galatKe): void
+    {
+        foreach ($e->errors() as $kolom => $pesan) {
+            $nama = match (true) {
+                is_array($galatKe) => $galatKe[$kolom] ?? $kolom,
+                is_string($galatKe) => "{$galatKe}.{$kolom}",
+                default => $kolom,
+            };
+            $this->addError($nama, $pesan[0]);
+        }
     }
 
     /** @return array{aktif: string, cadangan: string} */
@@ -723,41 +713,6 @@ class PengaturanAi extends Component
     public function ringkasanSaran(): array
     {
         return RiwayatSaranAi::ringkasan(RiwayatSaranAi::untuk(StubData::currentUser()));
-    }
-
-    /**
-     * Simpan template prompt bila tidak berubah di tempat lain sejak penyunting dibuka; riwayat `ubah_prompt_ai` bila ada
-     * $keterangan.
-     *
-     * @param  \Closure(array<string, mixed>): array<string, mixed>  $ubah
-     */
-    private function simpanPrompt(\Closure $ubah, ?string $keterangan): bool
-    {
-        $repo = app(PromptAiRepository::class);
-        $lama = $repo->ambil();
-        if ($lama['diperbarui_pada'] !== $this->versiPrompt) {
-            $this->versiPrompt = $lama['diperbarui_pada'];
-            $this->dispatch('notify', message: 'Prompt AI baru diubah di tempat lain — tampilan dimuat ulang, isian Anda tetap. Periksa lalu simpan lagi.', type: 'error');
-
-            return false;
-        }
-
-        $this->gagalSimpan = null;
-        try {
-            $repo->simpan(array_diff_key($ubah($lama), ['diperbarui_pada' => 1]));
-        } catch (RuntimeException $e) {
-            $this->gagalSimpan = ['bagian' => $this->bagianSimpan, 'pesan' => $e->getMessage()];
-            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
-
-            return false;
-        }
-        $this->dispatch('pengaturan-ai-tersimpan', bagian: $this->bagianSimpan);
-        if ($keterangan !== null) {
-            RiwayatPengaturan::catat('ubah_prompt_ai', $keterangan);
-        }
-        $this->versiPrompt = $repo->ambil()['diperbarui_pada'];
-
-        return true;
     }
 
     /** Simpan/buang batas khusus satu akun beserta riwayatnya. */

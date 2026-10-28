@@ -12,6 +12,9 @@ final class AturanPenyediaAi
 
     public const BATAS_WAKTU = [10, 300];
 
+    /** Pola nama model (huruf, angka, titik, titik dua, garis miring, tanda hubung; ≤ 100 karakter). */
+    public const POLA_MODEL = '/^[a-z0-9][a-z0-9._:\/-]*$/i';
+
     /** Contoh model untuk server sekolah (saran isian, bukan daftar wajib). */
     public const CONTOH_MODEL_LOKAL = ['qwen2.5:7b', 'qwen2.5:3b', 'llama3.1:8b', 'gemma2:9b'];
 
@@ -40,7 +43,7 @@ final class AturanPenyediaAi
 
         if ($data['model'] === '' && $data['peran'] !== 'tidak') {
             $galat['model'] = 'Nama model wajib diisi bila penyedia ini dipakai, mis. qwen2.5:7b.';
-        } elseif ($data['model'] !== '' && (mb_strlen($data['model']) > 100 || ! preg_match('/^[a-z0-9][a-z0-9._:\/-]*$/i', $data['model']))) {
+        } elseif ($data['model'] !== '' && (mb_strlen($data['model']) > 100 || ! preg_match(self::POLA_MODEL, $data['model']))) {
             $galat['model'] = 'Nama model hanya huruf, angka, titik, titik dua, garis miring, dan tanda hubung (mis. qwen2.5:7b).';
         }
 
@@ -135,7 +138,7 @@ final class AturanPenyediaAi
 
         if ($data['model'] === '' && $dipakai) {
             $galat['model'] = 'Nama model wajib diisi bila penyedia ini dipakai.';
-        } elseif ($data['model'] !== '' && (mb_strlen($data['model']) > 100 || ! preg_match('/^[a-z0-9][a-z0-9._:\/-]*$/i', $data['model']))) {
+        } elseif ($data['model'] !== '' && (mb_strlen($data['model']) > 100 || ! preg_match(self::POLA_MODEL, $data['model']))) {
             $galat['model'] = 'Nama model hanya huruf, angka, titik, titik dua, garis miring, dan tanda hubung.';
         }
 
