@@ -34,10 +34,7 @@ final class PemeriksaRktm
      */
     public static function baca(Worksheet $lembar): array
     {
-        $judul = LembarExcel::cariJudul($lembar, self::JUDUL, ['kode', 'snp', 'kegiatan', 'sub_kegiatan']);
-        if ($judul === null) {
-            throw new GagalPratinjauMaster('Judul kolom "Kode", "SNP", "Kegiatan", dan "Sub Kegiatan" tidak ditemukan di sheet '.$lembar->getTitle().'.');
-        }
+        $judul = KolomMaster::judul($lembar, 'rktm');
 
         $hasil = [];
         $posisi = [];
@@ -62,6 +59,7 @@ final class PemeriksaRktm
                 $snp === '' ? 'Standar (SNP) kosong.' : null,
                 $kegiatan === '' ? 'Kegiatan kosong.' : null,
                 $sub === '' ? 'Sub kegiatan kosong.' : null,
+                ...KolomMaster::galatPanjang('rktm', $tampil),
             ]));
             if ($pesan !== []) {
                 $hasil[] = ['baris' => [$baris], 'kode' => $kode ?? $mentah, 'tampil' => $tampil, 'status' => 'gagal', 'pesan' => $pesan];

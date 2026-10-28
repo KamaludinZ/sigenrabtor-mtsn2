@@ -25,10 +25,7 @@ final class PemeriksaBudayaMutu
      */
     public static function baca(Worksheet $lembar): array
     {
-        $judul = LembarExcel::cariJudul($lembar, self::JUDUL, ['nama']);
-        if ($judul === null) {
-            throw new GagalPratinjauMaster('Judul kolom "Budaya Mutu" tidak ditemukan di sheet '.$lembar->getTitle().'.');
-        }
+        $judul = KolomMaster::judul($lembar, 'budaya');
 
         $hasil = [];
         $nomorDipakai = [];
@@ -48,6 +45,7 @@ final class PemeriksaBudayaMutu
             $pesan = array_values(array_filter([
                 $nomor === null || $nomor < 1 ? "Nomor \"{$mentah}\" harus bilangan bulat mulai 1." : null,
                 $nama === '' ? 'Nama budaya mutu kosong.' : null,
+                ...KolomMaster::galatPanjang('budaya', ['nama' => $nama]),
                 $nomor !== null && isset($nomorDipakai[$nomor]) ? "Nomor {$nomor} sudah dipakai di baris {$nomorDipakai[$nomor]}." : null,
                 $nama !== '' && isset($namaDipakai[$kunciNama]) ? "Nama sama dengan baris {$namaDipakai[$kunciNama]}." : null,
             ]));

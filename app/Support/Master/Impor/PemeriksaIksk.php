@@ -31,10 +31,7 @@ final class PemeriksaIksk
      */
     public static function baca(Worksheet $lembar): array
     {
-        $judul = LembarExcel::cariJudul($lembar, self::JUDUL, ['kode', 'kode_sk', 'uraian']);
-        if ($judul === null) {
-            throw new GagalPratinjauMaster('Judul kolom "Kode IKSK", "Kode SK", dan "Uraian IKSK" tidak ditemukan di sheet '.$lembar->getTitle().'.');
-        }
+        $judul = KolomMaster::judul($lembar, 'iksk');
 
         $hasil = [];
         $posisi = [];
@@ -52,6 +49,7 @@ final class PemeriksaIksk
                 $mentah === '' ? 'Kode IKSK kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat IKSK n.m (mis. IKSK 10.2)." : null),
                 $skMentah === '' ? 'Kode SK induk kosong.' : ($sk === null ? "SK induk \"{$skMentah}\" tidak berformat SK.n." : null),
                 $uraian === '' ? 'Uraian IKSK kosong.' : null,
+                ...KolomMaster::galatPanjang('iksk', ['uraian' => $uraian]),
             ]));
             if ($pesan !== []) {
                 $hasil[] = ['baris' => [$baris], 'kode' => $kode ?? $mentah, 'tampil' => $tampil, 'status' => 'gagal', 'pesan' => $pesan];

@@ -12,7 +12,8 @@ use App\Support\MasterKode;
 /**
  * Pratinjau sebelum simpan (PRD §14): tiap jenis dalam berkas dibaca dari sheet-nya, diperiksa per baris, lalu
  * dibandingkan dengan master tahun itu — status baru/berubah/tetap/gagal, ditambah kode master yang hilang dari berkas
- * (beserta jumlah kegiatan pemakainya). `peringatan` = catatan tingkat jenis (mis. jumlah 5 Budaya Mutu).
+ * (beserta jumlah kegiatan pemakainya). `peringatan` = catatan tingkat jenis (kolom opsional yang tidak ada —
+ * KolomMaster::opsionalHilang, jumlah 5 Budaya Mutu).
  */
 final class PratinjauMaster
 {
@@ -48,8 +49,9 @@ final class PratinjauMaster
                 $lembar = LembarExcel::buka($path, $namaAsli, $namaSheet);
                 $baca = $jenis === 'edm' ? PemeriksaEdm::baca($lembar, MasterKode::komponenEdm($tahun)) : self::PEMBACA[$jenis]::baca($lembar);
                 $item['baris'] = self::bandingkan($baca, $jenis, $tahun, JenisKode::pemakaian($jenis, $kegiatan));
+                $item['peringatan'] = KolomMaster::opsionalHilang(KolomMaster::judul($lembar, $jenis), $jenis);
                 if ($jenis === 'budaya') {
-                    $item['peringatan'] = array_values(array_filter([PemeriksaBudayaMutu::peringatanJumlah(count(array_filter($baca, fn (array $b) => $b['status'] !== 'gagal')))]));
+                    $item['peringatan'] = [...$item['peringatan'], ...array_filter([PemeriksaBudayaMutu::peringatanJumlah(count(array_filter($baca, fn (array $b) => $b['status'] !== 'gagal')))])];
                 }
             } catch (GagalPratinjauMaster $e) {
                 $item['galat'] = $e->getMessage();

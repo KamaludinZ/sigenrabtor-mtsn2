@@ -84,6 +84,42 @@ final class LembarExcel
         return null;
     }
 
+    /**
+     * Baris judul yang paling mendekati di $batas baris teratas: baris dengan judul $wajib terbanyak (minimal satu; seri =
+     * baris teratas). Dipakai untuk menjelaskan kolom wajib mana yang belum ada bila cariJudul() gagal.
+     *
+     * @param  array<string, list<string>>  $sinonim
+     * @param  list<string>  $wajib
+     * @return array{baris: int, kolom: array<string, string>}|null
+     */
+    public static function judulTerdekat(Worksheet $lembar, array $sinonim, array $wajib, int $batas = 30): ?array
+    {
+        $kenal = [];
+        foreach ($sinonim as $kunci => $daftar) {
+            foreach ($daftar as $judul) {
+                $kenal[self::normalkanJudul($judul)] ??= $kunci;
+            }
+        }
+
+        $terbaik = null;
+        $kolomTertinggi = $lembar->getHighestDataColumn();
+        for ($baris = 1; $baris <= min($batas, $lembar->getHighestDataRow()); $baris++) {
+            $peta = [];
+            foreach ($lembar->getRowIterator($baris, $baris)->current()->getCellIterator('A', $kolomTertinggi) as $sel) {
+                $kunci = $kenal[self::normalkanJudul((string) $sel->getValue())] ?? null;
+                if ($kunci !== null && ! isset($peta[$kunci])) {
+                    $peta[$kunci] = $sel->getColumn();
+                }
+            }
+            $cocok = count(array_intersect($wajib, array_keys($peta)));
+            if ($cocok > 0 && ($terbaik === null || $cocok > $terbaik['cocok'])) {
+                $terbaik = ['baris' => $baris, 'kolom' => $peta, 'cocok' => $cocok];
+            }
+        }
+
+        return $terbaik === null ? null : ['baris' => $terbaik['baris'], 'kolom' => $terbaik['kolom']];
+    }
+
     /** "Harga Satuan (Rp.)" → "harga satuan rp": huruf kecil, selain huruf/angka jadi spasi. */
     public static function normalkanJudul(string $judul): string
     {

@@ -84,7 +84,7 @@ class PratinjauIkskTest extends TestCase
         ], $baris);
 
         $this->expectException(GagalPratinjauMaster::class);
-        $this->expectExceptionMessage('Judul kolom "Kode IKSK", "Kode SK", dan "Uraian IKSK" tidak ditemukan di sheet Perkin.');
+        $this->expectExceptionMessage('Kolom wajib "Kode IKSK" dan "Uraian IKSK" tidak ditemukan di baris judul sheet Perkin (baris 1) — judul yang dikenali Kode IKSK: "kode iksk", "kode indikator", "kode"; Uraian IKSK: "uraian iksk", "uraian indikator", "indikator".');
         PemeriksaIksk::baca($this->lembar([['Kode SK', 'Uraian SK'], ['SK.10', 'Layanan']]));
     }
 

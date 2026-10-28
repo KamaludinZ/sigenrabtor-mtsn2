@@ -32,10 +32,7 @@ final class PemeriksaEdm
      */
     public static function baca(Worksheet $lembar, array $komponenMaster = []): array
     {
-        $judul = LembarExcel::cariJudul($lembar, self::JUDUL, ['kode', 'uraian']);
-        if ($judul === null) {
-            throw new GagalPratinjauMaster('Judul kolom "Kode" dan "Uraian" tidak ditemukan di sheet '.$lembar->getTitle().'.');
-        }
+        $judul = KolomMaster::judul($lembar, 'edm');
 
         $hasil = [];
         $posisi = [];
@@ -54,6 +51,7 @@ final class PemeriksaEdm
             $pesan = array_values(array_filter([
                 $mentah === '' ? 'Kode EDM kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat huruf + nomor (mis. A1, C3)." : null),
                 $uraian === '' ? 'Uraian indikator kosong.' : null,
+                ...KolomMaster::galatPanjang('edm', $tampil),
             ]));
             if ($pesan !== []) {
                 $hasil[] = ['baris' => [$baris], 'kode' => $kode ?? $mentah, 'tampil' => $tampil, 'status' => 'gagal', 'pesan' => $pesan];

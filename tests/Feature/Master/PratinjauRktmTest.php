@@ -68,7 +68,7 @@ class PratinjauRktmTest extends TestCase
         $this->assertSame(['Standar (SNP) kosong.', 'Kegiatan kosong.'], $kosong[0]['pesan']);
 
         $this->expectException(GagalPratinjauMaster::class);
-        $this->expectExceptionMessage('Judul kolom "Kode", "SNP", "Kegiatan", dan "Sub Kegiatan" tidak ditemukan di sheet SNP.');
+        $this->expectExceptionMessage('Kolom wajib "SNP" dan "Kegiatan" tidak ditemukan di baris judul sheet SNP (baris 1) — judul yang dikenali SNP: "snp", "standar snp", "standar nasional pendidikan"; Kegiatan: "kegiatan", "program".');
         PemeriksaRktm::baca($this->lembar([['Kode', 'Uraian'], ['1.1.1', 'x']]));
     }
 

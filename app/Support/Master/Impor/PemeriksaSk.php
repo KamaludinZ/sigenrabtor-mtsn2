@@ -33,10 +33,7 @@ final class PemeriksaSk
      */
     public static function baca(Worksheet $lembar): array
     {
-        $judul = LembarExcel::cariJudul($lembar, self::JUDUL, ['kode', 'uraian']);
-        if ($judul === null) {
-            throw new GagalPratinjauMaster('Judul kolom "Kode SK" dan "Uraian SK" tidak ditemukan di sheet '.$lembar->getTitle().'.');
-        }
+        $judul = KolomMaster::judul($lembar, 'sk');
 
         $hasil = [];
         $posisi = [];
@@ -51,6 +48,7 @@ final class PemeriksaSk
             $pesan = array_values(array_filter([
                 $mentah === '' ? 'Kode SK kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat SK.n (mis. SK.10)." : null),
                 $uraian === '' ? 'Uraian SK kosong.' : null,
+                ...KolomMaster::galatPanjang('sk', ['uraian' => $uraian]),
             ]));
             if ($pesan !== []) {
                 $hasil[] = ['baris' => [$baris], 'kode' => $kode ?? $mentah, 'tampil' => ['uraian' => $uraian], 'status' => 'gagal', 'pesan' => $pesan];

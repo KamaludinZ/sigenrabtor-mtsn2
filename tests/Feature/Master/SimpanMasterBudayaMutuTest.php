@@ -70,8 +70,8 @@ class SimpanMasterBudayaMutuTest extends TestCase
         // Tanpa kolom No: nomor = urutan; jumlah selain lima hanya peringatan.
         $hasil = SimpanMasterKode::simpan($this->berkas($this->csv(['Jujur', 'Disiplin', 'Peduli', 'Santun'], nomor: false)), 'budaya.csv', 'budaya', 2026, self::ADMIN);
         $this->assertSame([['nomor' => 1, 'nama' => 'Jujur'], ['nomor' => 2, 'nama' => 'Disiplin'], ['nomor' => 3, 'nama' => 'Peduli'], ['nomor' => 4, 'nama' => 'Santun']], MasterKode::budayaMutu(2026));
-        $this->assertCount(1, $hasil['peringatan']);
-        $this->assertStringStartsWith('5 Budaya Mutu: ', $hasil['peringatan'][0]);
+        $this->assertSame('5 Budaya Mutu: Kolom "No" tidak ada — nomor mengikuti urutan baris.', $hasil['peringatan'][0]);
+        $this->assertStringStartsWith('5 Budaya Mutu: Berkas berisi 4 butir budaya mutu', $hasil['peringatan'][1]);
     }
 
     public function test_nama_dobel_menahan_simpan(): void
