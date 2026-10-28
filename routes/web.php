@@ -12,6 +12,7 @@ use App\Http\Controllers\DataPaguMonitoring;
 use App\Http\Controllers\DataPejabat;
 use App\Http\Controllers\DataProfilMadrasah;
 use App\Http\Controllers\DataRiwayatPengaturan;
+use App\Http\Controllers\DataSkRktm;
 use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
@@ -127,6 +128,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
     Route::get('/madrasah/dasar-hukum/data', DataDasarHukum::class)->name('madrasah.dasar_hukum.data');
     Route::get('/madrasah/latar-belakang/data', DataLatarBelakang::class)->name('madrasah.latar_belakang.data');
+    Route::get('/madrasah/sk-rktm/data', DataSkRktm::class)->name('madrasah.sk_rktm.data');
     Route::get('/madrasah/pejabat', DataPejabat::class)->name('madrasah.pejabat');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');

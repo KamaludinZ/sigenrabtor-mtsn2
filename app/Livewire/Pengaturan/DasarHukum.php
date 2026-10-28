@@ -6,15 +6,14 @@ use App\Contracts\DasarHukumRepository;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\Dokumen\SusunanKak;
-use App\Support\Format;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\KelolaDasarHukum;
 use App\Support\Pengaturan\KelolaLatarBelakang;
+use App\Support\Pengaturan\KelolaSkRktm;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\LatarBelakangBaku;
 use App\Support\Pengaturan\PengaturanBerubah;
-use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Pengaturan\SkRktm;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Stub\StubData;
@@ -297,7 +296,7 @@ class DasarHukum extends Component
     }
 
     /** Simpan nomor & tanggal SK ke tahun anggaran yang dilihat; keduanya kosong = SK dikosongkan. */
-    public function simpanSk(TahunAnggaranRepository $repo): void
+    public function simpanSk(): void
     {
         if (! $this->suntingSk || $this->tahunTerkunci()) {
             return;
@@ -305,38 +304,37 @@ class DasarHukum extends Component
 
         $this->resetErrorBag(['isianSk.nomor', 'isianSk.tanggal']);
         $this->isianSk = ['nomor' => SkRktm::rapikanNomor((string) ($this->isianSk['nomor'] ?? '')), 'tanggal' => trim((string) ($this->isianSk['tanggal'] ?? ''))];
-        $galat = SkRktm::galat($this->isianSk['nomor'], $this->isianSk['tanggal']);
-        foreach ($galat as $kolom => $pesan) {
-            $this->addError("isianSk.{$kolom}", $pesan);
-        }
-        if ($galat !== []) {
-            return;
-        }
 
         $tahun = $this->tahunDilihat();
-        $lama = SkRktm::untuk($tahun);
-        $baru = ['nomor' => $this->isianSk['nomor'] ?: null, 'tanggal' => $this->isianSk['tanggal'] ?: null];
-        $tampil = fn (array $sk) => ['nomor' => $sk['nomor'], 'tanggal' => $sk['tanggal'] ? Format::tanggal($sk['tanggal']) : null];
-        $ringkasan = RiwayatPengaturan::perubahan($tampil($lama), $tampil($baru), ['nomor' => 'Nomor', 'tanggal' => 'Tanggal']);
-        if ($ringkasan === null) {
-            $this->batalSk();
-            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+        try {
+            $hasil = KelolaSkRktm::simpan($tahun, $this->isianSk['nomor'], $this->isianSk['tanggal'], StubData::currentUser());
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                in_array($kolom, ['nomor', 'tanggal'], true)
+                    ? $this->addError("isianSk.{$kolom}", $pesan[0])
+                    : $this->dispatch('notify', message: $pesan[0], type: 'error');
+            }
 
             return;
-        }
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
-        try {
-            $repo->simpanSk($tahun, $baru['nomor'], $baru['tanggal']);
+            return;
         } catch (RuntimeException $e) {
             report($e);
             $this->dispatch('notify', message: "SK RKTM/RKAM TA {$tahun} gagal disimpan. Isian masih ada di layar — coba simpan lagi.", type: 'error');
 
             return;
         }
+
         $this->batalSk();
-        RiwayatPengaturan::catat('ubah_sk_rktm', "SK RKTM/RKAM TA {$tahun} — {$ringkasan}");
+        if ($hasil['ringkasan'] === null) {
+            $this->dispatch('notify', message: 'Tidak ada yang berubah.', type: 'info');
+
+            return;
+        }
         unset($this->dasarHukum);
-        $this->dispatch('notify', message: $baru['nomor'] ? "SK RKTM/RKAM TA {$tahun} tersimpan." : "SK RKTM/RKAM TA {$tahun} dikosongkan.", type: 'success');
+        $this->dispatch('notify', message: $hasil['sk']['nomor'] ? "SK RKTM/RKAM TA {$tahun} tersimpan." : "SK RKTM/RKAM TA {$tahun} dikosongkan.", type: 'success');
     }
 
     /**
