@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **API agregasi belanja per kelompok & operator** untuk admin — total, porsi, dan item terbesar tiap kelompok belanja (bahan, jasa, lain-lain) per sumber dana, rekap per kode akun, serta rekap per pembuat kegiatan (jumlah per status, leading, total & pemakaian pagu), dengan saringan yang sama dengan halaman Monitoring.
 - Fondasi backend: **API daftar kegiatan beserta total RAB** untuk admin — kegiatan dengan pagu, total RAB, sisa/kelebihan, persentase pemakaian, dan status pagu tiap RAB, dengan saringan, urutan, dan halaman yang sama dengan tabel rincian Monitoring.
 - Fondasi backend: **API ringkasan pagu DIPA vs Komite** untuk admin — pagu, total RAB, sisa/kelebihan, persentase pemakaian, porsi, kondisi RAB, dan rincian per leading tiap sumber dana dengan saringan yang sama persis dengan halaman Monitoring (tahun, leading, sumber dana, status, rentang tanggal).
 - Fondasi backend: **API ringkasan Dashboard utama** — jumlah kegiatan per status, total & pemakaian pagu per sumber dana (DIPA vs Komite, kelebihan, kondisi RAB), kombinasi sumber dana, dan rekap per leading tahun aktif dalam satu permintaan, dengan cakupan yang sama dengan halaman Dashboard (admin semua leading, akun leading hanya leading-nya).
