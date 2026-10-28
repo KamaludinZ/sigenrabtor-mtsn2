@@ -9,7 +9,9 @@ use App\Support\Dokumen\DrafDokumen;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Dokumen\TeksCover;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Rab\RincianRab;
+use App\Support\Stub\StubDrafDokumenRepository;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -86,11 +88,15 @@ class DrafDokumenTest extends TestCase
         $repo = app(DrafDokumenRepository::class);
         $id = $this->kegiatanBaru();
 
-        $pertama = DrafDokumen::simpan($id, 'lengkap', null, self::LEADING);
+        $hasil = DrafDokumen::simpan($id, 'lengkap', null, self::LEADING);
+        $this->assertSame([true, 'Draf Set lengkap (cover, KAK/TOR, RAB) · Komite tersimpan — lanjutkan kapan saja dari tab Susun KAK/TOR.'], [$hasil['baru'], $hasil['pesan']]);
+        $pertama = $hasil['draf'];
         $this->assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $pertama['id']);
         $this->assertSame([$id, 'Komite'], [$pertama['kegiatan_id'], $pertama['sumber']]);
         $this->travel(1)->minutes();
-        $kedua = DrafDokumen::simpan($id, 'lengkap', 'Komite', self::LEADING);
+        $hasil = DrafDokumen::simpan($id, 'lengkap', 'Komite', self::LEADING);
+        $this->assertSame([false, 'Draf Set lengkap (cover, KAK/TOR, RAB) · Komite diperbarui.'], [$hasil['baru'], $hasil['pesan']]);
+        $kedua = $hasil['draf'];
         $this->assertSame($pertama['id'], $kedua['id'], 'Jenis × sumber yang sama menimpa draf.');
         $this->assertGreaterThan($pertama['disimpan_pada'], $kedua['disimpan_pada']);
         $this->travel(1)->minutes();
@@ -113,7 +119,7 @@ class DrafDokumenTest extends TestCase
         } catch (ValidationException $e) {
             $this->assertSame('Pilih sumber dana kegiatan dulu — RAB disusun per sumber dana.', $e->errors()['sumber'][0]);
         }
-        $this->assertNull(DrafDokumen::simpan($tanpaSumber, 'KAK+TOR', null, self::LEADING)['sumber']);
+        $this->assertNull(DrafDokumen::simpan($tanpaSumber, 'KAK+TOR', null, self::LEADING)['draf']['sumber']);
 
         $this->assertTrue(DrafDokumen::hapus($id, 'RAB', 'Komite', self::LEADING));
         $this->assertFalse(DrafDokumen::hapus($id, 'RAB', 'Komite', self::LEADING));
@@ -155,7 +161,8 @@ class DrafDokumenTest extends TestCase
             ->assertSeeHtml('data-testid="alasan-draf-susun"')
             ->assertSeeHtml('data-alasan="status"')
             ->call('simpanDraf')
-            ->assertDispatched('notify', message: 'Draf Set lengkap (cover, KAK/TOR, RAB) · Komite tersimpan — lanjutkan kapan saja dari tab ini.', type: 'success')
+            ->assertDispatched('notify', message: 'Draf Set lengkap (cover, KAK/TOR, RAB) · Komite tersimpan — lanjutkan kapan saja dari tab Susun KAK/TOR.', type: 'success')
+            ->assertDispatched('draf-dokumen-berubah', kegiatan: $id)
             ->assertSeeHtml('data-testid="draf-dokumen" data-ada="ya" data-keadaan="sesuai"')
             ->assertSeeHtml('data-testid="banding-draf"')
             ->assertSee('Perbarui draf');
@@ -188,5 +195,132 @@ class DrafDokumenTest extends TestCase
             ->assertDontSeeHtml('data-testid="hapus-draf"')
             ->call('simpanDraf')
             ->assertDispatched('notify', message: 'Kegiatan berstatus Diperiksa sehingga terkunci — draf dokumen hanya bisa dilihat.', type: 'error');
+    }
+
+    public function test_hapus_menolak_draf_yang_berubah_di_tempat_lain(): void
+    {
+        $id = $this->kegiatanBaru();
+        $versi = DrafDokumen::versi(DrafDokumen::simpan($id, 'lengkap', null, self::LEADING)['draf']);
+        $this->travel(1)->seconds();
+        DrafDokumen::simpan($id, 'lengkap', null, self::LEADING);
+
+        try {
+            DrafDokumen::hapus($id, 'lengkap', 'Komite', self::LEADING, $versi);
+            $this->fail('Draf yang disimpan ulang tidak boleh terhapus dengan versi lama.');
+        } catch (PengaturanBerubah $e) {
+            $this->assertStringContainsString('disimpan ulang di tempat lain', $e->getMessage());
+        }
+        $this->assertNotNull(app(DrafDokumenRepository::class)->temukan($id, 'lengkap', 'Komite'));
+        $terbaru = DrafDokumen::versi(app(DrafDokumenRepository::class)->temukan($id, 'lengkap', 'Komite'));
+        $this->assertTrue(DrafDokumen::hapus($id, 'lengkap', 'Komite', self::LEADING, $terbaru));
+        try {
+            DrafDokumen::hapus($id, 'lengkap', 'Komite', self::LEADING, $terbaru);
+            $this->fail('Draf yang sudah dihapus di tempat lain harus dikabarkan.');
+        } catch (PengaturanBerubah $e) {
+            $this->assertSame('Draf ini sudah dihapus di tempat lain.', $e->getMessage());
+        }
+
+        // Tab Susun: versi dicatat saat dirender; draf disimpan ulang di tab lain → hapus ditolak & tampilan dimuat ulang.
+        DrafDokumen::simpan($id, 'lengkap', null, self::LEADING);
+        $halaman = Livewire::test(SusunDokumen::class, ['kegiatan' => $id])->assertSeeHtml('data-keadaan="sesuai"');
+        $this->assertSame(DrafDokumen::versi(app(DrafDokumenRepository::class)->temukan($id, 'lengkap', 'Komite')), $halaman->get('versiDraf'));
+        $this->travel(1)->seconds();
+        DrafDokumen::simpan($id, 'lengkap', null, self::LEADING);
+        $halaman->call('hapusDraf')
+            ->assertDispatched('notify', type: 'error')
+            ->assertNotDispatched('draf-dokumen-berubah');
+        $this->assertNotNull(app(DrafDokumenRepository::class)->temukan($id, 'lengkap', 'Komite'));
+        $halaman->call('hapusDraf')->assertDispatched('draf-dokumen-berubah', kegiatan: $id);
+        $this->assertNull(app(DrafDokumenRepository::class)->temukan($id, 'lengkap', 'Komite'));
+
+        // Kabar dari tab lain memuat ulang daftar draf.
+        DrafDokumen::simpan($id, 'RAB', 'Komite', self::LEADING);
+        $halaman->assertDontSeeHtml('data-draf="RAB|Komite"')
+            ->dispatch('draf-dokumen-diperbarui', kegiatan: $id)
+            ->assertSeeHtml('data-draf="RAB|Komite"');
+    }
+
+    public function test_penyimpanan_gagal_ditulis(): void
+    {
+        $id = $this->kegiatanBaru();
+        $this->app->instance(DrafDokumenRepository::class, new class extends StubDrafDokumenRepository
+        {
+            public function simpan(int $kegiatanId, array $draf): array
+            {
+                throw new RuntimeException('Draf dokumen gagal disimpan — coba lagi.');
+            }
+        });
+
+        Livewire::test(SusunDokumen::class, ['kegiatan' => $id])
+            ->call('simpanDraf')
+            ->assertDispatched('notify', message: 'Draf dokumen gagal disimpan — coba lagi.', type: 'error')
+            ->assertNotDispatched('draf-dokumen-berubah')
+            ->assertSeeHtml('data-keadaan="belum"');
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'lengkap'])
+            ->assertStatus(503)
+            ->assertJson(['pesan' => 'Draf dokumen gagal disimpan — coba lagi.']);
+    }
+
+    public function test_endpoint_draf_dokumen(): void
+    {
+        $id = $this->kegiatanBaru();
+
+        $this->getJson(route('kegiatan.draf', ['kegiatan' => $id]))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJson(['kegiatan_id' => $id, 'dapat_diubah' => true, 'alasan_terkunci' => null, 'draf' => []])
+            ->assertJsonPath('keadaan.berubah.label', 'Berubah sejak draf disimpan');
+
+        $baru = $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'lengkap'])
+            ->assertCreated()
+            ->assertJsonPath('baru', true)
+            ->assertJsonPath('draf.sumber', 'Komite')
+            ->assertJsonPath('draf.nama', 'Set lengkap (cover, KAK/TOR, RAB) · Komite')
+            ->assertJsonPath('draf.keadaan.keadaan', 'sesuai')
+            ->assertJsonMissingPath('draf.sidik');
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'lengkap', 'sumber' => 'Komite'])
+            ->assertOk()
+            ->assertJsonPath('baru', false)
+            ->assertJsonPath('draf.id', $baru->json('draf.id'));
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'BOS'])
+            ->assertStatus(422)
+            ->assertJsonPath('galat.jenis.0', 'Jenis dokumen tidak dikenal.');
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'RAB', 'sumber' => 'DIPA'])
+            ->assertStatus(422)
+            ->assertJsonStructure(['pesan', 'galat' => ['sumber']]);
+
+        // Data berubah → keadaan draf berubah beserta bagiannya.
+        $repo = app(KegiatanRepository::class);
+        $repo->simpan(['tempat' => 'Aula Utama MTsN 2 Kota Malang'] + $repo->temukan($id), $id);
+        $data = $this->getJson(route('kegiatan.draf', ['kegiatan' => $id]))->assertOk();
+        $this->assertSame(['berubah', ['kak-5']], [$data->json('draf.0.keadaan.keadaan'), array_column($data->json('draf.0.keadaan.berubah'), 'kunci')]);
+        $versi = $data->json('draf.0.versi');
+        $this->assertStringContainsString('/kegiatan/'.$id.'/dokumen?sumber=Komite', $data->json('draf.0.tautan'));
+
+        // Hapus: versi usang 409, tepat 200, sudah tidak ada 404.
+        $this->travel(1)->seconds();
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'lengkap'])->assertOk();
+        $this->deleteJson(route('kegiatan.draf.hapus', ['kegiatan' => $id]), ['jenis' => 'lengkap', 'sumber' => 'Komite', 'versi' => $versi])
+            ->assertStatus(409)
+            ->assertJsonPath('draf.jenis', 'lengkap')
+            ->assertJsonStructure(['pesan', 'draf', 'versi']);
+        $terbaru = $this->getJson(route('kegiatan.draf', ['kegiatan' => $id]))->json('draf.0.versi');
+        $this->deleteJson(route('kegiatan.draf.hapus', ['kegiatan' => $id]), ['jenis' => 'lengkap', 'sumber' => 'Komite', 'versi' => $terbaru])
+            ->assertOk()
+            ->assertJson(['pesan' => 'Draf Set lengkap (cover, KAK/TOR, RAB) · Komite dihapus.']);
+        $this->deleteJson(route('kegiatan.draf.hapus', ['kegiatan' => $id]), ['jenis' => 'lengkap', 'sumber' => 'Komite'])->assertNotFound();
+
+        // Terkunci: dibaca boleh, simpan/hapus 403; di luar cakupan 403; tidak ada 404.
+        $repo->simpan(['status' => 'diperiksa'] + $repo->temukan($id), $id);
+        $this->getJson(route('kegiatan.draf', ['kegiatan' => $id]))->assertOk()->assertJsonPath('dapat_diubah', false)
+            ->assertJsonPath('alasan_terkunci', 'Kegiatan berstatus Diperiksa sehingga terkunci — draf dokumen hanya bisa dilihat.');
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $id]), ['jenis' => 'lengkap'])->assertForbidden();
+        $this->deleteJson(route('kegiatan.draf.hapus', ['kegiatan' => $id]), ['jenis' => 'lengkap'])->assertForbidden();
+        $lain = $this->kegiatanBaru(['nama_kegiatan' => 'Lomba Kreativitas Siswa', 'leading' => '1.2', 'user_id' => 4]);
+        $this->getJson(route('kegiatan.draf', ['kegiatan' => $lain]))->assertForbidden();
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => $lain]), ['jenis' => 'lengkap'])->assertForbidden();
+        $this->getJson(route('kegiatan.draf', ['kegiatan' => 999]))->assertNotFound();
+        $this->putJson(route('kegiatan.draf.simpan', ['kegiatan' => 999]), ['jenis' => 'lengkap'])->assertNotFound();
+        $this->deleteJson(route('kegiatan.draf.hapus', ['kegiatan' => 999]), ['jenis' => 'lengkap'])->assertNotFound();
     }
 }

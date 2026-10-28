@@ -4,14 +4,13 @@
 // kegiatan menghitung ulang status pagunya tanpa dimuat ulang.
 export const KANAL_ANGGARAN = 'sirabtor-anggaran';
 
-export default function pasangSiaranAnggaran() {
-    if (!('BroadcastChannel' in window)) {
-        return;
-    }
+// Draf dokumen kegiatan disimpan/dihapus (tab Susun KAK/TOR): "draf-dokumen-berubah" → tab lain "draf-dokumen-diperbarui".
+export const KANAL_DRAF = 'sirabtor-draf-dokumen';
 
-    const kanal = new BroadcastChannel(KANAL_ANGGARAN);
+function pasangKanal(nama, kabar, terima) {
+    const kanal = new BroadcastChannel(nama);
 
-    window.addEventListener('anggaran-berubah', (event) => {
+    window.addEventListener(kabar, (event) => {
         const kegiatan = Number(event.detail?.kegiatan);
 
         if (kegiatan > 0) {
@@ -23,7 +22,16 @@ export default function pasangSiaranAnggaran() {
         const kegiatan = Number(event.data?.kegiatan);
 
         if (kegiatan > 0) {
-            window.Livewire?.dispatch('anggaran-diperbarui', { kegiatan });
+            window.Livewire?.dispatch(terima, { kegiatan });
         }
     });
+}
+
+export default function pasangSiaranAnggaran() {
+    if (!('BroadcastChannel' in window)) {
+        return;
+    }
+
+    pasangKanal(KANAL_ANGGARAN, 'anggaran-berubah', 'anggaran-diperbarui');
+    pasangKanal(KANAL_DRAF, 'draf-dokumen-berubah', 'draf-dokumen-diperbarui');
 }

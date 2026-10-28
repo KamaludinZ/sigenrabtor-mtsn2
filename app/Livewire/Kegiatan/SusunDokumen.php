@@ -29,8 +29,10 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * Tab ruang kerja "Susun KAK/TOR" (PRD F4 "Buat KAK/TOR Otomatis"): sembilan bagian KAK/TOR disusun otomatis dari data
@@ -72,6 +74,10 @@ class SusunDokumen extends Component
     /** Versi data kegiatan (UbahDataKegiatan::versi) saat isian dibuka. */
     #[Locked]
     public ?string $versiIsian = null;
+
+    /** Versi draf jenis × sumber yang tampil saat dirender (DrafDokumen::versi); hapus ditolak bila sudah berubah. */
+    #[Locked]
+    public ?string $versiDraf = null;
 
     /** Kunci teks baku (TeksKhusus::BIDANG) yang sedang disesuaikan; null = tertutup. */
     public ?string $teksTerbuka = null;
@@ -282,11 +288,14 @@ class SusunDokumen extends Component
         }
     }
 
-    /** Simpan (atau perbarui) draf dokumen jenis × sumber dana yang sedang disusun (DrafDokumen). */
+    /**
+     * Simpan (atau perbarui) draf dokumen jenis × sumber dana yang sedang disusun (DrafDokumen, jalur yang sama dengan
+     * endpoint `kegiatan.draf.simpan`); tab lain yang membuka kegiatan ini dikabari lewat siaran "draf-dokumen-berubah".
+     */
     public function simpanDraf(): void
     {
         try {
-            $draf = DrafDokumen::simpan($this->kegiatanId, $this->jenis, $this->kak->sumber, StubData::currentUser());
+            $hasil = DrafDokumen::simpan($this->kegiatanId, $this->jenis, $this->kak->sumber, StubData::currentUser());
         } catch (ValidationException $e) {
             $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
 
@@ -296,20 +305,32 @@ class SusunDokumen extends Component
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;
+        } catch (RuntimeException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
         }
 
         $this->muatUlang();
-        $this->dispatch('notify', message: 'Draf '.DrafDokumen::nama($draf['jenis'], $draf['sumber']).' tersimpan — lanjutkan kapan saja dari tab ini.', type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
+        $this->dispatch('draf-dokumen-berubah', kegiatan: $this->kegiatanId);
     }
 
-    /** Hapus draf jenis × sumber yang tampil; isi dokumen & data kegiatan tidak berubah. */
+    /**
+     * Hapus draf jenis × sumber yang tampil (versi saat dirender; disimpan ulang/dihapus di tempat lain → dimuat ulang tanpa
+     * menghapus); isi dokumen & data kegiatan tidak berubah.
+     */
     public function hapusDraf(): void
     {
         $nama = DrafDokumen::nama($this->jenis, $this->kak->sumber);
         try {
-            $ada = DrafDokumen::hapus($this->kegiatanId, $this->jenis, $this->kak->sumber, StubData::currentUser());
-        } catch (AuthorizationException $e) {
+            $ada = DrafDokumen::hapus($this->kegiatanId, $this->jenis, $this->kak->sumber, StubData::currentUser(), $this->versiDraf ?? '');
+        } catch (PengaturanBerubah|AuthorizationException $e) {
             $this->muatUlang();
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (RuntimeException $e) {
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;
@@ -317,6 +338,22 @@ class SusunDokumen extends Component
 
         $this->muatUlang();
         $this->dispatch('notify', message: $ada ? "Draf {$nama} dihapus." : "Draf {$nama} sudah tidak ada.", type: 'info');
+        $this->dispatch('draf-dokumen-berubah', kegiatan: $this->kegiatanId);
+    }
+
+    /** Draf kegiatan ini disimpan/dihapus di tab lain (siaran.js): muat ulang daftar & keadaan draf. */
+    #[On('draf-dokumen-diperbarui')]
+    public function drafDiperbarui(int $kegiatan): void
+    {
+        if ($kegiatan === $this->kegiatanId) {
+            unset($this->drafSemua, $this->keadaanDraf);
+        }
+    }
+
+    /** Catat versi draf yang tampil agar hapus tidak menimpa draf yang disimpan ulang di tempat lain. */
+    public function rendering(): void
+    {
+        $this->versiDraf = DrafDokumen::versi($this->drafAktif());
     }
 
     /** Buang data & susunan yang dihitung agar tampilan memakai data tersimpan terbaru. */

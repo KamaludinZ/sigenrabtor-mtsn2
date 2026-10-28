@@ -7,6 +7,7 @@ use App\Contracts\KegiatanRepository;
 use App\Support\Dokumen\DrafDokumen;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Draf dokumen tiruan: berkas JSON di disk "local" berisi daftar draf. Selama berkas belum ada, isinya contoh satu draf
@@ -99,7 +100,9 @@ class StubDrafDokumenRepository implements DrafDokumenRepository
     /** @param  list<array<string, mixed>>  $semua */
     private function tulis(array $semua): void
     {
-        Storage::disk('local')->put($this->berkas(), json_encode(array_values($semua), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        if (! Storage::disk('local')->put($this->berkas(), json_encode(array_values($semua), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+            throw new RuntimeException('Draf dokumen gagal disimpan — coba lagi.');
+        }
     }
 
     private function berkas(): string

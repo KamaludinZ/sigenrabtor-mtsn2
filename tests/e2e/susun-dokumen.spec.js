@@ -188,6 +188,29 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(kartu.getByTestId('draf-lain').locator('[data-draf]')).toHaveCount(1);
     });
 
+    test('draf antar-tab: simpan di satu tab langsung terlihat di tab lain, hapus dari tab lain ikut terlihat', async ({ page, context }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/2/dokumen');
+        const lain = await context.newPage();
+        await lain.goto('/kegiatan/2/dokumen');
+        const kartu = page.getByTestId('draf-dokumen');
+        const kartuLain = lain.getByTestId('draf-dokumen');
+        await expect(kartuLain).toHaveAttribute('data-keadaan', 'belum');
+
+        await page.getByTestId('simpan-draf-dokumen').click();
+        await expect(kartu).toHaveAttribute('data-keadaan', 'sesuai');
+        await expect(kartuLain).toHaveAttribute('data-keadaan', 'sesuai');
+        await expect(lain.getByTestId('simpan-draf-dokumen')).toContainText('Perbarui draf');
+
+        // Pulihkan data bersama: hapus dari tab lain, tab pertama ikut kosong.
+        await kartuLain.getByTestId('hapus-draf').click();
+        await kartuLain.getByTestId('ya-hapus-draf').click();
+        await expect(kartuLain).toHaveAttribute('data-keadaan', 'belum');
+        await expect(kartu).toHaveAttribute('data-keadaan', 'belum');
+        await expect(kartu.getByTestId('hapus-draf')).toHaveCount(0);
+        await lain.close();
+    });
+
     test('sesuaikan teks baku: kalimat pengarah tercetak di KAK lalu dikembalikan ke teks baku', async ({ page }, testInfo) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/1/dokumen?jenis=KAK');

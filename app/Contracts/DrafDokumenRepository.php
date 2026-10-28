@@ -10,7 +10,7 @@ namespace App\Contracts;
  * sumber yang sama menimpanya. Bentuk draf disusun App\Support\Dokumen\DrafDokumen::rekam(): {id (uuid), kegiatan_id,
  * jenis, sumber|null, status (StatusKegiatan saat disimpan), bertanda_draf, alasan_draf (teks StatusDraf), lengkap &
  * jumlah_bagian (SusunanOtomatis; null tanpa KAK/TOR), total_rab|null, sidik {kak: {nomor: md5}, rab: md5, cover: md5},
- * user_id, oleh, disimpan_pada}.
+ * user_id, oleh, disimpan_pada}. `simpan()`/`hapus()` melempar RuntimeException bila penyimpanan gagal ditulis.
  */
 interface DrafDokumenRepository
 {
