@@ -10,7 +10,9 @@ use App\Support\Stub\StubData;
  * hasil (4c), dan kalimat pengarah (6b); kalimat pelaksanaan/pelaporan/tempat/pelaksana/pembiayaan tetap diturunkan dari
  * isian & master agar sinkron. Tersimpan di kegiatan `teks_khusus` {kunci: teks|daftar} lewat UbahDataKegiatan; teks
  * boleh memakai penanda `{nama_kegiatan}` (diisi nama tanpa awalan "Kegiatan" saat dicetak, `cetak()`); sama dengan teks
- * baku (`bakuMentah()` = KalimatKak berpenanda) = tidak disimpan. Aturan `galat()` dipakai ValidasiKegiatan.
+ * baku (`bakuMentah()` = KalimatKak berpenanda) = tidak disimpan. Aturan `galat()` dipakai ValidasiKegiatan; database:
+ * kolom activities.teks_khusus (NULL = semua baku) dengan CHECK `teks_khusus_sah()` dari konstanta yang sama (migrasi
+ * 000038).
  */
 final class TeksKhusus
 {
@@ -53,7 +55,19 @@ final class TeksKhusus
      */
     public static function dari(array $kegiatan): array
     {
-        return array_intersect_key(array_filter((array) ($kegiatan['teks_khusus'] ?? []), fn ($t) => filled($t)), self::BIDANG);
+        return self::urutkan(array_intersect_key(array_filter((array) ($kegiatan['teks_khusus'] ?? []), fn ($t) => filled($t)), self::BIDANG));
+    }
+
+    /**
+     * Urutan baku kunci (BIDANG, lalu kunci lain) — penyimpanan jsonb mengurutkan ulang kunci objek, sedangkan
+     * pembanding perubahan (UbahDataKegiatan) membandingkan bentuk JSON-nya.
+     *
+     * @param  array<string, mixed>  $teks
+     * @return array<string, mixed>
+     */
+    public static function urutkan(array $teks): array
+    {
+        return array_merge(array_intersect_key(array_fill_keys(array_keys(self::BIDANG), null), $teks), $teks);
     }
 
     /** @param  array<string, mixed>  $kegiatan */
@@ -105,7 +119,7 @@ final class TeksKhusus
             }
         }
 
-        return $hasil;
+        return self::urutkan($hasil);
     }
 
     /**

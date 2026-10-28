@@ -43,6 +43,7 @@ class EloquentKegiatanRepositoryTest extends TestCase
                 'riwayat_status' => [RiwayatStatus::entri('ajukan', StatusKegiatan::Diperiksa, StubData::currentUser(), 'Mohon diperiksa.')],
                 'kode_hilang' => ['kode_edm' => ['kode' => 'Z9', 'asal' => 'impor', 'tahun' => 2026]],
                 'riwayat_kode' => [['pada' => '2026-01-03T08:00:00+07:00', 'oleh' => 'Operator', 'perubahan' => ['SK.9 → SK.10']]],
+                'teks_khusus' => ['persiapan' => ['Rapat persiapan panitia {nama_kegiatan}.'], 'pengarah' => 'Pengarah kegiatan {nama_kegiatan} adalah Kepala Madrasah.'],
                 'asal' => 'impor_perkin',
                 'data_pagu_id' => '0b5c2a7e-3a8f-4c1d-9e2b-6f1a2d3c4b5a',
             ];

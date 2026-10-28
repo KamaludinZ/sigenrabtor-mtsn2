@@ -8,6 +8,7 @@ use App\Enums\SumberDana;
 use App\Models\Kegiatan;
 use App\Models\RiwayatStatusKegiatan;
 use App\Support\Kegiatan\DataPelaksanaan;
+use App\Support\Kegiatan\TeksKhusus;
 use App\Support\Stub\StubData;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,6 +50,7 @@ class EloquentKegiatanRepository implements KegiatanRepository
         'peserta_jenis' => 'peserta_jenis',
         'uraian_pelaksanaan' => 'uraian_pelaksanaan',
         'konteks' => 'konteks',
+        'teks_khusus' => 'teks_khusus',
         'kode_hilang' => 'kode_hilang',
         'riwayat_kode' => 'riwayat_kode',
         'asal' => 'asal',
@@ -180,6 +182,8 @@ class EloquentKegiatanRepository implements KegiatanRepository
             'lama_hari', 'peserta_jumlah', 'budaya_mutu' => filled($nilai) ? (int) $nilai : null,
             'tanggal_dokumen', 'tanggal_laporan', 'tanggal_mulai', 'data_pagu_id' => filled($nilai) ? (string) $nilai : null,
             'bulan_pelaksanaan' => array_values(array_map('intval', (array) $nilai)),
+            // Tanpa teks yang disesuaikan = NULL (CHECK teks_khusus_sah: objek tidak kosong atau NULL).
+            'teks_khusus' => filled($nilai) ? TeksKhusus::urutkan((array) $nilai) : null,
             'asal' => $nilai ?: 'manual',
             'status' => $nilai ?: StatusKegiatan::Draf->value,
             default => $nilai,
@@ -283,6 +287,8 @@ class EloquentKegiatanRepository implements KegiatanRepository
             'catatan' => $r->catatan,
             'sidik' => $r->sidik,
         ], fn ($nilai) => $nilai !== null))->all();
+        // jsonb mengurutkan ulang kunci: kembalikan urutan baku; tanpa penyesuaian = [] (bentuk tiruan sesudah disimpan).
+        $data['teks_khusus'] = TeksKhusus::urutkan((array) ($kegiatan->teks_khusus ?? []));
         $data['konteks_diperbarui_pada'] = self::waktu($kegiatan->konteks_diperbarui_pada);
         $data['duplikat_dari'] = $kegiatan->duplikat_dari_id
             ? ['id' => $kegiatan->duplikat_dari_id, 'tahun' => $kegiatan->duplikatDari?->tahun_anggaran]
