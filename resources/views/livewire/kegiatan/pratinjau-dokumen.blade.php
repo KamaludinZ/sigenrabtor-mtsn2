@@ -128,6 +128,7 @@
     <div class="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {{-- Kaidah dokumen otomatis (PRD §8). Di layar sempit tampil sebelum dokumen. --}}
         <aside class="space-y-4 lg:sticky lg:top-20 lg:col-start-2 lg:row-start-1" aria-labelledby="judul-kaidah" data-testid="panel-kaidah">
+            <x-dokumen.ringkasan-kelengkapan :kelengkapan="$this->kelengkapan" penampil />
             <section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200">
                 <div class="flex items-baseline justify-between gap-2">
                     <h2 id="judul-kaidah" class="text-sm font-semibold text-stone-900">Kaidah dokumen</h2>

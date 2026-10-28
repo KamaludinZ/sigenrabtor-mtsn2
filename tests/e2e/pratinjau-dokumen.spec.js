@@ -272,6 +272,28 @@ test.describe('Pratinjau dokumen', () => {
         await expect(ruang.locator('[data-kosong]').last()).toBeInViewport();
     });
 
+    test('ringkasan kelengkapan: persen & status per bagian, menuju bagian, bagian aktif, isian kosong berikutnya', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/2/pratinjau');
+        const ringkasan = page.getByTestId('ringkasan-kelengkapan');
+        await expect(ringkasan.getByTestId('persen-kelengkapan')).toHaveText(/^\d+%$/);
+        await expect(ringkasan.locator('[data-kelengkapan]')).toHaveCount(11);
+        await expect(ringkasan.locator('[data-kelengkapan="cover"]')).toHaveAttribute('aria-current', 'location');
+        await ringkasan.screenshot({ path: `storage/playwright/shots/pratinjau-kelengkapan-${testInfo.project.name}.png` });
+
+        const tujuh = ringkasan.locator('[data-kelengkapan="kak-7"]');
+        await expect(tujuh).toHaveAttribute('data-status', 'kurang');
+        await tujuh.click();
+        await expect(page).toHaveURL(/#cetak-kak-bagian-7$/);
+        await expect(page.locator('#cetak-kak-bagian-7')).toBeInViewport();
+        await expect(tujuh).toHaveAttribute('aria-current', 'location');
+
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await ringkasan.getByTestId('ke-isian-kosong').click();
+        await expect(page.getByTestId('ruang-lembar').locator('[data-kosong]').first()).toBeInViewport();
+        await expect(page.getByTestId('navigasi-kosong')).toContainText('1/');
+    });
+
     test('kaidah: RAB yang melebihi pagu ditandai gagal', async ({ page }) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/3/pratinjau?sumber=Komite');

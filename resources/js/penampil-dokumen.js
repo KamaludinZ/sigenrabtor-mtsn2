@@ -160,10 +160,13 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
             }
             this.halamanAktif = Math.min(Math.max(1, aktif), Math.max(1, this.totalHalaman));
 
+            // Bagian aktif: acuan dekat tempat jangkar mendarat (scroll-margin ±200 px) agar bagian pendek yang baru dituju
+            // tidak terlewati oleh bagian berikutnya.
+            const acuanBagian = Math.min(acuan, 220);
             let bagian = isi[0]?.kunci ?? null;
             for (const butir of isi) {
                 const sasaran = document.getElementById(butir.jangkar);
-                if (sasaran && sasaran.getBoundingClientRect().top <= acuan) {
+                if (sasaran && sasaran.getBoundingClientRect().top <= acuanBagian) {
                     bagian = butir.kunci;
                 }
             }

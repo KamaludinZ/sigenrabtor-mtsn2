@@ -8,6 +8,7 @@ use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\ChecklistIsian;
 use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\KaidahDokumen;
+use App\Support\Dokumen\KelengkapanDokumen;
 use App\Support\Dokumen\PenampilDokumen;
 use App\Support\Dokumen\PenandaKosong;
 use App\Support\Dokumen\StatusCetak;
@@ -178,10 +179,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen, $this->penandaKosong);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen, $this->penandaKosong, $this->kelengkapan);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen, $this->penandaKosong);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen, $this->penandaKosong, $this->kelengkapan);
         }
     }
 
@@ -243,6 +244,13 @@ class PratinjauDokumen extends Component
     public function penandaKosong(): array
     {
         return PenandaKosong::daftar($this->kak, $this->rab);
+    }
+
+    /** Ringkasan kelengkapan set dokumen yang ditampilkan (panel samping, navigasi per bagian). */
+    #[Computed]
+    public function kelengkapan(): KelengkapanDokumen
+    {
+        return KelengkapanDokumen::dari($this->kak, $this->rab, $this->dataKegiatan, StubData::currentUser(), $this->statusCetak->set);
     }
 
     /** @return list<array<string, mixed>> Checklist isian wajib per tempat mengisinya (ChecklistIsian). */
