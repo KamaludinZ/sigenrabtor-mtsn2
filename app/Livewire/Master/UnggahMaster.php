@@ -8,9 +8,9 @@ use App\Support\Impor\GagalBacaImpor;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\Impor\BerkasMaster;
 use App\Support\Master\Impor\PratinjauMaster;
+use App\Support\Master\Impor\ProsesBerkasMaster;
 use App\Support\Master\JenisKode;
 use App\Support\Stub\StubData;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -70,10 +70,8 @@ class UnggahMaster extends Component
         if (! array_key_exists($this->cakupan, BerkasMaster::cakupan())) {
             $this->cakupan = BerkasMaster::SEMUA;
         }
-        if ($this->terpilih && $this->cakupan === BerkasMaster::SEMUA && $this->terpilih['lembar'] === ['CSV']) {
-            $this->galat = 'Berkas CSV hanya untuk satu jenis kode. Pilih jenisnya, atau unggah berkas .xlsx berisi semua sheet.';
-        } elseif ($this->terpilih) {
-            $this->galat = null;
+        if ($this->terpilih) {
+            $this->galat = ProsesBerkasMaster::galatCakupan($this->terpilih['lembar'], $this->cakupan);
         }
     }
 
@@ -84,35 +82,15 @@ class UnggahMaster extends Component
         $this->terpilih = null;
 
         try {
-            $this->validate(
-                ['berkas' => ['required', 'file', 'max:'.BerkasMaster::MAKS_KB, 'extensions:xlsx,xls,csv']],
-                [
-                    'berkas.max' => 'Ukuran berkas maksimal '.(BerkasMaster::MAKS_KB / 1024).' MB.',
-                    'berkas.extensions' => 'Pilih berkas Excel (.xlsx, .xls) atau CSV.',
-                ],
-            );
-        } catch (ValidationException $e) {
-            $this->galat = $e->validator->errors()->first('berkas');
-            $this->buangBerkas();
-
-            return;
-        }
-
-        $nama = $this->berkas->getClientOriginalName();
-        try {
-            $lembar = BerkasMaster::lembar($this->berkas->getRealPath(), $nama);
+            $this->terpilih = ProsesBerkasMaster::bacaBerkas($this->berkas instanceof TemporaryUploadedFile ? $this->berkas : null);
         } catch (GagalBacaImpor $e) {
             $this->galat = $e->getMessage();
             $this->buangBerkas();
 
             return;
         }
-
-        $this->terpilih = ['nama' => $nama, 'ukuran' => (int) $this->berkas->getSize(), 'lembar' => $lembar];
+        // Berkas yang terbaca tetap terpilih walau cakupannya belum cocok (mis. CSV pada "Berkas master lengkap").
         $this->updatedCakupan();
-        if ($this->galat === null && array_filter($this->sheetDikenali()) === []) {
-            $this->galat = 'Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK & IKSK), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.';
-        }
     }
 
     /** Baca isi berkas per jenis lalu tampilkan pratinjau perbandingannya dengan master tahun ini. */
@@ -130,7 +108,7 @@ class UnggahMaster extends Component
         }
 
         try {
-            $this->pratinjau = PratinjauMaster::susun($this->berkas->getRealPath(), $this->terpilih['nama'], array_filter($this->sheetDikenali()), $this->tahun);
+            $this->pratinjau = ProsesBerkasMaster::proses($this->berkas->getRealPath(), $this->terpilih['nama'], $this->cakupan, $this->tahun, StubData::currentUser())['pratinjau'];
         } catch (GagalBacaImpor $e) {
             $this->galat = $e->getMessage();
 
