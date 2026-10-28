@@ -8,6 +8,7 @@ use App\Contracts\PenyusunUsulanJadwal;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Kegiatan\BatasAi;
+use App\Support\Kegiatan\DataMatrikJadwal;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\GagalPenyediaAi;
 use App\Support\Kegiatan\JadwalKegiatan;
@@ -22,7 +23,6 @@ use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
-use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -568,33 +568,19 @@ class MatrikJadwal extends Component
     }
 
     /**
-     * Bulan acuan dari Data Kegiatan; null bila bulan pelaksanaan belum diisi.
+     * Bulan acuan dari Data Kegiatan (DataMatrikJadwal::acuan); null bila bulan pelaksanaan belum diisi.
      *
      * @return array{persiapan: int, pelaksanaan: list<int>, laporan: int}|null
      */
     private function acuanBulan(): ?array
     {
-        $bulan = $this->pelaksanaan->bulan;
-
-        if ($bulan === []) {
-            return null;
-        }
-
-        return ['persiapan' => max(1, $bulan[0] - 1), 'pelaksanaan' => $bulan, 'laporan' => $this->bulanLaporan() ?? end($bulan)];
+        return DataMatrikJadwal::acuan($this->pelaksanaan->bulan, $this->bulanLaporan());
     }
 
-    /** Bulan batas laporan di tahun anggaran aktif; laporan yang jatuh di tahun berikutnya ditandai Desember. */
+    /** Bulan batas laporan di tahun anggaran aktif (DataMatrikJadwal::bulanLaporan). */
     public function bulanLaporan(): ?int
     {
-        $tanggal = $this->dataKegiatan['tanggal_laporan'] ?? null;
-
-        if (! is_string($tanggal) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal)) {
-            return null;
-        }
-
-        $laporan = CarbonImmutable::parse($tanggal);
-
-        return $laporan->year > $this->tahun() ? 12 : $laporan->month;
+        return DataMatrikJadwal::bulanLaporan($this->dataKegiatan, $this->tahun());
     }
 
     /**

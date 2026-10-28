@@ -7,6 +7,7 @@ use App\Http\Controllers\EksporMonitoringPdf;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
+use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\StatusCetakKegiatan;
@@ -76,6 +77,7 @@ Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber(
 Route::get('/kegiatan/{kegiatan}/termin', TerminKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.termin');
 Route::get('/kegiatan/{kegiatan}/sumber-dana', SumberDanaKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.sumber_dana');
 Route::get('/kegiatan/{kegiatan}/status-cetak', StatusCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status_cetak');
+Route::get('/kegiatan/{kegiatan}/matrik-jadwal', MatrikJadwalKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.matrik_jadwal');
 // Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).
 Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('dokumen.cover.gambar');
 
