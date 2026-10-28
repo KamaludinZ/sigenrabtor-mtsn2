@@ -27,6 +27,7 @@ export const E2E_PROMPT_AI_FILE = 'stub/prompt-ai-e2e.json';
 export const E2E_CATATAN_PEMERIKSAAN_FILE = 'stub/catatan-pemeriksaan-e2e.json';
 export const E2E_RIWAYAT_KUNCI_FILE = 'stub/riwayat-kunci-e2e.json';
 export const E2E_DUPLIKAT_FILE = 'stub/duplikat-kegiatan-e2e.json';
+export const E2E_IMPOR_FILE = 'stub/impor-kegiatan-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -87,6 +88,7 @@ export default defineConfig({
             STUB_CATATAN_PEMERIKSAAN_FILE: E2E_CATATAN_PEMERIKSAAN_FILE,
             STUB_RIWAYAT_KUNCI_FILE: E2E_RIWAYAT_KUNCI_FILE,
             STUB_DUPLIKAT_FILE: E2E_DUPLIKAT_FILE,
+            STUB_IMPOR_FILE: E2E_IMPOR_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },

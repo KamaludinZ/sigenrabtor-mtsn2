@@ -87,6 +87,7 @@ return [
         'catatan_pemeriksaan_file' => env('STUB_CATATAN_PEMERIKSAAN_FILE', 'stub/catatan-pemeriksaan.json'),
         'riwayat_kunci_file' => env('STUB_RIWAYAT_KUNCI_FILE', 'stub/riwayat-kunci.json'),
         'duplikat_file' => env('STUB_DUPLIKAT_FILE', 'stub/duplikat-kegiatan.json'),
+        'impor_file' => env('STUB_IMPOR_FILE', 'stub/impor-kegiatan.json'),
     ],
 
     /*

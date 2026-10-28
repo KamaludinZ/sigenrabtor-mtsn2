@@ -5,15 +5,12 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Impor\ImporBertahap;
-use App\Support\Format;
-use App\Support\Kegiatan\Impor\PembacaPerkin;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaPerkin;
-use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Kegiatan\Impor\UnggahPerkin;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Kegiatan\ValidasiKegiatan;
-use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Locked;
 
@@ -48,44 +45,12 @@ class ImporPerkin extends ImporBertahap
 
     protected function periksaBerkas(string $path, string $namaAsli): array
     {
-        $pengguna = StubData::currentUser();
-        $leadings = MasterKode::leadingsUntuk($pengguna);
-        $tahun = StubData::tahunAktif()['tahun'];
-        $bacaan = PembacaPerkin::baca($path, $namaAsli);
-        $this->lembar = $bacaan['lembar'];
-        $this->kolomHilang = array_values(array_diff_key(PembacaPerkin::LABEL, array_flip($bacaan['kolom'])));
+        // Parsing & pemeriksaan sama dengan endpoint kegiatan.impor_perkin.unggah (UnggahPerkin).
+        $hasil = UnggahPerkin::pratinjau($path, $namaAsli, StubData::currentUser());
+        $this->lembar = $hasil['lembar'];
+        $this->kolomHilang = $hasil['kolom_hilang'];
 
-        // Hanya kegiatan tahun aktif: nama yang sama di tahun lalu tetap boleh dibuat lagi untuk tahun ini.
-        $namaAda = array_column(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => TahunKegiatan::dari($k) === $tahun), 'nama_kegiatan');
-        $diperiksa = PemeriksaPerkin::periksa($bacaan['baris'], $namaAda, $leadings, MasterKode::leadings(), count($leadings) === 1 ? $leadings[0]['kode'] : null);
-
-        $uraianSk = array_column(MasterKode::kodeSk(), 'uraian', 'kode');
-        $uraianIksk = array_column(MasterKode::kodeIksk(), 'uraian', 'kode');
-
-        return array_map(fn (array $b) => [
-            'baris' => $b['baris'],
-            // Bentuk terurai untuk tabel pratinjau Perkin (partial tabel-perkin).
-            'perkin' => [
-                'sk' => $b['kode_sk'], 'sk_uraian' => $uraianSk[$b['kode_sk']] ?? null, 'sk_asal' => $b['asal_sk'],
-                'iksk' => $b['kode_iksk'], 'iksk_uraian' => $uraianIksk[$b['kode_iksk']] ?? null, 'iksk_asal' => $b['asal_iksk'],
-                'dikosongkan' => $b['dikosongkan'],
-                'leading' => $b['leading'], 'leading_nama' => MasterKode::leading($b['leading'])['nama_unit'] ?? null,
-                'pagu' => array_column($b['sumber_dana'], 'pagu', 'sumber'),
-                'bulan' => JadwalPelaksanaan::teksBulan($b['bulan'], $tahun),
-            ],
-            'tampil' => [
-                'nama' => $b['nama'] ?: '—',
-                'kode' => implode(' · ', array_filter([$b['kode_sk'], $b['kode_iksk']])) ?: '—',
-                // Kode saja: tabel pratinjau Perkin sudah lebar (kode SK · IKSK).
-                'leading' => $b['leading'] ?? '—',
-                'pagu' => $b['sumber_dana'] === [] ? '—' : implode(' · ', array_map(fn ($s) => $s['sumber'].' '.Format::rupiah($s['pagu']), $b['sumber_dana'])),
-                'bulan' => JadwalPelaksanaan::teksBulan($b['bulan'], $tahun) ?? '—',
-            ],
-            'status' => $b['status'],
-            'pesan' => $b['pesan'],
-            'peringatan' => $b['peringatan'],
-            'data' => PemeriksaPerkin::dataKegiatan($b),
-        ], $diperiksa);
+        return $hasil['baris'];
     }
 
     /** Langkah konfirmasi sebelum draf dibuat: ringkasan yang akan diimpor (konfirmasiImpor()). */
