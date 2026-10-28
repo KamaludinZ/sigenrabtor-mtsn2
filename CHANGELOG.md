@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **skema sumber dana** — daftar sumber dana (DIPA dan Komite, beserta keterangan dan urutan tampil) kini tersimpan sebagai tabel rujukan di database, dan setiap RAB merujuk sumber dananya sehingga sumber dana yang tidak dikenal tidak bisa tersimpan dan sumber dana yang masih dipakai tidak bisa terhapus.
 - RAB: setiap kali menambah, mengubah, menyalin, menghapus (atau mengurungkannya), maupun memindah item mengubah total RAB sumber dana yang punya termin, kini langsung muncul pemberitahuan — mis. "Total RAB Komite kini Rp10.150.000; termin kurang Rp150.000 dari total RAB — sesuaikan di Termin pembayaran." — atau konfirmasi bahwa termin kembali sama dengan total RAB. Termin tidak diubah otomatis.
 - Privasi AI diperluas: selain NIP dan nama pejabat, alamat surel, nomor telepon/WA, NIK, nomor rekening, serta nama panitia kegiatan dan nama akun pengguna yang tertulis di catatan konteks, teks yang diperbaiki, atau instruksi kini disembunyikan sebelum dikirim ke penyedia AI (angka, tanggal, kode, dan nominal biasa tetap utuh). Riwayat Saran AI mencatat bahan yang sudah dibersihkan.
 - Termin pembayaran kini disimpan lewat layanan server yang memeriksa ulang setiap baris (tanggal di tahun anggaran dan tidak mundur, nominal lebih dari Rp0, paling banyak 12 termin) dan menolak penyimpanan bila jumlah termin tidak sama dengan total RAB yang tersimpan — termin lama tetap utuh — serta bila RAB sudah terkunci.
