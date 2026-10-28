@@ -5,7 +5,10 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Support\Kegiatan\Duplikat\DaftarSumberDuplikat;
 use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
+use App\Support\Kegiatan\Duplikat\LayananDuplikat;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -127,14 +130,19 @@ class SalinImpor extends Component
             return;
         }
 
-        $perId = array_column(app(KegiatanRepository::class)->semua(), null, 'id');
-        $pengguna = StubData::currentUser();
-        $this->hasilDuplikat = array_values(array_map(fn (int $id) => DuplikatKegiatan::jalankan($perId[$id], $pengguna), $this->pilihan));
+        try {
+            $hasil = LayananDuplikat::jalankan($this->pilihan, StubData::currentUser());
+        } catch (AuthorizationException|ValidationException $e) {
+            $this->dispatch('notify', message: $e instanceof ValidationException ? collect($e->errors())->flatten()->first() : $e->getMessage(), type: 'error');
+
+            return;
+        }
+        // Hasil berupa draf baru (id draf) beserta catatannya.
+        $this->hasilDuplikat = array_map(fn (array $d) => ['id' => $d['hasil_id'], 'nama' => $d['nama'], 'catatan' => $d['catatan']], $hasil['dibuat']);
         $this->pilihan = [];
         unset($this->semuaSumber);
 
-        $jumlah = count($this->hasilDuplikat);
-        $this->dispatch('notify', message: "{$jumlah} kegiatan diduplikat menjadi draf TA ".StubData::tahunAktif()['tahun'].'.', type: 'success');
+        $this->dispatch('notify', message: $hasil['pesan'], type: $hasil['gagal'] === [] && $hasil['dilewati'] === [] ? 'success' : 'info');
     }
 
     public function tutupHasil(): void

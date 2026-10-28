@@ -86,6 +86,7 @@ return [
         'prompt_ai_file' => env('STUB_PROMPT_AI_FILE', 'stub/prompt-ai.json'),
         'catatan_pemeriksaan_file' => env('STUB_CATATAN_PEMERIKSAAN_FILE', 'stub/catatan-pemeriksaan.json'),
         'riwayat_kunci_file' => env('STUB_RIWAYAT_KUNCI_FILE', 'stub/riwayat-kunci.json'),
+        'duplikat_file' => env('STUB_DUPLIKAT_FILE', 'stub/duplikat-kegiatan.json'),
     ],
 
     /*
