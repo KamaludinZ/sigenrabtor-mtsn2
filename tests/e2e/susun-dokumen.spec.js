@@ -117,4 +117,34 @@ test.describe('Susun KAK/TOR otomatis', () => {
         await expect(tambah.locator('.form-error').first()).toBeVisible();
         await expect(tambah).toContainText(/uraian/i);
     });
+
+    test('tampilan dokumen utuh: hasil susunan seperti cetak, daftar bagian melompat ke dokumen', async ({ page }, testInfo) => {
+        const mobile = testInfo.project.name.includes('mobile');
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/1/dokumen');
+        const tampilan = page.getByTestId('tampilan-susun');
+        await tampilan.getByRole('button', { name: 'Dokumen utuh' }).click();
+        await expect(page).toHaveURL(/tampilan=dokumen/);
+        await expect(tampilan.getByRole('button', { name: 'Dokumen utuh' })).toHaveAttribute('aria-pressed', 'true');
+        const hasil = page.getByTestId('hasil-susunan');
+        await expect(hasil).toBeVisible();
+        await expect(hasil.getByTestId('hasil-cover')).toBeVisible();
+        await expect(hasil.getByTestId('pratinjau-kak')).toHaveCount(1);
+        await expect(hasil.getByTestId('pratinjau-rab')).toHaveCount(1);
+        await expect(page.getByTestId('bagian-susun')).toHaveCount(0);
+
+        const navigasi = mobile ? page.getByRole('navigation', { name: 'Bagian dokumen' }) : page.getByTestId('kemajuan-susun');
+        await navigasi.getByRole('link', { name: /8\. Pembiayaan/ }).click();
+        await expect(page).toHaveURL(/#cetak-kak-bagian-8$/);
+        await expect(page.locator('#cetak-kak-bagian-8')).toBeInViewport();
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+        await page.screenshot({ path: `storage/playwright/shots/susun-dokumen-utuh-${testInfo.project.name}.png` });
+
+        await tampilan.getByRole('button', { name: 'Per bagian' }).click();
+        await expect(page.getByTestId('bagian-susun')).toHaveCount(9);
+        await expect(page).not.toHaveURL(/tampilan=/);
+    });
 });

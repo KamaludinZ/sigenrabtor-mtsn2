@@ -20,6 +20,10 @@
     $jangkarPratinjau = ['cover' => '#dok-cover', 'kak' => '#dok-kak', 'rab' => '#dok-rab'][$isi[0]];
     $labelBagianTemplate = ['kak' => 'KAK/TOR', 'rab' => 'RAB'];
     $bisaUbah = $this->dapatDiubah();
+    // Tampilan dokumen utuh: daftar bagian melompat ke jangkar di dokumen (#cetak-kak-bagian-n), selain itu ke kartunya.
+    $dokumen = $tampilan === 'dokumen';
+    $ke = ['cover' => $dokumen ? '#hasil-cover' : '#susun-cover', 'rab' => $dokumen ? '#hasil-rab' : '#susun-rab'];
+    $keBagian = fn (int $n) => ($dokumen ? '#cetak-kak-bagian-' : '#susun-bagian-').$n;
     $tahun = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $admin = \App\Support\Stub\StubData::currentUser()['role'] === 'admin';
     $nadaStatus = [
@@ -86,10 +90,20 @@
                 <span class="text-sm text-stone-600" data-testid="ringkasan-susun">RAB · <span class="font-semibold text-stone-900">{{ $rab->anggaran?->jumlahItem() ?? 0 }}</span> baris rincian</span>
             @endif
         </div>
-        <span @class(['inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', 'bg-red-50 text-red-700 ring-red-200' => $statusDraf->draf, 'bg-brand-50 text-brand-800 ring-brand-200' => ! $statusDraf->draf]) data-testid="keadaan-susun" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}">
-            <x-ui.icon :name="$statusDraf->draf ? 'alert' : 'check-circle'" class="size-3.5" />
-            {{ $statusDraf->draf ? 'Tercetak sebagai DRAF' : 'Siap dicetak' }}
-        </span>
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Tampilan" data-testid="tampilan-susun">
+                @foreach (\App\Livewire\Kegiatan\SusunDokumen::TAMPILAN as $kunciTampilan => $labelTampilan)
+                    <button type="button" wire:click="$set('tampilan', '{{ $kunciTampilan }}')" aria-pressed="{{ $tampilan === $kunciTampilan ? 'true' : 'false' }}" data-tampilan="{{ $kunciTampilan }}"
+                            @class(['inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition', 'bg-white text-brand-800 shadow-xs' => $tampilan === $kunciTampilan, 'text-stone-600 hover:text-stone-900' => $tampilan !== $kunciTampilan])>
+                        <x-ui.icon :name="$kunciTampilan === 'dokumen' ? 'file-text' : 'layers'" class="size-3.5" /> {{ $labelTampilan }}
+                    </button>
+                @endforeach
+            </div>
+            <span @class(['inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', 'bg-red-50 text-red-700 ring-red-200' => $statusDraf->draf, 'bg-brand-50 text-brand-800 ring-brand-200' => ! $statusDraf->draf]) data-testid="keadaan-susun" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}">
+                <x-ui.icon :name="$statusDraf->draf ? 'alert' : 'check-circle'" class="size-3.5" />
+                {{ $statusDraf->draf ? 'Tercetak sebagai DRAF' : 'Siap dicetak' }}
+            </span>
+        </div>
     </div>
 
     <x-dokumen.pilih-jenis class="mt-4" :pilihan="$this->pilihanJenis" :terpilih="$jenis" />
@@ -99,17 +113,54 @@
             {{-- Daftar bagian di layar sempit (di layar lebar ada di panel samping). --}}
             <nav class="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 lg:hidden" aria-label="Bagian dokumen">
                 @if ($adaCover)
-                    <a href="#susun-cover" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">Cover</a>
+                    <a href="{{ $ke['cover'] }}" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">Cover</a>
                 @endif
                 @foreach ($adaKak ? $susunan->bagian : [] as $b)
-                    <a href="#susun-bagian-{{ $b['nomor'] }}" class="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
+                    <a href="{{ $keBagian($b['nomor']) }}" class="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
                         <span class="size-1.5 rounded-full {{ $nadaStatus[$b['status']]['titik'] }}" aria-hidden="true"></span>{{ $b['nomor'] }}. {{ $b['judul'] }}
                     </a>
                 @endforeach
                 @if ($adaRab)
-                    <a href="#susun-rab" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">RAB</a>
+                    <a href="{{ $ke['rab'] }}" class="flex shrink-0 items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">RAB</a>
                 @endif
             </nav>
+
+            @if ($dokumen)
+                {{-- Dokumen utuh hasil susunan: bagian jenis terpilih berurutan seperti dicetak. --}}
+                <div class="space-y-6 rounded-2xl bg-stone-100 p-3 ring-1 ring-stone-200 sm:p-6" data-testid="hasil-susunan" wire:key="hasil-{{ $jenis }}-{{ $sumberAktif }}">
+                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-stone-600">
+                        <p>Hasil susunan <span class="font-semibold text-stone-800">{{ $pemeriksaan['label_jenis'] }}</span> dari data terbaru, seperti tercetak.</p>
+                        <p class="flex flex-wrap items-center gap-3" aria-label="Keterangan penanda">
+                            <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-gold-100 ring-1 ring-gold-300" aria-hidden="true"></span>Isian belum lengkap</span>
+                            @if ($statusDraf->draf)
+                                <span class="inline-flex items-center gap-1.5"><span class="font-sans text-[10px] font-bold tracking-widest text-red-700/70" aria-hidden="true">DRAF</span>Cap selama belum siap</span>
+                            @endif
+                        </p>
+                    </div>
+                    @if ($adaCover)
+                        <section id="hasil-cover" class="scroll-mt-36" aria-label="Cover" data-testid="hasil-cover">
+                            <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">Cover <x-dokumen.kepala-draf :status="$statusCetak->set" /></p>
+                            <x-dokumen.cover :gambar="$this->cover['gambar']" :teks="$this->cover['teks']" :nilai="$this->cover['nilai']" :draf="$statusCetak->set->draf" :jangkar="false" class="max-w-[210mm]" />
+                        </section>
+                    @endif
+                    @if ($adaKak)
+                        <section id="hasil-kak" class="scroll-mt-36" aria-label="KAK/TOR" data-testid="hasil-kak">
+                            <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">KAK/TOR <x-dokumen.kepala-draf :status="$kak->statusDraf" /></p>
+                            @if ($kak->peringatanPagu)
+                                <x-rab.peringatan-pagu :sumber="$kak->sumber" :hasil="$kak->peringatanPagu->hasil" ringkas class="mx-auto mb-3 max-w-[210mm]" />
+                            @endif
+                            {{-- Set lengkap memakai cover terpisah; KAK/TOR saja menyertakan halaman judulnya. --}}
+                            <x-dokumen.kak-tor :susunan="$kak" :bagian="$adaCover ? range(1, 9) : null" />
+                        </section>
+                    @endif
+                    @if ($adaRab)
+                        <section id="hasil-rab" class="scroll-mt-36" aria-label="RAB" data-testid="hasil-rab">
+                            <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">RAB{{ $sumberAktif ? ' '.$sumberAktif : '' }} <x-dokumen.kepala-draf :status="$rab->statusDraf" /></p>
+                            <x-dokumen.rab :susunan="$rab" />
+                        </section>
+                    @endif
+                </div>
+            @else
 
             @if ($adaCover)
                 {{-- Cover kegiatan (set lengkap): desain cover tahun aktif berisi data kegiatan. --}}
@@ -316,6 +367,7 @@
                 @endif
             </section>
             @endif
+            @endif
         </div>
 
         <aside class="space-y-4 lg:sticky lg:top-24 lg:self-start">
@@ -332,7 +384,7 @@
                 <ol class="mt-3 hidden space-y-0.5 text-sm lg:block">
                     @foreach ($susunan->bagian as $b)
                         <li>
-                            <a href="#susun-bagian-{{ $b['nomor'] }}" class="flex items-center gap-2 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900">
+                            <a href="{{ $keBagian($b['nomor']) }}" class="flex items-center gap-2 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900">
                                 <span class="size-1.5 shrink-0 rounded-full {{ $nadaStatus[$b['status']]['titik'] }}" aria-hidden="true"></span>
                                 <span class="min-w-0 flex-1 truncate">{{ $b['nomor'] }}. {{ $b['judul'] }}</span>
                                 @if ($b['kurang'] !== [])
@@ -345,17 +397,19 @@
                     @endforeach
                     @if ($adaRab)
                     <li>
-                        <a href="#susun-rab" class="flex items-center gap-2 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900">
+                        <a href="{{ $ke['rab'] }}" class="flex items-center gap-2 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900">
                             <span @class(['size-1.5 shrink-0 rounded-full', 'bg-gold-500' => $susunan->kurangRab !== [], 'bg-brand-600' => $susunan->kurangRab === []]) aria-hidden="true"></span>
                             <span class="min-w-0 flex-1 truncate">RAB {{ $sumberAktif }}</span>
                         </a>
                     </li>
                     @endif
                 </ol>
-                <div class="mt-3 flex gap-2 border-t border-stone-100 pt-3">
-                    <button type="button" class="btn-ghost flex-1 justify-center text-xs" x-on:click="semua = true" data-testid="buka-semua-bagian">Buka semua</button>
-                    <button type="button" class="btn-ghost flex-1 justify-center text-xs" x-on:click="semua = false" data-testid="ciutkan-semua-bagian">Ciutkan semua</button>
-                </div>
+                @unless ($dokumen)
+                    <div class="mt-3 flex gap-2 border-t border-stone-100 pt-3">
+                        <button type="button" class="btn-ghost flex-1 justify-center text-xs" x-on:click="semua = true" data-testid="buka-semua-bagian">Buka semua</button>
+                        <button type="button" class="btn-ghost flex-1 justify-center text-xs" x-on:click="semua = false" data-testid="ciutkan-semua-bagian">Ciutkan semua</button>
+                    </div>
+                @endunless
             </section>
             @endif
 

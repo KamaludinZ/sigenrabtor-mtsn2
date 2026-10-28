@@ -38,7 +38,8 @@ use Livewire\Component;
  * tampil (cover/KAK-TOR/RAB), master template, cap DRAF, dan pemeriksaan cetak (PemeriksaanCetak: nama berkas & butir cek).
  * Isian yang menentukan bagian bisa dilengkapi di tempat (`bukaIsian($nomor)` → `simpanIsian()`, kolom IsianSusun, lewat
  * UbahDataKegiatan dengan versi saat dibuka) dan rincian RAB ditambah dari kartu RAB (`tambahRincian()`, RincianRab) —
- * keduanya hanya selama kegiatan bisa diubah (KunciKegiatan).
+ * keduanya hanya selama kegiatan bisa diubah (KunciKegiatan). Tampilan `?tampilan=` (`TAMPILAN`): kartu per bagian
+ * atau dokumen utuh hasil susunan (cover, KAK/TOR, RAB jenis terpilih seperti dicetak, cap DRAF sekali).
  */
 #[Layout('layouts.app')]
 class SusunDokumen extends Component
@@ -51,6 +52,12 @@ class SusunDokumen extends Component
 
     #[Url(except: JenisDokumen::BAWAAN)]
     public string $jenis = JenisDokumen::BAWAAN;
+
+    /** Tampilan halaman → label: kartu per bagian (penyusunan) atau dokumen utuh (hasil susunan seperti dicetak). */
+    public const TAMPILAN = ['bagian' => 'Per bagian', 'dokumen' => 'Dokumen utuh'];
+
+    #[Url(except: 'bagian')]
+    public string $tampilan = 'bagian';
 
     /** Nomor bagian yang isiannya sedang dilengkapi di tempat; null = tertutup. */
     public ?int $isianTerbuka = null;
@@ -70,6 +77,17 @@ class SusunDokumen extends Component
         AksesKegiatan::pastikan($kegiatan);
         $this->kegiatanId = $kegiatan;
         $this->updatedSumber();
+        $this->updatedTampilan();
+    }
+
+    /** Tampilan tak dikenal → per bagian; isian yang sedang dilengkapi ditutup saat berganti tampilan. */
+    public function updatedTampilan(): void
+    {
+        if (! isset(self::TAMPILAN[$this->tampilan])) {
+            $this->tampilan = 'bagian';
+        }
+        $this->isianTerbuka = null;
+        $this->resetErrorBag();
     }
 
     public function updatedSumber(): void

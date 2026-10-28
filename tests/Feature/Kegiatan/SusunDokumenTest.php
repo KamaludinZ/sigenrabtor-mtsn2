@@ -239,6 +239,34 @@ class SusunDokumenTest extends TestCase
         $this->assertCount(1, app(RabRepository::class)->rincian($id, 'DIPA'));
     }
 
+    public function test_tampilan_dokumen_utuh_hasil_susunan(): void
+    {
+        $halaman = Livewire::test(SusunDokumen::class, ['kegiatan' => 1])
+            ->assertSet('tampilan', 'bagian')
+            ->call('bukaIsian', 3)
+            ->set('tampilan', 'dokumen')
+            ->assertSet('isianTerbuka', null)
+            ->assertSeeHtml('data-testid="hasil-susunan"')
+            ->assertSeeHtml('data-tampilan="dokumen"')
+            ->assertSeeHtml('href="#cetak-kak-bagian-7"')
+            ->assertSeeHtml('href="#hasil-rab"');
+        $html = $halaman->html();
+        $this->assertSame([0, 1, 1], [substr_count($html, 'data-testid="bagian-susun"'), substr_count($html, 'data-testid="pratinjau-kak"'), substr_count($html, 'data-testid="pratinjau-rab"')]);
+        $this->assertStringContainsString('data-testid="hasil-cover"', $html);
+        $this->assertStringNotContainsString('data-testid="pratinjau-kak-cover"', $html, 'Set lengkap memakai cover terpisah.');
+        $this->assertStringContainsString('data-testid="cap-draf"', $html, 'Cap DRAF tampil di dokumen utuh.');
+        $this->assertStringNotContainsString('data-testid="buka-semua-bagian"', $html);
+
+        // KAK saja: halaman judul KAK/TOR ikut, tanpa cover & RAB.
+        $kak = $halaman->set('jenis', 'KAK')->html();
+        $this->assertSame([true, false, false], [str_contains($kak, 'data-testid="pratinjau-kak-cover"'), str_contains($kak, 'data-testid="hasil-cover"'), str_contains($kak, 'data-testid="hasil-rab"')]);
+
+        $halaman->set('tampilan', 'cetak')->assertSet('tampilan', 'bagian')->assertSeeHtml('data-testid="bagian-susun"');
+        Livewire::withQueryParams(['tampilan' => 'dokumen', 'jenis' => 'RAB'])->test(SusunDokumen::class, ['kegiatan' => 1])
+            ->assertSeeHtml('data-testid="hasil-rab"')
+            ->assertDontSeeHtml('data-testid="hasil-kak"');
+    }
+
     public function test_hak_akses_kegiatan(): void
     {
         $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Lomba Kreativitas Siswa', 'leading' => '1.2', 'user_id' => 4, 'tahun_anggaran' => 2026]);
