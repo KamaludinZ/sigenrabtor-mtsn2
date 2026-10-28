@@ -41,6 +41,7 @@ use App\Http\Controllers\HapusArsipFinal;
 use App\Http\Controllers\KegiatanBukuDokumen;
 use App\Http\Controllers\KodeMasterKegiatan;
 use App\Http\Controllers\KonteksKegiatan;
+use App\Http\Controllers\KuotaAiPengguna;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\MintaSaranAiKegiatan;
@@ -156,6 +157,7 @@ Route::get('/kegiatan/{kegiatan}/kalimat', KegiatanKalimatAi::class)->whereNumbe
 Route::post('/kegiatan/{kegiatan}/saran-ai/{bagian}', MintaSaranAiKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.saran_ai.minta');
 Route::get('/riwayat-saran-ai', SaranAiRiwayat::class)->name('saran_ai.index');
 Route::get('/riwayat-saran-ai/data', DataRiwayatSaranAi::class)->name('saran_ai.data');
+Route::get('/ai/kuota', KuotaAiPengguna::class)->name('ai.kuota');
 Route::get('/kegiatan/{kegiatan}/saran-ai', RiwayatSaranAiKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.saran_ai');
 Route::get('/saran-ai/{permintaan}', DetailSaranAi::class)->name('saran_ai.detail');
 Route::put('/saran-ai/{permintaan}/keputusan', PutuskanSaranAi::class)->name('saran_ai.putuskan');

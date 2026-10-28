@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Saran jadwal AI di server (PRD F10 "Usul Jadwal AI", F23–F25) — alur yang dipakai panel usulan halaman Matrik & Jadwal:
@@ -72,12 +73,19 @@ final class SaranJadwalAi
         // Teks yang dicatat = yang dikirim ke penyedia (RiwayatSaranAi::promptJadwal).
         $prompt = RiwayatSaranAi::promptJadwal($permintaan);
         KeamananAi::pastikanMuatanAman($prompt);
+        // Jatah harian diambil atomik tepat sebelum dikirim; dikembalikan bila penyedia gagal (kegagalan tidak dihitung).
+        BatasAi::ambil($pengguna, 'usul_jadwal');
         try {
             $jalan = RantaiPenyediaAi::jalankan(fn (string $penyedia) => app(PenyusunUsulanJadwal::class)->usulkan($permintaan, $penyedia));
         } catch (GagalPenyediaAi $e) {
+            BatasAi::kembalikan($pengguna, 'usul_jadwal');
+
             throw new GagalUsulanAi($e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : ''), previous: $e);
+        } catch (Throwable $e) {
+            BatasAi::kembalikan($pengguna, 'usul_jadwal');
+
+            throw $e;
         }
-        BatasAi::catat($pengguna, 'usul_jadwal');
 
         $versi = self::rapikan($jalan['hasil']);
         if ($versi === []) {

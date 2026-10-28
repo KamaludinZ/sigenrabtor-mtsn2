@@ -23,9 +23,35 @@ class StubPemakaianAiRepository implements PemakaianAiRepository
 
     public function catat(int $userId, string $fitur): void
     {
+        $this->ubah($userId, $fitur, 1);
+    }
+
+    public function ambilJatah(int $userId, string $fitur, int $batas): bool
+    {
+        // Tiruan satu proses: periksa lalu catat (database memakai kunci per akun).
+        if ($this->jumlah($userId, now()->toDateString()) >= $batas) {
+            return false;
+        }
+        $this->catat($userId, $fitur);
+
+        return true;
+    }
+
+    public function kembalikan(int $userId, string $fitur): void
+    {
+        $this->ubah($userId, $fitur, -1);
+    }
+
+    private function ubah(int $userId, string $fitur, int $selisih): void
+    {
         $semua = $this->baca();
         $hari = now()->toDateString();
-        $semua[$hari][$userId][$fitur] = ($semua[$hari][$userId][$fitur] ?? 0) + 1;
+        $jumlah = ($semua[$hari][$userId][$fitur] ?? 0) + $selisih;
+        if ($jumlah > 0) {
+            $semua[$hari][$userId][$fitur] = $jumlah;
+        } else {
+            unset($semua[$hari][$userId][$fitur]);
+        }
         $batas = now()->subDays(7)->toDateString();
         $semua = array_filter($semua, fn (string $tanggal) => $tanggal > $batas, ARRAY_FILTER_USE_KEY);
         Storage::disk('local')->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT));

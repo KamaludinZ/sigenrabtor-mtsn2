@@ -9,6 +9,7 @@ use App\Support\Stub\StubPengaturan;
 use App\Support\Teks;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Permintaan saran kalimat KAK ke AI di server (PRD §20 F23–F25) — dipakai Kalimat KAK (`KalimatAi::susunSaran`, "Buat
@@ -19,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  * - bagian dinonaktifkan admin (PromptAi::aktif), nama kegiatan kosong, atau batas harian habis (BatasAi) → GagalUsulanAi;
  * - muatan PayloadAi::saranKalimat (tanpa NIP, nama pejabat, pagu) → RantaiPenyediaAi (penyedia aktif → cadangan;
  *   gagal → GagalUsulanAi ber-previous GagalPenyediaAi, admin + simulasi diberi akhiran) → `rapikan()` (maks. jumlah versi ParameterAi, teks rapi,
- *   batas panjang kolom, nama cover kapital, tanpa kosong/kembar) → BatasAi::catat setelah penyedia menjawab → kosong =
+ *   batas panjang kolom, nama cover kapital, tanpa kosong/kembar) → jatah BatasAi::ambil sebelum dikirim (dikembalikan bila penyedia gagal) → kosong =
  *   GagalUsulanAi → RiwayatSaranAi::catat → {versi, peringatan (KeamananAi::peringatan), bertentangan (BatasDataMaster::galatTeks
  *   per versi — versi itu tidak bisa dipakai apa adanya), catatan, penyedia, permintaan}.
  *   Muatan diperiksa KeamananAi::pastikanMuatanAman sebelum terkirim; keluaran dibersihkan KeamananAi::bersihkanKeluaran.
@@ -76,14 +77,20 @@ final class SaranKalimatAi
         // Penjaga terakhir sebelum terkirim: tidak ada data pribadi yang lolos PayloadAi.
         KeamananAi::pastikanMuatanAman(RiwayatSaranAi::prompt($permintaan));
         $penyusun ??= app(PenyusunSaranKalimat::class);
+        // Jatah harian diambil atomik tepat sebelum dikirim; dikembalikan bila penyedia gagal (kegagalan tidak dihitung).
+        BatasAi::ambil($pengguna, $bagian);
         try {
             $jalan = RantaiPenyediaAi::jalankan(fn (string $penyedia) => $penyusun->sarankan($permintaan, $penyedia));
         } catch (GagalPenyediaAi $e) {
+            BatasAi::kembalikan($pengguna, $bagian);
             // Pesan siap tampil; kegagalan penyedia aslinya tetap terbawa (previous) untuk pemanggil yang membedakannya.
             throw new GagalUsulanAi($e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : ''), previous: $e);
+        } catch (Throwable $e) {
+            BatasAi::kembalikan($pengguna, $bagian);
+
+            throw $e;
         }
         $versi = self::rapikan($bagian, $jalan['hasil']);
-        BatasAi::catat($pengguna, $bagian);
         if ($versi === []) {
             throw new GagalUsulanAi('AI tidak memberi saran yang bisa dipakai. Coba lagi.');
         }
