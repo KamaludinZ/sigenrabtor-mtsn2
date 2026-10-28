@@ -4,29 +4,23 @@ namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
-use App\Contracts\PenyusunUsulanJadwal;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\SusunanKak;
-use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\DataMatrikJadwal;
 use App\Support\Kegiatan\DataPelaksanaan;
-use App\Support\Kegiatan\GagalPenyediaAi;
+use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
-use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
-use App\Support\Kegiatan\PayloadAi;
 use App\Support\Kegiatan\PemeriksaKonsistensi;
-use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
+use App\Support\Kegiatan\SaranJadwalAi;
 use App\Support\Kegiatan\SimpanMatrikJadwal;
 use App\Support\Kegiatan\StatusKuotaAi;
-use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -298,60 +292,29 @@ class MatrikJadwal extends Component
      * Minta 2–3 versi usulan ke penyusun (tiruan selama AI belum tersambung). Bahan dari KonteksAi (tanpa nama/NIP
      * pejabat); AI hanya menyusun uraian & bulan. Kegagalan penyedia tampil di panel, bukan sebagai galat halaman.
      */
-    public function buatUsulJadwal(PenyusunUsulanJadwal $penyusun): void
+    public function buatUsulJadwal(): void
     {
         $this->pastikanDapatDiedit();
-        $this->validate([
-            'usulJenis' => ['required', Rule::in(array_keys(KonteksAi::jenisKegiatan()))],
-            'usulInstruksi' => ['nullable', 'string', 'max:300'],
-        ], [
-            'usulJenis.required' => 'Pilih jenis kegiatan.',
-            'usulJenis.in' => 'Pilih jenis kegiatan dari daftar.',
-            'usulInstruksi.max' => 'Instruksi maksimal 300 karakter.',
-        ]);
-
+        // Aturan SaranJadwalAi dengan nama properti panel (jenis → usulJenis, instruksi → usulInstruksi).
+        $nama = ['jenis' => 'usulJenis', 'instruksi' => 'usulInstruksi'];
+        $this->validate(
+            array_combine(array_map(fn (string $k) => $nama[$k], array_keys(SaranJadwalAi::aturan())), SaranJadwalAi::aturan()),
+            array_combine(array_map(fn (string $k) => strtr($k, $nama), array_keys(SaranJadwalAi::pesan())), SaranJadwalAi::pesan()),
+        );
         $this->usulGagal = null;
-        $pengguna = StubData::currentUser();
-        if (! PromptAi::aktif('jadwal')) {
-            $this->usulan = [];
-            $this->usulGagal = 'Usulan jadwal AI dinonaktifkan admin di Pengaturan AI.';
-
-            return;
-        }
-        if (BatasAi::sisa($pengguna) <= 0) {
-            $this->usulan = [];
-            $this->usulGagal = BatasAi::pesanHabis($pengguna);
-
-            return;
-        }
-
-        // Muatan AI lewat PayloadAi: NIP, nama pejabat, dan pagu tidak pernah ikut terkirim.
-        $permintaan = PayloadAi::usulanJadwal($this->kegiatanId, $this->dataKegiatan, $this->usulJenis, Teks::rapikan($this->usulInstruksi), $this->acuanBulan());
 
         try {
-            $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->usulkan($permintaan));
-        } catch (GagalPenyediaAi $e) {
+            $hasil = SaranJadwalAi::minta($this->dataKegiatan, StubData::currentUser(), $this->usulJenis, $this->usulInstruksi);
+        } catch (GagalUsulanAi $e) {
             $this->usulan = [];
-            $this->usulGagal = $e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : '');
+            $this->usulGagal = $e->getMessage();
 
             return;
         }
-        $this->usulan = self::rapikanUsulan($jalan['hasil']);
-        $this->catatanPenyedia = RantaiPenyediaAi::catatan($jalan);
-        BatasAi::catat($pengguna, 'usul_jadwal');
-        if ($this->usulan !== []) {
-            $tahun = StubData::tahunAktif()['tahun'];
-            $versi = array_map(fn (array $u) => [
-                'judul' => $u['judul'], 'ciri' => $u['ciri'],
-                'teks' => implode("\n", array_map(fn (array $b) => $b['uraian'].' — '.(JadwalPelaksanaan::teksBulan($b['mulai'] ? range($b['mulai'], $b['sampai'] ?? $b['mulai']) : [], $tahun) ?? 'bulan belum diisi'), $u['baris'])),
-            ], $this->usulan);
-            $prompt = implode("\n", ['Bagian: Jadwal kegiatan (Bagian 7 · Jadwal Kegiatan)', 'Jenis kegiatan: '.(KonteksAi::jenisKegiatan()[$permintaan->jenis] ?? $permintaan->jenis), 'Instruksi: '.($permintaan->instruksi ?: '-'), 'Bahan kegiatan:', $permintaan->bahan]);
-            $this->permintaanUsulan = RiwayatSaranAi::catat($this->kegiatanId, 'jadwal', $prompt, $permintaan->instruksi, $versi, $pengguna, $jalan['penyedia']);
-        }
 
-        if ($this->usulan === []) {
-            $this->usulGagal = 'AI tidak memberi usulan yang bisa dipakai. Coba lagi atau ubah instruksi.';
-        }
+        $this->usulan = $hasil['versi'];
+        $this->catatanPenyedia = $hasil['catatan'];
+        $this->permintaanUsulan = $hasil['permintaan'];
     }
 
     /** Status kuota AI harian akun yang sedang masuk (panel usulan jadwal). */
@@ -370,10 +333,8 @@ class MatrikJadwal extends Component
         }
 
         $dipakai = $this->usulan[$versi];
-        if ($this->permintaanUsulan !== null) {
-            RiwayatSaranAi::putuskan($this->permintaanUsulan, $versi);
-            $this->permintaanUsulan = null;
-        }
+        SaranJadwalAi::putuskan($this->permintaanUsulan, $versi);
+        $this->permintaanUsulan = null;
         $sebelum = $this->jadwal;
         $this->jadwal = $dipakai['baris'];
         $this->jadwalSebelum = ['jadwal' => $sebelum, 'pesan' => "Jadwal diganti dengan usulan AI ({$dipakai['judul']}) — periksa lalu simpan."];
@@ -386,10 +347,8 @@ class MatrikJadwal extends Component
     /** Tolak semua versi lalu kembali ke permintaan (jenis & instruksi tetap, bisa diubah lalu dibuat ulang). */
     public function tolakUsulan(): void
     {
-        if ($this->permintaanUsulan !== null) {
-            RiwayatSaranAi::putuskan($this->permintaanUsulan, null);
-            $this->permintaanUsulan = null;
-        }
+        SaranJadwalAi::putuskan($this->permintaanUsulan, null);
+        $this->permintaanUsulan = null;
         $this->usulan = [];
     }
 
@@ -541,44 +500,6 @@ class MatrikJadwal extends Component
     public function bulanLaporan(): ?int
     {
         return DataMatrikJadwal::bulanLaporan($this->dataKegiatan, $this->tahun());
-    }
-
-    /**
-     * Hasil penyusun (bisa langsung dari model AI) dirapikan sebelum ditampilkan: maks. 3 versi bernomor ulang,
-     * baris berurai (1 baris teks, ≤ JadwalKegiatan::MAKS_URAIAN karakter) maks. JadwalKegiatan::MAKS_BARIS, bulan 1–12 dengan "s.d." sesudah mulai.
-     *
-     * @param  array<mixed>  $versi
-     * @return list<array{judul: string, ciri: string, keterangan: string, baris: list<array{uraian: string, mulai: int|null, sampai: int|null}>}>
-     */
-    private static function rapikanUsulan(array $versi): array
-    {
-        $satuBaris = fn (mixed $teks) => trim((string) preg_replace('/\s+/u', ' ', is_scalar($teks) ? (string) $teks : ''));
-        $hasil = [];
-
-        foreach (array_filter($versi, 'is_array') as $v) {
-            $baris = [];
-
-            foreach (array_filter(is_array($v['baris'] ?? null) ? $v['baris'] : [], 'is_array') as $b) {
-                $uraian = Str::limit($satuBaris($b['uraian'] ?? ''), JadwalKegiatan::MAKS_URAIAN, '');
-                $mulai = self::bulanAtauNull($b['mulai'] ?? null);
-                $sampai = self::bulanAtauNull($b['sampai'] ?? null);
-
-                if ($uraian !== '' && count($baris) < JadwalKegiatan::MAKS_BARIS) {
-                    $baris[] = ['uraian' => $uraian, 'mulai' => $mulai, 'sampai' => $mulai !== null && $sampai !== null && $sampai > $mulai ? $sampai : null];
-                }
-            }
-
-            if ($baris !== [] && count($hasil) < 3) {
-                $hasil[] = [
-                    'judul' => 'Versi '.(count($hasil) + 1),
-                    'ciri' => Str::limit($satuBaris($v['ciri'] ?? ''), 40),
-                    'keterangan' => Str::limit($satuBaris($v['keterangan'] ?? ''), 160),
-                    'baris' => $baris,
-                ];
-            }
-        }
-
-        return $hasil;
     }
 
     private static function bulanAtauNull(mixed $nilai): ?int
