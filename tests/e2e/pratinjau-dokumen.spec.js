@@ -98,6 +98,12 @@ test.describe('Pratinjau dokumen', () => {
         const kak = page.locator('[data-lembar="kak"]');
         await expect(kak.locator('[data-batas-halaman]')).toHaveCount(nKak - 1);
         await expect(kak.locator('[data-batas-halaman]').first()).toContainText('Halaman 2');
+        const rab = page.locator('[data-lembar="rab"]');
+        await expect(rab.locator('col')).toHaveCount(7);
+        await expect(rab.getByTestId('total-tabel-rab')).toHaveText('5.400.000');
+        await rab.scrollIntoViewIfNeeded();
+        await rab.screenshot({ path: `storage/playwright/shots/pratinjau-tabel-rab-${testInfo.project.name}.png` });
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
         const total = Number(await page.getByTestId('halaman-total').textContent());
         expect(total).toBeGreaterThanOrEqual(nKak + 2);
         await expect(page.getByTestId('halaman-aktif')).toHaveText('1');

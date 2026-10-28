@@ -75,15 +75,6 @@ class TabelRincianRabTest extends TestCase
         $this->assertStringContainsString('@lg:hidden', $html);
     }
 
-    public function test_gaya_dokumen_berbingkai_tanpa_kartu(): void
-    {
-        $html = $this->render($this->anggaran(1, 'Komite'), ['gaya' => 'dokumen']);
-
-        $this->assertStringContainsString('border border-stone-400', $html);
-        $this->assertStringNotContainsString('@lg:hidden', $html);
-        $this->assertStringContainsString('data-testid="total-tabel-rab">10.000.000</td>', $html);
-    }
-
     public function test_tanpa_rincian_menampilkan_keterangan(): void
     {
         $html = $this->render(new AnggaranSumber('Komite', KalkulatorRab::hitung([])));

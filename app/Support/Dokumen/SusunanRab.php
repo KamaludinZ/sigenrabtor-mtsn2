@@ -13,7 +13,7 @@ use App\Support\Stub\StubData;
 
 /**
  * Susunan dokumen RAB satu kegiatan × sumber dana (PRD 7B.3) untuk <x-dokumen.rab>: judul, header (Kementerian, Satker,
- * kegiatan & kode RKTM, SK, IKSK, EDM, 5 Budaya Mutu, volume, jumlah yang diajukan), tabel rincian, blok Mekanisme
+ * kegiatan & kode RKTM, SK, IKSK, EDM, 5 Budaya Mutu, volume, jumlah yang diajukan), tabel rincian (`tabel()` = TabelRab), blok Mekanisme
  * Pembayaran, dan lembar pengesahan yang sama dengan KAK. Kode dari NilaiVariabel, angka dari AngkaDokumen. Isian yang
  * belum lengkap tercatat di $kurang; cap DRAF lewat StatusDraf seperti KAK (belum disetujui, belum lengkap, atau melebihi pagu).
  */
@@ -122,5 +122,11 @@ final readonly class SusunanRab
             KunciDokumen::dari($kegiatan),
             $statusDraf,
         );
+    }
+
+    /** Struktur tabel rincian RAB dokumen ini (TabelRab; kosong bila belum ada sumber dana). */
+    public function tabel(): TabelRab
+    {
+        return TabelRab::dari($this->anggaran);
     }
 }

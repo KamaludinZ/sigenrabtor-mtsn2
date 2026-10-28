@@ -2,9 +2,9 @@
 
 namespace App\Support\Rab;
 
-use App\Support\Dokumen\AngkaDokumen;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\SusunanRab;
+use App\Support\Dokumen\TabelRab;
 use App\Support\Pengaturan\Nip;
 use App\Support\Stub\StubData;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -18,7 +18,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Ekspor RAB satu kegiatan ke Excel (PRD F21 "RAB juga dapat diekspor ke Excel", Fase 3 "Unduh Excel — rincian RAB"):
  * satu lembar per sumber dana (atau satu sumber saja), isinya sama dengan dokumen RAB (SusunanRab) — judul, header
  * (Kementerian, Satker, kegiatan & kode, jumlah yang diajukan), tabel No/(Kode)/Uraian/Vol/Satuan/Harga Satuan/Jumlah
- * dengan TOTAL KESELURUHAN & terbilang dari AngkaDokumen, Mekanisme Pembayaran, dan lembar pengesahan; uang berupa
+ * dengan TOTAL KESELURUHAN & terbilang dari TabelRab (struktur yang sama dengan tabel RAB dokumen), Mekanisme Pembayaran, dan lembar pengesahan; uang berupa
  * bilangan berformat ribuan, kode ditulis teks. Dokumen yang masih DRAF (StatusCetak) diberi baris keterangan DRAF dan
  * akhiran _DRAF pada nama berkas.
  */
@@ -54,10 +54,10 @@ final class EksporRabExcel
 
     private static function lembar(Worksheet $lembar, SusunanRab $susunan, StatusCetak $cetak): void
     {
-        $anggaran = $susunan->anggaran;
-        $rincian = $anggaran?->hasil->rincian ?? [];
-        $denganKode = collect($rincian)->contains(fn (array $i) => filled($i['kode'] ?? null));
-        $kolom = $denganKode ? ['No', 'Kode', 'Uraian', 'Vol', 'Satuan', 'Harga Satuan (Rp)', 'Jumlah (Rp)'] : ['No', 'Uraian', 'Vol', 'Satuan', 'Harga Satuan (Rp)', 'Jumlah (Rp)'];
+        // Kolom, baris, total & terbilang dari struktur yang sama dengan tabel RAB dokumen (TabelRab).
+        $tabel = $susunan->tabel();
+        $denganKode = in_array('kode', $tabel->kolom, true);
+        $kolom = $tabel->judul();
         $akhir = chr(ord('A') + count($kolom) - 1);
         $baris = 1;
 
@@ -89,29 +89,27 @@ final class EksporRabExcel
         $lembar->getStyle("A{$baris}:{$akhir}{$baris}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setWrapText(true);
         $baris++;
 
-        foreach (array_values($rincian) as $i => $item) {
-            $isi = [$i + 1, ...($denganKode ? [(string) ($item['kode'] ?? '')] : []), $item['uraian'], $item['volume'] + 0, $item['satuan'], (int) $item['harga_satuan'], (int) $item['jumlah']];
-            $lembar->fromArray($isi, null, "A{$baris}", true);
+        foreach ($tabel->baris as $item) {
+            $lembar->fromArray(array_values($item['nilai']), null, "A{$baris}", true);
             if ($denganKode) {
-                $lembar->setCellValueExplicit("B{$baris}", (string) ($item['kode'] ?? ''), DataType::TYPE_STRING);
+                $lembar->setCellValueExplicit("B{$baris}", $item['nilai']['kode'], DataType::TYPE_STRING);
             }
             $baris++;
         }
-        if ($rincian === []) {
+        if ($tabel->kosong()) {
             $lembar->setCellValue("A{$baris}", 'Belum ada rincian belanja RAB '.$susunan->sumber.'.')->mergeCells("A{$baris}:{$akhir}{$baris}");
             $baris++;
         }
 
         $kolomUang = [chr(ord($akhir) - 1), $akhir];
-        $angka = $anggaran ? AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']) : null;
-        $lembar->setCellValue("A{$baris}", 'TOTAL KESELURUHAN')->mergeCells("A{$baris}:".chr(ord($akhir) - 1).$baris);
-        $lembar->setCellValue("{$akhir}{$baris}", $anggaran?->total() ?? 0);
+        $lembar->setCellValue("A{$baris}", TabelRab::LABEL_TOTAL)->mergeCells("A{$baris}:".chr(ord($akhir) - 1).$baris);
+        $lembar->setCellValue("{$akhir}{$baris}", $tabel->total);
         $lembar->getStyle("A{$baris}:{$akhir}{$baris}")->getFont()->setBold(true);
         $lembar->getStyle("A{$awalTabel}:{$akhir}{$baris}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $lembar->getStyle("{$kolomUang[0]}".($awalTabel + 1).":{$akhir}{$baris}")->getNumberFormat()->setFormatCode(self::UANG);
         $baris++;
-        if ($angka?->terbilang()) {
-            $lembar->setCellValue("A{$baris}", 'Terbilang: '.$angka->terbilang())->mergeCells("A{$baris}:{$akhir}{$baris}");
+        if ($tabel->terbilang) {
+            $lembar->setCellValue("A{$baris}", 'Terbilang: '.$tabel->terbilang)->mergeCells("A{$baris}:{$akhir}{$baris}");
             $lembar->getStyle("A{$baris}")->getFont()->setItalic(true);
             $baris++;
         }

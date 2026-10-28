@@ -2,7 +2,7 @@
 
 {{--
     Pratinjau dokumen RAB bergaya kertas A4 dari App\Support\Dokumen\SusunanRab: judul, header (label : nilai), tabel
-    rincian (gaya dokumen), Mekanisme Pembayaran bila bertermin, lalu lembar pengesahan seperti KAK. Isian yang belum
+    rincian (<x-dokumen.tabel-rab>, struktur TabelRab), Mekanisme Pembayaran bila bertermin, lalu lembar pengesahan seperti KAK. Isian yang belum
     lengkap tampil sebagai penanda kuning; cap "DRAF" mengikuti aturan KAK.
 --}}
 <article {{ $attributes->class(['relative mx-auto w-full max-w-[210mm] overflow-hidden bg-white font-serif text-[15px] leading-relaxed text-stone-900 shadow-sm ring-1 ring-stone-200']) }}
@@ -45,7 +45,7 @@
         @if ($susunan->anggaran)
             {{-- Tabel lebih lebar dari kertas di layar sempit: digeser, bukan terpotong. --}}
             <div id="cetak-rab-rincian" class="-mx-5 scroll-mt-40 overflow-x-auto px-5 sm:mx-0 sm:px-0 cetak:mx-0 cetak:px-0">
-                <x-rab.tabel-rincian :anggaran="$susunan->anggaran" gaya="dokumen" class="min-w-[34rem] font-sans" />
+                <x-dokumen.tabel-rab :tabel="$susunan->tabel()" class="min-w-[34rem] font-sans" />
             </div>
         @else
             <p class="flex items-start gap-1.5 rounded bg-gold-50 px-2 py-1 font-sans text-sm text-gold-700 ring-1 ring-gold-200" data-kosong>

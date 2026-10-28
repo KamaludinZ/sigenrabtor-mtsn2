@@ -1,7 +1,6 @@
 @props([
     'anggaran',
     'kelompok' => 'urutan',
-    'gaya' => 'layar',
     'kode' => null,
 ])
 
@@ -12,34 +11,30 @@
 
 @php
     // Komponen baca-saja satu RAB (satu sumber dana). Penyunting interaktif ada di partial livewire.kegiatan.partials.tabel-rincian.
-    $dokumen = $gaya === 'dokumen';
     $rincian = $anggaran->hasil->rincian;
     $grup = KelompokRincian::kelompokkan($rincian, $kelompok);
     $berkelompok = $kelompok !== 'urutan' && isset(KelompokRincian::MODE[$kelompok]);
     $tampilKode = $kode ?? collect($rincian)->contains(fn ($item) => filled($item['kode'] ?? null));
     $angka = AngkaDokumen::dari($anggaran->hasil, $anggaran->sumber, StubData::tahunAktif()['tahun'], StubData::madrasah()['nama_singkat']);
     $kolom = $tampilKode ? 7 : 6;
-    $sel = $dokumen ? 'border border-stone-400 px-2 py-1' : 'px-3 py-2';
+    $sel = 'px-3 py-2';
     $volume = fn ($nilai) => Format::angka(is_numeric($nilai) ? $nilai + 0 : 0);
 @endphp
 
 {{--
     Tabel rincian belanja satu RAB: No, (Kode), Uraian, Vol, Satuan, Harga Satuan, Jumlah, lalu TOTAL KESELURUHAN dan
-    terbilang dari AngkaDokumen. gaya="layar" untuk aplikasi (kartu bila wadahnya sempit), gaya="dokumen" untuk cetak.
+    terbilang dari AngkaDokumen — untuk layar aplikasi (kartu bila wadahnya sempit). Tabel RAB dokumen/cetak:
+    <x-dokumen.tabel-rab> (struktur App\Support\Dokumen\TabelRab).
 --}}
 <div {{ $attributes->class(['@container min-w-0']) }} data-testid="tabel-rab-{{ mb_strtolower($anggaran->sumber) }}">
     @if ($rincian === [])
-        <p @class(['text-sm text-stone-500', 'rounded-lg border border-dashed border-stone-300 px-4 py-6 text-center' => ! $dokumen])>
+        <p class="rounded-lg border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500">
             Belum ada rincian belanja RAB {{ $anggaran->sumber }}.
         </p>
     @else
-        <table @class([
-                'w-full border-collapse text-left',
-                'text-[13px]' => $dokumen,
-                'hidden text-sm @lg:table' => ! $dokumen,
-            ])>
+        <table class="hidden w-full border-collapse text-left text-sm @lg:table">
             <caption class="sr-only">Rincian belanja RAB {{ $anggaran->sumber }}</caption>
-            <thead @class(['bg-stone-100 text-center font-bold' => $dokumen, 'border-b border-stone-200 text-xs font-semibold text-stone-500' => ! $dokumen])>
+            <thead class="border-b border-stone-200 text-xs font-semibold text-stone-500">
                 <tr>
                     <th scope="col" class="{{ $sel }} w-10">No</th>
                     @if ($tampilKode)
@@ -53,9 +48,9 @@
                 </tr>
             </thead>
             @foreach ($grup as $g)
-                <tbody @class(['divide-y divide-stone-100' => ! $dokumen]) data-kelompok="{{ $g['kunci'] }}">
+                <tbody class="divide-y divide-stone-100" data-kelompok="{{ $g['kunci'] }}">
                     @if ($berkelompok)
-                        <tr @class(['bg-stone-50 font-semibold' => $dokumen, 'bg-brand-50/60 text-xs font-semibold text-brand-900' => ! $dokumen])>
+                        <tr class="bg-brand-50/60 text-xs font-semibold text-brand-900">
                             <th scope="colgroup" colspan="{{ $kolom }}" class="{{ $sel }} text-left">{{ $g['label'] }} · {{ count($g['item']) }} item</th>
                         </tr>
                     @endif
@@ -73,27 +68,26 @@
                         </tr>
                     @endforeach
                     @if ($berkelompok)
-                        <tr @class(['italic' => $dokumen, 'bg-stone-50/80 text-xs text-stone-600' => ! $dokumen])>
+                        <tr class="bg-stone-50/80 text-xs text-stone-600">
                             <td colspan="{{ $kolom - 1 }}" class="{{ $sel }} text-right">Subtotal {{ $g['label'] }}</td>
                             <td class="{{ $sel }} text-right font-semibold tabular-nums">{{ Format::angka($g['subtotal']) }}</td>
                         </tr>
                     @endif
                 </tbody>
             @endforeach
-            <tfoot @class(['font-bold' => $dokumen, 'border-t-2 border-stone-200' => ! $dokumen])>
-                <tr @if ($dokumen) id="cetak-rab-total" class="scroll-mt-40 transition-colors target:bg-gold-100" data-tempat-cetak="rab-total" @endif>
+            <tfoot class="border-t-2 border-stone-200">
+                <tr>
                     <th scope="row" colspan="{{ $kolom - 1 }}" class="{{ $sel }} text-right uppercase">Total keseluruhan</th>
                     <td class="{{ $sel }} text-right tabular-nums" data-testid="total-tabel-rab">{{ $angka->angkaTabel() }}</td>
                 </tr>
                 <tr>
-                    <td colspan="{{ $kolom }}" @class([$sel, 'text-right italic', 'font-normal' => $dokumen, 'text-xs text-stone-500' => ! $dokumen])>
+                    <td colspan="{{ $kolom }}" class="{{ $sel }} text-right text-xs text-stone-500 italic">
                         Terbilang: {{ $angka->terbilang() }}
                     </td>
                 </tr>
             </tfoot>
         </table>
 
-        @unless ($dokumen)
             {{-- Wadah sempit: kartu per item --}}
             <ul class="divide-y divide-stone-100 rounded-lg bg-white ring-1 ring-stone-200 @lg:hidden">
                 @foreach ($grup as $g)
@@ -118,6 +112,5 @@
                     </span>
                 </li>
             </ul>
-        @endunless
     @endif
 </div>
