@@ -158,8 +158,15 @@
                                 <x-rab.status-pagu :status="$hasil->keteranganPagu()" class="text-xs" />
                             </p>
                         </div>
-                        @if ($this->dapatDiedit())
-                            <div class="flex shrink-0 gap-2">
+                        <div class="flex shrink-0 gap-2">
+                            @if (count($this->rincian) > 0)
+                                <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $kegiatanId, 'sumber' => $sumber]) }}" class="btn-secondary" download
+                                   title="Unduh RAB {{ $sumber }} sebagai Excel" data-testid="unduh-rab-excel">
+                                    <x-ui.icon name="download" class="size-4" />
+                                    <span class="hidden sm:inline">Unduh Excel</span>
+                                </a>
+                            @endif
+                            @if ($this->dapatDiedit())
                                 <button type="button" wire:click="bukaImpor" class="btn-secondary" aria-expanded="{{ $imporTerbuka ? 'true' : 'false' }}"
                                         aria-controls="panel-impor-rab" title="Impor rincian RAB {{ $sumber }} dari Excel">
                                     <x-ui.icon name="sheet" class="size-4" />
@@ -171,8 +178,8 @@
                                         <span class="hidden sm:inline">Tambah item</span>
                                     </button>
                                 @endunless
-                            </div>
-                        @endif
+                            @endif
+                        </div>
                     </header>
 
                     @if ($imporTerbuka && $this->dapatDiedit())

@@ -11,6 +11,7 @@ use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
+use App\Http\Controllers\EksporRabKegiatan;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
@@ -76,6 +77,7 @@ Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber
 Route::get('/kegiatan/{kegiatan}/kalimat', KegiatanKalimatAi::class)->whereNumber('kegiatan')->name('kegiatan.kalimat');
 Route::get('/riwayat-saran-ai', SaranAiRiwayat::class)->name('saran_ai.index');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
+Route::get('/kegiatan/{kegiatan}/rab/excel', EksporRabKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab.excel');
 Route::get('/kegiatan/{kegiatan}/matrik', KegiatanMatrikJadwal::class)->whereNumber('kegiatan')->name('kegiatan.matrik');
 Route::get('/kegiatan/{kegiatan}/pratinjau', KegiatanPratinjauDokumen::class)->whereNumber('kegiatan')->name('kegiatan.pratinjau');
 Route::get('/kegiatan/{kegiatan}/arsip/{sumber}', UnduhArsipFinal::class)->whereNumber('kegiatan')->name('kegiatan.arsip');
