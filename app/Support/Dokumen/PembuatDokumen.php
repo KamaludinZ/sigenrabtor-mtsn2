@@ -18,7 +18,8 @@ use RuntimeException;
  * pengesahan), nilai kotak cover — beserta cap DRAF (JenisDokumen::statusDraf, aturan StatusDraf) dan sidik isi (`sidik()`
  * dari DrafDokumen::sidik), lalu menyimpannya lewat HasilDokumenRepository (disusun ulang = ditimpa). Dipakai endpoint
  * `kegiatan.dokumen.susun` (POST) & `kegiatan.dokumen.hasil` (GET); `untukJson()` menambah label, nama berkas
- * (CetakDokumen::namaBerkas), ringkasan bagian, dan keadaan hasil tersimpan terhadap data sekarang (sesuai/berubah).
+ * (CetakDokumen::namaBerkas), ringkasan bagian, dan keadaan hasil tersimpan terhadap data sekarang (sesuai/berubah/status —
+ * status & cap DRAF berbeda; perpindahan status menyusun ulang hasil tersimpan lewat StatusDokumen::sinkronkan).
  * Melihat & menyusun mengikuti AksesKegiatan (dokumen kegiatan terkunci tetap boleh disusun untuk dicetak).
  */
 final class PembuatDokumen
@@ -27,6 +28,7 @@ final class PembuatDokumen
     public const KEADAAN = [
         'sesuai' => 'Sesuai data terbaru',
         'berubah' => 'Data berubah sejak disusun — susun ulang agar dokumen mengikuti data terbaru',
+        'status' => 'Status atau cap DRAF berubah sejak disusun — susun ulang agar dokumen mengikuti status terbaru',
     ];
 
     /**
@@ -172,7 +174,11 @@ final class PembuatDokumen
         $sekarang = self::rekam($kegiatan, $hasil['jenis'], $hasil['sumber'], $pengguna);
         $kak = SusunanKak::dari($kegiatan, $hasil['sumber']);
         $cetak = StatusCetak::dari($kegiatan, $kak->sumber, $kak, SusunanRab::dari($kegiatan, $hasil['sumber']));
-        $keadaan = $sekarang['sidik_isi'] === $hasil['sidik_isi'] ? 'sesuai' : 'berubah';
+        $keadaan = match (true) {
+            $sekarang['sidik_isi'] !== $hasil['sidik_isi'] => 'berubah',
+            $sekarang['status'] !== $hasil['status'] || $sekarang['bertanda_draf'] !== (bool) $hasil['bertanda_draf'] => 'status',
+            default => 'sesuai',
+        };
 
         return $hasil + [
             'nama' => DrafDokumen::nama($hasil['jenis'], $hasil['sumber']),

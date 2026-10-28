@@ -12,6 +12,9 @@ use App\Support\Rab\PeringatanPagu;
  */
 final readonly class StatusDraf
 {
+    /** Status kegiatan yang dokumennya boleh tanpa cap DRAF (selama lengkap & dalam pagu); status lain selalu DRAF. */
+    public const STATUS_TANPA_CAP = [StatusKegiatan::Disetujui, StatusKegiatan::Final];
+
     /**
      * @param  list<array{kunci: string, teks: string}>  $alasan  Kunci: status | kurang | pagu.
      */
@@ -26,7 +29,7 @@ final readonly class StatusDraf
     public static function hitung(StatusKegiatan $status, array $kurang, ?PeringatanPagu $peringatanPagu = null): self
     {
         $alasan = [];
-        if (! in_array($status, [StatusKegiatan::Disetujui, StatusKegiatan::Final], true)) {
+        if (! in_array($status, self::STATUS_TANPA_CAP, true)) {
             $alasan[] = ['kunci' => 'status', 'teks' => "Belum disetujui admin (status {$status->label()})."];
         }
         if ($kurang !== []) {

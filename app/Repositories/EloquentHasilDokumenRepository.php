@@ -96,6 +96,30 @@ class EloquentHasilDokumenRepository implements HasilDokumenRepository
         return $this->temukan($kegiatanId, $hasil['jenis'], $hasil['sumber'] ?? null);
     }
 
+    public function perbaruiStatus(int $kegiatanId, string $jenis, ?string $sumber, string $status, bool $bertandaDraf, array $alasanDraf): bool
+    {
+        try {
+            return DB::transaction(function () use ($kegiatanId, $jenis, $sumber, $status, $bertandaDraf, $alasanDraf): bool {
+                $baris = $this->baris($kegiatanId, $jenis, $sumber)->whereNotNull('sidik_isi')->lockForUpdate()->first();
+                if ($baris === null) {
+                    return false;
+                }
+                $konten = (array) json_decode((string) $baris->konten, true);
+                $konten['hasil']['alasan_draf'] = array_values($alasanDraf);
+                DB::table('documents')->where('id', $baris->id)->update([
+                    'status' => $status,
+                    'bertanda_draf' => $bertandaDraf,
+                    'konten' => json_encode((object) $konten, JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION),
+                    'updated_at' => now()->format('Y-m-d H:i:s.uP'),
+                ]);
+
+                return true;
+            });
+        } catch (QueryException) {
+            throw new RuntimeException(self::PESAN_GAGAL);
+        }
+    }
+
     private function baris(int $kegiatanId, string $jenis, ?string $sumber): Builder
     {
         $kueri = DB::table('documents')->where('activity_id', $kegiatanId)->where('jenis', $jenis);

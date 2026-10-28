@@ -16,7 +16,8 @@ use RuntimeException;
  * finalkan/buka_kunci) dan endpoint `kegiatan.kunci` (baca), `kegiatan.kunci.pasang`, `kegiatan.kunci.buka`:
  * - kunci (`finalkan`): kegiatan Disetujui yang boleh dibuka akun itu (AksesKegiatan, aksi StatusKegiatan::aksiUntuk),
  *   tahun anggaran terbuka, dan arsip final semua sumber dana wajib sudah ada (ArsipFinal::kurang → galat `arsip`) →
- *   Final + entri riwayat `finalkan` (jejak kunci KunciDokumen: siapa & kapan). Unggahan arsip yang melengkapi
+ *   Final + entri riwayat `finalkan` lewat AlurStatus::terapkan (jejak kunci KunciDokumen: siapa & kapan; dokumen
+ *   tersimpan disamakan). Unggahan arsip yang melengkapi
  *   menguncinya otomatis (FinalOtomatis);
  * - buka (`buka_kunci`): hanya admin, alasan wajib — lewat KeputusanPemeriksaan::putuskan (catatan & `sidik`
  *   perbaikan, status kembali Dikembalikan; arsip lama tetap tersimpan);
@@ -99,21 +100,16 @@ final class KunciFinal
      */
     public static function kunci(int $id, array $pengguna, ?string $versi = null): array
     {
-        $repo = app(KegiatanRepository::class);
-        $kegiatan = $repo->temukan($id) ?? throw new RuntimeException('Kegiatan tidak ditemukan.');
+        $kegiatan = app(KegiatanRepository::class)->temukan($id) ?? throw new RuntimeException('Kegiatan tidak ditemukan.');
         self::pastikanVersi($kegiatan, $versi);
         if (($penghalang = self::penghalangKunci($kegiatan, $pengguna)) !== null) {
             throw $penghalang[0] === 'arsip' ? ValidationException::withMessages(['arsip' => $penghalang[1]]) : new AuthorizationException($penghalang[1]);
         }
 
-        $entri = RiwayatStatus::entri('finalkan', StatusKegiatan::Final, $pengguna);
-        $kegiatan['status'] = StatusKegiatan::Final->value;
-        $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
-        $repo->simpan($kegiatan, $id);
-        RiwayatKunci::catat($id, 'kunci_final', '', $pengguna, $entri['pada']);
-        $tersimpan = $repo->temukan($id);
+        $hasil = AlurStatus::terapkan($kegiatan, 'finalkan', StatusKegiatan::Final, $pengguna);
+        RiwayatKunci::catat($id, 'kunci_final', '', $pengguna, $hasil['entri']['pada']);
 
-        return ['kegiatan' => $tersimpan, 'entri' => $entri, 'pesan' => self::PESAN_KUNCI, 'versi' => self::versi($tersimpan)];
+        return $hasil + ['pesan' => self::PESAN_KUNCI, 'versi' => self::versi($hasil['kegiatan'])];
     }
 
     /**

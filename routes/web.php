@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\PenggunaRepository;
+use App\Http\Controllers\AlurStatusKegiatan;
 use App\Http\Controllers\AmbilMasterKode;
 use App\Http\Controllers\BatalImporKegiatan;
 use App\Http\Controllers\BukaKunciFinal;
@@ -87,6 +88,7 @@ use App\Http\Controllers\TahunAnggaranAktif;
 use App\Http\Controllers\TerminKegiatan;
 use App\Http\Controllers\TotalAnggaranKegiatan;
 use App\Http\Controllers\UbahKegiatan;
+use App\Http\Controllers\UbahStatusKegiatan;
 use App\Http\Controllers\UnduhArsipFinal;
 use App\Http\Controllers\UnduhBuku;
 use App\Http\Controllers\UnduhFormatRincianRab;
@@ -190,6 +192,8 @@ Route::get('/kegiatan/{kegiatan}/rab-lengkap', RabLengkapKegiatan::class)->where
 Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.konteks');
 Route::get('/kegiatan/{kegiatan}/termin', TerminKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.termin');
 Route::get('/kegiatan/{kegiatan}/sumber-dana', SumberDanaKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.sumber_dana');
+Route::get('/kegiatan/{kegiatan}/status', AlurStatusKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status');
+Route::post('/kegiatan/{kegiatan}/status', UbahStatusKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status.ubah');
 Route::get('/kegiatan/{kegiatan}/status-cetak', StatusCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status_cetak');
 Route::get('/kegiatan/{kegiatan}/periksa-cetak', PeriksaCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.periksa_cetak');
 Route::get('/kegiatan/{kegiatan}/cetak', CetakDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.cetak');

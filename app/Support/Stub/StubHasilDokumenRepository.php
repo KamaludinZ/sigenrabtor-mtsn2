@@ -34,11 +34,30 @@ class StubHasilDokumenRepository implements HasilDokumenRepository
         } else {
             $semua[] = $baru;
         }
+        $this->tulis($semua);
+
+        return $this->temukan($kegiatanId, $hasil['jenis'], $hasil['sumber']);
+    }
+
+    public function perbaruiStatus(int $kegiatanId, string $jenis, ?string $sumber, string $status, bool $bertandaDraf, array $alasanDraf): bool
+    {
+        $semua = $this->baca();
+        $lama = collect($semua)->search(fn (array $h) => $this->sama($h, $kegiatanId, $jenis, $sumber));
+        if ($lama === false) {
+            return false;
+        }
+        $semua[$lama] = array_replace($semua[$lama], ['status' => $status, 'bertanda_draf' => $bertandaDraf, 'alasan_draf' => array_values($alasanDraf)]);
+        $this->tulis($semua);
+
+        return true;
+    }
+
+    /** @param  list<array<string, mixed>>  $semua */
+    private function tulis(array $semua): void
+    {
         if (! Storage::disk('local')->put($this->berkas(), json_encode(array_values($semua), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
             throw new RuntimeException('Hasil dokumen gagal disimpan — coba lagi.');
         }
-
-        return $this->temukan($kegiatanId, $hasil['jenis'], $hasil['sumber']);
     }
 
     /** @param  array<string, mixed>  $h */

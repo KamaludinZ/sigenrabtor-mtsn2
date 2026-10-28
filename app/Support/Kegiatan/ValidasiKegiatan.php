@@ -175,6 +175,18 @@ final class ValidasiKegiatan
     }
 
     /**
+     * Galat data kegiatan tersimpan berkunci isian (pesan pertama tiap isian) — mis. syarat pengajuan AlurStatus.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>|null  $pengguna
+     * @return array<string, string>
+     */
+    public static function galatIsian(array $data, ?array $pengguna = null, ?string $leadingTersimpan = null): array
+    {
+        return array_map(fn (array $pesan) => $pesan[0], self::validator($data, fn () => true, $pengguna, $leadingTersimpan)->errors()->toArray());
+    }
+
+    /**
      * Periksa hanya isian $hanya (mis. kode & klasifikasi saat disimpan terpisah); aturan antarkolom tetap membaca $data
      * utuh. Galat dilempar sebagai ValidationException berkunci isian.
      *

@@ -47,6 +47,19 @@ class StubDrafDokumenRepository implements DrafDokumenRepository
         return $baru;
     }
 
+    public function perbaruiStatus(int $kegiatanId, string $jenis, ?string $sumber, string $status, bool $bertandaDraf, array $alasanDraf): bool
+    {
+        $semua = $this->baca();
+        $lama = collect($semua)->search(fn (array $d) => $this->sama($d, $kegiatanId, $jenis, $sumber));
+        if ($lama === false) {
+            return false;
+        }
+        $semua[$lama] = array_replace($semua[$lama], ['status' => $status, 'bertanda_draf' => $bertandaDraf, 'alasan_draf' => array_values($alasanDraf)]);
+        $this->tulis($semua);
+
+        return true;
+    }
+
     public function hapus(int $kegiatanId, string $jenis, ?string $sumber): bool
     {
         $semua = $this->baca();

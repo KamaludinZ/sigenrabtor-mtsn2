@@ -73,8 +73,7 @@ final class FinalOtomatis
      */
     public static function jalankan(int $id, array $pengguna): ?array
     {
-        $repo = app(KegiatanRepository::class);
-        $kegiatan = $repo->temukan($id);
+        $kegiatan = app(KegiatanRepository::class)->temukan($id);
         if ($kegiatan === null || ($kegiatan['status'] ?? null) !== StatusKegiatan::Disetujui->value || KunciKegiatan::tahunTerkunci($kegiatan) !== null) {
             return null;
         }
@@ -83,10 +82,7 @@ final class FinalOtomatis
             return null;
         }
 
-        $entri = RiwayatStatus::entri('finalkan', StatusKegiatan::Final, $pengguna, self::catatan($wajib));
-        $kegiatan['status'] = StatusKegiatan::Final->value;
-        $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
-        $repo->simpan($kegiatan, $id);
+        $entri = AlurStatus::terapkan($kegiatan, 'finalkan', StatusKegiatan::Final, $pengguna, self::catatan($wajib))['entri'];
         RiwayatKunci::catat($id, 'kunci_final', $entri['catatan'], $pengguna, $entri['pada']);
 
         return $entri;

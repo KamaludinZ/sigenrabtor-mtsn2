@@ -11,11 +11,11 @@ use App\Livewire\Forms\KegiatanForm;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
+use App\Support\Kegiatan\AlurStatus;
 use App\Support\Kegiatan\ArsipFinal;
 use App\Support\Kegiatan\FormSections;
 use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\KodeHilang;
-use App\Support\Kegiatan\KunciFinal;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
@@ -24,6 +24,7 @@ use App\Support\Kegiatan\SimpanKonteks;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\TeksBaku;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -771,7 +772,8 @@ class Form extends Component
     }
 
     /**
-     * Ubah status lewat aksi alur (ajukan, setujui, kembalikan, finalkan, buka kunci, tarik).
+     * Ubah status lewat aksi alur (ajukan, setujui, kembalikan, finalkan, buka kunci, tarik). Pemeriksaan di sini memberi
+     * galat per isian di layar; aturannya sendiri dijaga AlurStatus.
      */
     public function ubahStatus(string $aksi): void
     {
@@ -815,49 +817,34 @@ class Form extends Component
 
                 throw $e;
             }
+
+            // Isian yang belum disimpan ikut diajukan: simpan dulu, lalu status berpindah lewat AlurStatus.
+            if ($this->simpan() === null) {
+                return;
+            }
         }
 
-        if (in_array($aksi, KunciFinal::AKSI, true)) {
-            $this->ubahKunci($aksi);
-
-            return;
-        }
-
-        $this->status = $definisi['ke']->value;
-        $this->catatRiwayat($aksi, $definisi['ke'], $wajibCatatan ? $this->catatanStatus : null);
-        $this->catatanStatus = '';
-        if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {
-            // Titik awal perbaikan di data (sama dengan keputusan di halaman Pemeriksaan).
-            $this->riwayatStatus[array_key_last($this->riwayatStatus)]['sidik'] = PerbaikanKegiatan::sidik(['id' => $this->kegiatanId] + $this->dataUntukDisimpan());
-        }
-
-        $repo = app(KegiatanRepository::class);
-        $repo->simpan($this->dataUntukDisimpan(), $this->kegiatanId);
-
-        $this->adaPerubahan = false;
-        $this->diperbaruiPada = $repo->temukan($this->kegiatanId)['diperbarui_pada'] ?? now()->toIso8601String();
-        unset($this->aksiStatus, $this->drafTerbaru);
-
-        $this->dispatch('notify', message: 'Status kegiatan: '.$definisi['ke']->label().'.');
+        $this->jalankanAlur($aksi, $wajibCatatan ? $this->catatanStatus : null);
     }
 
     /**
-     * Kunci final / buka kunci lewat KunciFinal — jalur yang sama dengan endpoint `kegiatan.kunci.pasang`/`buka`; status &
-     * riwayat diambil dari data tersimpan (isian form tidak ikut disimpan: selama Disetujui/Final isian terkunci).
+     * Perpindahan status lewat AlurStatus — jalur yang sama dengan endpoint `kegiatan.status.ubah` (keputusan admin lewat
+     * KeputusanPemeriksaan, kunci final lewat KunciFinal); status & riwayat diambil dari data tersimpan. Aksi yang sudah
+     * tidak tersedia (mis. status berubah di tab lain) ditolak lewat notify dan status tersimpan dimuat ulang.
      */
-    private function ubahKunci(string $aksi): void
+    private function jalankanAlur(string $aksi, ?string $catatan): void
     {
-        $pengguna = StubData::currentUser();
         try {
-            $hasil = $aksi === 'finalkan' ? KunciFinal::kunci($this->kegiatanId, $pengguna) : KunciFinal::buka($this->kegiatanId, $this->catatanStatus, $pengguna);
+            $hasil = AlurStatus::ubah($this->kegiatanId, $aksi, $catatan, StubData::currentUser());
         } catch (ValidationException $e) {
             if (isset($e->errors()['catatan'])) {
                 throw ValidationException::withMessages(['catatanStatus' => $e->errors()['catatan']]);
             }
+            $this->arsipFinalBerubah();
             $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
 
             return;
-        } catch (AuthorizationException $e) {
+        } catch (AuthorizationException|PengaturanBerubah $e) {
             $this->arsipFinalBerubah();
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
@@ -869,7 +856,7 @@ class Form extends Component
         $this->catatanStatus = '';
         $this->adaPerubahan = false;
         $this->diperbaruiPada = $hasil['kegiatan']['diperbarui_pada'] ?? now()->toIso8601String();
-        unset($this->aksiStatus, $this->drafTerbaru);
+        unset($this->aksiStatus, $this->drafTerbaru, $this->tahunTerkunci);
 
         $this->dispatch('notify', message: 'Status kegiatan: '.StatusKegiatan::from($this->status)->label().'.');
     }

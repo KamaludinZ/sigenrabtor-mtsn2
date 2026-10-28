@@ -10,7 +10,7 @@ namespace App\Contracts;
  * sumber yang sama menimpanya. Bentuk draf disusun App\Support\Dokumen\DrafDokumen::rekam(): {id (uuid), kegiatan_id,
  * jenis, sumber|null, status (StatusKegiatan saat disimpan), bertanda_draf, alasan_draf (teks StatusDraf), lengkap &
  * jumlah_bagian (SusunanOtomatis; null tanpa KAK/TOR), total_rab|null, sidik {kak: {nomor: md5}, rab: md5, cover: md5},
- * user_id, oleh, disimpan_pada}. `simpan()`/`hapus()` melempar RuntimeException bila penyimpanan gagal ditulis.
+ * user_id, oleh, disimpan_pada}. `simpan()`/`hapus()`/`perbaruiStatus()` melempar RuntimeException bila penyimpanan gagal ditulis.
  */
 interface DrafDokumenRepository
 {
@@ -35,4 +35,13 @@ interface DrafDokumenRepository
 
     /** @return bool false bila draf tidak ada. */
     public function hapus(int $kegiatanId, string $jenis, ?string $sumber): bool;
+
+    /**
+     * Perbarui status kegiatan & cap DRAF draf yang ada (sesudah status kegiatan berpindah, StatusDokumen::sinkronkan);
+     * catatan lain — sidik, kelengkapan, penyimpan, `disimpan_pada` — tetap.
+     *
+     * @param  list<string>  $alasanDraf
+     * @return bool false bila draf tidak ada.
+     */
+    public function perbaruiStatus(int $kegiatanId, string $jenis, ?string $sumber, string $status, bool $bertandaDraf, array $alasanDraf): bool;
 }

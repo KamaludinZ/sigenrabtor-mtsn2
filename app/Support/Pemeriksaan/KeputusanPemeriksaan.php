@@ -4,8 +4,8 @@ namespace App\Support\Pemeriksaan;
 
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Kegiatan\AlurStatus;
 use App\Support\Kegiatan\KunciKegiatan;
-use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatKunci;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Pengaturan\PengaturanBerubah;
@@ -24,9 +24,9 @@ use RuntimeException;
  *   RiwayatStatus::validasiCatatan (wajib untuk kembalikan & buka kunci, ≤ MAKS_CATATAN; galat `catatan`), Setujui
  *   ditahan selama RAB melebihi pagu (BatasPagu), tahun anggaran terkunci ditolak (KunciKegiatan) → catatan rapi;
  * - `putuskan($id, $aksi, $catatan, $pengguna, $versi)`: `$versi` (= `versi()` saat ditampilkan) yang usang →
- *   PengaturanBerubah; status + entri RiwayatStatus::entri (beserta `sidik` PerbaikanKegiatan untuk kembalikan & buka
- *   kunci) disimpan bersama lewat KegiatanRepository, lalu draf catatan kegiatan itu dibuang (CatatanPemeriksaan); buka
- *   kunci tercatat di log RiwayatKunci beserta alasannya.
+ *   PengaturanBerubah; perpindahan status ditulis AlurStatus::terapkan (status + entri riwayat beserta `sidik`
+ *   PerbaikanKegiatan untuk kembalikan & buka kunci, dokumen tersimpan disamakan), lalu draf catatan kegiatan itu dibuang
+ *   (CatatanPemeriksaan); buka kunci tercatat di log RiwayatKunci beserta alasannya.
  */
 final class KeputusanPemeriksaan
 {
@@ -93,7 +93,7 @@ final class KeputusanPemeriksaan
 
     /**
      * @param  array{id: int, name: string, role: string}  $pengguna
-     * @return array{kegiatan: array<string, mixed>, entri: array<string, mixed>, pesan: string, versi: string}
+     * @return array{kegiatan: array<string, mixed>, entri: array<string, mixed>, dokumen: array{hasil: int, draf: int, gagal: string|null}, pesan: string, versi: string}
      *
      * @throws RuntimeException Kegiatan tidak ditemukan.
      * @throws PengaturanBerubah Kegiatan berubah di tempat lain sejak $versi.
@@ -109,21 +109,12 @@ final class KeputusanPemeriksaan
         }
 
         $catatan = self::periksa($kegiatan, $aksi, $catatan, $pengguna);
-        $ke = self::tersedia($kegiatan, $pengguna)[$aksi]['ke'];
-        $kegiatan['status'] = $ke->value;
-        $entri = RiwayatStatus::entri($aksi, $ke, $pengguna, $catatan);
-        if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {
-            // Titik awal perbaikan: bagian yang berubah sesudahnya ditandai untuk leading & pemeriksa berikutnya.
-            $entri['sidik'] = PerbaikanKegiatan::sidik($kegiatan);
-        }
-        $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
-        $repo->simpan($kegiatan, $id);
+        $hasil = AlurStatus::terapkan($kegiatan, $aksi, self::tersedia($kegiatan, $pengguna)[$aksi]['ke'], $pengguna, $catatan);
         CatatanPemeriksaan::buang($id);
         if ($aksi === 'buka_kunci') {
-            RiwayatKunci::catat($id, 'buka_kunci', $catatan, $pengguna, $entri['pada']);
+            RiwayatKunci::catat($id, 'buka_kunci', $catatan, $pengguna, $hasil['entri']['pada']);
         }
-        $tersimpan = $repo->temukan($id);
 
-        return ['kegiatan' => $tersimpan, 'entri' => $entri, 'pesan' => self::PESAN[$aksi], 'versi' => self::versi($tersimpan)];
+        return $hasil + ['pesan' => self::PESAN[$aksi], 'versi' => self::versi($hasil['kegiatan'])];
     }
 }
