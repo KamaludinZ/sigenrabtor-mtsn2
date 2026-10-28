@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\ArsipFinalRepository;
 use App\Contracts\BukuDokumenRepository;
+use App\Contracts\CatatanPemeriksaanRepository;
 use App\Contracts\DaftarIsiRepository;
 use App\Contracts\DaftarModelAi;
 use App\Contracts\DasarHukumRepository;
@@ -33,6 +34,7 @@ use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Stub\StubArsipFinalRepository;
 use App\Support\Stub\StubBukuDokumenRepository;
+use App\Support\Stub\StubCatatanPemeriksaanRepository;
 use App\Support\Stub\StubDaftarIsiRepository;
 use App\Support\Stub\StubDaftarModelAi;
 use App\Support\Stub\StubDasarHukumRepository;
@@ -84,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProfilMadrasahRepository::class, StubProfilMadrasahRepository::class);
         $this->app->singleton(ArsipFinalRepository::class, StubArsipFinalRepository::class);
         $this->app->singleton(NotifikasiRepository::class, StubNotifikasiRepository::class);
+        $this->app->singleton(CatatanPemeriksaanRepository::class, StubCatatanPemeriksaanRepository::class);
         $this->app->singleton(BukuDokumenRepository::class, StubBukuDokumenRepository::class);
         $this->app->singleton(PembuatPdfBuku::class, StubPembuatPdfBuku::class);
         $this->app->singleton(PejabatRepository::class, StubPejabatRepository::class);

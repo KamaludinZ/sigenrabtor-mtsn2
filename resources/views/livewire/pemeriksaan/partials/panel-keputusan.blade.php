@@ -112,7 +112,7 @@
                 {{ $bukaKunci ? 'Alasan membuka kunci' : 'Catatan untuk leading' }}
                 <span class="font-normal text-stone-400">{{ isset($pilihan['setujui']) ? '— wajib bila dikembalikan' : '— wajib' }}</span>
             </span>
-            <textarea wire:model="catatan" rows="4" maxlength="{{ RiwayatStatus::MAKS_CATATAN }}" id="catatan-pemeriksaan"
+            <textarea wire:model.live.blur="catatan" rows="4" maxlength="{{ RiwayatStatus::MAKS_CATATAN }}" id="catatan-pemeriksaan"
                       @class(['form-input mt-1 text-sm', 'ring-red-300' => $errors->has('catatan')])
                       placeholder="{{ $bukaKunci ? 'Mis. Nama narasumber pada RAB Komite salah ketik; dokumen perlu dicetak ulang.' : 'Mis. Sasaran belum terukur; sesuaikan honor narasumber dengan SBM.' }}"
                       @error('catatan') aria-invalid="true" aria-describedby="catatan-pemeriksaan-error" @enderror></textarea>
@@ -120,6 +120,26 @@
         @error('catatan')
             <p id="catatan-pemeriksaan-error" class="mt-1 text-xs text-red-600">{{ $message }}</p>
         @enderror
+        @if ($bentrokCatatan)
+            <div class="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 ring-1 ring-amber-200" role="alert" data-testid="catatan-bentrok">
+                @if ($catatanLain)
+                    <p>Draf catatan baru saja diubah {{ $catatanLain['oleh'] }} ({{ $waktu($catatanLain['diperbarui_pada']) }}):</p>
+                    <p class="mt-1 max-h-32 overflow-y-auto rounded-md bg-white px-2 py-1 whitespace-pre-line ring-1 ring-amber-100">{{ $catatanLain['catatan'] }}</p>
+                @else
+                    <p>Draf catatan baru saja dikosongkan di tempat lain.</p>
+                @endif
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @if ($catatanLain)
+                        <button type="button" wire:click="pakaiCatatanLain" class="btn-ghost px-2 py-1 text-xs">Pakai catatan itu</button>
+                    @endif
+                    <button type="button" wire:click="simpanCatatan" class="btn-secondary px-2 py-1 text-xs">Simpan catatan saya</button>
+                </div>
+            </div>
+        @elseif ($this->drafCatatan)
+            <p class="mt-1 text-xs text-stone-500" data-testid="draf-catatan">
+                Draf tersimpan {{ $waktu($this->drafCatatan['diperbarui_pada']) }} oleh {{ $this->drafCatatan['oleh'] }} — terkirim bersama keputusan.
+            </p>
+        @endif
         @error('keputusan')
             <p class="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-keputusan">{{ $message }}</p>
         @enderror

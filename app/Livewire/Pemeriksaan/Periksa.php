@@ -12,12 +12,15 @@ use App\Support\Kegiatan\PerbaikanKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
+use App\Support\Pemeriksaan\CatatanPemeriksaan;
 use App\Support\Pemeriksaan\KeputusanPemeriksaan;
 use App\Support\Pemeriksaan\RiwayatPemeriksaan;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -30,7 +33,9 @@ use Livewire\Component;
  * antrean Perlu diperiksa. Keputusan admin (PRD F17–F18): Setujui (catatan opsional), Kembalikan, atau Buka kunci kegiatan
  * Final (catatan/alasan wajib, RiwayatStatus::CATATAN_WAJIB) dengan konfirmasi di tempat; tercatat di riwayat_status
  * (RiwayatStatus::entri: siapa, kapan, catatan). Bila kegiatan berubah di tempat lain sejak halaman dimuat (mis. pengajuan
- * ditarik), keputusan ditolak dan tampilan dimuat ulang. Khusus admin.
+ * ditarik), keputusan ditolak dan tampilan dimuat ulang. Catatan yang sedang ditulis tersimpan sebagai draf saat kolomnya
+ * ditinggalkan (CatatanPemeriksaan: dimuat lagi saat halaman dibuka, terlihat admin lain, dibuang setelah keputusan);
+ * draf yang diubah admin lain sejak dimuat tidak ditimpa diam-diam — keduanya ditampilkan untuk dipilih. Khusus admin.
  */
 #[Layout('layouts.app')]
 class Periksa extends Component
@@ -50,8 +55,20 @@ class Periksa extends Component
     #[Url(except: '')]
     public string $sumber = '';
 
-    /** Catatan pemeriksa untuk leading (terkirim bersama aksi, tanpa request per ketukan). */
+    /** Catatan pemeriksa untuk leading (terkirim bersama aksi; tersimpan sebagai draf saat kolomnya ditinggalkan). */
     public string $catatan = '';
+
+    /** Versi draf catatan yang terakhir dimuat/disimpan halaman ini (CatatanPemeriksaan::versi). */
+    #[Locked]
+    public string $versiCatatan = '';
+
+    /** Draf diubah/dikosongkan di tempat lain saat menyimpan: true sampai admin memilih catatan yang dipakai. */
+    #[Locked]
+    public bool $bentrokCatatan = false;
+
+    /** Draf terbaru dari tempat lain selama $bentrokCatatan (null = dikosongkan). */
+    #[Locked]
+    public ?array $catatanLain = null;
 
     /** Keputusan yang sedang menunggu konfirmasi: null, 'setujui', atau 'kembalikan'. */
     public ?string $konfirmasi = null;
@@ -65,6 +82,64 @@ class Periksa extends Component
         $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
         $this->kegiatanId = $kegiatan;
         $this->rapikanPilihan();
+        $draf = CatatanPemeriksaan::draf($kegiatan);
+        $this->catatan = $draf['catatan'] ?? '';
+        $this->versiCatatan = CatatanPemeriksaan::versi($draf);
+    }
+
+    /** Ketikan catatan dikirim saat kolomnya ditinggalkan (wire:model.live.blur) — langsung disimpan sebagai draf. */
+    public function updatedCatatan(): void
+    {
+        $this->simpanCatatan();
+    }
+
+    /**
+     * Simpan draf catatan. Ketikan tidak dirapikan di tempat agar respons tidak menimpa ketikan yang sedang berjalan;
+     * bentuk rapinya dipakai saat keputusan dikirim.
+     */
+    public function simpanCatatan(): void
+    {
+        $this->resetErrorBag('catatan');
+        try {
+            $hasil = CatatanPemeriksaan::simpan($this->kegiatanId, $this->catatan, StubData::currentUser(), $this->versiCatatan);
+        } catch (PengaturanBerubah $e) {
+            $this->catatanLain = CatatanPemeriksaan::draf($this->kegiatanId);
+            $this->versiCatatan = CatatanPemeriksaan::versi($this->catatanLain);
+            $this->bentrokCatatan = true;
+            unset($this->drafCatatan);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        } catch (ValidationException $e) {
+            $this->addError('catatan', $e->errors()['catatan'][0] ?? $e->getMessage());
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->addError('catatan', $e->getMessage());
+
+            return;
+        }
+
+        $this->versiCatatan = $hasil['versi'];
+        $this->bentrokCatatan = false;
+        $this->catatanLain = null;
+        unset($this->drafCatatan);
+    }
+
+    /** Selesaikan bentrok draf dengan memakai catatan dari tempat lain (ketikan sendiri dibuang). */
+    public function pakaiCatatanLain(): void
+    {
+        $this->catatan = $this->catatanLain['catatan'] ?? '';
+        $this->bentrokCatatan = false;
+        $this->catatanLain = null;
+        $this->resetErrorBag('catatan');
+    }
+
+    /** @return array{catatan: string, user_id: int|null, oleh: string, diperbarui_pada: string}|null */
+    #[Computed]
+    public function drafCatatan(): ?array
+    {
+        return CatatanPemeriksaan::draf($this->kegiatanId);
     }
 
     public function updatedDokumen(): void
@@ -235,7 +310,10 @@ class Periksa extends Component
         }
 
         $this->catatan = '';
-        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan, $this->putaran);
+        $this->versiCatatan = '';
+        $this->bentrokCatatan = false;
+        $this->catatanLain = null;
+        unset($this->dataKegiatan, $this->ringkasan, $this->kak, $this->rab, $this->kelengkapan, $this->perbaikan, $this->putaran, $this->drafCatatan);
         $this->dispatch('notify', message: $hasil['pesan']);
     }
 

@@ -2,6 +2,7 @@
 
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\CatatanPemeriksaanKegiatan;
 use App\Http\Controllers\DataAgregasiMonitoring;
 use App\Http\Controllers\DataAkun;
 use App\Http\Controllers\DataDasarHukum;
@@ -30,6 +31,7 @@ use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\SalinMasterKodeTahun;
+use App\Http\Controllers\SimpanCatatanPemeriksaan;
 use App\Http\Controllers\StatusCetakKegiatan;
 use App\Http\Controllers\SumberDanaKegiatan;
 use App\Http\Controllers\TerminKegiatan;
@@ -119,6 +121,8 @@ Route::get('/pemeriksaan', PemeriksaanDaftar::class)->middleware(HanyaAdmin::cla
 Route::get('/pemeriksaan/data', DataPemeriksaan::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.data');
 Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.periksa');
 Route::post('/pemeriksaan/{kegiatan}/keputusan', PutuskanPemeriksaan::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.putuskan');
+Route::get('/pemeriksaan/{kegiatan}/catatan', CatatanPemeriksaanKegiatan::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.catatan');
+Route::put('/pemeriksaan/{kegiatan}/catatan', SimpanCatatanPemeriksaan::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.catatan.simpan');
 
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
 Route::get('/master', MasterKodeDaftar::class)->middleware(HanyaAdmin::class)->name('master.index');

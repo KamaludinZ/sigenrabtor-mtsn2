@@ -24,7 +24,7 @@ use RuntimeException;
  *   ditahan selama RAB melebihi pagu (BatasPagu), tahun anggaran terkunci ditolak (KunciKegiatan) → catatan rapi;
  * - `putuskan($id, $aksi, $catatan, $pengguna, $versi)`: `$versi` (= `versi()` saat ditampilkan) yang usang →
  *   PengaturanBerubah; status + entri RiwayatStatus::entri (beserta `sidik` PerbaikanKegiatan untuk kembalikan & buka
- *   kunci) disimpan bersama lewat KegiatanRepository.
+ *   kunci) disimpan bersama lewat KegiatanRepository, lalu draf catatan kegiatan itu dibuang (CatatanPemeriksaan).
  */
 final class KeputusanPemeriksaan
 {
@@ -116,6 +116,7 @@ final class KeputusanPemeriksaan
         }
         $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
         $repo->simpan($kegiatan, $id);
+        CatatanPemeriksaan::buang($id);
         $tersimpan = $repo->temukan($id);
 
         return ['kegiatan' => $tersimpan, 'entri' => $entri, 'pesan' => self::PESAN[$aksi], 'versi' => self::versi($tersimpan)];
