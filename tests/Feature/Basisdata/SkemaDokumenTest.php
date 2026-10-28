@@ -19,6 +19,9 @@ class SkemaDokumenTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_28_000032_create_documents_tables.php';
 
+    /** Hasil susunan KAK/TOR (000039) merujuk documents: dibatalkan lebih dulu. */
+    private const MIGRASI_HASIL = 'database/migrations/2026_10_28_000039_create_dokumen_bagian_table.php';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -133,6 +136,7 @@ class SkemaDokumenTest extends TestCase
     {
         DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
         DB::statement('SET CONSTRAINTS ALL DEFERRED');
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_HASIL])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->assertFalse(Schema::hasTable('documents'));
         $this->assertFalse(Schema::hasTable('number_sequences'));
@@ -140,6 +144,7 @@ class SkemaDokumenTest extends TestCase
         $this->assertNull(DB::selectOne("SELECT to_regproc('nomor_dokumen_berikutnya') AS f")->f);
 
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_HASIL])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('documents'));
         $this->assertSame(2026, (int) DB::selectOne('SELECT tahun_aktif() AS t')->t);
     }
