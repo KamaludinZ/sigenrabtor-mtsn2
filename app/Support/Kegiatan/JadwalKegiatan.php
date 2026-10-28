@@ -14,6 +14,9 @@ final readonly class JadwalKegiatan
     /** Batas baris jadwal yang bisa ditambahkan leading (satu baris per bulan sudah mencakup setahun). */
     public const MAKS_BARIS = 12;
 
+    /** Panjang maksimal uraian satu baris (aturan isian, usulan AI, & CHECK schedules_uraian_check). */
+    public const MAKS_URAIAN = 200;
+
     /**
      * @param  list<array{uraian: string, bulan: list<int>}>  $baris
      */

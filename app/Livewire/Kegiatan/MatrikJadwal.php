@@ -495,13 +495,13 @@ class MatrikJadwal extends Component
         return [
             'matrik' => ['array'],
             'matrik.*' => ['array'],
-            'matrik.*.*.uraian' => ['required', 'string', 'max:150'],
+            'matrik.*.*.uraian' => ['required', 'string', 'max:'.MatrikTahapan::MAKS_URAIAN],
             'matrik.*.*.bulan' => ['array'],
             'matrik.*.*.bulan.*' => ['integer', 'between:1,12'],
             'jadwal' => ['array', 'max:'.JadwalKegiatan::MAKS_BARIS],
             // Baris boleh kosong; uraian baru wajib bila bulannya sudah dipilih (required_with bersifat implisit, tetap
             // diperiksa walau uraian kosong).
-            'jadwal.*.uraian' => ['nullable', 'string', 'max:200', 'required_with:jadwal.*.mulai'],
+            'jadwal.*.uraian' => ['nullable', 'string', 'max:'.JadwalKegiatan::MAKS_URAIAN, 'required_with:jadwal.*.mulai'],
             'jadwal.*.mulai' => ['nullable', 'integer', 'between:1,12'],
             'jadwal.*.sampai' => ['nullable', 'integer', 'between:1,12', $waktuUrut],
         ];
@@ -515,7 +515,7 @@ class MatrikJadwal extends Component
         return [
             'matrik.*.*.uraian.required' => 'Uraian butir tahapan wajib diisi.',
             'jadwal.max' => 'Jadwal maksimal :max baris.',
-            'jadwal.*.uraian.max' => 'Uraian jadwal maksimal 200 karakter.',
+            'jadwal.*.uraian.max' => 'Uraian jadwal maksimal :max karakter.',
             'jadwal.*.uraian.required_with' => 'Isi uraian kegiatan untuk bulan yang sudah dipilih.',
         ];
     }
@@ -606,7 +606,7 @@ class MatrikJadwal extends Component
 
     /**
      * Hasil penyusun (bisa langsung dari model AI) dirapikan sebelum ditampilkan: maks. 3 versi bernomor ulang,
-     * baris berurai (1 baris teks, ≤ 200 karakter) maks. JadwalKegiatan::MAKS_BARIS, bulan 1–12 dengan "s.d." sesudah mulai.
+     * baris berurai (1 baris teks, ≤ JadwalKegiatan::MAKS_URAIAN karakter) maks. JadwalKegiatan::MAKS_BARIS, bulan 1–12 dengan "s.d." sesudah mulai.
      *
      * @param  array<mixed>  $versi
      * @return list<array{judul: string, ciri: string, keterangan: string, baris: list<array{uraian: string, mulai: int|null, sampai: int|null}>}>
@@ -620,7 +620,7 @@ class MatrikJadwal extends Component
             $baris = [];
 
             foreach (array_filter(is_array($v['baris'] ?? null) ? $v['baris'] : [], 'is_array') as $b) {
-                $uraian = Str::limit($satuBaris($b['uraian'] ?? ''), 200, '');
+                $uraian = Str::limit($satuBaris($b['uraian'] ?? ''), JadwalKegiatan::MAKS_URAIAN, '');
                 $mulai = self::bulanAtauNull($b['mulai'] ?? null);
                 $sampai = self::bulanAtauNull($b['sampai'] ?? null);
 

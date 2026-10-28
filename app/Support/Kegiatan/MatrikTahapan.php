@@ -11,6 +11,9 @@ final readonly class MatrikTahapan
 {
     public const TAHAPAN = ['persiapan' => 'Persiapan', 'pelaksanaan' => 'Pelaksanaan', 'evaluasi_pelaporan' => 'Evaluasi dan Pelaporan'];
 
+    /** Panjang maksimal uraian satu butir (aturan isian & CHECK matrik_tahapan_uraian_check). */
+    public const MAKS_URAIAN = 150;
+
     /** Butir baku tiap tahapan (template KAK madrasah); dapat diubah per kegiatan. */
     public const BUTIR_BAKU = [
         'persiapan' => ['Rapat dan pembagian job deskripsi', 'Penyerahan anggaran per seksi'],
