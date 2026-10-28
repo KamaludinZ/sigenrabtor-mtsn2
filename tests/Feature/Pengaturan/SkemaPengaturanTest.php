@@ -30,6 +30,9 @@ class SkemaPengaturanTest extends TestCase
     /** Trigger peran akun (000028) bergantung pada kolom users.role yang dibuat 000020. */
     private const MIGRASI_AKUN = 'database/migrations/2026_10_28_000028_tighten_users_and_riwayat_masuk.php';
 
+    /** Dokumen & konfigurasi tahun aktif (000032) merujuk tahun_anggaran dan tabel template yang dibuat 000020. */
+    private const MIGRASI_DOKUMEN = 'database/migrations/2026_10_28_000032_create_documents_tables.php';
+
     private function ditolak(callable $aksi, string $catatan): void
     {
         try {
@@ -212,6 +215,7 @@ class SkemaPengaturanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_AKUN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_MASTER])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
@@ -226,6 +230,7 @@ class SkemaPengaturanTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_MASTER])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_AKUN])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_DOKUMEN])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('activity_logs'));
         $this->assertTrue(Schema::hasTable('master_kode_unggahan'));
     }
