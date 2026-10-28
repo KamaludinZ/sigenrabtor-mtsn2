@@ -97,7 +97,7 @@ class TotalAnggaranTest extends TestCase
         $this->assertSame(Arr::except($tiruan, 'kegiatan_id'), Arr::except($basisData, 'kegiatan_id'));
 
         // Terbilang tersimpan di anggaran_kegiatan sama dengan yang dikirim endpoint.
-        $tersimpan = DB::table('anggaran_kegiatan')->where('activity_id', $id)->where('dipilih', true)->pluck('terbilang', 'sumber_dana')->all();
+        $tersimpan = DB::table('anggaran_kegiatan')->where('activity_id', $id)->where('dipilih', true)->orderBy('id')->pluck('terbilang', 'sumber_dana')->all();
         $this->assertSame(array_column($basisData['sumber'], 'terbilang', 'sumber'), $tersimpan);
     }
 }
