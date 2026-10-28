@@ -12,6 +12,7 @@ use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\BatasAi;
 use App\Support\Kegiatan\BatasAmanSaran;
+use App\Support\Kegiatan\BatasDataMaster;
 use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KonteksAi;
@@ -123,7 +124,8 @@ class KalimatAi extends Component
     {
         if (str_starts_with($property, 'form.')) {
             $this->pastikanDapatDiedit();
-            abort_unless(in_array(substr($property, 5), [...BagianAi::KOLOM, 'cover_manual'], true), 403, 'Isian ini diubah di halaman Data Kegiatan.');
+            // Batas Aman: halaman ini hanya menulis kalimat; data master & angka diubah di tempatnya (BatasDataMaster).
+            abort_unless(in_array(substr($property, 5), BatasDataMaster::ISIAN, true), 403, 'Isian ini diubah di halaman Data Kegiatan.');
         }
     }
 
@@ -180,6 +182,8 @@ class KalimatAi extends Component
             foreach (BagianAi::KOLOM as $field) {
                 $this->form->validateOnly($field);
             }
+            // Kalimat yang diubah tidak boleh menyelisihi kode & angka anggaran kegiatan.
+            BatasDataMaster::pastikanTeks($this->kegiatanSekarang(), array_intersect_key($this->teksSekarang(), array_flip($this->isianBerubah())), 'form.');
         } catch (ValidationException $e) {
             $this->dispatch('notify', message: 'Periksa kembali isian yang ditandai merah.', type: 'error');
 
@@ -335,6 +339,11 @@ class KalimatAi extends Component
 
             return;
         }
+        if ($galat = BatasDataMaster::galatTeks($teks, $this->kegiatanSekarang())) {
+            $this->addError('suntingSaran', $galat[0]);
+
+            return;
+        }
 
         // "Tambahkan di akhir" menyambung teks lama dengan satu spasi (paragraf/kalimat lanjutan).
         $lama = (string) $this->form->{$kolom};
@@ -386,6 +395,18 @@ class KalimatAi extends Component
         $versi = $this->saran[$this->saranTerbuka ?? ''][$this->versiDipilih]['teks'] ?? '';
 
         return $versi === '' ? [] : BatasAmanSaran::peringatan($versi, $this->kegiatanSekarang());
+    }
+
+    /**
+     * Pertentangan versi AI terpilih dengan data master kegiatan (BatasDataMaster) — versi ini tidak bisa dipakai apa adanya.
+     *
+     * @return list<string>
+     */
+    public function galatSaran(): array
+    {
+        $versi = $this->saran[$this->saranTerbuka ?? ''][$this->versiDipilih]['teks'] ?? '';
+
+        return $versi === '' ? [] : BatasDataMaster::galatTeks($versi, $this->kegiatanSekarang());
     }
 
     /** Kembalikan isian bagian seperti sebelum saran AI dipakai. */

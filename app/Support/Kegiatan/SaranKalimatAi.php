@@ -20,7 +20,8 @@ use Illuminate\Validation\ValidationException;
  * - muatan PayloadAi::saranKalimat (tanpa NIP, nama pejabat, pagu) → RantaiPenyediaAi (penyedia aktif → cadangan;
  *   gagal → GagalUsulanAi ber-previous GagalPenyediaAi, admin + simulasi diberi akhiran) → `rapikan()` (maks. jumlah versi ParameterAi, teks rapi,
  *   batas panjang kolom, nama cover kapital, tanpa kosong/kembar) → BatasAi::catat setelah penyedia menjawab → kosong =
- *   GagalUsulanAi → RiwayatSaranAi::catat → {versi, peringatan (KeamananAi::peringatan), catatan, penyedia, permintaan}.
+ *   GagalUsulanAi → RiwayatSaranAi::catat → {versi, peringatan (KeamananAi::peringatan), bertentangan (BatasDataMaster::galatTeks
+ *   per versi — versi itu tidak bisa dipakai apa adanya), catatan, penyedia, permintaan}.
  *   Muatan diperiksa KeamananAi::pastikanMuatanAman sebelum terkirim; keluaran dibersihkan KeamananAi::bersihkanKeluaran.
  */
 final class SaranKalimatAi
@@ -34,7 +35,7 @@ final class SaranKalimatAi
      * @param  array<string, mixed>  $kegiatan  Data kegiatan (boleh berisi teks yang sedang disunting).
      * @param  array{id: int, name: string, role: string, leadings?: list<string>}  $pengguna
      * @param  string|null  $acuan  Teks yang diperbaiki; null = teks kolom bagian di $kegiatan.
-     * @return array{versi: list<array{judul: string, ciri: string, teks: string}>, peringatan: list<list<string>>, catatan: string|null, penyedia: string|null, permintaan: string}
+     * @return array{versi: list<array{judul: string, ciri: string, teks: string}>, peringatan: list<list<string>>, bertentangan: list<list<string>>, catatan: string|null, penyedia: string|null, permintaan: string}
      *
      * @throws ValidationException Berkunci `bagian`, `instruksi`, atau `acuan`.
      * @throws AuthorizationException
@@ -90,6 +91,7 @@ final class SaranKalimatAi
         return [
             'versi' => $versi,
             'peringatan' => KeamananAi::peringatan($versi, $kegiatan),
+            'bertentangan' => array_map(fn (array $v) => BatasDataMaster::galatTeks($v['teks'], $kegiatan), $versi),
             'catatan' => RantaiPenyediaAi::catatan($jalan),
             'penyedia' => $jalan['penyedia'],
             'permintaan' => RiwayatSaranAi::catat((int) $kegiatan['id'], $bagian, RiwayatSaranAi::prompt($permintaan), $permintaan->instruksi, $versi, $pengguna, $jalan['penyedia']),

@@ -15,7 +15,9 @@ use RuntimeException;
  * yang kegiatannya masih dalam cakupan (AksesKegiatan), hanya sekali (sudah diputuskan → PengaturanBerubah/409). Nomor
  * versi 1.. dipakai (versi lain ditolak) atau null = semua ditolak; `teks_dipakai` opsional untuk versi kalimat yang
  * dipilih — dirapikan (nama cover kapital satu baris), ≤ SaranKalimatAi::MAKS_TEKS, berbeda dari saran = "diedit".
- * Usulan jadwal dipakai apa adanya. Kalimat KAK & Matrik & Jadwal mencatat keputusannya langsung lewat RiwayatSaranAi.
+ * Teks yang dipakai (suntingan atau versi apa adanya) tidak boleh menyelisihi data master kegiatan (BatasDataMaster::galatTeks
+ * → galat `teks_dipakai`/`versi`). Usulan jadwal dipakai apa adanya. Kalimat KAK & Matrik & Jadwal mencatat keputusannya
+ * langsung lewat RiwayatSaranAi.
  */
 final class KeputusanSaranAi
 {
@@ -58,6 +60,13 @@ final class KeputusanSaranAi
                 default => null,
             },
         ]);
+        // Batas Aman: teks yang dipakai tidak boleh menyelisihi kode & angka anggaran kegiatan (BatasDataMaster).
+        if ($galat === [] && $nomor !== null && $maks !== null) {
+            $dipakai = $teks !== '' ? $teks : (string) $permintaan['versi'][$nomor - 1]['teks'];
+            if ($bertentangan = BatasDataMaster::galatTeks($dipakai, $kegiatan)) {
+                $galat[$teks !== '' ? 'teks_dipakai' : 'versi'] = $bertentangan[0];
+            }
+        }
         if ($galat !== []) {
             throw ValidationException::withMessages($galat);
         }

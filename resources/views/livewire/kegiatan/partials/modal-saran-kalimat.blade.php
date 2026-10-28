@@ -4,6 +4,7 @@
     $asli = $daftarVersi[$versiDipilih]['teks'] ?? '';
     $teksSaatIni = trim((string) $form->{$b['kolom']});
     $peringatan = $this->peringatanSaran();
+    $galatBatas = $this->galatSaran();
     $bisaTambah = in_array('tambah', \App\Livewire\Kegiatan\KalimatAi::caraPakai($kunci), true) && $teksSaatIni !== '';
     $contohInstruksi = $kunci === 'nama_cover' ? ['lebih singkat', 'lebih formal'] : ['lebih singkat', 'lebih formal', 'tambahkan moderasi beragama'];
 @endphp
@@ -87,6 +88,17 @@
                 @endif
                 @error('suntingSaran') <p class="form-error" role="alert">{{ $message }}</p> @enderror
             </div>
+
+            @if ($galatBatas !== [])
+                <div class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-batas-aman">
+                    <p class="flex items-center gap-1.5 font-semibold"><x-ui.icon name="alert" class="size-3.5" /> Tidak bisa dipakai apa adanya</p>
+                    <ul class="mt-1 ml-5 list-disc space-y-0.5">
+                        @foreach ($galatBatas as $p)
+                            <li>{{ $p }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             @if ($peringatan !== [])
                 <div class="rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-700 ring-1 ring-gold-200" role="status" data-testid="peringatan-saran">
