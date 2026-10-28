@@ -2,6 +2,7 @@
 
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\EksporMonitoringExcel;
 use App\Http\Controllers\EksporMonitoringPdf;
@@ -107,6 +108,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/madrasah/dasar-hukum', PengaturanDasarHukum::class)->name('madrasah.dasar_hukum');
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
+    Route::get('/riwayat/data', DataRiwayatPengaturan::class)->name('riwayat.data');
     Route::get('/ai', PengaturanAi::class)->name('ai.index');
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
     Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');

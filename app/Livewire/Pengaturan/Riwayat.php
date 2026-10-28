@@ -4,6 +4,7 @@ namespace App\Livewire\Pengaturan;
 
 use App\Contracts\RiwayatPengaturanRepository;
 use App\Support\Pengaturan\BagianPengaturan;
+use App\Support\Pengaturan\CatatanAudit;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -12,7 +13,7 @@ use Livewire\Component;
 
 /**
  * Pengaturan › Riwayat Perubahan (PRD N7): tabel siapa mengubah pengaturan apa dan kapan, dengan saringan bagian,
- * pengguna, dan kata kunci (tersimpan di URL). Riwayat hanya bisa dibaca.
+ * pengguna, dan kata kunci (tersimpan di URL; disaring CatatanAudit). Riwayat hanya bisa dibaca.
  */
 #[Layout('layouts.app')]
 class Riwayat extends Component
@@ -64,11 +65,7 @@ class Riwayat extends Component
     #[Computed]
     public function terfilter(): array
     {
-        $cari = mb_strtolower(trim($this->cari));
-
-        return array_values(array_filter($this->semua, fn (array $r) => ($this->bagian === '' || (RiwayatPengaturan::AKSI[$r['aksi']][1] ?? null) === $this->bagian)
-            && ($this->pengguna === '' || $r['pengguna'] === $this->pengguna)
-            && ($cari === '' || str_contains(mb_strtolower($r['keterangan'].' '.(RiwayatPengaturan::AKSI[$r['aksi']][0] ?? $r['aksi'])), $cari))));
+        return CatatanAudit::saring(['bagian' => $this->bagian, 'pengguna' => $this->pengguna, 'cari' => $this->cari], $this->semua);
     }
 
     /**
