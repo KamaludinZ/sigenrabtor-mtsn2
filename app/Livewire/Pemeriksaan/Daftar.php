@@ -3,8 +3,8 @@
 namespace App\Livewire\Pemeriksaan;
 
 use App\Contracts\KegiatanRepository;
-use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pemeriksaan\AntreanPemeriksaan;
+use App\Support\Pemeriksaan\DaftarPemeriksaan;
 use App\Support\Pemeriksaan\RiwayatPemeriksaan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -97,9 +97,7 @@ class Daftar extends Component
     #[Computed]
     public function semua(): array
     {
-        $tahun = StubData::tahunAktif()['tahun'];
-
-        return AntreanPemeriksaan::baris(array_values(array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => TahunKegiatan::dari($k) === $tahun)));
+        return DaftarPemeriksaan::semua();
     }
 
     /** @return array<string, int> */
@@ -115,13 +113,7 @@ class Daftar extends Component
      */
     public function baris(): array
     {
-        $cari = mb_strtolower(trim($this->cari));
-
-        return array_values(array_filter(
-            AntreanPemeriksaan::untukTab($this->semua, $this->tab),
-            fn (array $b) => ($cari === '' || str_contains(mb_strtolower($b['nama'].' '.($b['pembuat'] ?? '')), $cari))
-                && ($this->leading === '' || $b['leading'] === $this->leading),
-        ));
+        return DaftarPemeriksaan::saring($this->semua, ['status' => $this->tab, 'cari' => $this->cari, 'leading' => $this->leading]);
     }
 
     public function hapusSaringan(): void

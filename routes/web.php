@@ -12,6 +12,7 @@ use App\Http\Controllers\DataLeading;
 use App\Http\Controllers\DataMonitoringAnggaran;
 use App\Http\Controllers\DataPaguMonitoring;
 use App\Http\Controllers\DataPejabat;
+use App\Http\Controllers\DataPemeriksaan;
 use App\Http\Controllers\DataProfilMadrasah;
 use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataSkRktm;
@@ -114,6 +115,7 @@ Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(Han
 
 // Pemeriksaan & arsip final (PRD Fase 6 §16), khusus admin.
 Route::get('/pemeriksaan', PemeriksaanDaftar::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.index');
+Route::get('/pemeriksaan/data', DataPemeriksaan::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.data');
 Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.periksa');
 
 // Master kode tahunan (PRD Fase 6 §14), khusus admin.
