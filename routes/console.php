@@ -3,6 +3,7 @@
 use App\Support\Basisdata\PindahAkun;
 use App\Support\Basisdata\PindahLeading;
 use App\Support\Basisdata\PindahMasterKode;
+use App\Support\Basisdata\PindahPengaturanAi;
 use App\Support\Basisdata\PindahStrukturAnggaran;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -79,3 +80,23 @@ Artisan::command('sigenrabtor:pindah-master {--uji : Jalankan & verifikasi lalu 
 
     return 0;
 })->purpose('Sinkronkan master kode tiruan per tahun anggaran ke database (ganti bagian yang berbeda, lalu verifikasi)');
+
+Artisan::command('sigenrabtor:pindah-pengaturan-ai {--uji : Jalankan & verifikasi lalu batalkan, tanpa menyimpan}', function () {
+    try {
+        $hasil = PindahPengaturanAi::jalankan((bool) $this->option('uji'));
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+
+    $this->table(['Hasil', 'Isi'], [
+        ['Pengaturan', $hasil['status'] === 'tetap' ? 'Sudah sama' : 'Diganti'],
+        ['Penyedia aktif', $hasil['provider_aktif'] ?? '— (AI tiruan)'],
+        ['Penyedia cadangan', $hasil['provider_cadangan'] ?? '—'],
+        ['Konfigurasi penyedia', implode(', ', $hasil['penyedia']) ?: '—'],
+    ]);
+    $this->info($this->option('uji') ? 'Uji sinkron pengaturan AI lolos verifikasi; tidak ada yang disimpan.' : 'Pengaturan AI disinkronkan ke database dan lolos verifikasi.');
+
+    return 0;
+})->purpose('Sinkronkan pengaturan & penyedia AI dari penyimpanan tiruan ke database (lalu verifikasi)');
