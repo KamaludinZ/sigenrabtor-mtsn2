@@ -42,6 +42,7 @@ use App\Http\Controllers\SimpanCatatanPemeriksaan;
 use App\Http\Controllers\StatusCetakKegiatan;
 use App\Http\Controllers\StatusKunciFinal;
 use App\Http\Controllers\SumberDanaKegiatan;
+use App\Http\Controllers\TahunAnggaranAktif;
 use App\Http\Controllers\TerminKegiatan;
 use App\Http\Controllers\TotalAnggaranKegiatan;
 use App\Http\Controllers\UbahKegiatan;
@@ -87,6 +88,7 @@ Route::redirect('/', '/dashboard');
 Route::get('/dashboard', Dashboard::class)->name('dashboard');
 Route::get('/dashboard/data', DataDashboard::class)->name('dashboard.data');
 
+Route::get('/tahun-aktif', TahunAnggaranAktif::class)->name('tahun_aktif');
 Route::get('/kegiatan', KegiatanDaftar::class)->name('kegiatan.index');
 Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name('kegiatan.template');
 Route::get('/kegiatan/format-rincian-rab', UnduhFormatRincianRab::class)->name('kegiatan.rab.template');
