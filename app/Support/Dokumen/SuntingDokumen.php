@@ -58,6 +58,12 @@ final class SuntingDokumen
         return self::jenis($kunci) === 'daftar' ? self::maks($kunci) * TeksKhusus::MAKS_BUTIR + TeksKhusus::MAKS_BUTIR - 1 : self::maks($kunci);
     }
 
+    /** Panjang maksimal ketikan mentah draf sunting (DrafSunting; dirapikan & diperiksa aturan isiannya saat diterapkan). */
+    public static function maksDraf(string $kunci): int
+    {
+        return self::maksTeks($kunci) * 2;
+    }
+
     public static function petunjuk(string $kunci): string
     {
         return self::BIDANG[$kunci][2];
