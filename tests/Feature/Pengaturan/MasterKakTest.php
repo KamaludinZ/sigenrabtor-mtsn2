@@ -87,6 +87,8 @@ class MasterKakTest extends TestCase
 
     public function test_unggah_master_dengan_salah_tulis_ditolak_lalu_yang_benar_disimpan(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus master juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $salah = Docx::isi(['Kegiatan ${nama_kegiaatan}', 'Total ${total}', '${Tahun Anggaran}']);
 
         $komponen = Livewire::test(TemplateDokumen::class)
@@ -127,13 +129,15 @@ class MasterKakTest extends TestCase
         $this->assertTrue(collect(KesiapanPengaturan::tahunAktif()->butir)->firstWhere('kunci', 'kak')['siap']);
 
         // Unduh khusus admin, dengan nama berkas asli.
-        $this->get(route('pengaturan.template.master.unduh', $master['id']))->assertForbidden();
+        $this->withSession(['stub_role' => 'leading'])->get(route('pengaturan.template.master.unduh', $master['id']))->assertForbidden();
         $this->withSession(['stub_role' => 'admin'])->get(route('pengaturan.template.master.unduh', $master['id']))
             ->assertOk()->assertDownload('master-kak-2026.docx');
     }
 
     public function test_validasi_berkas_dan_dokumen_tanpa_variabel(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus master juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         Livewire::test(TemplateDokumen::class)
             ->set('tab', 'kak')
             ->set('berkasMaster', UploadedFile::fake()->create('master.pdf', 50, 'application/pdf'))
@@ -154,6 +158,8 @@ class MasterKakTest extends TestCase
 
     public function test_hapus_master_dan_default_per_jenis(): void
     {
+        // Halaman khusus admin (middleware rute); simpan & hapus master juga memeriksa peran.
+        $this->withSession(['stub_role' => 'admin']);
         $repo = app(TemplateDokumenRepository::class);
         $kak = $repo->tambah(2026, 'KAK A', 'KAK+TOR', $this->berkas('a.docx', $this->masterBenar()), ['total']);
         $this->travel(1)->minutes();

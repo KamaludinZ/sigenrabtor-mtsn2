@@ -11,11 +11,13 @@ use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Pengaturan\RiwayatPengaturan;
+use App\Support\Pengaturan\UnggahMasterTemplate;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -44,8 +46,8 @@ class TemplateDokumen extends Component
     /** Batas ukuran gambar cover (KB). */
     public const MAKS_KB = 5120;
 
-    /** Batas ukuran master .docx (KB). */
-    public const MAKS_KB_MASTER = 10240;
+    /** Batas ukuran master .docx (KB) — UnggahMasterTemplate::MAKS_KB. */
+    public const MAKS_KB_MASTER = UnggahMasterTemplate::MAKS_KB;
 
     #[Url(except: 'cover')]
     public string $tab = 'cover';
@@ -251,22 +253,25 @@ class TemplateDokumen extends Component
         }
     }
 
-    public function simpanMaster(TemplateDokumenRepository $repo): void
+    /** Simpan lewat UnggahMasterTemplate (aturan & pemeriksaan variabel yang sama dengan server). */
+    public function simpanMaster(): void
     {
         $this->validate(Arr::only($this->rules(), ['berkasMaster', 'namaMaster', 'jenisMaster']));
-        $analisis = $this->analisisMaster;
 
-        if ($analisis === null || ! $analisis->bisaDisimpan()) {
-            $this->addError('berkasMaster', $analisis?->variabel === []
-                ? 'Belum ada variabel ${…} di dokumen — tandai bagian yang diisi otomatis, mis. ${nama_kegiatan}.'
-                : 'Perbaiki variabel yang tidak terdaftar di Word, lalu unggah ulang.');
+        try {
+            UnggahMasterTemplate::simpan($this->tahun(), $this->berkasMaster, $this->namaMaster, $this->jenisMaster, StubData::currentUser());
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError(['berkas' => 'berkasMaster', 'nama' => 'namaMaster', 'jenis' => 'jenisMaster'][$kolom] ?? $kolom, $pesan[0]);
+            }
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;
         }
 
-        $id = $repo->tambah($this->tahun(), trim($this->namaMaster), $this->jenisMaster, $this->berkasMaster, $analisis->namaTerdaftar());
-        $master = $repo->temukan($id);
-        RiwayatPengaturan::catat('unggah_master', "Master “{$master['nama']}” ({$master['jenis']}) diunggah — ".count($master['variabel']).' variabel'.($master['is_default'] ? ', menjadi default jenis ini' : '').'.');
         $this->batalUnggahMaster();
         unset($this->masters);
         $this->namaMaster = $this->namaMasterBaku();
@@ -325,7 +330,7 @@ class TemplateDokumen extends Component
         $this->masterAkanDihapus = null;
     }
 
-    public function hapusMaster(TemplateDokumenRepository $repo): void
+    public function hapusMaster(): void
     {
         $template = collect($this->masters)->firstWhere('id', $this->masterAkanDihapus);
 
@@ -333,8 +338,13 @@ class TemplateDokumen extends Component
             return;
         }
 
-        $repo->hapus($template['id']);
-        RiwayatPengaturan::catat('hapus_master', "Master “{$template['nama']}” ({$template['jenis']}) dihapus.");
+        try {
+            UnggahMasterTemplate::hapus($template['id'], StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
         $this->masterAkanDihapus = null;
         $this->pratinjauMaster = $this->pratinjauMaster === $template['id'] ? null : $this->pratinjauMaster;
         unset($this->masters);
@@ -455,9 +465,9 @@ class TemplateDokumen extends Component
         return [
             'gambar' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:'.self::MAKS_KB, 'dimensions:min_width=600,min_height=600'],
             'namaCover' => ['required', 'string', 'max:100'],
-            'berkasMaster' => ['required', 'file', 'max:'.self::MAKS_KB_MASTER, 'extensions:docx'],
-            'namaMaster' => ['required', 'string', 'max:100'],
-            'jenisMaster' => ['required', Rule::in(array_keys(TemplateDokumenRepository::JENIS))],
+            'berkasMaster' => UnggahMasterTemplate::aturan()['berkas'],
+            'namaMaster' => UnggahMasterTemplate::aturan()['nama'],
+            'jenisMaster' => UnggahMasterTemplate::aturan()['jenis'],
         ];
     }
 
@@ -474,12 +484,7 @@ class TemplateDokumen extends Component
             'gambar.dimensions' => 'Gambar terlalu kecil — minimal 600 piksel di setiap sisi agar tajam saat dicetak.',
             'namaCover.required' => 'Beri nama cover, mis. “Cover default 2026”.',
             'namaCover.max' => 'Nama cover maksimal 100 karakter.',
-            'berkasMaster.required' => 'Pilih berkas master KAK/TOR (.docx).',
-            'berkasMaster.extensions' => 'Pilih dokumen Word .docx (bukan .doc atau PDF).',
-            'berkasMaster.max' => 'Ukuran berkas maksimal '.(self::MAKS_KB_MASTER / 1024).' MB.',
-            'namaMaster.required' => 'Beri nama template, mis. “Master KAK/TOR 2026”.',
-            'namaMaster.max' => 'Nama template maksimal 100 karakter.',
-            'jenisMaster.in' => 'Pilih jenis template dari daftar.',
+            ...collect(UnggahMasterTemplate::pesan())->mapWithKeys(fn (string $pesan, string $kunci) => [preg_replace('/^(berkas|nama|jenis)\./', '$1Master.', $kunci) => $pesan])->all(),
         ];
     }
 
