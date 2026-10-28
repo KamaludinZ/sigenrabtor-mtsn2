@@ -18,6 +18,8 @@ class SkemaPelaksanaanTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_28_000010_add_pelaksanaan_columns_to_activities_table.php';
 
+    private const VIEW_MONITORING = 'database/migrations/2026_10_28_000022_create_monitoring_views.php';
+
     /** @param  array<string, mixed>  $data */
     private function kegiatan(array $data = []): int
     {
@@ -74,11 +76,14 @@ class SkemaPelaksanaanTest extends TestCase
     {
         // ALTER TABLE activities ditolak selama ada pemeriksaan rujukan tertunda: periksa seketika.
         RujukanDb::segera();
+        // View monitoring memakai tanggal_selesai: lepas dulu, pasang lagi sesudahnya.
+        $this->artisan('migrate:rollback', ['--path' => self::VIEW_MONITORING])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $lama = $this->kegiatan(['tanggal_mulai' => '2026-11-16', 'lama_hari' => 2, 'hari_kerja' => true]);
         $tanpaJadwal = $this->kegiatan(['lama_hari' => 2]);
 
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::VIEW_MONITORING])->assertSuccessful();
 
         $this->assertSame(['2026-11-17', null], [$this->selesai($lama), $this->selesai($tanpaJadwal)]);
     }
