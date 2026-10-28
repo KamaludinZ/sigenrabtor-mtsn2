@@ -24,7 +24,6 @@ use App\Support\Kegiatan\StatusKuotaAi;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Stub\StubData;
 use App\Support\Teks;
-use Closure;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -444,18 +443,14 @@ class MatrikJadwal extends Component
         $this->jadwalSebelum = null;
     }
 
-    /** Simpan lewat MatrikJadwalRepository (terpisah dari data kegiatan); bila gagal, isian di layar tetap utuh. */
-    public function simpan(MatrikJadwalRepository $repo): void
+    /** Simpan lewat SimpanMatrikJadwal (terpisah dari data kegiatan); bila gagal, isian di layar tetap utuh. */
+    public function simpan(): void
     {
         $this->pastikanDapatDiedit();
         $this->validate();
 
         try {
-            $repo->simpan(
-                $this->kegiatanId,
-                MatrikTahapan::dari(['matrik' => $this->matrik]),
-                JadwalKegiatan::dari(['jadwal' => self::jadwalUntukDisimpan($this->jadwal)]),
-            );
+            SimpanMatrikJadwal::simpan($this->kegiatanId, $this->matrik, $this->jadwal);
         } catch (RuntimeException $e) {
             report($e);
             $this->dispatch('notify', message: 'Matrik & jadwal gagal disimpan. Perubahan masih ada di layar — coba simpan lagi.', type: 'error');
@@ -478,23 +473,7 @@ class MatrikJadwal extends Component
      */
     protected function rules(): array
     {
-        $waktuUrut = function (string $attribute, mixed $nilai, Closure $fail) {
-            $mulai = $this->jadwal[(int) explode('.', $attribute)[1]]['mulai'] ?? null;
-
-            if ($nilai !== null && ($mulai === null || $nilai < $mulai)) {
-                $fail('Bulan "s.d." tidak boleh sebelum bulan mulai.');
-            }
-        };
-
-        return [
-            ...SimpanMatrikJadwal::aturanMatrik(),
-            'jadwal' => ['array', 'max:'.JadwalKegiatan::MAKS_BARIS],
-            // Baris boleh kosong; uraian baru wajib bila bulannya sudah dipilih (required_with bersifat implisit, tetap
-            // diperiksa walau uraian kosong).
-            'jadwal.*.uraian' => ['nullable', 'string', 'max:'.JadwalKegiatan::MAKS_URAIAN, 'required_with:jadwal.*.mulai'],
-            'jadwal.*.mulai' => ['nullable', 'integer', 'between:1,12'],
-            'jadwal.*.sampai' => ['nullable', 'integer', 'between:1,12', $waktuUrut],
-        ];
+        return [...SimpanMatrikJadwal::aturanMatrik(), ...SimpanMatrikJadwal::aturanJadwal($this->jadwal)];
     }
 
     /**
@@ -502,12 +481,7 @@ class MatrikJadwal extends Component
      */
     protected function messages(): array
     {
-        return [
-            ...SimpanMatrikJadwal::pesanMatrik(),
-            'jadwal.max' => 'Jadwal maksimal :max baris.',
-            'jadwal.*.uraian.max' => 'Uraian jadwal maksimal :max karakter.',
-            'jadwal.*.uraian.required_with' => 'Isi uraian kegiatan untuk bulan yang sudah dipilih.',
-        ];
+        return [...SimpanMatrikJadwal::pesanMatrik(), ...SimpanMatrikJadwal::pesanJadwal()];
     }
 
     public function dapatDiedit(): bool
@@ -532,33 +506,21 @@ class MatrikJadwal extends Component
     }
 
     /**
-     * Baris jadwal form → bentuk penyimpanan {uraian (rapi), bulan (rentang mulai..s.d.)}.
+     * Baris jadwal form → bentuk penyimpanan (SimpanMatrikJadwal::jadwalUntukDisimpan).
      *
      * @param  list<array{uraian: string, mulai: int|null, sampai: int|null}>  $jadwal
      * @return list<array{uraian: string, bulan: list<int>}>
      */
     public static function jadwalUntukDisimpan(array $jadwal): array
     {
-        return array_values(array_map(function (array $b) {
-            $mulai = self::bulanAtauNull($b['mulai'] ?? null);
-            $sampai = self::bulanAtauNull($b['sampai'] ?? null);
-
-            return [
-                'uraian' => Teks::rapikan((string) ($b['uraian'] ?? '')),
-                'bulan' => $mulai === null ? [] : range($mulai, max($mulai, $sampai ?? $mulai)),
-            ];
-        }, $jadwal));
+        return SimpanMatrikJadwal::jadwalUntukDisimpan($jadwal);
     }
 
     private function muatIsian(): void
     {
         $repo = app(MatrikJadwalRepository::class);
         $this->matrik = $repo->matrik($this->kegiatanId)->butir;
-        $this->jadwal = array_map(fn (array $b) => [
-            'uraian' => $b['uraian'],
-            'mulai' => $b['bulan'][0] ?? null,
-            'sampai' => count($b['bulan']) > 1 ? end($b['bulan']) : null,
-        ], $repo->jadwal($this->kegiatanId)->baris);
+        $this->jadwal = SimpanMatrikJadwal::isianJadwal($repo->jadwal($this->kegiatanId));
         $this->adaPerubahan = false;
         $this->matrikSebelum = null;
         $this->jadwalSebelum = null;
@@ -620,9 +582,7 @@ class MatrikJadwal extends Component
 
     private static function bulanAtauNull(mixed $nilai): ?int
     {
-        $bulan = filter_var($nilai, FILTER_VALIDATE_INT);
-
-        return $bulan !== false && $bulan >= 1 && $bulan <= 12 ? $bulan : null;
+        return SimpanMatrikJadwal::bulanAtauNull($nilai);
     }
 
     /**
