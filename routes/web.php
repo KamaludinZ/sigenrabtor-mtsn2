@@ -5,6 +5,7 @@ use App\Http\Controllers\AmbilMasterKode;
 use App\Http\Controllers\BatalImporKegiatan;
 use App\Http\Controllers\BukaKunciFinal;
 use App\Http\Controllers\CatatanPemeriksaanKegiatan;
+use App\Http\Controllers\CetakDokumenKegiatan;
 use App\Http\Controllers\DataAgregasiMonitoring;
 use App\Http\Controllers\DataAkun;
 use App\Http\Controllers\DataArsipFinal;
@@ -189,6 +190,7 @@ Route::get('/kegiatan/{kegiatan}/termin', TerminKegiatan::class)->whereNumber('k
 Route::get('/kegiatan/{kegiatan}/sumber-dana', SumberDanaKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.sumber_dana');
 Route::get('/kegiatan/{kegiatan}/status-cetak', StatusCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status_cetak');
 Route::get('/kegiatan/{kegiatan}/periksa-cetak', PeriksaCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.periksa_cetak');
+Route::get('/kegiatan/{kegiatan}/cetak', CetakDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.cetak');
 Route::get('/kegiatan/{kegiatan}/draf', DrafDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.draf');
 Route::put('/kegiatan/{kegiatan}/draf', SimpanDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.simpan');
 Route::delete('/kegiatan/{kegiatan}/draf', HapusDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.hapus');

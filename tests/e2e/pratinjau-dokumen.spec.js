@@ -294,6 +294,44 @@ test.describe('Pratinjau dokumen', () => {
         await expect(page.getByTestId('navigasi-kosong')).toContainText('1/');
     });
 
+    test('cetak & unduh: halaman cetak lembar terpilih di tab baru (dialog cetak otomatis), unduh RAB Excel', async ({ page, context }, testInfo) => {
+        // Dialog cetak peramban diganti penghitung agar tes tidak tertahan.
+        await context.addInitScript(() => {
+            window.print = () => {
+                window.__dicetak = (window.__dicetak ?? 0) + 1;
+            };
+        });
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/2/pratinjau');
+        await page.getByTestId('buka-cetak').click();
+        const panel = page.getByTestId('panel-cetak');
+        await expect(panel).toBeVisible();
+        await expect(panel.getByTestId('cetak-draf')).toContainText('tanda air DRAF');
+        await panel.locator('[data-cetak-lembar="cover"]').uncheck();
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+
+        const [tab] = await Promise.all([context.waitForEvent('page'), panel.getByTestId('cetak-sekarang').click()]);
+        await tab.waitForLoadState();
+        await expect(tab).toHaveURL(/\/kegiatan\/2\/cetak\?sumber=DIPA&dokumen=kak%2Crab&otomatis=1$/);
+        await expect(tab).toHaveTitle(/^KAK-TOR_RAB_Supervisi_Akademik_dan_Refleksi_Pembelajaran_DIPA_2026_DRAF$/);
+        await expect(tab.locator('[data-lembar-cetak]')).toHaveCount(2);
+        await expect.poll(() => tab.evaluate(() => window.__dicetak ?? 0)).toBe(1);
+        await tab.screenshot({ path: `storage/playwright/shots/cetak-dokumen-${testInfo.project.name}.png` });
+
+        // Media cetak: bilah layar hilang, tanda air DRAF di setiap halaman.
+        await tab.emulateMedia({ media: 'print' });
+        await expect(tab.getByTestId('bilah-cetak')).toBeHidden();
+        await expect(tab.getByTestId('tanda-air-cetak')).toBeVisible();
+        await tab.getByTestId('tombol-cetak').evaluate((el) => el.click());
+        await expect.poll(() => tab.evaluate(() => window.__dicetak)).toBe(2);
+        await tab.close();
+
+        await page.getByTestId('buka-unduh').click();
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), page.getByTestId('unduh-rab-excel').click()]);
+        expect(unduhan.suggestedFilename()).toMatch(/^RAB_Supervisi_Akademik.*_DIPA_2026.*\.xlsx$/);
+    });
+
     test('kaidah: RAB yang melebihi pagu ditandai gagal', async ({ page }) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/3/pratinjau?sumber=Komite');

@@ -19,6 +19,9 @@
     $isi = $this->isiDokumen;
     $kurangIsi = array_sum(array_column($isi, 'kurang'));
     $bisaUbah = $this->dapatDiubah();
+    $rabBerisi = $rab->anggaran !== null && $rab->anggaran->jumlahItem() > 0;
+    $statusCetak = $this->statusCetak;
+    $statusDraf = $statusCetak->set;
     $sunting = $mode === 'sunting' && $bisaUbah ? ['terbuka' => $suntingTerbuka, 'kegiatan_id' => $kegiatanId] : null;
     $penanda = ['kegiatan_id' => $kegiatanId, 'pengguna' => \App\Support\Stub\StubData::currentUser(), 'isi' => $bisaUbah];
     $ringkasanKosong = \App\Support\Dokumen\PenandaKosong::ringkasan($this->penandaKosong);
@@ -49,8 +52,66 @@
             <p class="mt-1 text-sm text-stone-500">Cover, KAK/TOR, dan RAB seperti hasil cetak — disusun otomatis dari data kegiatan.</p>
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <button type="button" class="btn-secondary" disabled><x-ui.icon name="download" class="size-4" /> Unduh Word <x-ui.segera /></button>
-            <button type="button" class="btn-primary" disabled><x-ui.icon name="printer" class="size-4" /> Cetak PDF <x-ui.segera /></button>
+            {{-- Unduh: RAB Excel/PDF dari server; set dokumen sebagai PDF lewat halaman cetak; Word menyusul. --}}
+            <div class="relative" x-data="{ buka: false }" x-on:click.outside="buka = false" x-on:keydown.escape="buka = false">
+                <button type="button" class="btn-secondary" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" aria-controls="panel-unduh" data-testid="buka-unduh">
+                    <x-ui.icon name="download" class="size-4" /> Unduh <x-ui.icon name="chevron-down" class="size-3.5 opacity-60" />
+                </button>
+                <div id="panel-unduh" x-cloak x-show="buka" x-transition.origin.top.right class="absolute left-0 z-30 sm:right-0 sm:left-auto mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 text-sm shadow-lg ring-1 ring-stone-200" data-testid="panel-unduh">
+                    @if ($rabBerisi)
+                        <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $kegiatanId, 'sumber' => $sumberAktif]) }}" class="flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-stone-50" data-testid="unduh-rab-excel">
+                            <x-ui.icon name="sheet" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                            <span><span class="block font-semibold text-stone-900">RAB {{ $sumberAktif }} — Excel</span><span class="block text-xs text-stone-500">.xlsx, rincian & total seperti dokumen</span></span>
+                        </a>
+                        <a href="{{ route('kegiatan.rab.pdf', ['kegiatan' => $kegiatanId, 'sumber' => $sumberAktif]) }}" class="flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-stone-50" data-testid="unduh-rab-pdf">
+                            <x-ui.icon name="file-text" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                            <span><span class="block font-semibold text-stone-900">RAB {{ $sumberAktif }} — PDF</span><span class="block text-xs text-stone-500">Disusun server dari lembar Excel RAB</span></span>
+                        </a>
+                    @else
+                        <p class="px-2.5 py-2 text-xs text-stone-500" data-testid="unduh-rab-kosong">RAB {{ $sumberAktif }} belum berisi rincian — unduh RAB tersedia setelah rincian diisi.</p>
+                    @endif
+                    <a href="{{ \App\Support\Dokumen\CetakDokumen::tautan($kegiatanId, $sumberAktif, [], true) }}" target="_blank" rel="noopener" class="flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-stone-50" data-testid="unduh-set-pdf">
+                        <x-ui.icon name="printer" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                        <span><span class="block font-semibold text-stone-900">Set dokumen — PDF</span><span class="block text-xs text-stone-500">Cover, KAK/TOR, RAB lewat Cetak › Simpan sebagai PDF</span></span>
+                    </a>
+                    <p class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-stone-400">
+                        <x-ui.icon name="download" class="mt-0.5 size-4 shrink-0" />
+                        <span><span class="block font-semibold">KAK/TOR — Word (.docx)</span><span class="block text-xs">Dari master template</span></span>
+                        <x-ui.segera />
+                    </p>
+                </div>
+            </div>
+            {{-- Cetak: halaman cetak tanpa bingkai aplikasi (CetakDokumen), lembar terpilih, cap DRAF tiap halaman. --}}
+            <div class="relative" x-data="{ buka: false, lembar: @js(array_keys(\App\Support\Dokumen\CetakDokumen::LEMBAR)), dasar: @js(route('kegiatan.cetak', ['kegiatan' => $kegiatanId] + ($sumberAktif ? ['sumber' => $sumberAktif] : []))) }"
+                 x-on:click.outside="buka = false" x-on:keydown.escape="buka = false">
+                <button type="button" class="btn-primary" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" aria-controls="panel-cetak" data-testid="buka-cetak">
+                    <x-ui.icon name="printer" class="size-4" /> Cetak <x-ui.icon name="chevron-down" class="size-3.5 opacity-70" />
+                </button>
+                <div id="panel-cetak" x-cloak x-show="buka" x-transition.origin.top.right class="absolute right-0 z-30 max-sm:-right-24 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-3 text-sm shadow-lg ring-1 ring-stone-200" data-testid="panel-cetak">
+                    <p class="font-semibold text-stone-900">Cetak dokumen{{ $sumberAktif ? ' '.$sumberAktif : '' }}</p>
+                    <fieldset class="mt-2 space-y-1">
+                        <legend class="sr-only">Lembar yang dicetak</legend>
+                        @foreach (\App\Support\Dokumen\CetakDokumen::LEMBAR as $kunciLembar => $labelLembar)
+                            <label class="flex items-center gap-2 text-stone-700">
+                                <input type="checkbox" value="{{ $kunciLembar }}" x-model="lembar" class="size-4 rounded border-stone-300 text-brand-700 focus:ring-brand-600" data-cetak-lembar="{{ $kunciLembar }}">
+                                {{ $labelLembar }}
+                            </label>
+                        @endforeach
+                    </fieldset>
+                    @if ($statusDraf->draf)
+                        <p class="mt-2 flex items-start gap-1.5 rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-800 ring-1 ring-red-200" data-testid="cetak-draf">
+                            <x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> Tercetak dengan tanda air DRAF — {{ \Illuminate\Support\Str::lcfirst($statusDraf->alasan[0]['teks']) }}
+                        </p>
+                    @endif
+                    <p class="mt-2 text-xs text-stone-500">Halaman cetak terbuka di tab baru. Pilih <span class="font-semibold">Simpan sebagai PDF</span> untuk menyimpan berkas.</p>
+                    <a x-bind:href="(() => { const u = new URL(dasar); if (lembar.length < 3) u.searchParams.set('dokumen', lembar.join(',')); u.searchParams.set('otomatis', '1'); return u.toString(); })()"
+                       target="_blank" rel="noopener" x-on:click="if (lembar.length === 0) $event.preventDefault(); else buka = false"
+                       x-bind:class="{ 'pointer-events-none opacity-50': lembar.length === 0 }" x-bind:aria-disabled="lembar.length === 0 ? 'true' : 'false'"
+                       class="btn-primary mt-3 w-full justify-center" data-testid="cetak-sekarang">
+                        <x-ui.icon name="printer" class="size-4" /> Cetak sekarang
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -91,10 +152,6 @@
                 @endforeach
             </div>
         </div>
-        @php
-            $statusCetak = $this->statusCetak;
-            $statusDraf = $statusCetak->set;
-        @endphp
         <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
             <button type="button" x-on:click="open = ! open" x-bind:aria-expanded="open" data-testid="keadaan-cetak" data-draf="{{ $statusDraf->draf ? 'ya' : 'tidak' }}"
                     @class(['inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold ring-1', 'text-red-700 ring-red-200' => $statusDraf->draf, 'text-brand-800 ring-brand-200' => ! $statusDraf->draf])>

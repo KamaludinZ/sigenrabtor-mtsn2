@@ -48,7 +48,7 @@
     <div class="space-y-6 px-5 py-8 sm:px-14 sm:py-10 cetak:px-14 cetak:py-10">
         @foreach ($daftarBagian as $isiBagian)
             <section data-bagian="{{ $isiBagian['nomor'] }}" id="cetak-kak-bagian-{{ $isiBagian['nomor'] }}" class="scroll-mt-40">
-                <h3 class="font-bold uppercase">
+                <h3 class="break-after-avoid font-bold uppercase">
                     {{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}
                     @if ($penanda !== null && ($jumlahKosong = PenandaKosong::jumlahBagian($isiBagian)) > 0)
                         <span class="ml-1.5 inline-block rounded-full bg-gold-100 px-1.5 align-middle font-sans text-[10px] font-semibold tracking-normal text-gold-800 normal-case ring-1 ring-gold-200 print:hidden" data-testid="penanda-bagian">{{ $jumlahKosong }} belum lengkap</span>
@@ -143,7 +143,7 @@
                                     $pagu = $susunan->peringatanPagu;
                                     $gayaPagu = ['bahaya' => 'bg-red-50 text-red-700 ring-red-200', 'perhatian' => 'bg-gold-50 text-gold-700 ring-gold-200', 'info' => 'bg-sky-50 text-sky-800 ring-sky-200'][$pagu->nada()];
                                 @endphp
-                                <div class="rounded px-2 py-1.5 font-sans text-sm ring-1 {{ $gayaPagu }}" data-testid="penanda-pagu" data-status="{{ $pagu->status->status }}">
+                                <div class="rounded px-2 py-1.5 font-sans text-sm ring-1 print:hidden {{ $gayaPagu }}" data-testid="penanda-pagu" data-status="{{ $pagu->status->status }}">
                                     <p class="flex items-start gap-1.5 font-semibold">
                                         <x-ui.icon :name="$pagu->nada() === 'info' ? 'info' : 'alert'" class="mt-0.5 size-4 shrink-0" />
                                         {{ $pagu->judul() }}
