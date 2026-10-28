@@ -5,14 +5,14 @@ namespace App\Livewire\Pengaturan;
 use App\Contracts\PejabatRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\KelolaPejabat;
 use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\Nip;
-use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
-use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -119,23 +119,15 @@ class ProfilMadrasah extends Component
     /** Centang blok "Mengetahui" langsung tersimpan untuk tahun yang dilihat (tahun terkunci dikembalikan). */
     public function updatedMengetahui(): void
     {
-        $repo = app(PejabatRepository::class);
         $tahun = $this->tahunDilihat();
-        $lama = $repo->aturanMengetahui($tahun);
-        if ($this->tahunTerkunci()) {
-            $this->mengetahui = $lama;
+        try {
+            $this->mengetahui = KelolaPejabat::simpanMengetahui($tahun, (array) $this->mengetahui, StubData::currentUser())['aturan'];
+        } catch (AuthorizationException) {
+            $this->mengetahui = app(PejabatRepository::class)->aturanMengetahui($tahun);
 
             return;
         }
 
-        $baru = array_map(fn (string $s) => (bool) ($this->mengetahui[$s] ?? false), array_combine(array_keys($lama), array_keys($lama)));
-        $repo->simpanAturanMengetahui($tahun, $baru);
-        $this->mengetahui = $repo->aturanMengetahui($tahun);
-
-        $ringkasan = RiwayatPengaturan::perubahan($lama, $this->mengetahui, array_combine(array_keys($lama), array_map(fn (string $s) => "Mengetahui di dokumen {$s}", array_keys($lama))));
-        if ($ringkasan !== null) {
-            RiwayatPengaturan::catat('ubah_mengetahui', "TA {$tahun} — {$ringkasan}");
-        }
         $tampil = array_keys(array_filter($this->mengetahui));
         $this->dispatch('notify', message: $tampil === [] ? 'Blok "Mengetahui" tidak ditampilkan di dokumen mana pun.' : 'Blok "Mengetahui" tampil di dokumen '.implode(' & ', $tampil).'.', type: 'success');
     }
@@ -160,32 +152,15 @@ class ProfilMadrasah extends Component
      * Salin pejabat dari tahun $dari ke tahun yang dilihat — hanya peran yang di tahun ini belum bernama, sehingga isian
      * yang sudah ada tidak tertimpa.
      */
-    public function salinPejabat(int $dari, PejabatRepository $repo): void
+    public function salinPejabat(int $dari): void
     {
         $ke = $this->tahunDilihat();
-        if ($dari === $ke || $this->tahunTerkunci() || ! in_array($dari, array_column($this->daftarTahun(), 'tahun'), true)) {
+        try {
+            $disalin = KelolaPejabat::salin($dari, $ke, StubData::currentUser());
+        } catch (AuthorizationException|ValidationException) {
             return;
         }
 
-        $sumber = $repo->untukTahun($dari);
-        $tujuan = $repo->untukTahun($ke);
-        $disalin = 0;
-        foreach (['kepala', 'komite'] as $peran) {
-            if ($sumber[$peran]['nama'] && ! $tujuan[$peran]['nama']) {
-                $repo->simpan($ke, $peran, null, $sumber[$peran]);
-                $disalin++;
-            }
-        }
-        foreach ($sumber['leading'] as $kode => $pejabat) {
-            if ($pejabat['nama'] && ! ($tujuan['leading'][$kode]['nama'] ?? null)) {
-                $repo->simpan($ke, 'leading', $kode, $pejabat);
-                $disalin++;
-            }
-        }
-
-        if ($disalin > 0) {
-            RiwayatPengaturan::catat('salin_pejabat', "{$disalin} pejabat TA {$dari} disalin ke TA {$ke} (yang sudah terisi tidak diubah).");
-        }
         unset($this->pejabat);
         $this->dispatch('notify', message: $disalin > 0 ? "{$disalin} pejabat disalin dari TA {$dari}. Periksa lalu ubah yang berganti." : "Tidak ada yang disalin — pejabat TA {$dari} kosong atau TA {$ke} sudah terisi.", type: $disalin > 0 ? 'success' : 'info');
     }
@@ -196,13 +171,7 @@ class ProfilMadrasah extends Component
      */
     public function sumberSalin(): ?int
     {
-        $adaNama = fn (array $p) => filled($p['kepala']['nama']) || filled($p['komite']['nama']) || collect($p['leading'])->contains(fn (array $l) => filled($l['nama']));
-        $repo = app(PejabatRepository::class);
-        if ($this->tahunTerkunci() || $adaNama($repo->untukTahun($this->tahunDilihat()))) {
-            return null;
-        }
-
-        return collect($this->daftarTahun())->pluck('tahun')->first(fn (int $t) => $t !== $this->tahunDilihat() && $adaNama($repo->untukTahun($t)));
+        return KelolaPejabat::sumberSalin($this->tahunDilihat());
     }
 
     /**
@@ -340,39 +309,27 @@ class ProfilMadrasah extends Component
     }
 
     /** Rapikan & periksa isian (NIP wajib untuk Kepala Madrasah), simpan untuk tahun aktif, catat perubahan di riwayat. */
-    public function simpanPejabat(PejabatRepository $repo): void
+    public function simpanPejabat(): void
     {
         $kunci = (string) $this->ubahPejabat;
-        $lama = $this->pejabatUntuk($kunci);
-        if ($lama === null || $this->tahunTerkunci()) {
+        if ($this->pejabatUntuk($kunci) === null || $this->tahunTerkunci()) {
             return;
         }
 
-        $this->isianPejabat = [
-            'jabatan' => self::rapikan((string) ($this->isianPejabat['jabatan'] ?? '')),
-            'nama' => self::rapikan((string) ($this->isianPejabat['nama'] ?? '')),
-            'nip' => self::rapikan((string) ($this->isianPejabat['nip'] ?? '')),
-        ];
-        $this->validate([
-            'isianPejabat.jabatan' => ['required', 'string', 'max:150'],
-            'isianPejabat.nama' => ['required', 'string', 'max:150'],
-            'isianPejabat.nip' => [$kunci === 'kepala' ? 'required' : 'nullable', fn (string $atribut, mixed $nilai, Closure $gagal) => ($pesan = Nip::galat((string) $nilai)) ? $gagal($pesan) : null],
-        ], [
-            'isianPejabat.jabatan.required' => 'Jabatan tercetak wajib diisi.',
-            'isianPejabat.nama.required' => 'Nama pejabat wajib diisi.',
-            'isianPejabat.nip.required' => 'NIP Kepala Madrasah wajib diisi — tercetak di kolom "Menyetujui".',
-            'isianPejabat.*.max' => 'Terlalu panjang (maksimal :max karakter).',
-        ]);
+        $this->isianPejabat = array_map(fn ($nilai) => self::rapikan((string) $nilai), array_merge(['jabatan' => '', 'nama' => '', 'nip' => ''], array_intersect_key($this->isianPejabat, ['jabatan' => 1, 'nama' => 1, 'nip' => 1])));
+        // Aturan KelolaPejabat dengan nama properti formulir (isianPejabat.*).
+        $this->validate(
+            collect(KelolaPejabat::aturan($kunci))->mapWithKeys(fn ($aturan, string $k) => ["isianPejabat.{$k}" => $aturan])->all(),
+            collect(KelolaPejabat::pesan())->mapWithKeys(fn (string $pesan, string $k) => ["isianPejabat.{$k}" => $pesan])->all(),
+        );
 
-        [$peran, $leading] = array_pad(explode(':', $kunci, 2), 2, null);
-        $baru = ['jabatan' => $this->isianPejabat['jabatan'], 'nama' => $this->isianPejabat['nama'], 'nip' => Nip::bersihkan($this->isianPejabat['nip']) ?: null];
         $tahun = $this->tahunDilihat();
-        $repo->simpan($tahun, $peran, $leading, $baru);
+        try {
+            $ringkasan = KelolaPejabat::simpan($tahun, $kunci, $this->isianPejabat, StubData::currentUser())['ringkasan'];
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
-        $tampil = fn (array $p) => ['nip' => $p['nip'] ? Nip::format($p['nip']) : null] + $p;
-        $ringkasan = RiwayatPengaturan::perubahan($tampil($lama), $tampil($baru), ['jabatan' => 'Jabatan', 'nama' => 'Nama', 'nip' => 'NIP']);
-        if ($ringkasan !== null) {
-            RiwayatPengaturan::catat('ubah_pejabat', $this->judulPejabat($kunci)." TA {$tahun} — {$ringkasan}");
+            return;
         }
 
         unset($this->pejabat);
@@ -383,7 +340,7 @@ class ProfilMadrasah extends Component
     /** Tahun yang dilihat terkunci: pejabatnya hanya bisa dilihat. */
     public function tahunTerkunci(): bool
     {
-        return (bool) (collect($this->daftarTahun())->firstWhere('tahun', $this->tahunDilihat())['is_locked'] ?? false);
+        return KelolaPejabat::terkunci($this->tahunDilihat());
     }
 
     /** "Kepala Madrasah", "Ketua Komite", atau "Pejabat 1.6 Tim Penjamin Mutu". */

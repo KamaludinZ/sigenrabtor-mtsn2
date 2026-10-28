@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **pengelolaan pejabat penanda tangan di server** — simpan Kepala Madrasah, Ketua Komite, dan pejabat tiap leading per tahun anggaran (dirapikan, NIP wajib untuk Kepala, riwayat hanya bila ada perubahan), salin dari tahun lain yang hanya mengisi peran kosong, dan pengaturan blok "Mengetahui" per sumber dana kini satu layanan yang dipakai tab Pejabat (khusus admin; tahun terkunci hanya bisa dilihat); tersedia API baca pejabat satu tahun beserta peran yang belum lengkap dan saran tahun sumber salinan.
 - Fondasi backend: **pejabat penanda tangan per tahun di database** — Kepala Madrasah, Ketua Komite, dan pejabat tiap leading per tahun anggaran beserta pengaturan blok "Mengetahui" per sumber dana kini bisa disimpan di database dengan hasil yang sama persis dengan penyimpanan saat ini (NIP yang tidak 18 angka ditolak).
 - Fondasi backend: **pengelolaan profil madrasah di server** — simpan profil (dirapikan, riwayat hanya bila ada perubahan), unggah/hapus logo kop, dan aturan isiannya kini satu layanan yang dipakai halaman Profil & Pejabat (khusus admin); tersedia API baca profil madrasah beserta isian kop yang masih kosong.
 - Fondasi backend: **profil madrasah di database** — nama, nama singkat, kota, alamat, telepon, visi, dan logo kop kini bisa disimpan di database dengan hasil yang sama persis dengan penyimpanan saat ini; aturan isiannya (telepon, panjang visi) sama dengan formulir Profil & Pejabat.
