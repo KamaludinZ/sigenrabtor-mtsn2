@@ -14,6 +14,7 @@ use App\Support\Kegiatan\JadwalPelaksanaan;
 use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
+use App\Support\Master\IkskPerSk;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
 use App\Support\Pengaturan\TautanAkunLeading;
@@ -69,6 +70,11 @@ final class DuplikatKegiatan
             $data[$kolom] = null;
             $data['kode_hilang'][$kolom] = KodeHilang::catatan($kode, 'duplikat', TahunKegiatan::dari($kegiatan));
             $catatan[] = ['jenis' => 'kode', 'teks' => "{$label} {$kode} tidak ada di master TA {$tahun} — pilih ulang."];
+        }
+        // IKSK yang ada di master tahun aktif tetapi bukan indikator SK-nya di tahun itu juga dikosongkan.
+        if (filled($data['kode_iksk'] ?? null) && IkskPerSk::galat($data['kode_sk'] ?? null, (string) $data['kode_iksk'], $tahun) !== null) {
+            $catatan[] = ['jenis' => 'kode', 'teks' => "{$data['kode_iksk']} bukan indikator ".($data['kode_sk'] ?? 'SK yang dipilih')." di master TA {$tahun} — pilih ulang."];
+            $data['kode_iksk'] = null;
         }
 
         $pagu = self::dataPagu((string) ($data['nama_kegiatan'] ?? ''), $tahun);
