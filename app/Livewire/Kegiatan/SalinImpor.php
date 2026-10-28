@@ -3,6 +3,7 @@
 namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
+use App\Support\Kegiatan\Duplikat\DaftarSumberDuplikat;
 use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -65,9 +66,7 @@ class SalinImpor extends Component
     /** Tahun sumber yang berlaku (pilihan URL atau tahun sumber terbaru); null bila tidak ada tahun lain. */
     public function tahunDipakai(): ?int
     {
-        $tahun = DuplikatKegiatan::tahunSumber();
-
-        return in_array($this->tahunSumber, $tahun, true) ? $this->tahunSumber : ($tahun[0] ?? null);
+        return DaftarSumberDuplikat::tahun($this->tahunSumber ?: null);
     }
 
     /** @return list<array<string, mixed>> Kegiatan tahun sumber dalam cakupan akun. */
@@ -82,10 +81,7 @@ class SalinImpor extends Component
     /** @return list<array<string, mixed>> Setelah cari & saringan leading. */
     public function sumberTampil(): array
     {
-        $cari = mb_strtolower(trim($this->cari));
-
-        return array_values(array_filter($this->semuaSumber, fn (array $b) => ($cari === '' || str_contains(mb_strtolower($b['nama']), $cari))
-            && ($this->leading === '' || $b['leading'] === $this->leading)));
+        return DaftarSumberDuplikat::saring($this->semuaSumber, $this->cari, $this->leading);
     }
 
     public function pilihSemua(): void

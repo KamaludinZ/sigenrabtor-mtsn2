@@ -49,6 +49,7 @@ use App\Http\Controllers\StatusCetakKegiatan;
 use App\Http\Controllers\StatusKunciFinal;
 use App\Http\Controllers\StatusPdfBuku;
 use App\Http\Controllers\SumberDanaKegiatan;
+use App\Http\Controllers\SumberDuplikatKegiatan;
 use App\Http\Controllers\TahunAnggaranAktif;
 use App\Http\Controllers\TerminKegiatan;
 use App\Http\Controllers\TotalAnggaranKegiatan;
@@ -102,6 +103,7 @@ Route::get('/kegiatan/template-impor', UnduhTemplateImporKegiatan::class)->name(
 Route::get('/kegiatan/format-rincian-rab', UnduhFormatRincianRab::class)->name('kegiatan.rab.template');
 Route::get('/kegiatan/buat', KegiatanForm::class)->name('kegiatan.create');
 Route::get('/kegiatan/salin-impor', KegiatanSalinImpor::class)->name('kegiatan.salin_impor');
+Route::get('/kegiatan/duplikat/sumber', SumberDuplikatKegiatan::class)->name('kegiatan.duplikat.sumber');
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
 Route::get('/buku', BukuDaftar::class)->name('buku.index');
 Route::get('/buku/kegiatan', KegiatanBukuDokumen::class)->name('buku.kegiatan');
