@@ -20,7 +20,8 @@ use RuntimeException;
  *   menguncinya otomatis (FinalOtomatis);
  * - buka (`buka_kunci`): hanya admin, alasan wajib — lewat KeputusanPemeriksaan::putuskan (catatan & `sidik`
  *   perbaikan, status kembali Dikembalikan; arsip lama tetap tersimpan);
- * - `$versi` (= KeputusanPemeriksaan::versi saat ditampilkan) usang → PengaturanBerubah.
+ * - `$versi` (= KeputusanPemeriksaan::versi saat ditampilkan) usang → PengaturanBerubah;
+ * - keduanya tercatat di log RiwayatKunci (`kunci_final`, `buka_kunci`).
  */
 final class KunciFinal
 {
@@ -109,6 +110,7 @@ final class KunciFinal
         $kegiatan['status'] = StatusKegiatan::Final->value;
         $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
         $repo->simpan($kegiatan, $id);
+        RiwayatKunci::catat($id, 'kunci_final', '', $pengguna, $entri['pada']);
         $tersimpan = $repo->temukan($id);
 
         return ['kegiatan' => $tersimpan, 'entri' => $entri, 'pesan' => self::PESAN_KUNCI, 'versi' => self::versi($tersimpan)];

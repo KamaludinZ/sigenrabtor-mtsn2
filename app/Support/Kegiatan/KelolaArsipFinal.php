@@ -19,7 +19,8 @@ use RuntimeException;
  * - sumber dana harus salah satu yang dipilih kegiatan (ArsipFinal::sumberWajib, galat `sumber`);
  * - berkas diperiksa ArsipFinal::galatUnggahan (aturan sama dengan pemeriksaan klien `galatArsip`, galat `berkas`);
  * - hasil memuat `kurang` (sumber dana yang arsipnya belum ada — syarat "Tandai final"); unggahan yang melengkapi arsip
- *   semua sumber dana langsung memfinalkan kegiatan (FinalOtomatis, `final`/`status` di hasil).
+ *   semua sumber dana langsung memfinalkan kegiatan (FinalOtomatis, `final`/`status` di hasil);
+ * - unggah/ganti/hapus tercatat di log RiwayatKunci (`unggah_final`/`ganti_final`/`hapus_final`).
  */
 final class KelolaArsipFinal
 {
@@ -113,6 +114,7 @@ final class KelolaArsipFinal
         $repo = app(ArsipFinalRepository::class);
         $ganti = isset($repo->untukKegiatan($id)[$sumber]);
         $arsip = $repo->simpan($id, $sumber, $berkas, $pengguna);
+        RiwayatKunci::catat($id, $ganti ? 'ganti_final' : 'unggah_final', RiwayatKunci::keteranganArsip($sumber, $arsip), $pengguna, $arsip['diunggah_pada']);
         $final = FinalOtomatis::jalankan($id, $pengguna) !== null;
 
         return [
@@ -141,7 +143,9 @@ final class KelolaArsipFinal
             throw ValidationException::withMessages(['sumber' => "Belum ada arsip final RAB {$sumber}."]);
         }
 
+        $lama = $repo->untukKegiatan($id)[$sumber];
         $repo->hapus($id, $sumber);
+        RiwayatKunci::catat($id, 'hapus_final', RiwayatKunci::keteranganArsip($sumber, $lama), $pengguna);
 
         return ['kurang' => ArsipFinal::kurang($kegiatan, $repo->untukKegiatan($id)), 'pesan' => 'Arsip final RAB '.$sumber.' dihapus.'];
     }

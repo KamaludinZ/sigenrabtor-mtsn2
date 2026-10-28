@@ -35,6 +35,8 @@ use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\PasangKunciFinal;
 use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
+use App\Http\Controllers\RiwayatKunciKegiatan;
+use App\Http\Controllers\RiwayatKunciSemua;
 use App\Http\Controllers\SalinMasterKodeTahun;
 use App\Http\Controllers\SimpanCatatanPemeriksaan;
 use App\Http\Controllers\StatusCetakKegiatan;
@@ -113,6 +115,7 @@ Route::delete('/kegiatan/{kegiatan}/arsip/{sumber}', HapusArsipFinal::class)->wh
 Route::get('/kegiatan/{kegiatan}/kunci', StatusKunciFinal::class)->whereNumber('kegiatan')->name('kegiatan.kunci');
 Route::post('/kegiatan/{kegiatan}/kunci', PasangKunciFinal::class)->whereNumber('kegiatan')->name('kegiatan.kunci.pasang');
 Route::delete('/kegiatan/{kegiatan}/kunci', BukaKunciFinal::class)->whereNumber('kegiatan')->name('kegiatan.kunci.buka');
+Route::get('/kegiatan/{kegiatan}/riwayat-kunci', RiwayatKunciKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.riwayat_kunci');
 Route::get('/kegiatan/{kegiatan}/total-anggaran', TotalAnggaranKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.total_anggaran');
 Route::get('/kegiatan/{kegiatan}/rab-lengkap', RabLengkapKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab_lengkap');
 Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.konteks');
@@ -135,6 +138,7 @@ Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(Han
 // Pemeriksaan & arsip final (PRD Fase 6 §16), khusus admin.
 Route::get('/pemeriksaan', PemeriksaanDaftar::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.index');
 Route::get('/pemeriksaan/data', DataPemeriksaan::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.data');
+Route::get('/pemeriksaan/riwayat-kunci', RiwayatKunciSemua::class)->middleware(HanyaAdmin::class)->name('pemeriksaan.riwayat_kunci');
 Route::get('/pemeriksaan/{kegiatan}', PemeriksaanPeriksa::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.periksa');
 Route::post('/pemeriksaan/{kegiatan}/keputusan', PutuskanPemeriksaan::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.putuskan');
 Route::get('/pemeriksaan/{kegiatan}/catatan', CatatanPemeriksaanKegiatan::class)->whereNumber('kegiatan')->middleware(HanyaAdmin::class)->name('pemeriksaan.catatan');

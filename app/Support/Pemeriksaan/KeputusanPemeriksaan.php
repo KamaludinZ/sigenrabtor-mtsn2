@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\PerbaikanKegiatan;
+use App\Support\Kegiatan\RiwayatKunci;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Rab\AnggaranKegiatan;
@@ -24,7 +25,8 @@ use RuntimeException;
  *   ditahan selama RAB melebihi pagu (BatasPagu), tahun anggaran terkunci ditolak (KunciKegiatan) → catatan rapi;
  * - `putuskan($id, $aksi, $catatan, $pengguna, $versi)`: `$versi` (= `versi()` saat ditampilkan) yang usang →
  *   PengaturanBerubah; status + entri RiwayatStatus::entri (beserta `sidik` PerbaikanKegiatan untuk kembalikan & buka
- *   kunci) disimpan bersama lewat KegiatanRepository, lalu draf catatan kegiatan itu dibuang (CatatanPemeriksaan).
+ *   kunci) disimpan bersama lewat KegiatanRepository, lalu draf catatan kegiatan itu dibuang (CatatanPemeriksaan); buka
+ *   kunci tercatat di log RiwayatKunci beserta alasannya.
  */
 final class KeputusanPemeriksaan
 {
@@ -117,6 +119,9 @@ final class KeputusanPemeriksaan
         $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
         $repo->simpan($kegiatan, $id);
         CatatanPemeriksaan::buang($id);
+        if ($aksi === 'buka_kunci') {
+            RiwayatKunci::catat($id, 'buka_kunci', $catatan, $pengguna, $entri['pada']);
+        }
         $tersimpan = $repo->temukan($id);
 
         return ['kegiatan' => $tersimpan, 'entri' => $entri, 'pesan' => self::PESAN[$aksi], 'versi' => self::versi($tersimpan)];

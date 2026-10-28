@@ -87,6 +87,7 @@ final class FinalOtomatis
         $kegiatan['status'] = StatusKegiatan::Final->value;
         $kegiatan['riwayat_status'] = [...array_values((array) ($kegiatan['riwayat_status'] ?? [])), $entri];
         $repo->simpan($kegiatan, $id);
+        RiwayatKunci::catat($id, 'kunci_final', $entri['catatan'], $pengguna, $entri['pada']);
 
         return $entri;
     }
