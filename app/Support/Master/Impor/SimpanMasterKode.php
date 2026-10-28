@@ -16,14 +16,15 @@ use LogicException;
  * kendala ProsesBerkasMaster (termasuk IKSK yang SK induknya tidak ada di SK berkas/master — PratinjauMaster::periksaInduk),
  * jenis yang penyimpanannya belum tersedia (DIDUKUNG), dan aturan antar-jenis (SK yang hilang padahal masih menjadi induk
  * IKSK master tahun itu, kecuali IKSK ikut diunggah). Yang tersimpan per jenis: baris
- * baru/berubah/tetap urut berkas (MasterKodeRepository::ganti, seluruh jenis sekaligus); kode yang hilang keluar dari
+ * baru/berubah/tetap urut berkas (MasterKodeRepository::ganti, seluruh jenis sekaligus; EDM beserta nama komponen per
+ * huruf — `komponenEdm()`, kendala bila nama komponen tidak diketahui); kode yang hilang keluar dari
  * master dan kegiatan pemakainya ditandai KodeHilang. Jejak: catatan unggahan (ringkasan per jenis) + riwayat
  * `unggah_master_kode`.
  */
 final class SimpanMasterKode
 {
     /** Jenis yang sudah bisa disimpan dari unggahan. */
-    public const DIDUKUNG = ['sk', 'iksk', 'rktm'];
+    public const DIDUKUNG = ['sk', 'iksk', 'rktm', 'edm'];
 
     /** Jenis → bagian master (MasterKodeRepository::ganti). */
     public const BAGIAN = ['sk' => 'kode_sk', 'iksk' => 'kode_iksk', 'rktm' => 'kode_rktm', 'edm' => 'kode_edm', 'budaya' => 'budaya_mutu'];
@@ -49,6 +50,14 @@ final class SimpanMasterKode
         foreach (array_keys($pratinjau) as $jenis) {
             if (! in_array($jenis, self::DIDUKUNG, true)) {
                 $hasil[] = JenisKode::DAFTAR[$jenis]['label'].': penyimpanan dari unggahan belum tersedia.';
+            }
+        }
+
+        if (isset($pratinjau['edm']) && $pratinjau['edm']['galat'] === null) {
+            foreach (self::komponenEdm($pratinjau['edm']['baris'], $tahun) as $k) {
+                if ($k['nama'] === $k['huruf']) {
+                    $hasil[] = "EDM: nama komponen {$k['huruf']} belum ada di berkas maupun master — isi kolom Komponen.";
+                }
             }
         }
 
@@ -85,6 +94,10 @@ final class SimpanMasterKode
                 fn (array $b) => self::barisMaster($jenis, $b),
                 array_filter($item['baris'], fn (array $b) => in_array($b['status'], self::TERSIMPAN, true)),
             ));
+        }
+        if (isset($hasil['pratinjau']['edm'])) {
+            // Nama komponen per huruf ikut diganti: dari baris pertama huruf itu di berkas.
+            $master['komponen_edm'] = array_column(self::komponenEdm($hasil['pratinjau']['edm']['baris'], $tahun), 'nama', 'huruf');
         }
         $repo = app(MasterKodeRepository::class);
         $repo->ganti($tahun, $master);
@@ -175,6 +188,32 @@ final class SimpanMasterKode
     }
 
     /**
+     * Komponen EDM dari pratinjau EDM: per huruf (urut huruf) nama dari baris tersimpan pertama huruf itu (kolom Komponen
+     * berkas, atau nama master bila kosong; huruf itu sendiri bila keduanya tidak ada), nama lama di master, jumlah
+     * indikator berkas per status. Hanya huruf yang punya baris baru/berubah/tetap — huruf lain keluar dari master.
+     *
+     * @param  list<array<string, mixed>>  $baris  Baris pratinjau EDM.
+     * @return list<array{huruf: string, nama: string, nama_lama: string|null, jumlah: int, status: array<string, int>}>
+     */
+    public static function komponenEdm(array $baris, int $tahun): array
+    {
+        $lama = app(MasterKodeRepository::class)->komponenEdm($tahun);
+        $hasil = [];
+        foreach ($baris as $b) {
+            if (! in_array($b['status'], self::TERSIMPAN, true)) {
+                continue;
+            }
+            $huruf = substr((string) $b['kode'], 0, 1);
+            $hasil[$huruf] ??= ['huruf' => $huruf, 'nama' => (string) $b['tampil']['komponen'], 'nama_lama' => $lama[$huruf] ?? null, 'jumlah' => 0, 'status' => []];
+            $hasil[$huruf]['jumlah']++;
+            $hasil[$huruf]['status'][$b['status']] = ($hasil[$huruf]['status'][$b['status']] ?? 0) + 1;
+        }
+        ksort($hasil);
+
+        return array_values($hasil);
+    }
+
+    /**
      * Baris pratinjau → baris master jenisnya.
      *
      * @param  array<string, mixed>  $b
@@ -186,6 +225,7 @@ final class SimpanMasterKode
             'sk' => ['kode' => $b['kode'], 'uraian' => $b['tampil']['uraian']],
             'iksk' => ['kode' => $b['kode'], 'kode_sk' => $b['tampil']['kode_sk'], 'uraian' => $b['tampil']['uraian']],
             'rktm' => ['kode' => $b['kode'], 'snp' => $b['tampil']['snp'], 'kegiatan' => $b['tampil']['kegiatan'], 'sub_kegiatan' => $b['tampil']['sub_kegiatan']],
+            'edm' => ['kode' => $b['kode'], 'komponen' => substr($b['kode'], 0, 1), 'uraian' => $b['tampil']['uraian']],
             default => throw new LogicException("Penyimpanan master {$jenis} belum tersedia."),
         };
     }

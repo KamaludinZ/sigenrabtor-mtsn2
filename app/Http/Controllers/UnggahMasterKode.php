@@ -17,7 +17,8 @@ use Illuminate\Http\Request;
  * jenis SimpanMasterKode::DIDUKUNG): berkas `berkas` (xlsx/xls/csv, ProsesBerkasMaster) dibaca & dibandingkan dengan
  * master tahun itu; tanpa `simpan` hanya pratinjau, dengan `simpan=1` disimpan bila tidak ada kendala. Jawaban JSON:
  * berkas, baris pratinjau, ringkasan, `induk` (IKSK: ringkasan per SK induk, SimpanMasterKode::indukIksk), `struktur`
- * (RKTM: standar → kegiatan → jumlah sub kegiatan, SimpanMasterKode::strukturRktm), kendala,
+ * (RKTM: standar → kegiatan → jumlah sub kegiatan, SimpanMasterKode::strukturRktm), `komponen` (EDM: nama komponen per
+ * huruf yang akan tersimpan, SimpanMasterKode::komponenEdm), kendala,
  * peringatan, siap, disimpan (+ id unggahan); berkas/kendala → 422, izin
  * (bukan admin, tahun terkunci/belum dibuat) → 403.
  */
@@ -53,6 +54,7 @@ class UnggahMasterKode extends Controller
             'baris' => array_map(fn (array $b) => ['kode' => $b['kode'], 'status' => $b['status'], 'isi' => $b['tampil'], 'lama' => $b['lama'], 'pesan' => $b['pesan'], 'dipakai' => $b['dipakai'], 'baris_berkas' => $b['baris']], $item['baris']),
             'induk' => $jenis === 'iksk' ? SimpanMasterKode::indukIksk($item['baris'], $tahun) : null,
             'struktur' => $jenis === 'rktm' ? SimpanMasterKode::strukturRktm($item['baris']) : null,
+            'komponen' => $jenis === 'edm' ? SimpanMasterKode::komponenEdm($item['baris'], $tahun) : null,
             'kendala' => $hasil['disimpan'] ? [] : $kendala,
             'peringatan' => $hasil['peringatan'],
             'siap' => $hasil['disimpan'] || $kendala === [],
