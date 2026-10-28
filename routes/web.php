@@ -28,6 +28,7 @@ use App\Http\Controllers\EksporRabKegiatan;
 use App\Http\Controllers\EksporRabPdfKegiatan;
 use App\Http\Controllers\GambarCover;
 use App\Http\Controllers\HapusArsipFinal;
+use App\Http\Controllers\KodeMasterKegiatan;
 use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\LogoMadrasah;
 use App\Http\Controllers\MatrikJadwalKegiatan;
@@ -103,6 +104,7 @@ Route::get('/kegiatan/{kegiatan}/edit', KegiatanForm::class)->whereNumber('kegia
 Route::get('/kegiatan/{kegiatan}/data', DataIsianKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.data');
 Route::patch('/kegiatan/{kegiatan}', UbahKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.ubah');
 Route::get('/kegiatan/{kegiatan}/kode', KegiatanKlasifikasi::class)->whereNumber('kegiatan')->name('kegiatan.kode');
+Route::get('/kegiatan/{kegiatan}/kode-master', KodeMasterKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.kode_master');
 Route::get('/kegiatan/{kegiatan}/kalimat', KegiatanKalimatAi::class)->whereNumber('kegiatan')->name('kegiatan.kalimat');
 Route::get('/riwayat-saran-ai', SaranAiRiwayat::class)->name('saran_ai.index');
 Route::get('/kegiatan/{kegiatan}/rab', KegiatanRab::class)->whereNumber('kegiatan')->name('kegiatan.rab');
