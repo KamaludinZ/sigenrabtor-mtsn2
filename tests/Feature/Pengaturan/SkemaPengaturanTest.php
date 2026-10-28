@@ -145,8 +145,9 @@ class SkemaPengaturanTest extends TestCase
         DB::table('aturan_mengetahui')->insert(['tahun_anggaran' => 2026, 'sumber_dana' => 'DIPA', 'tampil' => false]);
         $this->ditolak(fn () => DB::table('aturan_mengetahui')->insert(['tahun_anggaran' => 2026, 'sumber_dana' => 'BOS']), 'sumber dana asing');
 
-        $butir = fn (int $urutan, string $teks = 'Undang-Undang Nomor 20 Tahun 2003') => ['id' => (string) Str::uuid(), 'tahun_anggaran' => 2026, 'urutan' => $urutan, 'teks' => $teks];
+        $butir = fn (int $urutan, ?string $teks = null) => ['id' => (string) Str::uuid(), 'tahun_anggaran' => 2026, 'urutan' => $urutan, 'teks' => $teks ?? "Undang-Undang Nomor {$urutan} Tahun 2003"];
         DB::table('dasar_hukum')->insert([$butir(1), $butir(2)]);
+        $this->ditolak(fn () => DB::table('dasar_hukum')->insert($butir(3, 'undang-undang nomor 1 tahun 2003')), 'butir dobel satu tahun');
         $this->ditolak(fn () => DB::table('dasar_hukum')->insert($butir(2)), 'urutan ganda');
         $this->ditolak(fn () => DB::table('dasar_hukum')->insert($butir(3, '  ')), 'butir kosong');
         $this->ditolak(fn () => DB::table('dasar_hukum')->insert($butir(31)), 'lebih dari 30 butir');
