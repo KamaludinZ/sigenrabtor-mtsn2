@@ -5,6 +5,7 @@ namespace App\Support\Pengaturan;
 use App\Contracts\PromptAiRepository;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Kegiatan\KalimatKak;
+use App\Support\Kegiatan\KetersediaanKonteks;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\PayloadAi;
 use App\Support\Stub\StubData;
@@ -134,6 +135,7 @@ final class PromptAi
             ...array_map(fn (array $b) => "- {$b['label']}: {$b['nilai']}", $bahan),
             'Bahan kegiatan:',
             PayloadAi::bahan($kegiatan),
+            ...(($arahan = KetersediaanKonteks::untuk($bagian, $kegiatan)['arahan']) !== null ? ['Konteks: '.$arahan] : []),
         ]);
     }
 }

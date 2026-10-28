@@ -36,6 +36,7 @@ final class RiwayatSaranAi
             ...array_map(fn (string $label, string $nilai) => "- {$label}: {$nilai}", array_keys($permintaan->bahanBagian), $permintaan->bahanBagian),
             'Bahan kegiatan:',
             $permintaan->bahan,
+            ...($permintaan->arahanKonteks !== null ? ['Konteks: '.$permintaan->arahanKonteks] : []),
             // Template yang berlaku saat permintaan dikirim (Pengaturan AI › Prompt per bagian).
             'Tugas: '.PromptAi::isiPenanda(PromptAi::untuk($permintaan->bagian)['instruksi'], ['nama_kegiatan' => $permintaan->namaKegiatan]),
             'Gaya bahasa: '.(PromptAi::untuk($permintaan->bagian)['gaya_bahasa'] ?? PromptAi::gayaBahasa()),

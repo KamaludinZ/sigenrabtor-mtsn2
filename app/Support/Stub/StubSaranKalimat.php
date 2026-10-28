@@ -45,7 +45,12 @@ class StubSaranKalimat implements PenyusunSaranKalimat
                 ['judul' => 'Versi 2', 'ciri' => 'Berbasis hasil', 'teks' => 'luaran kegiatan yang lengkap, dapat dipertanggungjawabkan, dan siap dimanfaatkan madrasah.'],
                 ['judul' => 'Versi 3', 'ciri' => 'Ringkas', 'teks' => 'pelaksanaan kegiatan yang tertib, efektif, dan tepat sasaran.'],
             ],
-            'pelaksanaan' => [
+            // Narasumber hanya disebut bila catatan konteks menyebutnya (arahan KetersediaanKonteks: jangan mengarang).
+            'pelaksanaan' => in_array('narasumber', $permintaan->aspekKurang, true) ? [
+                ['judul' => 'Versi 1', 'ciri' => 'Tatap muka', 'teks' => 'kegiatan dilaksanakan secara tatap muka melalui pemaparan materi, diskusi, dan praktik.'],
+                ['judul' => 'Versi 2', 'ciri' => 'Berurutan', 'teks' => 'kegiatan diawali pembukaan dan pemaparan materi, dilanjutkan kerja kelompok, lalu ditutup dengan presentasi hasil dan evaluasi.'],
+                ['judul' => 'Versi 3', 'ciri' => 'Pendampingan', 'teks' => 'kegiatan berlangsung dengan pendampingan panitia hingga seluruh luaran kegiatan tersusun.'],
+            ] : [
                 ['judul' => 'Versi 1', 'ciri' => 'Tatap muka', 'teks' => 'kegiatan dilaksanakan secara tatap muka melalui pemaparan materi, diskusi, dan praktik bersama narasumber.'],
                 ['judul' => 'Versi 2', 'ciri' => 'Berurutan', 'teks' => 'kegiatan diawali pembukaan dan pemaparan materi, dilanjutkan kerja kelompok, lalu ditutup dengan presentasi hasil dan evaluasi.'],
                 ['judul' => 'Versi 3', 'ciri' => 'Pendampingan', 'teks' => 'kegiatan berlangsung dengan pendampingan panitia dan narasumber hingga seluruh luaran kegiatan tersusun.'],

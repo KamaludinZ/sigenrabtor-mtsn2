@@ -43,6 +43,7 @@ final class PayloadAi
     public static function saranKalimat(int $kegiatanId, string $bagian, array $kegiatan, string $teks, string $instruksi): PermintaanSaranKalimat
     {
         $bahanBagian = array_column(array_filter(BagianAi::bahan($bagian, $kegiatan), fn (array $b) => $b['nilai'] !== null), 'nilai', 'label');
+        $konteks = KetersediaanKonteks::untuk($bagian, $kegiatan);
 
         return new PermintaanSaranKalimat(
             kegiatanId: $kegiatanId,
@@ -52,6 +53,8 @@ final class PayloadAi
             bahanBagian: array_map(self::bersihkan(...), $bahanBagian),
             bahan: self::bahan($kegiatan),
             namaKegiatan: (string) ($kegiatan['nama_kegiatan'] ?? ''),
+            aspekKurang: $konteks['kurang'],
+            arahanKonteks: $konteks['arahan'],
         );
     }
 
