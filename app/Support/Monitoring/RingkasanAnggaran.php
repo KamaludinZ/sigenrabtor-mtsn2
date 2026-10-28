@@ -12,6 +12,7 @@ use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\RekapKelompok;
+use App\Support\Rab\SelisihPagu;
 use App\Support\Rab\StatusAnggaran;
 use App\Support\Rab\StatusPagu;
 use App\Support\Rab\TabelPagu;
@@ -210,7 +211,7 @@ final readonly class RingkasanAnggaran
                 $baris = &$hasil[$a->sumber];
                 $status = $a->keteranganPagu();
                 $baris['total_tanpa_pagu'] += $a->pagu() === null ? $a->total() : 0;
-                $baris['kelebihan'] += $status->melebihi() ? -$status->selisih : 0;
+                $baris['kelebihan'] += SelisihPagu::rab($a->total(), $a->pagu())->kelebihan;
                 $baris['kondisi'][StatusAnggaran::rab($a)]++;
                 unset($baris);
             }
@@ -402,13 +403,9 @@ final readonly class RingkasanAnggaran
      */
     public static function sel(array $angka): array
     {
-        $bisa = $angka['rab'] > 0 && $angka['tanpa_pagu'] === 0;
+        $selisih = SelisihPagu::dariJumlah($angka['pagu'], $angka['total'], $angka['rab'], $angka['tanpa_pagu']);
 
-        return [
-            ...$angka,
-            'selisih' => $bisa ? $angka['pagu'] - $angka['total'] : null,
-            'persen' => $bisa ? TabelPagu::persen($angka['total'], $angka['pagu'] ?: null) : null,
-        ];
+        return [...$angka, 'selisih' => $selisih->selisih, 'persen' => $selisih->persen];
     }
 
     /**
@@ -455,7 +452,7 @@ final readonly class RingkasanAnggaran
                 'total' => $angka['total'],
                 'selisih' => $angka['selisih'],
                 'persen' => $angka['persen'],
-                'kelebihan' => array_sum(array_map(fn ($r) => $r['status']->melebihi() ? -$r['status']->selisih : 0, $rab)),
+                'kelebihan' => SelisihPagu::gabungan(array_map(fn ($r) => [$r['pagu'], $r['total']], $rab))->kelebihan,
                 'rab_jumlah' => $angka['rab'],
                 'melebihi' => $angka['melebihi'],
                 'tanpa_pagu' => $angka['tanpa_pagu'],

@@ -41,24 +41,24 @@ final readonly class TabelPagu
     }
 
     /**
-     * Baris jumlah kegiatan. Pagu = jumlah pagu yang sudah diisi; selisih & pemakaian hanya dihitung bila semua pagu terisi.
+     * Baris jumlah kegiatan (SelisihPagu::dariAnggaran). Pagu = jumlah pagu yang sudah diisi; selisih & pemakaian hanya
+     * dihitung bila ada RAB dan semua pagu terisi; kelebihan = jumlah kelebihan tiap RAB atas pagunya sendiri.
      *
-     * @return array{pagu: int, total: int, selisih: int|null, persen: float|null, jumlah_item: int, pagu_kosong: int, melebihi: int}
+     * @return array{pagu: int, total: int, selisih: int|null, persen: float|null, jumlah_item: int, pagu_kosong: int, melebihi: int, kelebihan: int}
      */
     public function jumlah(): array
     {
-        $pagu = array_sum(array_map(fn (AnggaranSumber $a) => (int) $a->pagu(), $this->anggaran));
-        $total = array_sum(array_map(fn (AnggaranSumber $a) => $a->total(), $this->anggaran));
-        $paguKosong = count(array_filter($this->anggaran, fn (AnggaranSumber $a) => $a->pagu() === null));
+        $gabungan = SelisihPagu::dariAnggaran($this->anggaran);
 
         return [
-            'pagu' => $pagu,
-            'total' => $total,
-            'selisih' => $paguKosong === 0 ? $pagu - $total : null,
-            'persen' => $paguKosong === 0 ? self::persen($total, $pagu) : null,
+            'pagu' => $gabungan->pagu,
+            'total' => $gabungan->total,
+            'selisih' => $gabungan->selisih,
+            'persen' => $gabungan->persen,
             'jumlah_item' => array_sum(array_map(fn (AnggaranSumber $a) => $a->jumlahItem(), $this->anggaran)),
-            'pagu_kosong' => $paguKosong,
-            'melebihi' => count(array_filter($this->anggaran, fn (AnggaranSumber $a) => $a->keteranganPagu()->melebihi())),
+            'pagu_kosong' => $gabungan->tanpaPagu,
+            'melebihi' => $gabungan->melebihi,
+            'kelebihan' => $gabungan->kelebihan,
         ];
     }
 

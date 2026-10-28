@@ -1,0 +1,9 @@
+[
+    {"catatan": "belum ada RAB", "rab": [], "hasil": {"pagu": 0, "total": 0, "selisih": null, "persen": null, "kelebihan": 0, "sisa": 0, "rab": 0, "melebihi": 0, "tanpa_pagu": 0}},
+    {"catatan": "sisa pagu", "rab": [[6000000, 5400000]], "hasil": {"pagu": 6000000, "total": 5400000, "selisih": 600000, "persen": 90.0, "kelebihan": 0, "sisa": 600000, "rab": 1, "melebihi": 0, "tanpa_pagu": 0}},
+    {"catatan": "tepat pagu", "rab": [[10000000, 10000000]], "hasil": {"pagu": 10000000, "total": 10000000, "selisih": 0, "persen": 100.0, "kelebihan": 0, "sisa": 0, "rab": 1, "melebihi": 0, "tanpa_pagu": 0}},
+    {"catatan": "Rp1 di bawah pagu tidak tampil 100%", "rab": [[6000000, 5999999]], "hasil": {"pagu": 6000000, "total": 5999999, "selisih": 1, "persen": 99.9, "kelebihan": 0, "sisa": 1, "rab": 1, "melebihi": 0, "tanpa_pagu": 0}},
+    {"catatan": "melebihi pagu (contoh Review RKJM Komite)", "rab": [[7500000, 7950000]], "hasil": {"pagu": 7500000, "total": 7950000, "selisih": -450000, "persen": 106.0, "kelebihan": 450000, "sisa": 0, "rab": 1, "melebihi": 1, "tanpa_pagu": 0}},
+    {"catatan": "ada RAB tanpa pagu: selisih gabungan tidak bisa dihitung", "rab": [[null, 900000], [7500000, 7950000]], "hasil": {"pagu": 7500000, "total": 8850000, "selisih": null, "persen": null, "kelebihan": 450000, "sisa": 0, "rab": 2, "melebihi": 1, "tanpa_pagu": 1}},
+    {"catatan": "kelebihan satu RAB tidak tertutup sisa RAB lain", "rab": [[6000000, 0], [2500000, 3000000]], "hasil": {"pagu": 8500000, "total": 3000000, "selisih": 5500000, "persen": 35.2, "kelebihan": 500000, "sisa": 6000000, "rab": 2, "melebihi": 1, "tanpa_pagu": 0}}
+]

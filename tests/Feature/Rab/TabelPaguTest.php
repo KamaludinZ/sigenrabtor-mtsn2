@@ -44,7 +44,7 @@ class TabelPaguTest extends TestCase
             [['DIPA', 6_000_000, 5_400_000, 600_000, 90.0, 6, 'sisa'], ['Komite', 2_500_000, 2_500_000, 0, 100.0, 3, 'sesuai']],
             array_map(fn ($b) => [$b['sumber'], $b['pagu'], $b['total'], $b['selisih'], $b['persen'], $b['jumlah_item'], $b['status']->status], $tabel->baris()),
         );
-        $this->assertSame(['pagu' => 8_500_000, 'total' => 7_900_000, 'selisih' => 600_000, 'persen' => 92.9, 'jumlah_item' => 9, 'pagu_kosong' => 0, 'melebihi' => 0], $tabel->jumlah());
+        $this->assertSame(['pagu' => 8_500_000, 'total' => 7_900_000, 'selisih' => 600_000, 'persen' => 92.9, 'jumlah_item' => 9, 'pagu_kosong' => 0, 'melebihi' => 0, 'kelebihan' => 0], $tabel->jumlah());
         $this->assertSame(['Semua RAB dalam batas pagu', 'aman'], [$tabel->ringkasan(), $tabel->nada()]);
     }
 
@@ -54,7 +54,7 @@ class TabelPaguTest extends TestCase
 
         $this->assertSame(['tanpa_pagu', 'melebihi'], array_map(fn ($b) => $b['status']->status, $tabel->baris()));
         $this->assertSame([null, null], [$tabel->baris()[0]['selisih'], $tabel->baris()[0]['persen']]);
-        $this->assertSame(['pagu' => 7_500_000, 'total' => 8_850_000, 'selisih' => null, 'persen' => null, 'jumlah_item' => 9, 'pagu_kosong' => 1, 'melebihi' => 1], $tabel->jumlah());
+        $this->assertSame(['pagu' => 7_500_000, 'total' => 8_850_000, 'selisih' => null, 'persen' => null, 'jumlah_item' => 9, 'pagu_kosong' => 1, 'melebihi' => 1, 'kelebihan' => 450_000], $tabel->jumlah());
         $this->assertSame(['1 RAB melebihi pagu · 1 pagu belum diisi', 'bahaya'], [$tabel->ringkasan(), $tabel->nada()]);
     }
 
