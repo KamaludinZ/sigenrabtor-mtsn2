@@ -25,6 +25,7 @@ class Navigation
                     ['label' => 'Dashboard', 'icon' => 'dashboard', 'route' => 'dashboard', 'active' => 'dashboard'],
                     ['label' => 'Data Kegiatan', 'icon' => 'clipboard', 'route' => 'kegiatan.index', 'active' => 'kegiatan.*'],
                     ['label' => 'Data Pagu', 'icon' => 'wallet', 'route' => 'pagu.index', 'active' => 'pagu.*'],
+                    ['label' => 'Cetak & Unduh', 'icon' => 'printer', 'route' => 'cetak.index', 'active' => 'cetak.*'],
                     ['label' => 'Riwayat Dokumen', 'icon' => 'history', 'route' => 'dokumen.index', 'active' => 'dokumen.*'],
                     ['label' => 'Buku Dokumen', 'icon' => 'book', 'route' => 'buku.index', 'active' => 'buku.*'],
                     ['label' => 'Riwayat Saran AI', 'icon' => 'sparkles', 'route' => 'saran_ai.index', 'active' => 'saran_ai.*'],
