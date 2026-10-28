@@ -70,7 +70,21 @@
                 @endforeach
 
                 @if ($item['ringkasan']['gagal'] > 0)
-                    <p class="text-xs text-red-700">{{ $item['ringkasan']['gagal'] }} baris gagal tidak ikut disimpan — perbaiki berkasnya lalu unggah ulang bila perlu.</p>
+                    <p class="text-xs text-red-700">{{ $item['ringkasan']['gagal'] }} baris gagal menahan penyimpanan — perbaiki berkasnya lalu unggah ulang.</p>
+                @endif
+
+                @php
+                    $ringkasanJenis = $this->ringkasanJenis();
+                @endphp
+                @if ($ringkasanJenis !== null && $ringkasanJenis['butir'] !== [])
+                    <div class="rounded-lg bg-stone-50 px-3 py-2 ring-1 ring-stone-200" data-testid="ringkasan-jenis">
+                        <p class="text-xs font-semibold text-stone-700">{{ $ringkasanJenis['judul'] }}</p>
+                        <ul class="mt-1 grid gap-x-6 gap-y-0.5 text-xs text-stone-600 sm:grid-cols-2">
+                            @foreach ($ringkasanJenis['butir'] as $teks)
+                                <li class="min-w-0 break-words">{{ $teks }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
                 @endif
 
                 <ul class="divide-y divide-stone-100 rounded-xl ring-1 ring-stone-200" data-testid="baris-pratinjau">

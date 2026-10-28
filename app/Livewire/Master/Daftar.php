@@ -3,6 +3,7 @@
 namespace App\Livewire\Master;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\MasterKodeRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\JenisKode;
@@ -75,6 +76,16 @@ class Daftar extends Component
             'is_locked' => $t['is_locked'],
             'tersedia' => MasterKode::tersedia($t['tahun']),
         ], app(TahunAnggaranRepository::class)->semua());
+    }
+
+    /**
+     * Unggahan Excel terakhir yang disimpan untuk tahun yang dilihat (MasterKodeRepository::unggahan).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function unggahanTerakhir(): ?array
+    {
+        return app(MasterKodeRepository::class)->unggahan($this->tahunDilihat())[0] ?? null;
     }
 
     public function tahunDilihat(): int

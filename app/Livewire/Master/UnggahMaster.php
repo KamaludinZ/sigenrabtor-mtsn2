@@ -12,6 +12,7 @@ use App\Support\Master\Impor\PratinjauMaster;
 use App\Support\Master\Impor\ProsesBerkasMaster;
 use App\Support\Master\Impor\SimpanMasterKode;
 use App\Support\Master\JenisKode;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -59,6 +60,10 @@ class UnggahMaster extends Component
 
     /** Saringan status baris pratinjau: 'semua' atau kunci PratinjauMaster::STATUS. */
     public string $saring = 'semua';
+
+    /** Sidik master saat pratinjau disusun (SimpanMasterKode::sidik): simpan ditolak bila master berubah sesudahnya. */
+    #[Locked]
+    public ?string $sidikMaster = null;
 
     /** Konfirmasi batal tampil (pratinjau berisi perubahan yang akan dibuang). */
     public bool $konfirmasiBatal = false;
@@ -118,6 +123,7 @@ class UnggahMaster extends Component
 
             return;
         }
+        $this->sidikMaster = SimpanMasterKode::sidik($this->tahun, array_keys($this->pratinjau));
         $this->tahap = 'pratinjau';
         $this->tabPratinjau = (string) array_key_first($this->pratinjau);
         $this->saring = 'semua';
@@ -139,7 +145,14 @@ class UnggahMaster extends Component
         }
 
         try {
-            $hasil = SimpanMasterKode::simpan($this->berkas->getRealPath(), $this->terpilih['nama'], $this->cakupan, $this->tahun, StubData::currentUser());
+            $hasil = SimpanMasterKode::simpan($this->berkas->getRealPath(), $this->terpilih['nama'], $this->cakupan, $this->tahun, StubData::currentUser(), $this->sidikMaster);
+        } catch (PengaturanBerubah) {
+            $tab = $this->tabPratinjau;
+            $this->lanjut();
+            $this->tabPratinjau = isset($this->pratinjau[$tab]) ? $tab : $this->tabPratinjau;
+            $this->dispatch('notify', message: "Master kode TA {$this->tahun} baru saja diubah di tempat lain — pratinjau sudah diperbarui; periksa lagi lalu simpan.", type: 'error');
+
+            return;
         } catch (GagalSimpanMaster $e) {
             $this->dispatch('notify', message: $e->kendala[0], type: 'error');
 
@@ -157,10 +170,22 @@ class UnggahMaster extends Component
 
         $ringkasan = SimpanMasterKode::teksRingkasan(array_map(fn (array $item) => $item['ringkasan'], $hasil['pratinjau']));
         $this->buangBerkas();
-        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal');
+        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal', 'sidikMaster');
         $this->tahap = 'unggah';
         $this->dispatch('notify', message: "Master kode TA {$this->tahun} tersimpan — {$ringkasan}.", type: 'success');
         $this->dispatch('unggah-master-ditutup', dibatalkan: false);
+    }
+
+    /**
+     * Ringkasan khusus jenis tab pratinjau yang dilihat (SimpanMasterKode::ringkasanJenis).
+     *
+     * @return array{judul: string, butir: list<string>}|null
+     */
+    public function ringkasanJenis(): ?array
+    {
+        $item = $this->pratinjau[$this->tabPratinjau] ?? null;
+
+        return $item === null || $item['galat'] !== null ? null : SimpanMasterKode::ringkasanJenis($this->tabPratinjau, $item['baris'], $this->tahun);
     }
 
     /** Semua jenis di pratinjau sudah bisa disimpan lewat panel (SimpanMasterKode::DIDUKUNG). */
@@ -182,7 +207,7 @@ class UnggahMaster extends Component
     /** Kembali ke pilihan berkas (berkas & cakupan tetap). */
     public function kembali(): void
     {
-        $this->reset('pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal');
+        $this->reset('pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal', 'sidikMaster');
         $this->tahap = 'unggah';
     }
 
@@ -217,7 +242,7 @@ class UnggahMaster extends Component
     public function gantiBerkas(): void
     {
         $this->buangBerkas();
-        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring');
+        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'sidikMaster');
         $this->tahap = 'unggah';
     }
 
@@ -241,7 +266,7 @@ class UnggahMaster extends Component
     {
         $adaBerkas = $this->terpilih !== null;
         $this->buangBerkas();
-        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal');
+        $this->reset('terpilih', 'galat', 'pratinjau', 'tabPratinjau', 'saring', 'konfirmasiBatal', 'sidikMaster');
         $this->tahap = 'unggah';
         $this->dispatch('unggah-master-ditutup', dibatalkan: $adaBerkas);
     }

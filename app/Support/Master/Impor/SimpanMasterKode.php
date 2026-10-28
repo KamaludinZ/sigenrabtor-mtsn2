@@ -5,6 +5,7 @@ namespace App\Support\Master\Impor;
 use App\Contracts\MasterKodeRepository;
 use App\Support\Impor\GagalBacaImpor;
 use App\Support\Master\JenisKode;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use Illuminate\Auth\Access\AuthorizationException;
 use LogicException;
@@ -81,9 +82,12 @@ final class SimpanMasterKode
      * @throws AuthorizationException
      * @throws \RuntimeException Penyimpanan gagal (master lama utuh).
      */
-    public static function simpan(string $path, string $namaAsli, string $cakupan, int $tahun, array $pengguna): array
+    public static function simpan(string $path, string $namaAsli, string $cakupan, int $tahun, array $pengguna, ?string $sidik = null): array
     {
         $hasil = ProsesBerkasMaster::proses($path, $namaAsli, $cakupan, $tahun, $pengguna);
+        if ($sidik !== null && $sidik !== self::sidik($tahun, array_keys($hasil['pratinjau']))) {
+            throw new PengaturanBerubah("Master kode TA {$tahun} baru saja diubah di tempat lain.");
+        }
         if (($kendala = self::kendala($hasil['pratinjau'], $tahun)) !== []) {
             throw new GagalSimpanMaster($kendala);
         }
@@ -110,6 +114,53 @@ final class SimpanMasterKode
         RiwayatPengaturan::catat('unggah_master_kode', "Master kode TA {$tahun} dari {$namaAsli} — ".self::teksRingkasan($ringkasan));
 
         return ['siap' => true, 'disimpan' => true, 'unggahan' => $id] + $hasil;
+    }
+
+    /**
+     * Sidik master tahun $tahun yang menentukan hasil penyimpanan jenis $jenis (barisnya, nama komponen EDM, dan IKSK
+     * untuk aturan induk SK) — pratinjau yang disetujui hanya disimpan selama sidiknya sama.
+     *
+     * @param  list<string>  $jenis
+     */
+    public static function sidik(int $tahun, array $jenis): string
+    {
+        $data = [];
+        foreach (array_unique([...$jenis, ...(in_array('sk', $jenis, true) ? ['iksk'] : [])]) as $j) {
+            $data[$j] = JenisKode::baris($j, $tahun);
+        }
+        if (in_array('edm', $jenis, true)) {
+            $data['komponen_edm'] = app(MasterKodeRepository::class)->komponenEdm($tahun);
+        }
+        ksort($data);
+
+        return md5((string) json_encode($data));
+    }
+
+    /**
+     * Ringkasan khusus jenis untuk tab pratinjau (dari indukIksk/strukturRktm/komponenEdm/jumlah butir): judul + butir
+     * kalimat; null untuk SK.
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @return array{judul: string, butir: list<string>}|null
+     */
+    public static function ringkasanJenis(string $jenis, array $baris, int $tahun): ?array
+    {
+        return match ($jenis) {
+            'iksk' => ['judul' => 'IKSK per SK induk', 'butir' => array_map(
+                fn (array $s) => "{$s['kode_sk']} — {$s['jumlah']} indikator".($s['uraian_sk'] === null ? ' · SK induk tidak ada di master' : ''),
+                self::indukIksk($baris, $tahun),
+            )],
+            'rktm' => ['judul' => 'Struktur standar (SNP)', 'butir' => array_map(
+                fn (array $s) => "Standar {$s['nomor']} {$s['snp']} — ".count($s['kegiatan'])." kegiatan, {$s['jumlah']} sub kegiatan",
+                self::strukturRktm($baris),
+            )],
+            'edm' => ['judul' => 'Komponen yang tersimpan', 'butir' => array_map(
+                fn (array $k) => "{$k['huruf']} {$k['nama']} — {$k['jumlah']} indikator".($k['nama_lama'] !== null && $k['nama_lama'] !== $k['nama'] ? " (sebelumnya {$k['nama_lama']})" : ($k['nama_lama'] === null ? ' (komponen baru)' : '')),
+                self::komponenEdm($baris, $tahun),
+            )],
+            'budaya' => ['judul' => 'Jumlah butir', 'butir' => [count(array_filter($baris, fn (array $b) => in_array($b['status'], self::TERSIMPAN, true))).' butir tersimpan (baku '.PemeriksaBudayaMutu::JUMLAH_BAKU.')']],
+            default => null,
+        };
     }
 
     /**

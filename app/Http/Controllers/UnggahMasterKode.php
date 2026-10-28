@@ -8,6 +8,7 @@ use App\Support\Master\Impor\PemeriksaBudayaMutu;
 use App\Support\Master\Impor\ProsesBerkasMaster;
 use App\Support\Master\Impor\SimpanMasterKode;
 use App\Support\Master\JenisKode;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -20,8 +21,8 @@ use Illuminate\Http\Request;
  * berkas, baris pratinjau, ringkasan, `induk` (IKSK: ringkasan per SK induk, SimpanMasterKode::indukIksk), `struktur`
  * (RKTM: standar → kegiatan → jumlah sub kegiatan, SimpanMasterKode::strukturRktm), `komponen` (EDM: nama komponen per
  * huruf yang akan tersimpan, SimpanMasterKode::komponenEdm), `butir` (5 Budaya Mutu: jumlah tersimpan & jumlah baku),
- * kendala,
- * peringatan, siap, disimpan (+ id unggahan); berkas/kendala → 422, izin
+ * kendala, peringatan, siap, disimpan (+ id unggahan), dan `sidik` master saat ini — kirim kembali sebagai `sidik` bersama
+ * `simpan=1` agar penyimpanan ditolak (409) bila master berubah sejak pratinjau; berkas/kendala → 422, izin
  * (bukan admin, tahun terkunci/belum dibuat) → 403.
  */
 class UnggahMasterKode extends Controller
@@ -35,7 +36,7 @@ class UnggahMasterKode extends Controller
             $berkas = ProsesBerkasMaster::periksaBerkas($request->file('berkas'), $jenis);
             $path = $request->file('berkas')->getRealPath();
             $hasil = $request->boolean('simpan')
-                ? SimpanMasterKode::simpan($path, $berkas['nama'], $jenis, $tahun, $pengguna)
+                ? SimpanMasterKode::simpan($path, $berkas['nama'], $jenis, $tahun, $pengguna, $request->filled('sidik') ? (string) $request->input('sidik') : null)
                 : ProsesBerkasMaster::proses($path, $berkas['nama'], $jenis, $tahun, $pengguna) + ['disimpan' => false, 'unggahan' => null];
         } catch (GagalBacaImpor $e) {
             return response()->json(['pesan' => $e->getMessage()], 422);
@@ -43,6 +44,8 @@ class UnggahMasterKode extends Controller
             return response()->json(['pesan' => 'Master '.JenisKode::DAFTAR[$jenis]['label'].' belum bisa disimpan.', 'kendala' => $e->kendala], 422);
         } catch (AuthorizationException $e) {
             return response()->json(['pesan' => $e->getMessage()], 403);
+        } catch (PengaturanBerubah $e) {
+            return response()->json(['pesan' => $e->getMessage().' Minta pratinjau lagi lalu simpan dengan sidik yang baru.'], 409);
         }
 
         $kendala = SimpanMasterKode::kendala($hasil['pratinjau'], $tahun);
@@ -63,6 +66,7 @@ class UnggahMasterKode extends Controller
             'siap' => $hasil['disimpan'] || $kendala === [],
             'disimpan' => $hasil['disimpan'],
             'unggahan' => $hasil['unggahan'],
+            'sidik' => SimpanMasterKode::sidik($tahun, [$jenis]),
         ], $hasil['disimpan'] ? 201 : 200, ['Cache-Control' => 'no-store, private']);
     }
 }

@@ -48,7 +48,12 @@
                 </button>
             @endforeach
         </div>
-        <p class="text-xs text-stone-500">Pilihan kode di Data Kegiatan memakai master TA {{ $tahunAktif }}.</p>
+        <div class="text-right text-xs text-stone-500">
+            <p>Pilihan kode di Data Kegiatan memakai master TA {{ $tahunAktif }}.</p>
+            @if ($unggahan = $this->unggahanTerakhir())
+                <p class="mt-0.5" data-testid="unggahan-terakhir">Terakhir diunggah {{ \Illuminate\Support\Carbon::parse($unggahan['waktu'])->locale('id')->translatedFormat('j M Y, H.i') }} oleh {{ $unggahan['pengguna'] }} — {{ $unggahan['nama_berkas'] }}</p>
+            @endif
+        </div>
     </div>
 
     @if ($unggahTerbuka)
