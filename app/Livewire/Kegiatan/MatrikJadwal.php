@@ -17,6 +17,7 @@ use App\Support\Kegiatan\KonsistensiBulan;
 use App\Support\Kegiatan\KonteksAi;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\PayloadAi;
+use App\Support\Kegiatan\PemeriksaKonsistensi;
 use App\Support\Kegiatan\RantaiPenyediaAi;
 use App\Support\Kegiatan\RiwayatSaranAi;
 use App\Support\Kegiatan\SimpanMatrikJadwal;
@@ -136,7 +137,7 @@ class MatrikJadwal extends Component
     #[Computed]
     public function konsistensi(): KonsistensiBulan
     {
-        return new KonsistensiBulan($this->pelaksanaan->bulan, $this->bulanLaporan(), $this->susunanMatrik->butir, $this->susunanJadwal->baris);
+        return PemeriksaKonsistensi::bulan($this->dataKegiatan, $this->susunanMatrik, $this->susunanJadwal);
     }
 
     /** KAK/TOR dari isian saat ini (termasuk yang belum disimpan) untuk pratinjau bagian Tahapan & Jadwal. */

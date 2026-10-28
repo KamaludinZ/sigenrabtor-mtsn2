@@ -5,7 +5,6 @@ namespace App\Support\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
 use App\Enums\StatusKegiatan;
-use App\Support\Stub\StubData;
 use App\Support\Teks;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -315,12 +314,7 @@ final class SimpanMatrikJadwal
         $repo = app(MatrikJadwalRepository::class);
         $matrik = $repo->matrik($kegiatanId);
         $jadwal = $repo->jadwal($kegiatanId);
-        $laporan = DataMatrikJadwal::bulanLaporan($kegiatan, StubData::tahunAktif()['tahun']);
 
-        return [
-            'matrik' => $matrik,
-            'jadwal' => $jadwal,
-            'konsistensi' => new KonsistensiBulan(DataPelaksanaan::dari($kegiatan)->bulan, $laporan, $matrik->butir, $jadwal->baris),
-        ];
+        return ['matrik' => $matrik, 'jadwal' => $jadwal, 'konsistensi' => PemeriksaKonsistensi::bulan($kegiatan, $matrik, $jadwal)];
     }
 }

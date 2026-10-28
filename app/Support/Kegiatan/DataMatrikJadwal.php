@@ -11,7 +11,8 @@ use Carbon\CarbonImmutable;
  * Data Matrik & Jadwal satu kegiatan (PRD F10) untuk endpoint `kegiatan.matrik_jadwal` dan halaman Matrik & Jadwal:
  * acuan bulan dari Data Kegiatan (bulan pelaksanaan, persiapan sebulan sebelumnya, bulan batas laporan — `acuan()`,
  * `bulanLaporan()`), matrik tahapan per tahapan (butir, bulan bertanda, jumlah tanda, lengkap) & jadwal (nomor, uraian,
- * bulan, mulai–sampai, waktu terbaca tahun aktif, baris baku) dari MatrikJadwalRepository, serta temuan KonsistensiBulan.
+ * bulan, mulai–sampai, waktu terbaca tahun aktif, baris baku) dari MatrikJadwalRepository, serta temuan konsistensi
+ * (PemeriksaKonsistensi: bulan, dan uraian matrik/jadwal yang mungkin tersalin dari kegiatan lain).
  * Saat ini dilayani repositori tiruan (respons tiruan); backend cukup mengganti binding repositori.
  */
 final class DataMatrikJadwal
@@ -63,7 +64,7 @@ final class DataMatrikJadwal
         $repo = app(MatrikJadwalRepository::class);
         $matrik = $repo->matrik($id);
         $jadwal = $repo->jadwal($id);
-        $konsistensi = new KonsistensiBulan($pelaksanaan->bulan, $laporan, $matrik->butir, $jadwal->baris);
+        $konsistensi = PemeriksaKonsistensi::bulan($kegiatan, $matrik, $jadwal);
 
         return [
             'kegiatan_id' => $id,
@@ -107,6 +108,7 @@ final class DataMatrikJadwal
             'konsistensi' => [
                 'temuan' => $konsistensi->temuan(),
                 'jumlah_peringatan' => $konsistensi->jumlahPeringatan(),
+                'tersalin' => PemeriksaKonsistensi::tersalin($kegiatan, $matrik, $jadwal, rab: false),
             ],
         ];
     }

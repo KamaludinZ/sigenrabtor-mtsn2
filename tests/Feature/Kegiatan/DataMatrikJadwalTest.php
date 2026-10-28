@@ -91,10 +91,13 @@ class DataMatrikJadwalTest extends TestCase
         $this->app->singleton(KegiatanRepository::class, EloquentKegiatanRepository::class);
         $this->app->singleton(RabRepository::class, EloquentRabRepository::class);
         $this->app->singleton(MatrikJadwalRepository::class, EloquentMatrikJadwalRepository::class);
+        // Contoh 1 ikut disimpan sebagai pembanding "tersalin" (jadwal contoh 3 menyalin baris workshop kurikulum).
+        $idSatu = app(KegiatanRepository::class)->simpan(Arr::except(StubKegiatanRepository::contoh(), ['id', 'status']));
         $id = app(KegiatanRepository::class)->simpan(Arr::except(StubKegiatanRepository::contohMelebihiPagu(), ['id', 'status']));
         $contoh = StubMatrikJadwalRepository::contoh()[3];
         app(MatrikJadwalRepository::class)->simpan($id, MatrikTahapan::dari($contoh), JadwalKegiatan::dari($contoh));
 
+        $tiruan['konsistensi']['tersalin'][0]['kegiatan']['id'] = $idSatu;
         $this->assertSame(['kegiatan_id' => $id] + $tiruan, DataMatrikJadwal::untuk(app(KegiatanRepository::class)->temukan($id)));
     }
 }
