@@ -32,6 +32,7 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
         halamanAktif: 1,
         bagianAktif: isi[0]?.kunci ?? null,
         isiTerbuka: false,
+        kosongKe: 0,
 
         init() {
             let simpanan = null;
@@ -103,6 +104,22 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
 
         get totalHalaman() {
             return Object.values(this.halaman).reduce((jumlah, n) => jumlah + n, 0);
+        },
+
+        // Lompat ke penanda isian kosong berikutnya/sebelumnya ([data-kosong], urut lembar) dan sorot sebentar.
+        keKosong(arah) {
+            const penanda = [...this.$refs.ruang.querySelectorAll('[data-kosong]')];
+            if (penanda.length === 0) {
+                this.kosongKe = 0;
+
+                return;
+            }
+            const sekarang = this.kosongKe > 0 ? this.kosongKe - 1 : arah > 0 ? -1 : 0;
+            this.kosongKe = ((sekarang + arah + penanda.length) % penanda.length) + 1;
+            const el = penanda[this.kosongKe - 1];
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            el.classList.add('penanda-sorot');
+            window.setTimeout(() => el.classList.remove('penanda-sorot'), 1600);
         },
 
         // Posisi batas halaman di lembar (persen tinggi lembar), satu per pergantian halaman.

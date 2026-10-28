@@ -43,7 +43,7 @@ class PratinjauDasarHukumTest extends TestCase
         Storage::disk('local')->put(config('sigenrabtor.stub.dasar_hukum_file'), '{}');
 
         $kak = SusunanKak::dari(app(KegiatanRepository::class)->temukan(1));
-        $this->assertSame([['jenis' => 'kosong', 'pesan' => 'Lengkapi dasar hukum TA 2026 (Pengaturan › Dasar hukum).']], collect($kak->bagian)->firstWhere('nomor', 2)['isi']);
+        $this->assertSame([['jenis' => 'kosong', 'pesan' => 'Lengkapi dasar hukum TA 2026 (Pengaturan › Dasar hukum).', 'asal' => 'dasar_hukum', 'wajib' => false]], collect($kak->bagian)->firstWhere('nomor', 2)['isi']);
         $this->assertSame(['dasar hukum TA 2026 (Pengaturan › Dasar hukum)'], $kak->kurangPerBagian[2]);
         $this->assertTrue($kak->draf);
     }

@@ -25,6 +25,7 @@ final readonly class SusunanOtomatis
         'matrik' => ['Matrik & Jadwal', 'kegiatan.matrik', [], '', false],
         'jadwal' => ['Matrik & Jadwal › Jadwal', 'kegiatan.matrik', [], '#jadwal', false],
         'rab' => ['RAB', 'kegiatan.rab', [], '', false],
+        'sumber_dana' => ['Data Kegiatan › Sumber Dana', 'kegiatan.edit', [], '#sumber-dana', false],
         'latar_baku' => ['Pengaturan › Latar belakang baku', 'pengaturan.madrasah.dasar_hukum', [], '', true],
         'dasar_hukum' => ['Pengaturan › Dasar hukum', 'pengaturan.madrasah.dasar_hukum', [], '', true],
         'profil' => ['Pengaturan › Profil madrasah', 'pengaturan.madrasah.index', [], '', true],
@@ -75,17 +76,7 @@ final readonly class SusunanOtomatis
                 'status' => $kurang !== [] ? 'kurang' : ($periksa !== [] ? 'periksa' : 'lengkap'),
                 'kurang' => $kurang,
                 'periksa' => $periksa,
-                'asal' => array_map(function (string $kunci) use ($id, $admin) {
-                    [$label, $rute, $param, $jangkar, $diaturAdmin] = self::TEMPAT[$kunci];
-                    $boleh = $diaturAdmin ? $admin : $id !== null;
-
-                    return [
-                        'kunci' => $kunci,
-                        'label' => $label,
-                        'tautan' => $boleh ? route($rute, ($diaturAdmin ? [] : ['kegiatan' => $id]) + $param).$jangkar : null,
-                        'admin' => $diaturAdmin,
-                    ];
-                }, self::ASAL[$b['nomor']] ?? []),
+                'asal' => array_map(fn (string $kunci) => self::tempat($kunci, $id, $admin), self::ASAL[$b['nomor']] ?? []),
             ];
         }
 
@@ -95,6 +86,25 @@ final readonly class SusunanOtomatis
             array_map(fn (array $baris) => ['label' => $baris['label'], 'nilai' => filled($baris['nilai'] ?? null) ? (string) $baris['nilai'] : null, 'uraian' => filled($baris['uraian'] ?? null) ? (string) $baris['uraian'] : null], $rab->kepala),
             array_values(array_unique($rab->kurang)),
         );
+    }
+
+    /**
+     * Tempat mengisi (TEMPAT) beserta tautannya untuk kegiatan ini; tempat yang diatur admin hanya bertautan bagi admin,
+     * tempat di ruang kerja kegiatan hanya bila kegiatannya sudah tersimpan.
+     *
+     * @return array{kunci: string, label: string, tautan: string|null, admin: bool}
+     */
+    public static function tempat(string $kunci, ?int $kegiatanId, bool $admin): array
+    {
+        [$label, $rute, $param, $jangkar, $diaturAdmin] = self::TEMPAT[$kunci];
+        $boleh = $diaturAdmin ? $admin : $kegiatanId !== null;
+
+        return [
+            'kunci' => $kunci,
+            'label' => $label,
+            'tautan' => $boleh ? route($rute, ($diaturAdmin ? [] : ['kegiatan' => $kegiatanId]) + $param).$jangkar : null,
+            'admin' => $diaturAdmin,
+        ];
     }
 
     /**

@@ -8,6 +8,12 @@
 /* Di dalam lembar A4 penampil pratinjau (.lembar-cetak): tata letak kertas mengikuti ukuran cetak, bukan lebar layar. */
 @custom-variant cetak (&:where(.lembar-cetak *));
 
+/* Penanda isian kosong yang sedang dituju navigasi "kosong berikutnya" di pratinjau. */
+.penanda-sorot {
+    outline: 3px solid oklch(0.685 0.169 237.323);
+    outline-offset: 3px;
+}
+
 @theme {
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';

@@ -190,6 +190,39 @@ test.describe('Pratinjau dokumen', () => {
         await expect(page.getByTestId('petunjuk-sunting')).toHaveCount(0);
     });
 
+    test('penanda isian kosong: lencana bagian, tautan melengkapi, navigasi kosong berikutnya', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/2/pratinjau');
+        const navigasi = page.getByTestId('navigasi-kosong');
+        const jumlah = Number(await navigasi.getAttribute('data-jumlah'));
+        expect(jumlah).toBeGreaterThan(0);
+        const ruang = page.getByTestId('ruang-lembar');
+        await expect(ruang.locator('[data-kosong]')).toHaveCount(jumlah);
+        await expect(navigasi).toContainText(`${jumlah} kosong`);
+
+        // Penanda di bagian 4 (matrik) menautkan tempat melengkapinya.
+        const bagian4 = page.locator('#cetak-kak-bagian-4');
+        await expect(bagian4.getByTestId('penanda-bagian')).toContainText('belum lengkap');
+        await expect(bagian4.locator('[data-kosong][data-asal="matrik"]').getByTestId('lengkapi-kosong')).toHaveAttribute('href', /\/kegiatan\/2\/matrik$/);
+
+        // Berikutnya: penanda pertama disorot & terlihat, lalu berpindah; sebelumnya dari awal = penanda terakhir.
+        await navigasi.getByTestId('kosong-berikutnya').click();
+        const pertama = ruang.locator('[data-kosong]').first();
+        await expect(pertama).toBeInViewport();
+        await expect(pertama).toHaveClass(/penanda-sorot/);
+        await expect(navigasi).toContainText(`1/${jumlah} kosong`);
+        await page.screenshot({ path: `storage/playwright/shots/pratinjau-penanda-kosong-${testInfo.project.name}.png` });
+        if (jumlah > 1) {
+            await navigasi.getByTestId('kosong-berikutnya').click();
+            await expect(navigasi).toContainText(`2/${jumlah} kosong`);
+            await expect(ruang.locator('[data-kosong]').nth(1)).toBeInViewport();
+        }
+        await page.reload();
+        await page.getByTestId('navigasi-kosong').getByTestId('kosong-sebelumnya').click();
+        await expect(page.getByTestId('navigasi-kosong')).toContainText(`${jumlah}/${jumlah} kosong`);
+        await expect(ruang.locator('[data-kosong]').last()).toBeInViewport();
+    });
+
     test('kaidah: RAB yang melebihi pagu ditandai gagal', async ({ page }) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/kegiatan/3/pratinjau?sumber=Komite');

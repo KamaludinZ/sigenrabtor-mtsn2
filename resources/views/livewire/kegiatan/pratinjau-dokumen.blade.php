@@ -20,6 +20,8 @@
     $kurangIsi = array_sum(array_column($isi, 'kurang'));
     $bisaUbah = $this->dapatDiubah();
     $sunting = $mode === 'sunting' && $bisaUbah ? ['terbuka' => $suntingTerbuka] : null;
+    $penanda = ['kegiatan_id' => $kegiatanId, 'pengguna' => \App\Support\Stub\StubData::currentUser(), 'isi' => $bisaUbah];
+    $ringkasanKosong = \App\Support\Dokumen\PenandaKosong::ringkasan($this->penandaKosong);
     $tahunDokumen = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $kepalaTahun = fn (string $d) => \App\Support\Dokumen\TahunDokumen::untukDokumen($this->tahunCetak, $d);
 @endphp
@@ -197,6 +199,22 @@
                 <span class="rounded-lg bg-white px-2.5 py-1 text-xs text-stone-600 tabular-nums ring-1 ring-stone-200" x-cloak x-show="cetak" aria-live="polite" data-testid="penunjuk-halaman">
                     Halaman <span class="font-semibold text-stone-900" x-text="halamanAktif" data-testid="halaman-aktif"></span> dari <span x-text="totalHalaman" data-testid="halaman-total"></span>
                 </span>
+                {{-- Isian kosong: jelajahi penanda satu per satu (PenandaKosong, urut lembar). --}}
+                @if ($ringkasanKosong['jumlah'] > 0)
+                    <div class="inline-flex items-center rounded-lg bg-white text-xs ring-1 ring-stone-200" role="group" aria-label="Isian kosong" data-testid="navigasi-kosong" data-jumlah="{{ $ringkasanKosong['jumlah'] }}" data-wajib="{{ $ringkasanKosong['wajib'] }}">
+                        <button type="button" x-on:click="keKosong(-1)" class="rounded-l-lg px-1.5 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900" data-testid="kosong-sebelumnya">
+                            <x-ui.icon name="chevron-right" class="size-3.5 rotate-180" /><span class="sr-only">Isian kosong sebelumnya</span>
+                        </button>
+                        <span class="px-1 text-stone-600 tabular-nums" aria-live="polite">
+                            <span class="font-semibold text-gold-800" x-text="kosongKe ? kosongKe + '/' : ''"></span>{{ $ringkasanKosong['jumlah'] }} kosong @if ($ringkasanKosong['wajib'] > 0)<span class="font-semibold text-red-700">· {{ $ringkasanKosong['wajib'] }} wajib</span>@endif
+                        </span>
+                        <button type="button" x-on:click="keKosong(1)" class="rounded-r-lg px-1.5 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900" data-testid="kosong-berikutnya">
+                            <x-ui.icon name="chevron-right" class="size-3.5" /><span class="sr-only">Isian kosong berikutnya</span>
+                        </button>
+                    </div>
+                @else
+                    <span class="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-brand-800 ring-1 ring-stone-200" data-testid="navigasi-kosong" data-jumlah="0"><x-ui.icon name="check-circle" class="size-3.5" /> Semua terisi</span>
+                @endif
                 <div class="relative" x-data="{ buka: false }" x-on:click.outside="buka = false" x-on:keydown.escape="buka = false">
                     <button type="button" class="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-stone-700 tabular-nums ring-1 ring-stone-200 hover:text-stone-900" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" aria-controls="pilihan-perbesaran" data-testid="perbesaran" x-bind:data-perbesaran="perbesaran">
                         <x-ui.icon name="search" class="size-3.5" /><span class="sr-only">Perbesaran: </span><span x-text="cetak ? persen + '%' : 'Lebar layar'">{{ PenampilDokumen::PERBESARAN[PenampilDokumen::BAWAAN] }}</span>
@@ -242,7 +260,7 @@
                                     <x-dokumen.cover :gambar="$cover['gambar']" :teks="$cover['teks']" :nilai="$cover['nilai']" :draf="$statusDraf->draf" />
                                     @break
                                 @case('kak')
-                                    <x-dokumen.kak-tor :susunan="$kak" :bagian="range(1, 9)" :sunting="$sunting" />
+                                    <x-dokumen.kak-tor :susunan="$kak" :bagian="range(1, 9)" :sunting="$sunting" :penanda="$penanda" />
                                     @break
                                 @default
                                     <x-dokumen.rab :susunan="$rab" />

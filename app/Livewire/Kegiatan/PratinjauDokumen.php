@@ -9,6 +9,7 @@ use App\Support\Dokumen\ChecklistIsian;
 use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\KaidahDokumen;
 use App\Support\Dokumen\PenampilDokumen;
+use App\Support\Dokumen\PenandaKosong;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\StatusDraf;
 use App\Support\Dokumen\SuntingDokumen;
@@ -36,7 +37,9 @@ use Livewire\Component;
  * otomatis (KaidahDokumen). Sumber dana di `?sumber=` ('' = sumber pertama). Dokumen tampil di penampil lembar A4
  * (PenampilDokumen: perbesaran, perkiraan batas halaman, penunjuk halaman, daftar isi `isiDokumen`). Mode `?mode=`
  * (`MODE`): baca, atau sunting teks — kalimat KAK/TOR dari isian/teks khusus (SuntingDokumen) disunting langsung di
- * lembar (`bukaSunting($kunci)` → `simpanSunting()`, versi data saat dibuka) selama kegiatan bisa diubah. Cetak & unduh
+ * lembar (`bukaSunting($kunci)` → `simpanSunting()`, versi data saat dibuka) selama kegiatan bisa diubah. Isian kosong
+ * ditandai (PenandaKosong: tingkat, tempat melengkapi, "Isi di sini" `isiDiSini()`) dan bisa dijelajahi satu per satu
+ * dari kendali penampil. Cetak & unduh
  * menyusul.
  */
 #[Layout('layouts.app')]
@@ -108,6 +111,19 @@ class PratinjauDokumen extends Component
         $this->suntingTerbuka = $kunci;
     }
 
+    /** Penanda kosong "Isi di sini": masuk mode sunting dan buka penyunting isian itu. */
+    public function isiDiSini(string $kunci): void
+    {
+        abort_unless(isset(SuntingDokumen::BIDANG[$kunci]), 404);
+        if (! $this->dapatDiubah()) {
+            $this->dispatch('notify', message: $this->alasanTerkunci(), type: 'error');
+
+            return;
+        }
+        $this->mode = 'sunting';
+        $this->bukaSunting($kunci);
+    }
+
     public function tutupSunting(): void
     {
         $this->suntingTerbuka = null;
@@ -156,10 +172,10 @@ class PratinjauDokumen extends Component
 
     public function updatedSumber(): void
     {
-        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen);
+        unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen, $this->penandaKosong);
         if ($this->sumber !== '' && ! in_array($this->sumber, $this->kak->daftarSumber, true)) {
             $this->sumber = '';
-            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen);
+            unset($this->kak, $this->rab, $this->kaidah, $this->angka, $this->tanggal, $this->tahunCetak, $this->cover, $this->statusCetak, $this->isiDokumen, $this->penandaKosong);
         }
     }
 
@@ -214,6 +230,13 @@ class PratinjauDokumen extends Component
     public function isiDokumen(): array
     {
         return PenampilDokumen::isi($this->kak, $this->rab);
+    }
+
+    /** @return list<array{dokumen: string, bagian: int|null, pesan: string, tingkat: string, asal: string|null, sunting: string|null}> Penanda kosong KAK/TOR & RAB (urut lembar). */
+    #[Computed]
+    public function penandaKosong(): array
+    {
+        return PenandaKosong::daftar($this->kak, $this->rab);
     }
 
     /** @return list<array<string, mixed>> Checklist isian wajib per tempat mengisinya (ChecklistIsian). */

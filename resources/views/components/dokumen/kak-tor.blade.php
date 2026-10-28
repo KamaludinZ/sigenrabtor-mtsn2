@@ -1,5 +1,6 @@
-@props(['susunan', 'bagian' => null, 'cap' => true, 'sunting' => null])
+@props(['susunan', 'bagian' => null, 'cap' => true, 'sunting' => null, 'penanda' => null])
 
+@use('App\Support\Dokumen\PenandaKosong')
 @use('App\Support\Dokumen\SuntingDokumen')
 
 {{--
@@ -12,6 +13,9 @@
     :sunting="['terbuka' => kunci|null]" = mode sunting teks pratinjau: blok ber-`sunting`/`sunting_butir` (SuntingDokumen)
     berbingkai dengan tombol Sunting (`bukaSunting`), yang terbuka diganti <x-dokumen.penyunting-teks>, dan bidang yang belum
     tampil ditawarkan "Tambah …" (SuntingDokumen::tambahan). null = baca saja.
+    :penanda="['kegiatan_id' => id, 'pengguna' => akun, 'isi' => bool]" = penanda kosong pratinjau (PenandaKosong): lencana
+    jumlah kosong di judul bagian, tingkat (wajib sebelum diajukan / belum lengkap), "Isi di sini" (`isiDiSini`, bila
+    blok bersunting & isi = true) dan tautan tempat melengkapinya. null = penanda polos.
 --}}
 @php
     $daftarBagian = $bagian === null ? $susunan->bagian : array_values(array_filter($susunan->bagian, fn ($b) => in_array($b['nomor'], $bagian, true)));
@@ -44,7 +48,12 @@
     <div class="space-y-6 px-5 py-8 sm:px-14 sm:py-10 cetak:px-14 cetak:py-10">
         @foreach ($daftarBagian as $isiBagian)
             <section data-bagian="{{ $isiBagian['nomor'] }}" id="cetak-kak-bagian-{{ $isiBagian['nomor'] }}" class="scroll-mt-40">
-                <h3 class="font-bold uppercase">{{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}</h3>
+                <h3 class="font-bold uppercase">
+                    {{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}
+                    @if ($penanda !== null && ($jumlahKosong = PenandaKosong::jumlahBagian($isiBagian)) > 0)
+                        <span class="ml-1.5 inline-block rounded-full bg-gold-100 px-1.5 align-middle font-sans text-[10px] font-semibold tracking-normal text-gold-800 normal-case ring-1 ring-gold-200 print:hidden" data-testid="penanda-bagian">{{ $jumlahKosong }} belum lengkap</span>
+                    @endif
+                </h3>
                 <div class="mt-2 space-y-2 pl-5">
                     @foreach ($isiBagian['isi'] as $blok)
                         @php
@@ -94,10 +103,40 @@
                                 </ol>
                                 @break
                             @case('kosong')
-                                <p class="flex items-start gap-1.5 rounded bg-gold-50 px-2 py-1 font-sans text-sm text-gold-700 ring-1 ring-gold-200" data-kosong>
-                                    <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
-                                    {{ $blok['pesan'] }}
-                                </p>
+                                @if ($penanda === null)
+                                    <p class="flex items-start gap-1.5 rounded bg-gold-50 px-2 py-1 font-sans text-sm text-gold-700 ring-1 ring-gold-200" data-kosong>
+                                        <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
+                                        {{ $blok['pesan'] }}
+                                    </p>
+                                @else
+                                    @php
+                                        $tingkat = PenandaKosong::tingkat($blok);
+                                        $tempatKosong = PenandaKosong::tempat($blok['asal'] ?? null, $penanda['kegiatan_id'], $penanda['pengguna']);
+                                        $bisaIsi = $penanda['isi'] && $sunting === null && isset($blok['sunting']);
+                                    @endphp
+                                    <div @class(['rounded px-2 py-1 font-sans text-sm ring-1', 'bg-red-50 text-red-800 ring-red-200' => $tingkat === 'wajib', 'bg-gold-50 text-gold-700 ring-gold-200' => $tingkat !== 'wajib'])
+                                         data-kosong data-tingkat="{{ $tingkat }}" @if ($blok['asal'] ?? null) data-asal="{{ $blok['asal'] }}" @endif>
+                                        <p class="flex flex-wrap items-start gap-x-1.5 gap-y-0.5">
+                                            <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
+                                            <span class="min-w-0 flex-1">{{ $blok['pesan'] }}</span>
+                                            @if ($tingkat === 'wajib')
+                                                <span class="rounded-full bg-red-100 px-1.5 text-[10px] font-semibold text-red-800">{{ PenandaKosong::TINGKAT['wajib'][0] }}</span>
+                                            @endif
+                                        </p>
+                                        @if ($bisaIsi || $tempatKosong)
+                                            <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-5.5 text-xs print:hidden">
+                                                @if ($bisaIsi)
+                                                    <button type="button" wire:click="isiDiSini('{{ $blok['sunting'] }}')" class="inline-flex items-center gap-1 font-semibold text-sky-700 hover:text-sky-900" data-testid="isi-di-sini-{{ $blok['sunting'] }}"><x-ui.icon name="pencil" class="size-3" /> Isi di sini</button>
+                                                @endif
+                                                @if ($tempatKosong && $tempatKosong['tautan'])
+                                                    <a href="{{ $tempatKosong['tautan'] }}" @unless ($tempatKosong['admin']) wire:navigate @endunless class="font-semibold underline underline-offset-2 hover:no-underline" data-testid="lengkapi-kosong">Lengkapi di {{ $tempatKosong['label'] }}</a>
+                                                @elseif ($tempatKosong)
+                                                    <span class="inline-flex items-center gap-1 text-stone-500"><x-ui.icon name="lock" class="size-3" /> Diatur admin ({{ $tempatKosong['label'] }})</span>
+                                                @endif
+                                            </p>
+                                        @endif
+                                    </div>
+                                @endif
                                 @break
                             @case('pagu')
                                 @php

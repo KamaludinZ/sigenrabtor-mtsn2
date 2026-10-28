@@ -26,7 +26,7 @@ use Carbon\CarbonImmutable;
  * oleh <x-dokumen.kak-tor>. Isian yang belum lengkap menjadi blok "kosong" dan tercatat di $kurang; dokumen
  * yang belum disetujui atau belum lengkap ditandai DRAF (PRD aturan 8), begitu pula selama RAB-nya melebihi pagu.
  *
- * Jenis blok isi: paragraf {teks}, subjudul {teks}, daftar {butir, bernomor}, kosong {pesan},
+ * Jenis blok isi: paragraf {teks}, subjudul {teks}, daftar {butir, bernomor}, kosong {pesan, asal, wajib},
  * menunggu {pesan} (bagian yang datanya berasal dari fitur yang belum tersedia), pengesahan {kolom},
  * matrik {tahun, tahapan: [{nomor, judul, butir: [{uraian, bulan}]}]} (bagian 4), jadwal {baris: [{nomor, uraian, waktu}]}
  * (bagian 7), pagu (penanda batas pagu di bagian Pembiayaan; isinya dari $peringatanPagu, tidak ikut tercetak).
@@ -87,12 +87,14 @@ final readonly class SusunanKak
             $kurang[] = $apa;
             $kurangPerBagian[$nomor][] = $apa;
         };
-        $kosong = function (string $apa) use ($catat): array {
+        // Blok kosong membawa `asal` (tempat mengisi, SusunanOtomatis::TEMPAT) dan `wajib` (menghalangi pengajuan) untuk
+        // penanda di pratinjau (PenandaKosong).
+        $kosong = function (string $apa, ?string $asal = null, bool $wajib = false) use ($catat): array {
             $catat($apa);
 
-            return ['jenis' => 'kosong', 'pesan' => 'Lengkapi '.$apa.'.'];
+            return ['jenis' => 'kosong', 'pesan' => 'Lengkapi '.$apa.'.', 'asal' => $asal, 'wajib' => $wajib];
         };
-        $isi = fn (?string $teks, string $apa) => filled($teks) ? ['jenis' => 'paragraf', 'teks' => $teks] : $kosong($apa);
+        $isi = fn (?string $teks, string $apa, ?string $asal = null, bool $wajib = false) => filled($teks) ? ['jenis' => 'paragraf', 'teks' => $teks] : $kosong($apa, $asal, $wajib);
 
         // Bagian disusun berurutan supaya $kurang mengikuti urutan dokumen.
         $bagian = [];
@@ -105,7 +107,7 @@ final readonly class SusunanKak
             $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang']), 'sunting' => 'latar_belakang'];
         }
         if ($nama === '…') {
-            $latar[] = $kosong('nama kegiatan');
+            $latar[] = $kosong('nama kegiatan', 'identitas', true);
         }
         foreach ($kurangBaku[1] ?? [] as $apa) {
             $catat($apa);
@@ -121,15 +123,15 @@ final readonly class SusunanKak
             $catat($apa);
         }
         $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [$dasarHukum === []
-            ? $kosong('dasar hukum TA '.$tahun.' (Pengaturan › Dasar hukum)')
+            ? $kosong('dasar hukum TA '.$tahun.' (Pengaturan › Dasar hukum)', 'dasar_hukum')
             : ['jenis' => 'daftar', 'bernomor' => true, 'butir' => $dasarHukum]]];
 
         $nomor = 3;
         $bagian[] = ['nomor' => 3, 'judul' => 'Tujuan dan Sasaran', 'isi' => [
             ['jenis' => 'subjudul', 'teks' => 'A. Tujuan'],
-            ['sunting' => 'tujuan'] + $isi(filled($kegiatan['tujuan'] ?? null) ? KalimatKak::tujuan($nama, $kegiatan['tujuan']) : null, 'tujuan kegiatan'),
+            ['sunting' => 'tujuan'] + $isi(filled($kegiatan['tujuan'] ?? null) ? KalimatKak::tujuan($nama, $kegiatan['tujuan']) : null, 'tujuan kegiatan', 'identitas'),
             ['jenis' => 'subjudul', 'teks' => 'B. Sasaran'],
-            ['sunting' => 'sasaran'] + $isi(filled($kegiatan['sasaran'] ?? null) ? KalimatKak::sasaran($kegiatan['sasaran']) : null, 'sasaran kegiatan'),
+            ['sunting' => 'sasaran'] + $isi(filled($kegiatan['sasaran'] ?? null) ? KalimatKak::sasaran($kegiatan['sasaran']) : null, 'sasaran kegiatan', 'identitas'),
         ]];
 
         // 4. Tahapan: pelaksanaan & pelaporan bergantung pada jadwal.
@@ -145,7 +147,7 @@ final readonly class SusunanKak
             ['jenis' => 'subjudul', 'teks' => 'b. Pelaksanaan'],
             ['tempat' => 'kak-pelaksanaan'] + ($kalimatPelaksanaan !== null
                 ? ['jenis' => 'paragraf', 'teks' => $kalimatPelaksanaan, 'sunting' => 'uraian_pelaksanaan']
-                : $kosong('tanggal mulai & lama kegiatan')),
+                : $kosong('tanggal mulai & lama kegiatan', 'pelaksanaan', true)),
             ['jenis' => 'subjudul', 'teks' => 'c. Pelaporan'],
             // sunting_butir: butir ke-n yang bisa disunting di pratinjau (SuntingDokumen) — butir 1 = analisis hasil.
             ['jenis' => 'daftar', 'bernomor' => true, 'tempat' => 'kak-pelaporan', 'sunting_butir' => ['analisis_hasil'], 'butir' => array_values(array_filter([
@@ -154,21 +156,21 @@ final readonly class SusunanKak
             ]))],
         ];
         if (! $batasLaporan) {
-            $tahapan[] = $kosong('tanggal pelaporan');
+            $tahapan[] = $kosong('tanggal pelaporan', 'pelaksanaan');
         }
         $tahapan = [...$tahapan, ...self::blokMatrik($matrik, $tahun, $kosong)];
         $bagian[] = ['nomor' => 4, 'judul' => 'Tahapan Kegiatan', 'isi' => $tahapan];
 
         $nomor = 5;
         $bagian[] = ['nomor' => 5, 'judul' => 'Tempat Pelaksanaan', 'isi' => [
-            ['sunting' => 'tempat'] + $isi($pelaksanaan->kalimatTempat($nama), 'tempat pelaksanaan'),
+            ['sunting' => 'tempat'] + $isi($pelaksanaan->kalimatTempat($nama), 'tempat pelaksanaan', 'pelaksanaan', true),
         ]];
 
         $nomor = 6;
         $leading = MasterKode::leading($kegiatan['leading'] ?? null);
         $bagian[] = ['nomor' => 6, 'judul' => 'Penyelenggara Kegiatan', 'isi' => [
             ['jenis' => 'subjudul', 'teks' => 'a. Pelaksana'],
-            $isi($leading ? KalimatKak::pelaksana($nama, $leading['jabatan_penanda_tangan']) : null, 'leading penanggung jawab (Kode & Klasifikasi)'),
+            $isi($leading ? KalimatKak::pelaksana($nama, $leading['jabatan_penanda_tangan']) : null, 'leading penanggung jawab (Kode & Klasifikasi)', 'kode', true),
             ['jenis' => 'subjudul', 'teks' => 'b. Pengarah'],
             ['jenis' => 'paragraf', 'teks' => TeksKhusus::cetak('pengarah', $kegiatan), 'sunting' => 'pengarah'],
         ]];
@@ -180,8 +182,8 @@ final readonly class SusunanKak
         $angka = $sumber ? AngkaDokumen::dari($anggaran[$sumber]->hasil, $sumber, $tahun, $madrasah['nama_singkat']) : null;
         $peringatanPagu = $sumber ? PeringatanPagu::untuk($sumber, $anggaran[$sumber]->hasil) : null;
         $pembiayaan = [match (true) {
-            $angka === null => $kosong('sumber dana (bagian Sumber Dana)'),
-            ! $angka->adaRincian() => $kosong("rincian RAB {$sumber}"),
+            $angka === null => $kosong('sumber dana (bagian Sumber Dana)', 'sumber_dana'),
+            ! $angka->adaRincian() => $kosong("rincian RAB {$sumber}", 'rab'),
             // `tempat` = kunci AngkaDokumen::tempatCetak(): jangkar #cetak-… di pratinjau.
             default => ['jenis' => 'paragraf', 'teks' => $angka->kalimatPembiayaan(), 'tempat' => 'kak-pembiayaan'],
         }];
@@ -237,7 +239,7 @@ final readonly class SusunanKak
         }
 
         if (! $matrik->lengkap()) {
-            $blok[] = $kosong('matrik tahapan (tab Matrik & Jadwal)');
+            $blok[] = $kosong('matrik tahapan (tab Matrik & Jadwal)', 'matrik');
         }
 
         return $blok;
@@ -262,7 +264,7 @@ final readonly class SusunanKak
         }
 
         if (! $jadwal->lengkap()) {
-            $blok[] = $kosong('jadwal kegiatan (tab Matrik & Jadwal)');
+            $blok[] = $kosong('jadwal kegiatan (tab Matrik & Jadwal)', 'jadwal');
         }
 
         return $blok;
@@ -285,7 +287,7 @@ final readonly class SusunanKak
         $tanggal = Format::tanggal($kegiatan['tanggal_dokumen'] ?? null);
 
         if (! $tanggal) {
-            $kosong('tanggal dokumen');
+            $kosong('tanggal dokumen', 'identitas');
         }
 
         $kolom = [];
