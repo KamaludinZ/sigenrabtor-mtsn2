@@ -11,6 +11,7 @@ use App\Support\Format;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
+use App\Support\Rab\DampakTermin;
 use App\Support\Rab\HasilRab;
 use App\Support\Rab\KalkulatorRab;
 use App\Support\Rab\KelompokRincian;
@@ -349,9 +350,10 @@ class Rab extends Component
             $this->tutupFormItem();
         }
 
-        $this->itemTerhapus = $terhapus + ['sumber' => $this->sumber];
+        $this->itemTerhapus = Arr::except($terhapus, 'termin') + ['sumber' => $this->sumber];
         $this->itemDipindah = null;
         $this->segarkanRincian();
+        $this->beritahuTermin($terhapus['termin']);
     }
 
     /**
@@ -371,8 +373,10 @@ class Rab extends Component
         }
 
         $salinan = ['id' => (string) Str::uuid()] + Arr::except($rincian[$index], ['id']);
+        $totalSebelum = DampakTermin::total($this->kegiatanId, $this->sumber);
         $repo->sisipkanItem($this->kegiatanId, $this->sumber, $index + 1, $salinan);
         $this->segarkanRincian();
+        $this->beritahuTermin(DampakTermin::sesudahPerubahan($this->kegiatanId, $this->sumber, $totalSebelum));
         $this->ubahItem($salinan['id']);
         $this->dispatch('notify', message: "“{$salinan['uraian']}” disalin tepat di bawahnya — ubah seperlunya lalu simpan.", type: 'info');
     }
@@ -418,7 +422,10 @@ class Rab extends Component
             $this->tutupFormItem();
         }
 
+        $totalTujuan = DampakTermin::total($this->kegiatanId, $tujuan);
         $idBaru = app(RabRepository::class)->tambahItem($this->kegiatanId, $tujuan, Arr::except($terhapus['item'], ['id']));
+        $this->beritahuTermin($terhapus['termin']);
+        $this->beritahuTermin(DampakTermin::sesudahPerubahan($this->kegiatanId, $tujuan, $totalTujuan));
         $this->itemDipindah = ['id' => $idBaru, 'dari' => $this->sumber, 'ke' => $tujuan, 'index' => $terhapus['index'], 'item' => $terhapus['item']];
         $this->itemTerhapus = null;
         $this->segarkanRincian();
@@ -433,8 +440,8 @@ class Rab extends Component
             return;
         }
 
-        RincianRab::hapus($this->kegiatanId, $pindah['ke'], $pindah['id']);
-        RincianRab::kembalikan($this->kegiatanId, $pindah['dari'], $pindah['index'], $pindah['item']);
+        $this->beritahuTermin(RincianRab::hapus($this->kegiatanId, $pindah['ke'], $pindah['id'])['termin'] ?? null);
+        $this->beritahuTermin(RincianRab::kembalikan($this->kegiatanId, $pindah['dari'], $pindah['index'], $pindah['item']));
         $this->itemDipindah = null;
         $this->segarkanRincian();
     }
@@ -476,9 +483,17 @@ class Rab extends Component
             return;
         }
 
-        RincianRab::kembalikan($this->kegiatanId, $this->sumber, $this->itemTerhapus['index'], $this->itemTerhapus['item']);
+        $this->beritahuTermin(RincianRab::kembalikan($this->kegiatanId, $this->sumber, $this->itemTerhapus['index'], $this->itemTerhapus['item']));
         $this->itemTerhapus = null;
         $this->segarkanRincian();
+    }
+
+    /** Total RAB berubah sehingga termin tersimpan tidak lagi (atau kembali) pas: beri tahu (DampakTermin). */
+    private function beritahuTermin(?array $dampak): void
+    {
+        if ($dampak !== null) {
+            $this->dispatch('notify', message: $dampak['pesan'], type: $dampak['tipe']);
+        }
     }
 
     private function segarkanRincian(): void
@@ -535,6 +550,7 @@ class Rab extends Component
             $this->dispatch('notify', ...$hasil !== null
                 ? ['message' => "Item diperbarui: {$hasil['item']['uraian']} (".Format::rupiah($hasil['jumlah']).').']
                 : ['message' => "Item yang diubah sudah tidak ada di RAB {$this->sumber} (dihapus atau dipindah); perubahan tidak disimpan.", 'type' => 'error']);
+            $this->beritahuTermin($hasil['termin'] ?? null);
 
             return;
         }
@@ -547,6 +563,7 @@ class Rab extends Component
         $this->sumberForm = $lanjut ? $this->sumber : null;
 
         $this->dispatch('notify', message: "Item ditambahkan: {$hasil['item']['uraian']} (".Format::rupiah($hasil['jumlah']).').');
+        $this->beritahuTermin($hasil['termin']);
 
         if ($lanjut) {
             $this->dispatch('form-item-dibuka');

@@ -17,7 +17,8 @@ use RuntimeException;
  * dirapikan (`rapikan()` — volume format Indonesia "1,5", harga rupiah berformat, spasi, kelompok ditebak dari uraian bila
  * kosong), diperiksa ValidasiItemBelanja, lalu ditulis lewat RabRepository. Setiap aksi ditolak bila kegiatan tidak ada
  * (RuntimeException), sudah terkunci statusnya (AuthorizationException → 403), atau sumber dananya bukan DIPA/Komite
- * (`pastikanDapatDiubah()`). Dipakai halaman RAB.
+ * (`pastikanDapatDiubah()`). Setiap perubahan mengembalikan dampaknya pada termin tersimpan (`termin`, DampakTermin).
+ * Dipakai halaman RAB.
  */
 final class RincianRab
 {
@@ -46,55 +47,63 @@ final class RincianRab
      * Tambah item di akhir RAB sumber dana itu.
      *
      * @param  array<string, mixed>  $isian
-     * @return array{id: string, item: array<string, mixed>, jumlah: int}
+     * @return array{id: string, item: array<string, mixed>, jumlah: int, termin: array{status: string, pesan: string, tipe: string}|null}
      */
     public static function tambah(int $kegiatanId, string $sumber, array $isian): array
     {
         $item = self::siapkan($kegiatanId, $sumber, $isian);
+        $totalSebelum = DampakTermin::total($kegiatanId, $sumber);
         $id = app(RabRepository::class)->tambahItem($kegiatanId, $sumber, $item);
 
-        return ['id' => $id, 'item' => $item, 'jumlah' => KalkulatorRab::jumlah($item['volume'], $item['harga_satuan'])];
+        return ['id' => $id, 'item' => $item, 'jumlah' => KalkulatorRab::jumlah($item['volume'], $item['harga_satuan']), 'termin' => DampakTermin::sesudahPerubahan($kegiatanId, $sumber, $totalSebelum)];
     }
 
     /**
      * Ganti isi item (id tetap); null bila item sudah tidak ada di RAB sumber dana itu (dihapus/dipindah di tempat lain).
      *
      * @param  array<string, mixed>  $isian
-     * @return array{id: string, item: array<string, mixed>, jumlah: int}|null
+     * @return array{id: string, item: array<string, mixed>, jumlah: int, termin: array{status: string, pesan: string, tipe: string}|null}|null
      */
     public static function ubah(int $kegiatanId, string $sumber, string $id, array $isian): ?array
     {
         $item = self::siapkan($kegiatanId, $sumber, $isian);
+        $totalSebelum = DampakTermin::total($kegiatanId, $sumber);
 
         return app(RabRepository::class)->ubahItem($kegiatanId, $sumber, $id, $item)
-            ? ['id' => $id, 'item' => $item, 'jumlah' => KalkulatorRab::jumlah($item['volume'], $item['harga_satuan'])]
+            ? ['id' => $id, 'item' => $item, 'jumlah' => KalkulatorRab::jumlah($item['volume'], $item['harga_satuan']), 'termin' => DampakTermin::sesudahPerubahan($kegiatanId, $sumber, $totalSebelum)]
             : null;
     }
 
     /**
      * Hapus item; mengembalikan posisi & isinya (untuk urungkan lewat kembalikan()) atau null bila sudah tidak ada.
      *
-     * @return array{index: int, item: array<string, mixed>}|null
+     * @return array{index: int, item: array<string, mixed>, termin: array{status: string, pesan: string, tipe: string}|null}|null
      */
     public static function hapus(int $kegiatanId, string $sumber, string $id): ?array
     {
         self::pastikanDapatDiubah($kegiatanId, $sumber);
+        $totalSebelum = DampakTermin::total($kegiatanId, $sumber);
+        $terhapus = app(RabRepository::class)->hapusItem($kegiatanId, $sumber, $id);
 
-        return app(RabRepository::class)->hapusItem($kegiatanId, $sumber, $id);
+        return $terhapus === null ? null : $terhapus + ['termin' => DampakTermin::sesudahPerubahan($kegiatanId, $sumber, $totalSebelum)];
     }
 
     /**
      * Kembalikan item yang dihapus/dipindah ke posisinya semula (id sama; terkirim dua kali tidak menggandakan item).
      *
      * @param  array<string, mixed>  $item  Item lengkap dengan id, dari hapus().
+     * @return array{status: string, pesan: string, tipe: string}|null Dampak pada termin tersimpan (DampakTermin).
      */
-    public static function kembalikan(int $kegiatanId, string $sumber, int $index, array $item): void
+    public static function kembalikan(int $kegiatanId, string $sumber, int $index, array $item): ?array
     {
         self::pastikanDapatDiubah($kegiatanId, $sumber);
+        $totalSebelum = DampakTermin::total($kegiatanId, $sumber);
 
         if (! in_array($item['id'] ?? null, array_column(app(RabRepository::class)->rincian($kegiatanId, $sumber), 'id'), true)) {
             app(RabRepository::class)->sisipkanItem($kegiatanId, $sumber, $index, $item);
         }
+
+        return DampakTermin::sesudahPerubahan($kegiatanId, $sumber, $totalSebelum);
     }
 
     /**
