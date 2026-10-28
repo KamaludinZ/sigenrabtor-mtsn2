@@ -39,6 +39,9 @@ class SkemaPengaturanTest extends TestCase
     /** Impor & duplikat (000035): tabel yang merujuk tahun_anggaran. */
     private const MIGRASI_IMPOR = 'database/migrations/2026_10_28_000035_create_impor_dan_duplikat_tables.php';
 
+    /** Aturan Pengaturan AI (000037): constraint & trigger pada tabel AI yang dibuat 000020. */
+    private const MIGRASI_AI = 'database/migrations/2026_10_28_000037_tighten_pengaturan_ai_tables.php';
+
     private function ditolak(callable $aksi, string $catatan): void
     {
         try {
@@ -79,7 +82,8 @@ class SkemaPengaturanTest extends TestCase
         DB::table('prompt_templates')->insert(['bagian' => 'umum', 'gaya_bahasa' => Str::limit(PromptAi::GAYA_BAHASA, 300, '')]);
         $ai = StubPengaturanAiRepository::bawaan();
         DB::table('ai_settings')->insert(['parameter' => json_encode($ai['parameter']), 'batas_per_user_per_hari' => $ai['batas_per_user_per_hari']]);
-        DB::table('ai_provider_settings')->insert(['penyedia' => 'ollama'] + Arr::only($ai['penyedia']['ollama'], ['base_url', 'model', 'batas_waktu']));
+        // Model kosong tiruan ('') tersimpan sebagai null di database.
+        DB::table('ai_provider_settings')->insert(['penyedia' => 'ollama'] + array_map(fn ($v) => $v === '' ? null : $v, Arr::only($ai['penyedia']['ollama'], ['base_url', 'model', 'batas_waktu'])));
         foreach (StubRiwayatPengaturanRepository::contoh() as $r) {
             DB::table('activity_logs')->insert(['user_id' => $r['user_id'], 'pengguna' => $r['pengguna'], 'aksi' => $r['aksi'], 'keterangan' => $r['keterangan'], 'tahun_anggaran' => $r['tahun'], 'created_at' => $r['waktu']]);
         }
@@ -221,6 +225,7 @@ class SkemaPengaturanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_AI])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_IMPOR])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_BUKU])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_DOKUMEN])->assertSuccessful();
@@ -241,6 +246,7 @@ class SkemaPengaturanTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_BUKU])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_IMPOR])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_AI])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('activity_logs'));
         $this->assertTrue(Schema::hasTable('master_kode_unggahan'));
     }
