@@ -9,5 +9,10 @@
     { "masukan": "197002301995031001", "digit": "197002301995031001", "format": "19700230 199503 1 001", "galat": "8 angka pertama NIP (tanggal lahir) bukan tanggal yang sah." },
     { "masukan": "197001011995131001", "digit": "197001011995131001", "format": "19700101 199513 1 001", "galat": "Angka ke-9 sampai 14 NIP (tahun & bulan TMT) tidak sah." },
     { "masukan": "197001011995033001", "digit": "197001011995033001", "format": "19700101 199503 3 001", "galat": "Angka ke-15 NIP (jenis kelamin) harus 1 atau 2." },
+    { "masukan": "200001012010031001", "digit": "200001012010031001", "format": "20000101 201003 1 001", "galat": "TMT pada NIP (angka ke-9 sampai 14) lebih awal dari usia 18 tahun menurut tanggal lahirnya." },
+    { "masukan": "198006152098061001", "digit": "198006152098061001", "format": "19800615 209806 1 001", "galat": "TMT pada NIP (angka ke-9 sampai 14) belum terjadi." },
+    { "masukan": "198006151998051001", "digit": "198006151998051001", "format": "19800615 199805 1 001", "galat": "TMT pada NIP (angka ke-9 sampai 14) lebih awal dari usia 18 tahun menurut tanggal lahirnya." },
+    { "masukan": "198006151998061001", "digit": "198006151998061001", "format": "19800615 199806 1 001", "galat": null },
+    { "masukan": "197001011995031000", "digit": "197001011995031000", "format": "19700101 199503 1 000", "galat": "Nomor urut NIP (3 angka terakhir) tidak boleh 000." },
     { "masukan": "19700101 1995O3 1 001", "digit": "197001011995O31001", "format": "197001011995O31001", "galat": "NIP hanya boleh berisi angka (spasi, titik, atau tanda hubung diabaikan)." }
 ]

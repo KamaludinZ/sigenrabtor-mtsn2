@@ -116,6 +116,9 @@ export function nip(teks) {
     return /^\d{18}$/.test(digit) ? `${digit.slice(0, 8)} ${digit.slice(8, 14)} ${digit.slice(14, 15)} ${digit.slice(15)}` : digit;
 }
 
+/** Usia minimal (tahun) saat TMT CPNS (kembaran Nip::USIA_MIN_TMT). */
+const USIA_MIN_TMT = 18;
+
 /** Pesan galat NIP atau null — kembaran Nip::galat(). */
 export function galatNip(teks) {
     const digit = bersihkanNip(teks);
@@ -137,8 +140,19 @@ export function galatNip(teks) {
     if (bulanTmt < 1 || bulanTmt > 12 || +digit.slice(8, 12) < 1900) {
         return 'Angka ke-9 sampai 14 NIP (tahun & bulan TMT) tidak sah.';
     }
+    const tmt = digit.slice(8, 14);
+    if (tmt < String(tahun + USIA_MIN_TMT).padStart(4, '0') + digit.slice(4, 6)) {
+        return `TMT pada NIP (angka ke-9 sampai 14) lebih awal dari usia ${USIA_MIN_TMT} tahun menurut tanggal lahirnya.`;
+    }
+    const kini = new Date();
+    if (tmt > `${kini.getFullYear()}${String(kini.getMonth() + 1).padStart(2, '0')}`) {
+        return 'TMT pada NIP (angka ke-9 sampai 14) belum terjadi.';
+    }
     if (!['1', '2'].includes(digit[14])) {
         return 'Angka ke-15 NIP (jenis kelamin) harus 1 atau 2.';
+    }
+    if (digit.slice(15, 18) === '000') {
+        return 'Nomor urut NIP (3 angka terakhir) tidak boleh 000.';
     }
 
     return null;

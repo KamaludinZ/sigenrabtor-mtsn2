@@ -9,6 +9,7 @@ use App\Support\Pengaturan\KelolaPejabat;
 use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\Nip;
+use App\Support\Pengaturan\ValidasiPejabat;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -325,7 +326,7 @@ class ProfilMadrasah extends Component
 
         $tahun = $this->tahunDilihat();
         try {
-            $ringkasan = KelolaPejabat::simpan($tahun, $kunci, $this->isianPejabat, StubData::currentUser())['ringkasan'];
+            ['ringkasan' => $ringkasan, 'peringatan' => $peringatan] = KelolaPejabat::simpan($tahun, $kunci, $this->isianPejabat, StubData::currentUser());
         } catch (AuthorizationException $e) {
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
@@ -335,6 +336,29 @@ class ProfilMadrasah extends Component
         unset($this->pejabat);
         $this->reset('ubahPejabat', 'isianPejabat');
         $this->dispatch('notify', message: $ringkasan === null ? 'Tidak ada yang berubah.' : $this->judulPejabat($kunci).' tersimpan untuk TA '.$tahun.'.', type: $ringkasan === null ? 'info' : 'success');
+        if ($peringatan !== []) {
+            $this->dispatch('notify', message: 'Periksa: '.implode(' ', $peringatan), type: 'info');
+        }
+    }
+
+    /**
+     * Temuan data pejabat tahun yang dilihat selain isian kosong (ditandai "Belum diisi" di tempatnya): NIP tersimpan tidak
+     * sah dan bentrok antar-peran (ValidasiPejabat::tahun).
+     *
+     * @return list<string>
+     */
+    public function temuanPejabat(): array
+    {
+        $pesan = [];
+        foreach (ValidasiPejabat::tahun($this->tahunDilihat()) as $temuan) {
+            foreach ($temuan as $t) {
+                if ($t['jenis'] !== 'kurang') {
+                    $pesan[] = $t['pesan'];
+                }
+            }
+        }
+
+        return array_values(array_unique($pesan));
     }
 
     /** Tahun yang dilihat terkunci: pejabatnya hanya bisa dilihat. */

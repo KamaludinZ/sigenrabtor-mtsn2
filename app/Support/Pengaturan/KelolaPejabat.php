@@ -14,7 +14,8 @@ use Illuminate\Validation\ValidationException;
  * Kelola pejabat penanda tangan per tahun anggaran di server (PRD F8, §12; ubah hanya admin, tahun terkunci hanya bisa
  * dilihat) — dipakai tab Pejabat Pengaturan › Profil & Pejabat dan endpoint `pengaturan.madrasah.pejabat`. Kunci peran:
  * `kepala`, `komite`, `leading:{kode}` (`judul()`). Isian dirapikan satu baris; jabatan & nama wajib ≤ 150, NIP lewat
- * Nip (wajib untuk Kepala), disimpan tanpa pemisah; riwayat `ubah_pejabat` hanya bila berubah. Salin dari tahun lain
+ * Nip (wajib untuk Kepala), nama tanpa angka; disimpan tanpa pemisah; riwayat `ubah_pejabat` hanya bila berubah; temuan
+ * antar-peran (ValidasiPejabat::bentrok) dikembalikan sebagai `peringatan` tanpa memblokir simpan. Salin dari tahun lain
  * hanya mengisi peran yang masih kosong (`salin`, riwayat `salin_pejabat`); blok "Mengetahui" per sumber dana
  * (`simpanMengetahui`, riwayat `ubah_mengetahui`).
  */
@@ -56,8 +57,12 @@ final class KelolaPejabat
     public static function aturan(string $kunci): array
     {
         return [
-            'jabatan' => ['required', 'string', 'max:150'],
-            'nama' => ['required', 'string', 'max:150'],
+            'jabatan' => ['required', 'string', 'max:150', fn (string $atribut, mixed $nilai, Closure $gagal) => preg_match('/\p{L}/u', (string) $nilai) ? null : $gagal('Jabatan harus berisi huruf.')],
+            'nama' => ['required', 'string', 'max:150', fn (string $atribut, mixed $nilai, Closure $gagal) => match (true) {
+                (bool) preg_match('/\d/u', (string) $nilai) => $gagal('Nama pejabat tidak boleh berisi angka — NIP diisi di kolom NIP.'),
+                ! preg_match('/\p{L}/u', (string) $nilai) => $gagal('Nama pejabat harus berisi huruf.'),
+                default => null,
+            }],
             'nip' => [$kunci === 'kepala' ? 'required' : 'nullable', fn (string $atribut, mixed $nilai, Closure $gagal) => ($pesan = Nip::galat((string) $nilai)) ? $gagal($pesan) : null],
         ];
     }
@@ -76,7 +81,7 @@ final class KelolaPejabat
     /**
      * @param  array<string, mixed>  $isian  {jabatan, nama, nip}
      * @param  array{role: string}  $pengguna
-     * @return array{pejabat: array{jabatan: string, nama: string, nip: string|null}, ringkasan: string|null}
+     * @return array{pejabat: array{jabatan: string, nama: string, nip: string|null}, ringkasan: string|null, peringatan: list<string>}
      *
      * @throws ValidationException Berkunci jabatan/nama/nip, atau `kunci` bila peran tidak dikenal.
      * @throws AuthorizationException Bukan admin atau tahun terkunci.
@@ -101,7 +106,7 @@ final class KelolaPejabat
             RiwayatPengaturan::catat('ubah_pejabat', self::judul($kunci)." TA {$tahun} — {$ringkasan}");
         }
 
-        return ['pejabat' => $baru, 'ringkasan' => $ringkasan];
+        return ['pejabat' => $baru, 'ringkasan' => $ringkasan, 'peringatan' => ValidasiPejabat::bentrok($semua, $kunci, $baru)];
     }
 
     /**
@@ -178,7 +183,8 @@ final class KelolaPejabat
     }
 
     /**
-     * Data pejabat satu tahun untuk endpoint: terkunci, pejabat (NIP berformat), aturan "Mengetahui", saran salin, kurang.
+     * Data pejabat satu tahun untuk endpoint: terkunci, pejabat (NIP berformat), aturan "Mengetahui", saran salin, kurang,
+     * dan temuan per peran (ValidasiPejabat::tahun).
      *
      * @return array<string, mixed>
      */
@@ -201,6 +207,7 @@ final class KelolaPejabat
                 $pejabat['komite']['nama'] ? null : 'komite',
                 ...array_map(fn (string $kode) => $pejabat['leading'][$kode]['nama'] ? null : "leading:{$kode}", array_keys($pejabat['leading'])),
             ])),
+            'temuan' => ValidasiPejabat::tahun($tahun),
         ];
     }
 

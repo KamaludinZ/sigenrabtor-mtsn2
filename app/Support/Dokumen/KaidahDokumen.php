@@ -5,6 +5,7 @@ namespace App\Support\Dokumen;
 use App\Support\Kegiatan\KelengkapanKode;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\ValidasiPejabat;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\MekanismePembayaran;
 use App\Support\Stub\StubData;
@@ -74,11 +75,11 @@ final class KaidahDokumen
             default => "Cover, judul, dasar hukum, jadwal, tanggal, dan RAB memakai TA {$tahun}.",
         });
 
-        // 4. Nama penanda tangan dari pejabat tahun aktif.
-        $kosong = array_values(array_map(fn (array $k) => rtrim($k['peran'], ','), array_filter($rab->pengesahan, fn (array $k) => blank($k['nama']))));
-        $tambah('penanda_tangan', $kosong === [] ? 'lulus' : 'peringatan', $kosong === []
+        // 4. Penanda tangan dari pejabat tahun aktif: nama terisi, NIP tercetak sah, tidak bentrok antar-kolom.
+        $ttd = ValidasiPejabat::pengesahan($rab->pengesahan);
+        $tambah('penanda_tangan', $ttd['status'], $ttd['temuan'] === []
             ? 'Nama & NIP dari pejabat leading dan pimpinan TA '.$tahun.'.'
-            : 'Nama penanda tangan belum diisi: '.implode(', ', $kosong).' (Pengaturan › Profil & Pejabat).');
+            : implode('; ', $ttd['temuan']).' (Pengaturan › Profil & Pejabat).');
 
         // 5. Batas pagu.
         if ($anggaran) {

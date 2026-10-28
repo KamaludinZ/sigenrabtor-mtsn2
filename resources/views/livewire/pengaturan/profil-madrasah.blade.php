@@ -87,6 +87,20 @@
                     </div>
                 @endif
 
+                @php
+                    $temuanPejabat = $this->temuanPejabat();
+                @endphp
+                @if ($temuanPejabat !== [])
+                    <div class="rounded-xl bg-gold-50 px-4 py-3 ring-1 ring-gold-200" role="status" data-testid="temuan-pejabat">
+                        <p class="flex items-center gap-2 text-sm font-semibold text-gold-800"><x-ui.icon name="alert" class="size-4 shrink-0" /> Periksa data pejabat TA {{ $taPejabat }}</p>
+                        <ul class="mt-1.5 list-disc space-y-0.5 pl-10 text-sm text-stone-800">
+                            @foreach ($temuanPejabat as $pesan)
+                                <li>{{ $pesan }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pimpinan" data-testid="pejabat-pimpinan">
                     <header class="border-b border-stone-100 px-5 py-4 sm:px-6">
                         <h2 id="judul-pimpinan" class="text-base font-semibold text-stone-900">Pimpinan madrasah &amp; komite</h2>
