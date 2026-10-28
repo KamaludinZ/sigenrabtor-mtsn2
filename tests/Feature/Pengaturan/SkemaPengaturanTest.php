@@ -24,6 +24,9 @@ class SkemaPengaturanTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_28_000020_create_pengaturan_tables.php';
 
+    /** Migrasi sesudahnya yang merujuk tahun_anggaran (jejak unggahan master): dibatalkan lebih dulu, dipasang lagi sesudahnya. */
+    private const MIGRASI_MASTER = 'database/migrations/2026_10_28_000026_tighten_master_kode_and_unggahan.php';
+
     private function ditolak(callable $aksi, string $catatan): void
     {
         try {
@@ -206,6 +209,7 @@ class SkemaPengaturanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_MASTER])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->assertFalse(Schema::hasTable('tahun_anggaran'));
         $this->assertFalse(Schema::hasColumn('users', 'role'));
@@ -213,6 +217,8 @@ class SkemaPengaturanTest extends TestCase
         DB::table('activities')->delete();
 
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_MASTER])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('activity_logs'));
+        $this->assertTrue(Schema::hasTable('master_kode_unggahan'));
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\Support\MasterKodeDb;
 use Tests\Support\RujukanDb;
 use Tests\TestCase;
@@ -91,5 +92,46 @@ class SkemaMasterKodeTest extends TestCase
         });
 
         $this->assertSame([1, 1], [DB::table('kode_sk')->where('tahun_anggaran', 2026)->count(), DB::table('kode_iksk')->where('tahun_anggaran', 2026)->count()]);
+    }
+
+    public function test_format_kode_isian_wajib_dan_urutan_sesuai_pembaca_excel(): void
+    {
+        $this->muat(2026);
+        $baris = fn (string $tabel, array $isi) => fn () => DB::table($tabel)->insert($isi + ['tahun_anggaran' => 2026, 'urutan' => 900]);
+
+        foreach ([
+            $baris('kode_sk', ['kode' => 'SK 99', 'uraian' => 'Sasaran']),
+            $baris('kode_sk', ['kode' => 'SK.99', 'uraian' => '  ']),
+            $baris('kode_iksk', ['kode' => 'IKSK99.1', 'kode_sk' => 'SK.1', 'uraian' => 'Indikator']),
+            $baris('kode_iksk', ['kode' => 'IKSK 99.1', 'kode_sk' => 'sk.1', 'uraian' => 'Indikator']),
+            $baris('kode_rktm', ['kode' => '6.17', 'snp' => 'SNP', 'kegiatan' => 'K', 'sub_kegiatan' => 'S']),
+            $baris('kode_rktm', ['kode' => '6.17.99', 'snp' => 'SNP', 'kegiatan' => 'K', 'sub_kegiatan' => '']),
+            $baris('kode_edm', ['kode' => 'a9', 'komponen' => 'A', 'uraian' => 'U']),
+            $baris('kode_edm', ['kode' => 'A9', 'komponen' => 'B', 'uraian' => 'U']),
+            $baris('kode_sk', ['kode' => 'SK.99', 'uraian' => 'Sasaran', 'urutan' => 1]),
+            $baris('kode_sk', ['kode' => 'SK.99', 'uraian' => 'Sasaran', 'urutan' => 0]),
+            fn () => DB::table('komponen_edm')->insert(['tahun_anggaran' => 2026, 'huruf' => 'AB', 'nama' => 'Komponen']),
+            fn () => DB::table('budaya_mutu')->insert(['tahun_anggaran' => 2026, 'nomor' => 99, 'nama' => ' ']),
+        ] as $aksi) {
+            $this->ditolak($aksi);
+        }
+
+        DB::table('kode_edm')->insert(['tahun_anggaran' => 2026, 'urutan' => 900, 'kode' => 'A9', 'komponen' => 'A', 'uraian' => 'Indikator baru']);
+        $this->assertSame(1, DB::table('kode_edm')->where('tahun_anggaran', 2026)->where('kode', 'A9')->count());
+    }
+
+    public function test_jejak_unggahan_master(): void
+    {
+        $unggahan = fn (array $isi) => $isi + ['id' => (string) Str::uuid(), 'tahun_anggaran' => 2026, 'cakupan' => 'semua', 'nama_berkas' => 'MASTER 2026.xlsx', 'ringkasan' => json_encode(['sk' => ['baru' => 3, 'berubah' => 1, 'tetap' => 10, 'hilang' => 0, 'gagal' => 0]]), 'user_id' => 2, 'pengguna' => 'Koordinator PUSKOM'];
+
+        DB::table('master_kode_unggahan')->insert($unggahan([]));
+        DB::table('master_kode_unggahan')->insert($unggahan(['cakupan' => 'edm', 'nama_berkas' => 'EDM.csv']));
+        foreach ([['cakupan' => 'bos'], ['nama_berkas' => ' '], ['pengguna' => ''], ['ringkasan' => '[]'], ['tahun_anggaran' => 2031]] as $salah) {
+            $this->ditolak(fn () => DB::table('master_kode_unggahan')->insert($unggahan($salah)));
+        }
+
+        DB::table('users')->where('id', 2)->delete();
+        $this->assertSame([[null, 'Koordinator PUSKOM']], DB::table('master_kode_unggahan')->where('cakupan', 'semua')->get(['user_id', 'pengguna'])->map(fn ($b) => [$b->user_id, $b->pengguna])->all(), 'Nama pengguna saat itu tetap tercatat.');
+        $this->assertSame(3, json_decode(DB::table('master_kode_unggahan')->where('cakupan', 'semua')->value('ringkasan'), true)['sk']['baru']);
     }
 }
