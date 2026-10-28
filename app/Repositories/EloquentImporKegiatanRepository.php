@@ -95,6 +95,22 @@ class EloquentImporKegiatanRepository implements ImporKegiatanRepository
         });
     }
 
+    public function tandaiBaris(string $id, int $nomor, string $status, array $pesan): void
+    {
+        if (! in_array($status, ['siap', 'dilewati', 'gagal'], true)) {
+            throw new InvalidArgumentException("Status baris {$status} tidak dikenal.");
+        }
+        DB::transaction(function () use ($id, $nomor, $status, $pesan) {
+            $baris = DB::table('draf_impor_kegiatan')->where(['impor_id' => $id, 'nomor_baris' => $nomor])->whereNull('kegiatan_id')->lockForUpdate()->first()
+                ?? throw new InvalidArgumentException("Baris {$nomor} impor {$id} tidak bisa ditandai {$status}.");
+            DB::table('draf_impor_kegiatan')->where('id', $baris->id)->update(['status' => $status, 'pesan' => json_encode(array_values($pesan), JSON_UNESCAPED_UNICODE)]);
+            DB::table('impor_kegiatan')->where('id', $id)->update([
+                "jumlah_{$baris->status}" => DB::raw("jumlah_{$baris->status} - 1"),
+                "jumlah_{$status}" => DB::raw("jumlah_{$status} + 1"),
+            ]);
+        });
+    }
+
     public function akhiri(string $id, string $status): array
     {
         if (! in_array($status, ['selesai', 'dibatalkan'], true) || DB::table('impor_kegiatan')->where('id', $id)->update(['status' => $status, 'selesai_pada' => now()->format('Y-m-d H:i:s.uP')]) === 0) {

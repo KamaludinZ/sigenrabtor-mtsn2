@@ -39,6 +39,7 @@ use App\Http\Controllers\MulaiPdfBuku;
 use App\Http\Controllers\PaguDanRabTahunan;
 use App\Http\Controllers\PasangKunciFinal;
 use App\Http\Controllers\PeriksaCetakKegiatan;
+use App\Http\Controllers\PeriksaUlangImporKegiatan;
 use App\Http\Controllers\ProsesDuplikatKegiatan;
 use App\Http\Controllers\PutuskanPemeriksaan;
 use App\Http\Controllers\RabLengkapKegiatan;
@@ -112,6 +113,7 @@ Route::post('/kegiatan/duplikat/rencana', RencanaDuplikatKegiatan::class)->name(
 Route::post('/kegiatan/duplikat', ProsesDuplikatKegiatan::class)->name('kegiatan.duplikat.proses');
 Route::post('/kegiatan/impor-perkin', UnggahPerkinKegiatan::class)->name('kegiatan.impor_perkin.unggah');
 Route::get('/kegiatan/impor-perkin/{impor}', DataImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.data');
+Route::post('/kegiatan/impor-perkin/{impor}/periksa', PeriksaUlangImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.periksa');
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
 Route::get('/buku', BukuDaftar::class)->name('buku.index');
 Route::get('/buku/kegiatan', KegiatanBukuDokumen::class)->name('buku.kegiatan');

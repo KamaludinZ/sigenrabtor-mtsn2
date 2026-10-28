@@ -32,6 +32,14 @@ interface ImporKegiatanRepository
     /** Tandai baris siap $nomor sudah disimpan menjadi kegiatan $kegiatanId (rekap `jumlah_dibuat` ikut naik). */
     public function tandaiDibuat(string $id, int $nomor, int $kegiatanId): void;
 
+    /**
+     * Ubah status baris yang belum menjadi kegiatan (siap → gagal/dilewati, pemeriksaan ulang) beserta pesannya; rekap
+     * jumlah siap/dilewati/gagal ikut disesuaikan.
+     *
+     * @param  list<string>  $pesan
+     */
+    public function tandaiBaris(string $id, int $nomor, string $status, array $pesan): void;
+
     /** Akhiri impor: `selesai` atau `dibatalkan`. */
     public function akhiri(string $id, string $status): array;
 }

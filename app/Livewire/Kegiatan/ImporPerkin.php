@@ -5,12 +5,10 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Impor\ImporBertahap;
-use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaPerkin;
 use App\Support\Kegiatan\Impor\UnggahPerkin;
+use App\Support\Kegiatan\Impor\ValidasiImporMassal;
 use App\Support\Kegiatan\RiwayatStatus;
-use App\Support\Kegiatan\TahunKegiatan;
-use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Locked;
 
@@ -112,23 +110,13 @@ class ImporPerkin extends ImporBertahap
 
     protected function simpanBaris(array $data): array
     {
-        $repo = app(KegiatanRepository::class);
-        $tahun = StubData::tahunAktif()['tahun'];
-
-        // Periksa ulang: kegiatan bernama sama bisa saja dibuat di tab lain selama pratinjau terbuka.
-        $kunci = PemeriksaImporKegiatan::kunciNama($data['nama_kegiatan']);
-        foreach ($repo->semua() as $kegiatan) {
-            if (TahunKegiatan::dari($kegiatan) === $tahun && PemeriksaImporKegiatan::kunciNama((string) ($kegiatan['nama_kegiatan'] ?? '')) === $kunci) {
-                return ['status' => 'dilewati', 'pesan' => "Kegiatan dengan nama ini sudah ada di TA {$tahun}."];
-            }
+        // Periksa ulang (ValidasiImporMassal): nama bisa saja dibuat di tab lain, leading/master bisa berubah sejak pratinjau.
+        $namaAda = ValidasiImporMassal::namaAda();
+        if (($hasil = ValidasiImporMassal::periksaBaris($data, $namaAda)) !== null) {
+            return ['status' => $hasil['status'], 'pesan' => implode(' ', $hasil['pesan'])];
         }
 
-        // Pemeriksaan akhir sisi server: leading atau master bisa saja berubah sejak pratinjau.
-        if ($galat = ValidasiKegiatan::galat($data)) {
-            return ['status' => 'gagal', 'pesan' => implode(' ', $galat)];
-        }
-
-        $id = $repo->simpan($data + [
+        $id = app(KegiatanRepository::class)->simpan($data + [
             'riwayat_status' => [RiwayatStatus::entri('dibuat', StatusKegiatan::Draf, StubData::currentUser(), "Diimpor dari cascade Perkin ({$this->namaBerkas}, sheet {$this->lembar}).")],
         ]);
 

@@ -60,8 +60,8 @@ final class UnggahPerkin
                 'baris' => $b['baris'],
                 // Bentuk terurai untuk tabel pratinjau Perkin (partial tabel-perkin).
                 'perkin' => [
-                    'sk' => $b['kode_sk'], 'sk_uraian' => $uraianSk[$b['kode_sk']] ?? null, 'sk_asal' => $b['asal_sk'],
-                    'iksk' => $b['kode_iksk'], 'iksk_uraian' => $uraianIksk[$b['kode_iksk']] ?? null, 'iksk_asal' => $b['asal_iksk'],
+                    'sk' => $b['kode_sk'], 'sk_uraian' => $uraianSk[$b['kode_sk'] ?? ''] ?? null, 'sk_asal' => $b['asal_sk'],
+                    'iksk' => $b['kode_iksk'], 'iksk_uraian' => $uraianIksk[$b['kode_iksk'] ?? ''] ?? null, 'iksk_asal' => $b['asal_iksk'],
                     'dikosongkan' => $b['dikosongkan'],
                     'leading' => $b['leading'], 'leading_nama' => MasterKode::leading($b['leading'])['nama_unit'] ?? null,
                     'pagu' => array_column($b['sumber_dana'], 'pagu', 'sumber'),

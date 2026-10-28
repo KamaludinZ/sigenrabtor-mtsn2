@@ -7,8 +7,8 @@ use App\Livewire\Impor\ImporBertahap;
 use App\Support\Format;
 use App\Support\Kegiatan\Impor\PembacaImporKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
+use App\Support\Kegiatan\Impor\ValidasiImporMassal;
 use App\Support\Kegiatan\JadwalPelaksanaan;
-use App\Support\Kegiatan\ValidasiKegiatan;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 
@@ -54,22 +54,13 @@ class ImporKegiatan extends ImporBertahap
 
     protected function simpanBaris(array $data): array
     {
-        $repo = app(KegiatanRepository::class);
-
-        // Periksa ulang: kegiatan bernama sama bisa saja dibuat di tab lain selama pratinjau terbuka.
-        $kunci = PemeriksaImporKegiatan::kunciNama($data['nama_kegiatan']);
-        foreach ($repo->semua() as $kegiatan) {
-            if (PemeriksaImporKegiatan::kunciNama((string) ($kegiatan['nama_kegiatan'] ?? '')) === $kunci) {
-                return ['status' => 'dilewati', 'pesan' => 'Kegiatan dengan nama ini sudah ada di aplikasi.'];
-            }
+        // Periksa ulang (ValidasiImporMassal): nama bisa saja dibuat di tab lain, leading/master bisa berubah sejak pratinjau.
+        $namaAda = ValidasiImporMassal::namaAda(hanyaTahunAktif: false);
+        if (($hasil = ValidasiImporMassal::periksaBaris($data, $namaAda, keteranganAda: 'Kegiatan dengan nama ini sudah ada di aplikasi.')) !== null) {
+            return ['status' => $hasil['status'], 'pesan' => implode(' ', $hasil['pesan'])];
         }
 
-        // Pemeriksaan akhir sisi server: leading atau master bisa saja berubah sejak pratinjau.
-        if ($galat = ValidasiKegiatan::galat($data)) {
-            return ['status' => 'gagal', 'pesan' => implode(' ', $galat)];
-        }
-
-        $id = $repo->simpan($data);
+        $id = app(KegiatanRepository::class)->simpan($data);
 
         return ['status' => 'berhasil', 'pesan' => 'Dibuat sebagai Draf.', 'tautan' => route('kegiatan.edit', ['kegiatan' => $id])];
     }

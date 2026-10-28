@@ -54,6 +54,20 @@ class StubImporKegiatanRepository implements ImporKegiatanRepository
         $this->tulis($semua);
     }
 
+    public function tandaiBaris(string $id, int $nomor, string $status, array $pesan): void
+    {
+        $semua = $this->baca();
+        $i = collect($semua[$id]['baris'] ?? [])->search(fn (array $b) => $b['nomor_baris'] === $nomor && $b['kegiatan_id'] === null);
+        if ($i === false || ! in_array($status, ['siap', 'dilewati', 'gagal'], true)) {
+            throw new InvalidArgumentException("Baris {$nomor} impor {$id} tidak bisa ditandai {$status}.");
+        }
+        $lama = $semua[$id]['baris'][$i]['status'];
+        $semua[$id]['baris'][$i] = ['status' => $status, 'pesan' => array_values($pesan)] + $semua[$id]['baris'][$i];
+        $semua[$id]['impor']["jumlah_{$lama}"]--;
+        $semua[$id]['impor']["jumlah_{$status}"]++;
+        $this->tulis($semua);
+    }
+
     public function akhiri(string $id, string $status): array
     {
         $semua = $this->baca();
