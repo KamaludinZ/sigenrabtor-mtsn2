@@ -23,7 +23,7 @@ use LogicException;
 final class SimpanMasterKode
 {
     /** Jenis yang sudah bisa disimpan dari unggahan. */
-    public const DIDUKUNG = ['sk', 'iksk'];
+    public const DIDUKUNG = ['sk', 'iksk', 'rktm'];
 
     /** Jenis → bagian master (MasterKodeRepository::ganti). */
     public const BAGIAN = ['sk' => 'kode_sk', 'iksk' => 'kode_iksk', 'rktm' => 'kode_rktm', 'edm' => 'kode_edm', 'budaya' => 'budaya_mutu'];
@@ -141,6 +141,40 @@ final class SimpanMasterKode
     }
 
     /**
+     * Struktur RKTM untuk pratinjau RKTM (PRD §14 "SNP, kegiatan, sub kegiatan"): standar (bagian pertama kode) → kegiatan
+     * (dua bagian pertama) → jumlah sub kegiatan beserta statusnya, urut nomor; nama standar/kegiatan dari baris pertama
+     * kelompoknya. Baris gagal yang kodenya tidak berformat dan baris hilang tidak dihitung.
+     *
+     * @param  list<array<string, mixed>>  $baris  Baris pratinjau RKTM.
+     * @return list<array{nomor: string, snp: string, jumlah: int, kegiatan: list<array{nomor: string, kegiatan: string, jumlah: int, status: array<string, int>}>}>
+     */
+    public static function strukturRktm(array $baris): array
+    {
+        $standar = [];
+        foreach ($baris as $b) {
+            if ($b['status'] === 'hilang' || ! preg_match('/^(\d+)\.(\d+)\.\d+$/', (string) $b['kode'], $nomor)) {
+                continue;
+            }
+            [, $s, $k] = $nomor;
+            $standar[$s] ??= ['nomor' => $s, 'snp' => (string) $b['tampil']['snp'], 'jumlah' => 0, 'kegiatan' => []];
+            $standar[$s]['kegiatan']["{$s}.{$k}"] ??= ['nomor' => "{$s}.{$k}", 'kegiatan' => (string) $b['tampil']['kegiatan'], 'jumlah' => 0, 'status' => []];
+            $kelompok = &$standar[$s]['kegiatan']["{$s}.{$k}"];
+            $kelompok['jumlah']++;
+            $kelompok['status'][$b['status']] = ($kelompok['status'][$b['status']] ?? 0) + 1;
+            unset($kelompok);
+            $standar[$s]['jumlah']++;
+        }
+        ksort($standar, SORT_NUMERIC);
+
+        return array_values(array_map(function (array $s) {
+            uksort($s['kegiatan'], 'version_compare');
+            $s['kegiatan'] = array_values($s['kegiatan']);
+
+            return $s;
+        }, $standar));
+    }
+
+    /**
      * Baris pratinjau → baris master jenisnya.
      *
      * @param  array<string, mixed>  $b
@@ -151,6 +185,7 @@ final class SimpanMasterKode
         return match ($jenis) {
             'sk' => ['kode' => $b['kode'], 'uraian' => $b['tampil']['uraian']],
             'iksk' => ['kode' => $b['kode'], 'kode_sk' => $b['tampil']['kode_sk'], 'uraian' => $b['tampil']['uraian']],
+            'rktm' => ['kode' => $b['kode'], 'snp' => $b['tampil']['snp'], 'kegiatan' => $b['tampil']['kegiatan'], 'sub_kegiatan' => $b['tampil']['sub_kegiatan']],
             default => throw new LogicException("Penyimpanan master {$jenis} belum tersedia."),
         };
     }

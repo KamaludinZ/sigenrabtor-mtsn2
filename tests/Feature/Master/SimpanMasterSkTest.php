@@ -142,7 +142,7 @@ class SimpanMasterSkTest extends TestCase
         $induk = $this->skInduk();
         $this->assertSame(["SK: {$induk} tidak ada di berkas padahal masih menjadi induk IKSK master TA 2026 — unggah IKSK bersama SK (berkas master lengkap) atau pertahankan kodenya."], $kendala($this->csvSk([$induk => null])));
         $this->assertSame(['SK: 1 baris gagal — perbaiki berkasnya lalu unggah lagi.'], $kendala($this->csvSk([], ['IKSK 1.1;Bukan kode SK'])));
-        $this->assertSame(['RKTM: penyimpanan dari unggahan belum tersedia.'], $kendala("Kode;SNP;Kegiatan;Sub Kegiatan\n1.1.1;Standar Isi;Kurikulum;Workshop\n", 'rktm'));
+        $this->assertSame(['5 Budaya Mutu: penyimpanan dari unggahan belum tersedia.'], $kendala("No;Budaya Mutu\n1;Jujur\n2;Disiplin\n3;Peduli\n4;Santun\n5;Bertanggung jawab\n", 'budaya'));
         $this->assertSame($sebelum, MasterKode::kodeSk(2026), 'Master tidak berubah.');
         $this->assertSame([], app(MasterKodeRepository::class)->unggahan(2026));
     }
@@ -154,7 +154,7 @@ class SimpanMasterSkTest extends TestCase
 
         $this->withSession(['stub_role' => 'leading'])->post($url, ['berkas' => $csv($this->csvSk())])->assertForbidden();
         $this->withSession(['stub_role' => 'admin']);
-        $this->post(route('master.unggah', ['tahun' => 2026, 'jenis' => 'rktm']), ['berkas' => $csv($this->csvSk())])->assertNotFound();
+        $this->post(route('master.unggah', ['tahun' => 2026, 'jenis' => 'budaya']), ['berkas' => $csv($this->csvSk())])->assertNotFound();
         $this->postJson($url, [])->assertStatus(422)->assertJsonPath('pesan', 'Pilih berkas master kode.');
         $this->postJson(route('master.unggah', ['tahun' => 2025, 'jenis' => 'sk']), ['berkas' => $csv($this->csvSk())])->assertForbidden()->assertJsonPath('pesan', 'Tahun Anggaran 2025 terkunci — master kodenya hanya bisa dilihat.');
 
