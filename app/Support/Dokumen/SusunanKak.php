@@ -12,9 +12,8 @@ use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\KunciDokumen;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
-use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\PejabatBerlaku;
-use App\Support\Pengaturan\TeksBaku;
+use App\Support\Pengaturan\TeksBakuTercetak;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
 use App\Support\Rab\PeringatanPagu;
@@ -96,24 +95,27 @@ final readonly class SusunanKak
         $bagian = [];
 
         $nomor = 1;
-        $latar = [['jenis' => 'paragraf', 'teks' => StubData::latarBelakangBaku($tahun)]];
+        $teksBaku = TeksBakuTercetak::dari($kegiatan, $tahun);
+        $kurangBaku = $teksBaku->kurang();
+        $latar = [['jenis' => 'paragraf', 'teks' => $teksBaku->latarBelakang]];
         if (filled($kegiatan['latar_belakang'] ?? null)) {
             $latar[] = ['jenis' => 'paragraf', 'teks' => trim($kegiatan['latar_belakang'])];
         }
         if ($nama === '…') {
             $latar[] = $kosong('nama kegiatan');
-        } else {
-            foreach (TeksBaku::kosong(StubData::kalimatPenutupLatar($tahun), TeksBaku::nilaiKegiatan($kegiatan)) as $label) {
-                $catat(mb_strtolower($label).' (kalimat penutup latar belakang)');
-            }
-            $latar[] = ['jenis' => 'paragraf', 'teks' => KalimatKak::latarBelakangKegiatan($kegiatan, $tahun)];
+        }
+        foreach ($kurangBaku[1] ?? [] as $apa) {
+            $catat($apa);
+        }
+        if ($teksBaku->kalimatPenutup !== null) {
+            $latar[] = ['jenis' => 'paragraf', 'teks' => $teksBaku->kalimatPenutup];
         }
         $bagian[] = ['nomor' => 1, 'judul' => 'Latar Belakang', 'isi' => $latar];
 
         $nomor = 2;
-        $dasarHukum = StubData::dasarHukum($tahun);
-        if (DaftarDasarHukum::skKurang(StubData::dasarHukumMentah($tahun), $tahun)) {
-            $catat('nomor & tanggal SK RKTM/RKAM (Pengaturan › Dasar hukum)');
+        $dasarHukum = $teksBaku->dasarHukum;
+        foreach ($kurangBaku[2] ?? [] as $apa) {
+            $catat($apa);
         }
         $bagian[] = ['nomor' => 2, 'judul' => 'Dasar Hukum', 'isi' => [$dasarHukum === []
             ? $kosong('dasar hukum TA '.$tahun.' (Pengaturan › Dasar hukum)')

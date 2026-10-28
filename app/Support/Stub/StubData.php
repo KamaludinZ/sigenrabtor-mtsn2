@@ -88,7 +88,7 @@ class StubData
      */
     public static function latarBelakangBaku(int $tahun): string
     {
-        return TeksBaku::isi(app(DasarHukumRepository::class)->untukTahun($tahun)['latar_belakang'], $tahun);
+        return TeksBaku::cetak(app(DasarHukumRepository::class)->untukTahun($tahun)['latar_belakang'], $tahun);
     }
 
     /**

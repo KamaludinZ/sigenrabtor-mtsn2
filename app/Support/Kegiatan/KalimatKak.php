@@ -32,9 +32,8 @@ class KalimatKak
     public static function latarBelakangKegiatan(array $kegiatan, ?int $tahun = null): string
     {
         $tahun ??= StubData::tahunAktif()['tahun'];
-        $nilai = array_map(fn (?string $v) => $v ?? '…', TeksBaku::nilaiKegiatan($kegiatan));
 
-        return TeksBaku::isiNilai(StubData::kalimatPenutupLatar($tahun), $tahun, $nilai);
+        return TeksBaku::cetak(StubData::kalimatPenutupLatar($tahun), $tahun, TeksBaku::nilaiKegiatan($kegiatan));
     }
 
     /** Bagian 3A "Tujuan": "Kegiatan {nama} bertujuan {tujuan}". */

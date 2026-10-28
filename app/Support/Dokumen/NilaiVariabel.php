@@ -9,6 +9,7 @@ use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PejabatBerlaku;
+use App\Support\Pengaturan\TeksBakuTercetak;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
 
@@ -72,6 +73,7 @@ final class NilaiVariabel
         $jenisPeserta = $teks('peserta_jenis');
         $ttd = fn (array $p) => $p['nama'] ? array_values(array_filter([$p['jabatan'], $p['nama'], $p['nip'] ? 'NIP. '.$p['nip'] : null])) : null;
         $pembuat = $berlaku->pembuat($kegiatan);
+        $teksBaku = TeksBakuTercetak::dari($kegiatan, $tahun);
 
         return [
             'tahun_anggaran' => (string) $tahun,
@@ -84,8 +86,8 @@ final class NilaiVariabel
             'tempat' => $teks('tempat'),
             'lama_hari' => $lama ? (string) $lama : null,
             'peserta' => $jumlahPeserta ? $jumlahPeserta.' orang'.($jenisPeserta ? " ({$jenisPeserta})" : '') : $jenisPeserta,
-            'latar_belakang' => StubData::latarBelakangBaku($tahun).($nama ? ' '.KalimatKak::latarBelakangKegiatan($kegiatan, $tahun) : ''),
-            'dasar_hukum' => StubData::dasarHukum($tahun),
+            'latar_belakang' => $teksBaku->latarLengkap(),
+            'dasar_hukum' => $teksBaku->dasarHukum,
             'kode_rktm' => $rktm['kode'] ?? null,
             'uraian_rktm' => $rktm ? ($rktm['sub_kegiatan'] ?? $rktm['kegiatan'] ?? null) : null,
             'kode_sk' => $sk['kode'] ?? null,

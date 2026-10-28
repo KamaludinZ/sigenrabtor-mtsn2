@@ -44,7 +44,24 @@ class TeksBaku
     }
 
     /**
-     * Nilai variabel kegiatan dari data satu kegiatan (null = belum diisi di Data Kegiatan).
+     * Isi teks baku untuk dicetak (dokumen, bukan pratinjau editor): satu lintasan atas penanda di $teks — `{tahun}`,
+     * penanda di $nilai yang berisi, dan sisanya (nilai kosong maupun penanda tak dikenal) menjadi "…" sehingga kurung
+     * kurawal tidak pernah tercetak. Nilai yang disisipkan tidak dipindai ulang (nama kegiatan yang memuat "{tahun}"
+     * tercetak apa adanya).
+     *
+     * @param  array<string, string|null>  $nilai  Penanda → nilai.
+     */
+    public static function cetak(string $teks, int $tahun, array $nilai = []): string
+    {
+        return (string) preg_replace_callback('/\{[^{}]*\}/u', fn (array $m) => match (true) {
+            $m[0] === self::TAHUN => (string) $tahun,
+            ($nilai[$m[0]] ?? null) !== null => (string) $nilai[$m[0]],
+            default => '…',
+        }, $teks);
+    }
+
+    /**
+     * Nilai variabel kegiatan dari data satu kegiatan (null = belum diisi di Data Kegiatan), satu baris berspasi tunggal.
      *
      * @param  array<string, mixed>  $kegiatan
      * @return array<string, string|null>
@@ -57,13 +74,13 @@ class TeksBaku
         $iksk = MasterKode::cari(MasterKode::kodeIksk(), $kegiatan['kode_iksk'] ?? null);
         $leading = MasterKode::leading($kegiatan['leading'] ?? null);
 
-        return [
+        return array_map(fn (?string $v) => ($v = trim((string) preg_replace('/\s+/u', ' ', (string) $v))) === '' ? null : $v, [
             self::NAMA_KEGIATAN => $nama === '' ? null : KalimatKak::tanpaAwalanKegiatan($nama),
             '{leading}' => $leading['nama_unit'] ?? null,
             '{uraian_rktm}' => $rktm ? ($rktm['sub_kegiatan'] ?? $rktm['kegiatan'] ?? null) : null,
             '{uraian_sk}' => $sk['uraian'] ?? null,
             '{uraian_iksk}' => $iksk['uraian'] ?? null,
-        ];
+        ]);
     }
 
     /**

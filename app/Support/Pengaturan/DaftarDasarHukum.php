@@ -31,9 +31,9 @@ final class DaftarDasarHukum
     public static function cetak(array $butir, int $tahun): array
     {
         $akhir = count($butir) - 1;
-        $sk = array_map(fn (?string $v) => $v ?? '…', SkRktm::nilai($tahun));
+        $sk = SkRktm::nilai($tahun);
 
-        return array_map(fn (string $teks, int $i) => self::rapikan(TeksBaku::isiNilai($teks, $tahun, $sk)).($i === $akhir ? '.' : ';'), $butir, array_keys($butir));
+        return array_map(fn (string $teks, int $i) => self::rapikan(TeksBaku::cetak($teks, $tahun, $sk)).($i === $akhir ? '.' : ';'), $butir, array_keys($butir));
     }
 
     /** Penanda yang boleh di butir dasar hukum. */
