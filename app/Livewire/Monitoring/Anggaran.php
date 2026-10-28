@@ -3,6 +3,7 @@
 namespace App\Livewire\Monitoring;
 
 use App\Contracts\KegiatanRepository;
+use App\Support\Monitoring\DaftarKegiatanMonitoring;
 use App\Support\Monitoring\RingkasanAnggaran;
 use App\Support\Monitoring\SaringanMonitoring;
 use App\Support\Stub\StubPengaturan;
@@ -57,7 +58,7 @@ class Anggaran extends Component
     #[Url(as: 'arah_leading', except: 'asc')]
     public string $arahLeading = 'asc';
 
-    public const PER_HALAMAN = 20;
+    public const PER_HALAMAN = DaftarKegiatanMonitoring::PER_HALAMAN;
 
     /** Saringan & urutan yang tidak dikenal (mis. dari URL lama) dilepas. */
     public function mount(): void

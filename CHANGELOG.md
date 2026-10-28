@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: **API daftar kegiatan beserta total RAB** untuk admin — kegiatan dengan pagu, total RAB, sisa/kelebihan, persentase pemakaian, dan status pagu tiap RAB, dengan saringan, urutan, dan halaman yang sama dengan tabel rincian Monitoring.
 - Fondasi backend: **API ringkasan pagu DIPA vs Komite** untuk admin — pagu, total RAB, sisa/kelebihan, persentase pemakaian, porsi, kondisi RAB, dan rincian per leading tiap sumber dana dengan saringan yang sama persis dengan halaman Monitoring (tahun, leading, sumber dana, status, rentang tanggal).
 - Fondasi backend: **API ringkasan Dashboard utama** — jumlah kegiatan per status, total & pemakaian pagu per sumber dana (DIPA vs Komite, kelebihan, kondisi RAB), kombinasi sumber dana, dan rekap per leading tahun aktif dalam satu permintaan, dengan cakupan yang sama dengan halaman Dashboard (admin semua leading, akun leading hanya leading-nya).
 - Fondasi backend: **perintah pindah struktur anggaran awal ke database** (`php artisan sigenrabtor:pindah-anggaran`) — memindahkan tahun anggaran, leading, akun, Data Pagu, kegiatan (nomor kegiatan tetap), RAB beserta termin, serta matrik & jadwal dari penyimpanan saat ini ke database kosong dalam satu langkah, lalu memverifikasi pagu, total RAB, jumlah item, dan termin tiap kegiatan; bila ada selisih, semuanya dibatalkan. Opsi `--uji` menjalankan & memverifikasi tanpa menyimpan.

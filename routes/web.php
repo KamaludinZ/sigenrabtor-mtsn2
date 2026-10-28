@@ -3,6 +3,7 @@
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AmbilMasterKode;
 use App\Http\Controllers\DataDashboard;
+use App\Http\Controllers\DataKegiatanMonitoring;
 use App\Http\Controllers\DataPaguMonitoring;
 use App\Http\Controllers\DataRiwayatPengaturan;
 use App\Http\Controllers\DataTahunAnggaran;
@@ -89,6 +90,7 @@ Route::get('/dokumen/cover/{cover}/gambar', GambarCover::class)->whereUuid('cove
 // Monitoring anggaran lintas kegiatan & leading (PRD Fase 5 §11), khusus admin.
 Route::get('/monitoring', MonitoringAnggaran::class)->middleware(HanyaAdmin::class)->name('monitoring.index');
 Route::get('/monitoring/pagu', DataPaguMonitoring::class)->middleware(HanyaAdmin::class)->name('monitoring.pagu');
+Route::get('/monitoring/kegiatan', DataKegiatanMonitoring::class)->middleware(HanyaAdmin::class)->name('monitoring.kegiatan');
 Route::get('/monitoring/ekspor/excel', EksporMonitoringExcel::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.excel');
 Route::get('/monitoring/ekspor/pdf', EksporMonitoringPdf::class)->middleware(HanyaAdmin::class)->name('monitoring.ekspor.pdf');
 
