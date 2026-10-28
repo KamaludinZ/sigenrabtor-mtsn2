@@ -12,6 +12,9 @@ use App\Support\Kegiatan\GagalPenyediaAi;
 use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\KegagalanAi;
 use App\Support\Kegiatan\RantaiPenyediaAi;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -26,7 +29,11 @@ class KegagalanPenyediaAiTest extends TestCase
 
     private function denganCadangan(): void
     {
-        $this->atur(['provider_aktif' => 'ollama', 'provider_cadangan' => 'claude', 'penyedia' => ['ollama' => ['model' => 'qwen2.5:7b'], 'claude' => ['model' => 'claude-sonnet-5-5', 'ada_kunci' => true]]]);
+        $this->atur(['provider_aktif' => 'ollama', 'provider_cadangan' => 'claude', 'penyedia' => ['ollama' => ['model' => 'qwen2.5:7b'], 'claude' => ['model' => 'claude-sonnet-5-5', 'ada_kunci' => true, 'kunci_terenkripsi' => Crypt::encryptString('sk-ant-kunci-uji-0123456789')]]]);
+        // Cadangan Claude dijawab Messages API palsu: usulan jadwal atau saran kalimat menurut pesan sistemnya.
+        Http::fake(['api.anthropic.com/*' => fn (Request $r) => Http::response(['content' => [['type' => 'text', 'text' => json_encode(str_contains($r['system'], 'jadwal kegiatan')
+            ? ['versi' => [['judul' => 'Versi 1', 'ciri' => 'Ringkas', 'keterangan' => 'Satu tahap.', 'baris' => [['uraian' => 'Pelaksanaan kegiatan', 'mulai' => 7, 'sampai' => null]]]]]
+            : ['versi' => [['judul' => 'Versi 1', 'ciri' => 'Formal', 'teks' => 'meningkatkan mutu pembelajaran madrasah.']]])]]])]);
     }
 
     private function gagal(\Closure $jalan): GagalPenyediaAi

@@ -137,7 +137,7 @@ class BuatDenganAiTest extends TestCase
     {
         $this->app->instance(PenyusunSaranKalimat::class, new class implements PenyusunSaranKalimat
         {
-            public function sarankan(PermintaanSaranKalimat $permintaan): array
+            public function sarankan(PermintaanSaranKalimat $permintaan, string $penyedia = 'tiruan'): array
             {
                 throw new GagalUsulanAi('Server AI sekolah tidak menjawab.');
             }

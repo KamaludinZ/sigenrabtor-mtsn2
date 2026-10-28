@@ -4,7 +4,8 @@ namespace App\Support\Kegiatan;
 
 /**
  * Permintaan usulan jadwal ke PenyusunUsulanJadwal: jenis kegiatan, instruksi tambahan, bulan acuan dari Data Kegiatan,
- * dan bahan teks dari KonteksAi::teks() (isian kegiatan + catatan konteks yang NIP-nya sudah disembunyikan).
+ * bahan teks dari KonteksAi::teks() (isian kegiatan + catatan konteks yang NIP-nya sudah disembunyikan), dan nama
+ * kegiatan untuk penanda {nama_kegiatan} template prompt.
  */
 final readonly class PermintaanUsulanJadwal
 {
@@ -17,5 +18,6 @@ final readonly class PermintaanUsulanJadwal
         public string $instruksi,
         public ?array $acuan,
         public string $bahan,
+        public string $namaKegiatan = '',
     ) {}
 }

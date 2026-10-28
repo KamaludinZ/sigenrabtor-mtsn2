@@ -76,7 +76,7 @@ final class SaranKalimatAi
         KeamananAi::pastikanMuatanAman(RiwayatSaranAi::prompt($permintaan));
         $penyusun ??= app(PenyusunSaranKalimat::class);
         try {
-            $jalan = RantaiPenyediaAi::jalankan(fn () => $penyusun->sarankan($permintaan));
+            $jalan = RantaiPenyediaAi::jalankan(fn (string $penyedia) => $penyusun->sarankan($permintaan, $penyedia));
         } catch (GagalPenyediaAi $e) {
             // Pesan siap tampil; kegagalan penyedia aslinya tetap terbawa (previous) untuk pemanggil yang membedakannya.
             throw new GagalUsulanAi($e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : ''), previous: $e);

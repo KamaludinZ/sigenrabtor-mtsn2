@@ -50,7 +50,7 @@ class SaranJadwalAiTest extends TestCase
 
             public function __construct(private array $jawaban) {}
 
-            public function usulkan(PermintaanUsulanJadwal $permintaan): array
+            public function usulkan(PermintaanUsulanJadwal $permintaan, string $penyedia = 'tiruan'): array
             {
                 $this->permintaan = $permintaan;
 

@@ -10,6 +10,7 @@ use App\Livewire\Kegiatan\MatrikJadwal;
 use App\Support\Kegiatan\GagalUsulanAi;
 use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\MatrikTahapan;
+use App\Support\Kegiatan\PenyusunUsulanJadwalLlm;
 use App\Support\Kegiatan\PermintaanUsulanJadwal;
 use App\Support\Stub\StubMatrikJadwalRepository;
 use App\Support\Stub\StubUsulanJadwal;
@@ -22,7 +23,7 @@ class IntegrasiMatrikJadwalTest extends TestCase
     public function test_binding_kontrak_memakai_tiruan(): void
     {
         $this->assertInstanceOf(StubMatrikJadwalRepository::class, app(MatrikJadwalRepository::class));
-        $this->assertInstanceOf(StubUsulanJadwal::class, app(PenyusunUsulanJadwal::class));
+        $this->assertInstanceOf(PenyusunUsulanJadwalLlm::class, app(PenyusunUsulanJadwal::class), 'Tanpa penyedia aktif dijawab tiruan.');
     }
 
     public function test_contoh_dan_kegiatan_tanpa_entri(): void
@@ -188,7 +189,7 @@ class IntegrasiMatrikJadwalTest extends TestCase
                 $this->jawab = $jawab;
             }
 
-            public function usulkan(PermintaanUsulanJadwal $permintaan): array
+            public function usulkan(PermintaanUsulanJadwal $permintaan, string $penyedia = 'tiruan'): array
             {
                 $this->permintaan = $permintaan;
 

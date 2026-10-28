@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Support\Stub\StubKegiatanRepository;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 abstract class TestCase extends BaseTestCase
@@ -14,6 +15,8 @@ abstract class TestCase extends BaseTestCase
 
         // Data tiruan (mis. kegiatan JSON) ditulis ke disk "local"; jangan sentuh berkas pengembangan.
         Storage::fake('local');
+        // Tes tidak pernah menghubungi penyedia AI atau layanan luar sungguhan; pakai Http::fake().
+        Http::preventStrayRequests();
     }
 
     /** Banyaknya contoh kegiatan yang disiapkan repository tiruan. */

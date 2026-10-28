@@ -14,7 +14,7 @@ use App\Support\Kegiatan\PermintaanSaranKalimat;
  */
 class StubSaranKalimat implements PenyusunSaranKalimat
 {
-    public function sarankan(PermintaanSaranKalimat $permintaan): array
+    public function sarankan(PermintaanSaranKalimat $permintaan, string $penyedia = 'tiruan'): array
     {
         // Minta perbaikan: versi baru disusun dari teks yang sedang diperbaiki sesuai instruksi.
         if ($permintaan->instruksi !== '' && $permintaan->teks !== '') {

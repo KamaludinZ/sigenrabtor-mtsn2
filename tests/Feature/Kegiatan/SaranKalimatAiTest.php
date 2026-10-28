@@ -84,7 +84,7 @@ class SaranKalimatAiTest extends TestCase
         // Penyedia gagal → 503 beserta jenis kegagalannya.
         $this->app->instance(PenyusunSaranKalimat::class, new class implements PenyusunSaranKalimat
         {
-            public function sarankan(PermintaanSaranKalimat $permintaan): array
+            public function sarankan(PermintaanSaranKalimat $permintaan, string $penyedia = 'tiruan'): array
             {
                 throw new GagalPenyediaAi('waktu_habis', 'ollama');
             }

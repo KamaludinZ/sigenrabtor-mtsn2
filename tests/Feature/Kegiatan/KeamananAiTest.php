@@ -42,7 +42,7 @@ class KeamananAiTest extends TestCase
     {
         $this->app->instance(PenyusunSaranKalimat::class, new class implements PenyusunSaranKalimat
         {
-            public function sarankan(PermintaanSaranKalimat $permintaan): array
+            public function sarankan(PermintaanSaranKalimat $permintaan, string $penyedia = 'tiruan'): array
             {
                 return [
                     ['judul' => '**Ringkas**', 'ciri' => '<b>singkat</b>', 'teks' => '<p>Meningkatkan **mutu** pembelajaran bagi 999 guru dengan anggaran Rp88.888.888.</p>'],

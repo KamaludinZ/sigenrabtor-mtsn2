@@ -110,7 +110,7 @@ class PenerimaanSaranTest extends TestCase
 
         $this->app->instance(PenyusunSaranKalimat::class, new class implements PenyusunSaranKalimat
         {
-            public function sarankan(PermintaanSaranKalimat $permintaan): array
+            public function sarankan(PermintaanSaranKalimat $permintaan, string $penyedia = 'tiruan'): array
             {
                 return [['judul' => 'Versi 1', 'ciri' => '', 'teks' => 'melibatkan 99 guru.'], ['judul' => 'Versi 2', 'ciri' => '', 'teks' => 'melibatkan seluruh guru.']];
             }

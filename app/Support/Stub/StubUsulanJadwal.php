@@ -67,7 +67,7 @@ class StubUsulanJadwal implements PenyusunUsulanJadwal
         ['Ringkas', 'Empat tahap inti untuk kegiatan singkat.', 4, 0],
     ];
 
-    public function usulkan(PermintaanUsulanJadwal $permintaan): array
+    public function usulkan(PermintaanUsulanJadwal $permintaan, string $penyedia = 'tiruan'): array
     {
         return self::versi($permintaan->jenis, $permintaan->acuan);
     }

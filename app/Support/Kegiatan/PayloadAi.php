@@ -79,6 +79,7 @@ final class PayloadAi
             instruksi: self::bersihkan($instruksi, $kegiatan),
             acuan: $acuan,
             bahan: self::bahan($kegiatan),
+            namaKegiatan: (string) ($kegiatan['nama_kegiatan'] ?? ''),
         );
     }
 

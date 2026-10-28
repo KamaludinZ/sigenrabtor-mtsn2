@@ -69,9 +69,11 @@ final class SaranJadwalAi
         $permintaan = PayloadAi::usulanJadwal((int) $kegiatan['id'], $kegiatan, $jenis, Teks::rapikan($instruksi), $acuan);
 
         // Penjaga terakhir sebelum terkirim: tidak ada data pribadi yang lolos PayloadAi.
-        KeamananAi::pastikanMuatanAman($permintaan->bahan, $permintaan->instruksi);
+        // Teks yang dicatat = yang dikirim ke penyedia (RiwayatSaranAi::promptJadwal).
+        $prompt = RiwayatSaranAi::promptJadwal($permintaan);
+        KeamananAi::pastikanMuatanAman($prompt);
         try {
-            $jalan = RantaiPenyediaAi::jalankan(fn () => app(PenyusunUsulanJadwal::class)->usulkan($permintaan));
+            $jalan = RantaiPenyediaAi::jalankan(fn (string $penyedia) => app(PenyusunUsulanJadwal::class)->usulkan($permintaan, $penyedia));
         } catch (GagalPenyediaAi $e) {
             throw new GagalUsulanAi($e->getMessage().($e->simulasi && $pengguna['role'] === 'admin' ? ' (simulasi kegagalan dari Pengaturan AI)' : ''), previous: $e);
         }
@@ -82,13 +84,6 @@ final class SaranJadwalAi
             throw new GagalUsulanAi('AI tidak memberi usulan yang bisa dipakai. Coba lagi atau ubah instruksi.');
         }
 
-        $prompt = implode("\n", [
-            'Bagian: Jadwal kegiatan (Bagian 7 · Jadwal Kegiatan)',
-            'Jenis kegiatan: '.(KonteksAi::jenisKegiatan()[$permintaan->jenis] ?? $permintaan->jenis),
-            'Instruksi: '.($permintaan->instruksi ?: '-'),
-            'Bahan kegiatan:',
-            $permintaan->bahan,
-        ]);
         $riwayat = array_map(fn (array $v) => ['judul' => $v['judul'], 'ciri' => $v['ciri'], 'teks' => self::teks($v, $tahun)], $versi);
 
         return [

@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatSaranAiRepository;
 use App\Support\Pengaturan\PromptAi;
 use App\Support\Pengaturan\TautanAkunLeading;
+use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 
 /**
@@ -45,6 +46,27 @@ final class RiwayatSaranAi
         ];
 
         return implode("\n", $baris);
+    }
+
+    /**
+     * Teks permintaan usulan jadwal yang dicatat sekaligus dikirim ke penyedia (PromptLlm): jenis kegiatan, acuan bulan
+     * Data Kegiatan, instruksi, bahan, dan template "Jadwal kegiatan" yang berlaku (Tugas/Gaya bahasa/Aturan).
+     */
+    public static function promptJadwal(PermintaanUsulanJadwal $permintaan): string
+    {
+        $template = PromptAi::untuk('jadwal');
+
+        return implode("\n", [
+            'Bagian: '.BagianAi::BAGIAN['jadwal']['judul'].' ('.BagianAi::BAGIAN['jadwal']['tercetak'].')',
+            'Jenis kegiatan: '.(KonteksAi::jenisKegiatan()[$permintaan->jenis] ?? $permintaan->jenis),
+            'Acuan bulan: '.PromptLlm::acuan($permintaan->acuan, (int) StubData::tahunAktif()['tahun']),
+            'Instruksi: '.($permintaan->instruksi !== '' ? $permintaan->instruksi : '-'),
+            'Bahan kegiatan:',
+            $permintaan->bahan,
+            'Tugas: '.PromptAi::isiPenanda($template['instruksi'], ['nama_kegiatan' => $permintaan->namaKegiatan]),
+            'Gaya bahasa: '.($template['gaya_bahasa'] ?? PromptAi::gayaBahasa()),
+            'Aturan: '.PromptAi::BATAS_AMAN,
+        ]);
     }
 
     /**
