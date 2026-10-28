@@ -44,4 +44,15 @@ class SkemaSumberDanaTest extends TestCase
         DB::table('sumber_dana')->where('kode', 'Komite')->update(['kode' => 'KOMITE']);
         $this->assertSame('KOMITE', DB::table('anggaran_kegiatan')->where('activity_id', $kegiatan)->value('sumber_dana'));
     }
+
+    public function test_rangkuman_rab_membawa_nama_dan_urutan_sumber_dana(): void
+    {
+        $kegiatan = DB::table('activities')->insertGetId(['tahun_anggaran' => 2026, 'nama_kegiatan' => 'Supervisi Akademik']);
+        DB::table('anggaran_kegiatan')->insert([['activity_id' => $kegiatan, 'sumber_dana' => 'Komite', 'pagu' => 2_500_000], ['activity_id' => $kegiatan, 'sumber_dana' => 'DIPA', 'pagu' => 6_000_000]]);
+
+        $this->assertSame(
+            [['DIPA', 'DIPA', 1], ['Komite', 'Komite', 2]],
+            DB::table('rab_per_sumber')->where('activity_id', $kegiatan)->orderBy('urutan_sumber')->get()->map(fn ($r) => [$r->sumber_dana, $r->nama_sumber, $r->urutan_sumber])->all(),
+        );
+    }
 }

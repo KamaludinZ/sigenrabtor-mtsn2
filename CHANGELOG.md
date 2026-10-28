@@ -1,6 +1,7 @@
 # Catatan Perubahan
 
 ## Belum dirilis
+- Fondasi backend: rangkuman RAB per sumber dana di database kini membawa nama dan urutan baku sumber dana dari tabel sumber dana, sehingga laporan selalu menampilkan DIPA lalu Komite.
 - Fondasi backend: **skema Data Pagu** — nama kegiatan beserta pagu DIPA/Komite per tahun anggaran tersimpan di database dengan nama yang tidak boleh ganda dalam satu tahun (tanpa membedakan huruf besar/kecil dan spasi), pagu per sumber dana yang selalu lebih dari Rp0, dan tautan kegiatan ke data pagunya yang otomatis dilepas bila data pagu dihapus.
 - Fondasi backend: **skema sumber dana** — daftar sumber dana (DIPA dan Komite, beserta keterangan dan urutan tampil) kini tersimpan sebagai tabel rujukan di database, dan setiap RAB merujuk sumber dananya sehingga sumber dana yang tidak dikenal tidak bisa tersimpan dan sumber dana yang masih dipakai tidak bisa terhapus.
 - RAB: setiap kali menambah, mengubah, menyalin, menghapus (atau mengurungkannya), maupun memindah item mengubah total RAB sumber dana yang punya termin, kini langsung muncul pemberitahuan — mis. "Total RAB Komite kini Rp10.150.000; termin kurang Rp150.000 dari total RAB — sesuaikan di Termin pembayaran." — atau konfirmasi bahwa termin kembali sama dengan total RAB. Termin tidak diubah otomatis.
