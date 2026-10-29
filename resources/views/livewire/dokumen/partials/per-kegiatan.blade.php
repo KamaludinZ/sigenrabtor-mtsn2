@@ -52,6 +52,7 @@
                                 </p>
                                 <p class="mt-0.5 truncate font-mono text-[11px] text-stone-500" title="{{ $t['nama_berkas'] }}">{!! \App\Support\Dokumen\RiwayatDokumen::sorot($t['nama_berkas'], $cari) !!}</p>
                                 <p class="mt-0.5 text-xs text-stone-500">{{ $waktu($t['dibuat_pada']) }} · {{ $t['label_asal'] }} oleh {{ $t['dibuat_oleh'] }}@if ($t['ukuran_teks']) · {{ $t['ukuran_teks'] }}@endif</p>
+                                <x-dokumen.aksi-riwayat :id="$t['id']" class="-ml-2 mt-1" />
                                 @if ($d['lebih_baru'] ?? null)
                                     <p class="mt-1 inline-flex items-start gap-1 rounded-md bg-gold-50 px-2 py-1 text-xs text-gold-900 ring-1 ring-gold-200" data-testid="versi-lebih-baru" data-versi="{{ $d['lebih_baru']['versi'] }}">
                                         <x-ui.icon name="info" class="mt-0.5 size-3.5 shrink-0" />
@@ -69,6 +70,7 @@
                                                 <li class="text-xs text-stone-600" data-testid="versi-sebelumnya" data-versi="{{ $lama['versi'] }}" data-id="{{ $lama['id'] }}">
                                                     <span class="font-semibold text-stone-800">v{{ $lama['versi'] }}</span> · {{ $waktu($lama['dibuat_pada']) }} · {{ $lama['label_asal'] }} · {{ $lama['label_status'] }}@if ($lama['bertanda_draf']) <span class="font-bold text-red-700">DRAF</span>@endif
                                                     <span class="block truncate font-mono text-[11px] text-stone-400">{{ $lama['nama_berkas'] }}</span>
+                                                    <x-dokumen.aksi-riwayat :id="$lama['id']" ringkas class="-ml-2" />
                                                 </li>
                                             @endforeach
                                         </ol>

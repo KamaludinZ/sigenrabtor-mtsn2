@@ -91,13 +91,14 @@ final class DuplikatKegiatan
 
     /**
      * Salin satu kegiatan menjadi draf tahun aktif: data kegiatan (rencana()), rincian & termin RAB per sumber dana,
-     * matrik & jadwal. Mengembalikan id draf baru beserta catatannya.
+     * matrik & jadwal. Mengembalikan id draf baru beserta catatannya. `$keterangan` = catatan entri riwayat `dibuat`
+     * (bawaan "Diduplikat dari TA …"; salinan dokumen di tahun yang sama memakai keterangannya sendiri).
      *
      * @param  array<string, mixed>  $kegiatan
      * @param  array{name: string, role: string}  $pengguna
      * @return array{id: int, nama: string, catatan: list<array{jenis: string, teks: string}>}
      */
-    public static function jalankan(array $kegiatan, array $pengguna): array
+    public static function jalankan(array $kegiatan, array $pengguna, ?string $keterangan = null): array
     {
         ['data' => $data, 'catatan' => $catatan] = self::rencana($kegiatan);
         $sumberId = (int) $kegiatan['id'];
@@ -105,7 +106,7 @@ final class DuplikatKegiatan
 
         $id = app(KegiatanRepository::class)->simpan($data + [
             'status' => 'draf',
-            'riwayat_status' => [RiwayatStatus::entri('dibuat', StatusKegiatan::Draf, $pengguna, 'Diduplikat dari TA '.TahunKegiatan::dari($kegiatan).'.')],
+            'riwayat_status' => [RiwayatStatus::entri('dibuat', StatusKegiatan::Draf, $pengguna, $keterangan ?? 'Diduplikat dari TA '.TahunKegiatan::dari($kegiatan).'.')],
             'duplikat_dari' => ['id' => $sumberId, 'tahun' => TahunKegiatan::dari($kegiatan)],
         ]);
 

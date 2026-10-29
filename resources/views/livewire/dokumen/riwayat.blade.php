@@ -245,14 +245,14 @@
                     {{-- Layar lebar: tabel --}}
                     <div class="hidden lg:block">
                         <table class="w-full table-fixed text-left text-sm">
-                            <colgroup><col class="w-[34%]"><col class="w-[26%]"><col class="w-[14%]"><col class="w-[14%]"><col class="w-[12%]"></colgroup>
+                            <colgroup><col class="w-[32%]"><col class="w-[24%]"><col class="w-[13%]"><col class="w-[15%]"><col class="w-[16%]"></colgroup>
                             <thead class="border-b border-stone-100 text-xs font-semibold text-stone-500">
                                 <tr>
                                     <th scope="col" class="px-5 py-2.5">Dokumen</th>
                                     <th scope="col" class="px-3 py-2.5">Kegiatan</th>
                                     <th scope="col" class="px-3 py-2.5">Status saat itu</th>
                                     <th scope="col" class="px-3 py-2.5">Dibuat</th>
-                                    <th scope="col" class="px-3 py-2.5 text-right">Berkas</th>
+                                    <th scope="col" class="px-3 py-2.5 text-right">Berkas &amp; aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-stone-100">
@@ -293,7 +293,10 @@
                                             <p class="whitespace-nowrap">{{ $waktu($d['dibuat_pada']) }}</p>
                                             <p class="mt-0.5 text-stone-500">{{ $d['label_asal'] }} oleh {{ $d['dibuat_oleh'] }}</p>
                                         </td>
-                                        <td class="px-3 py-3 text-right align-top text-xs text-stone-500 tabular-nums">{{ $d['ukuran_teks'] ?? '—' }}</td>
+                                        <td class="px-3 py-3 text-right align-top text-xs text-stone-500 tabular-nums">
+                                            {{ $d['ukuran_teks'] ?? '—' }}
+                                            <x-dokumen.aksi-riwayat :id="$d['id']" class="-mr-2 mt-1.5 justify-end" />
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -322,6 +325,7 @@
                                         </p>
                                         <p class="mt-1.5 text-xs text-stone-500">{{ $waktu($d['dibuat_pada']) }} · {{ $d['label_asal'] }} oleh {{ $d['dibuat_oleh'] }}@if ($d['ukuran_teks']) · {{ $d['ukuran_teks'] }}@endif</p>
                                         <p class="mt-0.5 truncate font-mono text-[11px] text-stone-400">{!! RiwayatDokumen::sorot($d['nama_berkas'], $cari) !!}</p>
+                                        <x-dokumen.aksi-riwayat :id="$d['id']" class="-ml-2 mt-1.5" />
                                     </div>
                                 </div>
                             </li>
@@ -340,5 +344,12 @@
                 </button>
             </div>
         @endif
+    @endif
+
+    @if ($dilihat !== null && $this->rincian)
+        @include('livewire.dokumen.partials.modal-lihat', ['rincian' => $this->rincian])
+    @endif
+    @if ($diduplikat !== null && $this->rencanaDuplikat)
+        @include('livewire.dokumen.partials.modal-duplikat', ['rencana' => $this->rencanaDuplikat, 'hasil' => $hasilDuplikat])
     @endif
 </div>

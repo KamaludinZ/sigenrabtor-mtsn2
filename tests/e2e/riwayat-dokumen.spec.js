@@ -166,4 +166,54 @@ test.describe('Riwayat Dokumen', () => {
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
+
+    test('aksi lihat & duplikat: modal rincian, versi, buka ulang, rencana salinan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/dokumen?tampilan=kronologis');
+        const mobile = testInfo.project.name === 'mobile';
+        const baris = page.locator(`[data-testid="${mobile ? 'kartu-riwayat' : 'dokumen-riwayat'}"][data-id="rd-2026-1"]`);
+        await baris.getByTestId('lihat-dokumen').click();
+        const lihat = page.getByTestId('modal-lihat-dokumen');
+        await expect(lihat).toHaveAttribute('data-id', 'rd-2026-1');
+        await expect(lihat.getByTestId('lihat-keadaan-versi')).toHaveText('Versi terbaru');
+        await expect(lihat.getByTestId('keadaan-sekarang')).toContainText('Draf');
+        await expect(lihat.getByTestId('cetak-ulang')).toHaveAttribute('href', /\/kegiatan\/2\/cetak\?sumber=DIPA&dokumen=rab/);
+        await expect(lihat.getByTestId('unduh-ulang-excel')).toBeVisible();
+        await expect(lihat.getByTestId('unduh-ulang-word')).toHaveCount(0);
+        await page.screenshot({ path: `storage/playwright/shots/riwayat-modal-lihat-${testInfo.project.name}.png` });
+        await page.keyboard.press('Escape');
+        await expect(lihat).toBeHidden();
+
+        await page.goto('/dokumen');
+        const lomba = page.getByTestId('kegiatan-riwayat').filter({ hasText: 'Lomba Kreativitas Siswa Akhir Tahun' });
+        await lomba.getByTestId('versi-lama').locator('summary').click();
+        await lomba.getByTestId('versi-sebelumnya').getByTestId('lihat-dokumen').click();
+        await expect(lihat).toHaveAttribute('data-id', 'rd-2025-4');
+        await expect(lihat.getByTestId('lihat-keadaan-versi')).toHaveText('Versi lama');
+        await expect(lihat.getByTestId('alasan-buka')).toContainText('tidak lagi tersimpan');
+        await lihat.getByTestId('versi-dokumen').locator('[data-id="rd-2025-5"]').getByTestId('lihat-versi').click();
+        await expect(lihat).toHaveAttribute('data-id', 'rd-2025-5');
+        await lihat.getByTestId('lihat-ke-duplikat').click();
+        const duplikat = page.getByTestId('modal-duplikat-dokumen');
+        await expect(lihat).toBeHidden();
+        await expect(duplikat).toHaveAttribute('data-mode', 'tidak');
+        await expect(duplikat.getByTestId('duplikat-tidak-bisa')).toContainText('tidak lagi tersimpan');
+        await duplikat.getByTestId('tutup-duplikat-dokumen').click();
+        await expect(duplikat).toBeHidden();
+
+        await page.getByTestId('kegiatan-riwayat').filter({ hasText: 'Supervisi Akademik' }).locator('[data-testid="duplikat-dokumen"][data-id="rd-2026-1"]').click();
+        await expect(duplikat).toHaveAttribute('data-mode', 'tahun_ini');
+        const nama = duplikat.getByTestId('nama-duplikat');
+        await expect(nama).toHaveValue('Supervisi Akademik dan Refleksi Pembelajaran (salinan)');
+        await expect(nama).toBeFocused();
+        await expect(duplikat.getByTestId('perubahan-duplikat')).toContainText('Status');
+        await nama.fill('Review RKJM dan Penyusunan RKTM');
+        await nama.blur();
+        await expect(duplikat.getByTestId('galat-nama-duplikat')).toContainText('Sudah ada kegiatan bernama');
+        await page.screenshot({ path: `storage/playwright/shots/riwayat-modal-duplikat-${testInfo.project.name}.png` });
+        await page.keyboard.press('Escape');
+        await expect(duplikat).toBeHidden();
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+    });
 });

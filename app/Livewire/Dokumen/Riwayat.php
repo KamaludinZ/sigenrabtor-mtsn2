@@ -2,14 +2,19 @@
 
 namespace App\Livewire\Dokumen;
 
+use App\Support\Dokumen\AksiRiwayatDokumen;
 use App\Support\Dokumen\PenelusuranRiwayat;
 use App\Support\Dokumen\RiwayatDokumen;
 use App\Support\Dokumen\RiwayatKosong;
 use App\Support\Stub\StubData;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * Halaman Riwayat Dokumen (PRD §7, F28; `/dokumen`, rute `dokumen.index`, semua pengguna): semua berkas KAK/TOR, RAB, dan
@@ -24,7 +29,9 @@ use Livewire\Component;
  * (RiwayatDokumen::URUT). Daftar dibatasi `$batas` (PER_HALAMAN, "Tampilkan lebih banyak"); berganti tampilan/urutan/
  * kriteria mengembalikan batasnya. Keadaan kosong: tanpa catatan sama sekali = cara dokumen tercatat + dokumen tahun aktif
  * yang bisa dicetak / tautan membuat kegiatan (RiwayatKosong, `kosong`); tanpa hasil = saran melepas satu kriteria
- * beserta jumlah dokumennya (PenelusuranRiwayat::saranLonggar).
+ * beserta jumlah dokumennya (PenelusuranRiwayat::saranLonggar). Aksi per dokumen (AksiRiwayatDokumen): *Lihat*
+ * `bukaLihat($id)` → modal rincian, versi lain, keadaan sekarang & buka ulang (`rincian`); *Duplikat* `bukaDuplikat($id)` →
+ * modal rencana salinan (`rencanaDuplikat`, nama `namaDuplikat`) → `duplikat()` → `hasilDuplikat` (tautan draf baru).
  */
 #[Layout('layouts.app')]
 class Riwayat extends Component
@@ -58,6 +65,21 @@ class Riwayat extends Component
 
     /** Jumlah kegiatan (tampilan per kegiatan) atau dokumen (kronologis) yang ditampilkan. */
     public int $batas = self::PER_HALAMAN;
+
+    /** Id catatan di modal Lihat. */
+    #[Locked]
+    public ?string $dilihat = null;
+
+    /** Id catatan di modal Duplikat. */
+    #[Locked]
+    public ?string $diduplikat = null;
+
+    /** Nama kegiatan baru (salinan di tahun yang sama). */
+    public string $namaDuplikat = '';
+
+    /** @var array<string, mixed>|null Hasil duplikat terakhir (tautan draf baru). */
+    #[Locked]
+    public ?array $hasilDuplikat = null;
 
     public function mount(): void
     {
@@ -145,6 +167,96 @@ class Riwayat extends Component
     public function isi(): array
     {
         return $this->penelusuran->halaman($this->tampilan, $this->urut, $this->batas);
+    }
+
+    public function bukaLihat(string $id): void
+    {
+        if ($this->bisaDibuka($id)) {
+            $this->dilihat = $id;
+        }
+    }
+
+    public function tutupLihat(): void
+    {
+        $this->dilihat = null;
+    }
+
+    /** @return array<string, mixed>|null Rincian catatan di modal Lihat (AksiRiwayatDokumen::lihat). */
+    #[Computed]
+    public function rincian(): ?array
+    {
+        return $this->dilihat === null ? null : AksiRiwayatDokumen::lihat($this->dilihat, StubData::currentUser());
+    }
+
+    public function bukaDuplikat(string $id): void
+    {
+        if (! $this->bisaDibuka($id)) {
+            return;
+        }
+        $this->dilihat = null;
+        $this->diduplikat = $id;
+        $this->hasilDuplikat = null;
+        $this->resetErrorBag();
+        unset($this->rencanaDuplikat);
+        $this->namaDuplikat = $this->rencanaDuplikat['nama'];
+    }
+
+    /** Nama salinan diperiksa saat isian ditinggalkan (wajib, panjang, unik di tahun aktif). */
+    public function updatedNamaDuplikat(): void
+    {
+        $this->resetErrorBag('namaDuplikat');
+        if (($this->rencanaDuplikat['mode'] ?? null) === 'tahun_ini') {
+            $galat = AksiRiwayatDokumen::galatNama(trim((string) preg_replace('/\s+/u', ' ', $this->namaDuplikat)), $this->rencanaDuplikat['tahun']);
+            if ($galat !== null) {
+                $this->addError('namaDuplikat', $galat);
+            }
+        }
+    }
+
+    public function tutupDuplikat(): void
+    {
+        $this->reset('diduplikat', 'hasilDuplikat', 'namaDuplikat');
+        $this->resetErrorBag();
+    }
+
+    /** @return array<string, mixed>|null Rencana salinan di modal Duplikat (AksiRiwayatDokumen::rencanaDuplikat). */
+    #[Computed]
+    public function rencanaDuplikat(): ?array
+    {
+        return $this->diduplikat === null ? null : AksiRiwayatDokumen::rencanaDuplikat($this->diduplikat, StubData::currentUser());
+    }
+
+    public function duplikat(): void
+    {
+        if ($this->diduplikat === null || $this->hasilDuplikat !== null) {
+            return;
+        }
+        $this->resetErrorBag();
+        try {
+            $this->hasilDuplikat = AksiRiwayatDokumen::duplikat($this->diduplikat, $this->namaDuplikat, StubData::currentUser());
+            $this->dispatch('notify', message: $this->hasilDuplikat['pesan'], type: 'success');
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kunci => $pesan) {
+                $this->addError($kunci === 'nama' ? 'namaDuplikat' : 'duplikat', $pesan[0]);
+            }
+            unset($this->rencanaDuplikat);
+        } catch (AuthorizationException|RuntimeException $e) {
+            $this->addError('duplikat', $e->getMessage());
+        }
+    }
+
+    /** Catatan ada & dalam cakupan akun; selain itu notifikasi galat. */
+    private function bisaDibuka(string $id): bool
+    {
+        try {
+            AksiRiwayatDokumen::temukan($id, StubData::currentUser());
+
+            return true;
+        } catch (AuthorizationException|RuntimeException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return false;
+        }
     }
 
     /** @return array<string, mixed> Langkah berikutnya selama belum ada dokumen tercatat (RiwayatKosong). */
