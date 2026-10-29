@@ -192,9 +192,7 @@
                                 </a>
                                 <x-dokumen.tombol-unduh-pdf :url="route('kegiatan.rab.pdf', ['kegiatan' => $b['kegiatan_id'], 'sumber' => $b['sumber']])" :nama="$dokumen['cetak']->namaBerkas('RAB', 'pdf')" label="RAB PDF" testid="unduh-pdf-terpilih" wire:key="unduh-rab-{{ $b['kunci'] }}" />
                             @endif
-                            <span class="btn-secondary cursor-not-allowed opacity-60" aria-disabled="true" data-testid="unduh-word-terpilih">
-                                <x-ui.icon name="file-text" class="size-4" /> Word <x-ui.segera />
-                            </span>
+                            <x-dokumen.tombol-unduh-word :kegiatan-id="$b['kegiatan_id']" :sumber="$b['sumber']" :nama="CetakDokumen::namaBerkas($dokumen['cetak'], ['cover', 'kak'])" testid="unduh-word-terpilih" wire:key="unduh-word-{{ $b['kunci'] }}" />
                         </div>
                     </div>
 

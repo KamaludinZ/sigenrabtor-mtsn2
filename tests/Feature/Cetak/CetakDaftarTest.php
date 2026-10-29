@@ -52,6 +52,7 @@ class CetakDaftarTest extends TestCase
         $this->assertStringContainsString('otomatis=1', $halaman->instance()->dokumen['tautan_cetak']);
         $halaman->call('aturLembar', 'kak')->call('aturLembar', 'rab')->assertSet('lembar', 'rab', 'Lembar terakhir tidak bisa dilepas.');
         $halaman->call('aturLembar', 'cover')->call('aturLembar', 'kak')->assertSet('lembar', '');
+        $halaman->assertSee('data-testid="unduh-word-terpilih"', false)->assertSee('unduhWord(', false)->assertSee('dokumen=cover%2Ckak', false);
         $halaman->assertSee('data-testid="unduh-excel-terpilih"', false)->assertSee(route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'DIPA']), false);
 
         $halaman->call('pilih', '99|DIPA')->assertSet('pilihan', '2|DIPA', 'Dokumen di luar daftar diabaikan.');

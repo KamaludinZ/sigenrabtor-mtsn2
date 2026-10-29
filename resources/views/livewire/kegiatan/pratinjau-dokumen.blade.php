@@ -78,11 +78,10 @@
                         <x-ui.icon name="printer" class="mt-0.5 size-4 shrink-0 text-brand-700" />
                         <span><span class="block font-semibold text-stone-900">Set dokumen — PDF</span><span class="block text-xs text-stone-500">Cover, KAK/TOR, RAB lewat Cetak › Simpan sebagai PDF</span></span>
                     </a>
-                    <p class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-stone-400">
-                        <x-ui.icon name="download" class="mt-0.5 size-4 shrink-0" />
-                        <span><span class="block font-semibold">KAK/TOR — Word (.docx)</span><span class="block text-xs">Dari master template</span></span>
-                        <x-ui.segera />
-                    </p>
+                    <div class="px-2.5 py-2" data-testid="unduh-word-kak">
+                        <p class="text-xs text-stone-500">KAK/TOR (cover & isi) sebagai Word (.docx) untuk disunting lebih lanjut:</p>
+                        <x-dokumen.tombol-unduh-word class="mt-1.5" :kegiatan-id="$kegiatanId" :sumber="$sumberAktif" :nama="\App\Support\Dokumen\CetakDokumen::namaBerkas($this->statusCetak, ['cover', 'kak'])" label="Unduh Word KAK/TOR" testid="unduh-word" wire:key="unduh-word-{{ $sumberAktif }}" />
+                    </div>
                 </div>
             </div>
             {{-- Cetak: halaman cetak tanpa bingkai aplikasi (CetakDokumen), lembar terpilih, cap DRAF tiap halaman. --}}

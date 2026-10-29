@@ -1,7 +1,8 @@
 {{--
     Tombol aksi Cetak & Unduh satu kegiatan (PRD §6 Cetak & Unduh, F12/F16): menu per sumber dana — cetak/simpan PDF set
-    dokumen (halaman cetak `kegiatan.cetak`, dialog cetak otomatis, tab baru), RAB Excel/PDF selama RAB berisi, Word
-    (Segera) — ditambah pratinjau dokumen dan halaman Cetak & Unduh untuk mengatur lembar. `sumber` = daftar {sumber, item}
+    dokumen (halaman cetak `kegiatan.cetak`, dialog cetak otomatis, tab baru), KAK/TOR Word (.docx) disusun di peramban
+    (Alpine `unduhWord`), RAB Excel/PDF selama RAB berisi — ditambah pratinjau dokumen dan halaman Cetak & Unduh untuk
+    mengatur lembar. `sumber` = daftar {sumber, item}
     (null = dibaca dari data tersimpan kegiatan); kegiatan tanpa sumber dana hanya mencetak cover + KAK/TOR.
     `ringkas` = tombol kecil untuk baris tabel; `kunci` membedakan id menu bila satu kegiatan tampil dua kali di halaman.
 --}}
@@ -52,6 +53,13 @@
                     <x-ui.icon name="printer" class="size-4 text-brand-700" />
                     <span><span class="block font-semibold text-stone-900">Cetak / Simpan PDF</span><span class="block text-xs text-stone-500">{{ $s['sumber'] ? 'Cover, KAK/TOR, RAB' : 'Cover, KAK/TOR' }}</span></span>
                 </a>
+                <button type="button" role="menuitem" x-data="unduhWord(@js(route('kegiatan.pratinjau.data', array_filter(['kegiatan' => $kegiatanId, 'sumber' => $s['sumber'], 'dokumen' => 'cover,kak']))), 'KAK-TOR.pdf')" x-on:click="unduh()" x-bind:disabled="memuat"
+                        class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-stone-700 hover:bg-stone-100 disabled:opacity-60" data-testid="aksi-word-{{ $kunci }}" x-bind:data-keadaan="keadaan">
+                    <x-ui.icon name="file-text" class="size-4 text-stone-400" />
+                    <span x-show="keadaan !== 'memuat' && keadaan !== 'gagal'">KAK/TOR — Word (.docx)</span>
+                    <span x-cloak x-show="keadaan === 'memuat'">Menyusun Word…</span>
+                    <span x-cloak x-show="keadaan === 'gagal'" class="text-red-700" x-text="pesan + ' Klik untuk mencoba lagi.'"></span>
+                </button>
                 @if ($s['sumber'] && $s['item'] > 0)
                     <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $kegiatanId, 'sumber' => $s['sumber']]) }}" role="menuitem" x-on:click="buka = false"
                        class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-stone-700 hover:bg-stone-100" data-testid="aksi-rab-excel-{{ $kunci }}">
@@ -67,9 +75,6 @@
             </div>
         @endforeach
         <div class="border-t border-stone-100 py-1">
-            <span class="flex cursor-not-allowed items-center gap-2 rounded-lg px-2.5 py-2 text-stone-400" role="menuitem" aria-disabled="true">
-                <x-ui.icon name="file-text" class="size-4" /> Word (.docx) <x-ui.segera class="ml-auto" />
-            </span>
             <a href="{{ route('kegiatan.pratinjau', array_filter(['kegiatan' => $kegiatanId, 'sumber' => $pertama])) }}" wire:navigate role="menuitem"
                class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-stone-700 hover:bg-stone-100" data-testid="aksi-pratinjau">
                 <x-ui.icon name="eye" class="size-4 text-stone-400" /> Pratinjau dokumen

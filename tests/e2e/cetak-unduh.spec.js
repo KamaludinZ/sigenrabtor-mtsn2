@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs';
+import JSZip from 'jszip';
 
 test.describe('Cetak & Unduh', () => {
     test('daftar dokumen, pilih dokumen & lembar, buka halaman cetak', async ({ page, context }, testInfo) => {
@@ -146,5 +148,29 @@ test.describe('Cetak & Unduh', () => {
         await page.getByTestId('buka-unduh').click();
         const [pratinjau] = await Promise.all([page.waitForEvent('download'), page.getByTestId('panel-unduh').getByTestId('unduh-pdf-set').click()]);
         expect(pratinjau.suggestedFilename()).toMatch(/^KAK-TOR_RAB_.*_KOMITE_2026(_DRAF)?\.pdf$/);
+    });
+
+    test('unduh Word KAK/TOR disusun di peramban', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/cetak?pilih=2%7CDIPA');
+        const panel = page.getByTestId('panel-cetak-terpilih');
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), panel.getByTestId('unduh-word-terpilih').click()]);
+        expect(unduhan.suggestedFilename()).toMatch(/^KAK-TOR_Supervisi_.*_DIPA_2026(_DRAF)?\.docx$/);
+        const zip = await JSZip.loadAsync(fs.readFileSync(await unduhan.path()));
+        const isi = await zip.file('word/document.xml').async('string');
+        for (const teks of ['KERANGKA ACUAN KERJA', '1. LATAR BELAKANG', '9. LEMBAR PENGESAHAN', 'Menyetujui,', 'Supervisi Akademik']) {
+            expect(isi).toContain(teks);
+        }
+        const kaki = Object.keys(zip.files).filter((nama) => nama.startsWith('word/footer'));
+        expect(kaki.length).toBeGreaterThan(0);
+        expect(await zip.file(kaki[0]).async('string')).toContain('Halaman');
+        await expect(panel.getByTestId('unduh-word-terpilih')).toHaveAttribute('data-keadaan', /selesai|siap/);
+
+        // Menu Cetak di tabel Data Kegiatan: Word per sumber dana.
+        await page.goto('/kegiatan');
+        const aksi = page.getByTestId('tabel-kegiatan').locator('[data-testid="aksi-cetak"][data-kegiatan="1"]');
+        await aksi.getByTestId('buka-aksi-cetak').click();
+        const [dariMenu] = await Promise.all([page.waitForEvent('download'), aksi.getByTestId('aksi-word-Komite').click()]);
+        expect(dariMenu.suggestedFilename()).toMatch(/^KAK-TOR_.*_KOMITE_2026(_DRAF)?\.docx$/);
     });
 });

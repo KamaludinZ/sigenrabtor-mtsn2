@@ -30,6 +30,19 @@ export function namaDariRespons(respons) {
     return cocok ? decodeURIComponent(cocok[1]) : null;
 }
 
+// Simpan blob sebagai berkas unduhan bernama `nama` (tautan sementara, alamat objek dilepas sesudahnya).
+export function simpanBerkas(berkas, nama) {
+    const alamat = URL.createObjectURL(berkas);
+    const tautan = document.createElement('a');
+    tautan.href = alamat;
+    tautan.download = nama;
+    tautan.rel = 'noopener';
+    document.body.appendChild(tautan);
+    tautan.click();
+    tautan.remove();
+    window.setTimeout(() => URL.revokeObjectURL(alamat), 10000);
+}
+
 export default function unduhPdf(url, nama, tautanCetak = null) {
     return {
         keadaan: 'siap', // siap | memuat | selesai | gagal
@@ -110,15 +123,7 @@ export default function unduhPdf(url, nama, tautanCetak = null) {
         },
 
         simpan(berkas, namaBerkas) {
-            const alamat = URL.createObjectURL(berkas);
-            const tautan = document.createElement('a');
-            tautan.href = alamat;
-            tautan.download = namaBerkas;
-            tautan.rel = 'noopener';
-            document.body.appendChild(tautan);
-            tautan.click();
-            tautan.remove();
-            window.setTimeout(() => URL.revokeObjectURL(alamat), 10000);
+            simpanBerkas(berkas, namaBerkas);
         },
 
         batal() {

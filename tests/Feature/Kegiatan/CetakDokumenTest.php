@@ -82,7 +82,9 @@ class CetakDokumenTest extends TestCase
         $this->assertStringContainsString('href="'.route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'DIPA']).'"', $html);
         $this->assertStringContainsString('href="'.route('kegiatan.rab.pdf', ['kegiatan' => 2, 'sumber' => 'DIPA']).'"', $html);
         $this->assertStringContainsString('href="'.e(CetakDokumen::tautan(2, 'DIPA', [], true)).'" target="_blank"', $html);
-        $this->assertMatchesRegularExpression('/KAK\/TOR — Word \(\.docx\).*?SEGERA/is', $html);
+        $this->assertStringContainsString('data-testid="unduh-word-kak"', $html, 'Word KAK/TOR disusun di peramban.');
+        $this->assertStringContainsString('dokumen=cover%2Ckak', $html);
+        $this->assertStringContainsString('data-testid="unduh-pdf-set"', $html, 'PDF set dokumen diunduh langsung.');
 
         // RAB tanpa rincian: unduh RAB belum tersedia.
         $id = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Rapat Berdana', 'leading' => '1.6', 'user_id' => 1, 'tahun_anggaran' => 2026, 'sumber_dana' => [['sumber' => 'DIPA', 'pagu' => 1_000_000]]]);
