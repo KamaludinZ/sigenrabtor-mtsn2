@@ -197,4 +197,54 @@ test.describe('Cetak & Unduh', () => {
         const [dariMenu] = await Promise.all([page.waitForEvent('download'), tab.getByTestId('aksi-rab-excel-Komite').click()]);
         expect(dariMenu.suggestedFilename()).toMatch(/^RAB_.*_KOMITE_2026(_DRAF)?\.xlsx$/);
     });
+
+    test('penanganan galat & notifikasi unduhan', async ({ page, context }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/cetak?pilih=2%7CDIPA');
+        const panel = page.getByTestId('panel-cetak-terpilih');
+        const toast = page.getByTestId('toast');
+
+        expect(await page.evaluate(() => [401, 419, 403, 404, 429, 500, 504].map((s) => window.SIRABTOR.jenisGalatUnduhan(s))))
+            .toEqual(['sesi', 'sesi', 'akses', 'tidak_ada', 'sibuk', 'server', 'waktu_habis']);
+
+        // Luring: pesan jelas di tempat + notifikasi galat; begitu daring lagi, Coba lagi berhasil.
+        await context.setOffline(true);
+        await panel.getByTestId('unduh-pdf-set').click();
+        const gagalPdf = panel.getByTestId('unduh-pdf-set-gagal');
+        await expect(gagalPdf).toHaveAttribute('data-galat', 'luring');
+        await expect(gagalPdf).toContainText('Koneksi internet terputus');
+        await expect(toast.filter({ hasText: 'Unduhan PDF gagal' })).toHaveAttribute('data-jenis', 'error');
+        await context.setOffline(false);
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), gagalPdf.getByRole('button', { name: 'Coba lagi' }).click()]);
+        await expect(toast.filter({ hasText: `${unduhan.suggestedFilename()} diunduh` })).toHaveAttribute('data-jenis', 'success');
+        await expect(gagalPdf).toBeHidden();
+
+        // Sesi berakhir (419): pesan baku + Muat ulang halaman.
+        await page.route('**/kegiatan/2/pratinjau/data**', (rute) => rute.fulfill({ status: 419, contentType: 'application/json', body: JSON.stringify({ message: 'CSRF token mismatch.' }) }));
+        await panel.getByTestId('unduh-word-terpilih').click();
+        const gagalWord = panel.getByTestId('unduh-word-terpilih-gagal');
+        await expect(gagalWord).toHaveAttribute('data-galat', 'sesi');
+        await expect(gagalWord).toContainText('Sesi Anda sudah berakhir');
+        await expect(gagalWord.getByTestId('unduh-word-terpilih-muat-ulang')).toBeVisible();
+        await page.unroute('**/kegiatan/2/pratinjau/data**');
+
+        // Pustaka penyusun gagal dimuat (mis. sesudah aplikasi diperbarui).
+        await page.route('**/build/assets/excel-rab-*.js', (rute) => rute.abort());
+        await panel.getByTestId('unduh-excel-terpilih').click();
+        const gagalExcel = panel.getByTestId('unduh-excel-terpilih-gagal');
+        await expect(gagalExcel).toHaveAttribute('data-galat', 'pustaka');
+        await expect(gagalExcel.getByTestId('unduh-excel-terpilih-muat-ulang')).toBeVisible();
+        await expect(gagalExcel.getByRole('link', { name: 'Unduh dari server' })).toHaveAttribute('href', /\/kegiatan\/2\/rab\/excel\?sumber=DIPA/);
+
+        // Batal di tengah unduhan: tanpa pesan galat, notifikasi info.
+        await page.route('**/kegiatan/2/rab/pdf**', async (rute) => {
+            await new Promise((selesai) => setTimeout(selesai, 2500));
+            await rute.fulfill({ status: 200, contentType: 'application/pdf', body: '%PDF-1.4' }).catch(() => {});
+        });
+        await panel.getByTestId('unduh-pdf-terpilih').click();
+        await panel.getByTestId('unduh-pdf-terpilih-batal').click();
+        await expect(panel.getByTestId('unduh-pdf-terpilih')).toHaveAttribute('data-keadaan', 'siap');
+        await expect(panel.getByTestId('unduh-pdf-terpilih-gagal')).toBeHidden();
+        await expect(toast.filter({ hasText: 'Unduhan PDF dibatalkan.' })).toHaveAttribute('data-jenis', 'info');
+    });
 });

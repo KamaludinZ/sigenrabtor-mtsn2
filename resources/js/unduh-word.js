@@ -2,6 +2,7 @@
 // diambil dari `kegiatan.pratinjau.data` (lembar cover & KAK/TOR), lalu penyusun `word-kak.js` — dimuat terpisah saat
 // tombol pertama kali ditekan — membuat berkasnya; nama = nama berkas baku dengan akhiran .docx. Gagal → pesan + Coba lagi.
 import { simpanBerkas, ukuranBerkas } from './unduh-pdf';
+import { GalatUnduhan, ambil, beritahu, laporkan, muatPustaka } from './unduhan';
 
 // "KAK-TOR_…_2026_DRAF.pdf" → "KAK-TOR_…_2026_DRAF.docx".
 export function namaWord(nama) {
@@ -12,6 +13,7 @@ export default function unduhWord(urlData, nama) {
     return {
         keadaan: 'siap', // siap | memuat | selesai | gagal
         pesan: '',
+        jenisGalat: null,
 
         get memuat() {
             return this.keadaan === 'memuat';
@@ -23,28 +25,27 @@ export default function unduhWord(urlData, nama) {
             }
             this.keadaan = 'memuat';
             this.pesan = '';
+            this.jenisGalat = null;
             try {
-                const [penyusun, respons] = await Promise.all([
-                    import('./word-kak'),
-                    fetch(urlData, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' }),
-                ]);
-                if (!respons.ok) {
-                    const isi = await respons.json().catch(() => ({}));
-                    throw new Error(isi.message ?? isi.pesan ?? (respons.status === 403 ? 'Anda tidak berhak mengunduh dokumen ini.' : 'Data dokumen belum bisa dimuat — coba lagi.'));
-                }
+                const [penyusun, respons] = await Promise.all([muatPustaka(() => import('./word-kak')), ambil(urlData)]);
                 const data = await respons.json();
-                const berkas = await penyusun.susunWord(data);
-                simpanBerkas(berkas, namaWord(data.cetak?.nama_berkas ?? nama));
+                const berkas = await penyusun.susunWord(data).catch(() => {
+                    throw new GalatUnduhan('susun');
+                });
+                const namaBerkas = namaWord(data.cetak?.nama_berkas ?? nama);
+                simpanBerkas(berkas, namaBerkas);
                 this.keadaan = 'selesai';
-                window.dispatchEvent(new CustomEvent('notify', { detail: { message: `Word KAK/TOR diunduh (${ukuranBerkas(berkas.size)}).`, type: 'success' } }));
+                beritahu(`${namaBerkas} diunduh (${ukuranBerkas(berkas.size)}).`);
                 window.setTimeout(() => {
                     if (this.keadaan === 'selesai') {
                         this.keadaan = 'siap';
                     }
                 }, 2500);
             } catch (galat) {
+                const g = laporkan(galat, 'Unduhan Word');
                 this.keadaan = 'gagal';
-                this.pesan = galat.message || 'Word gagal disusun.';
+                this.pesan = g.message;
+                this.jenisGalat = g.jenis;
             }
         },
     };

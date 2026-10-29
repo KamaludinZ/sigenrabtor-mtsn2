@@ -15,10 +15,11 @@ import jumlahTermin, { persenTermin, statusTermin } from './termin';
 import unduhPdf, { ukuranBerkas } from './unduh-pdf';
 import unduhExcel from './unduh-excel';
 import unduhWord from './unduh-word';
+import { golongkan as golongkanGalatUnduhan, jenisStatus as jenisGalatUnduhan, JENIS as PESAN_UNDUHAN } from './unduhan';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu), $ringkasanMatrik(matrik), $nip(teks), $galatNip(teks).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor, adaDrafSunting, adaSuntingKotor, ukuranBerkas };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor, adaDrafSunting, adaSuntingKotor, ukuranBerkas, golongkanGalatUnduhan, jenisGalatUnduhan, PESAN_UNDUHAN };
 
 pasangSiaranAnggaran();
 

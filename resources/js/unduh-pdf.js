@@ -1,8 +1,11 @@
-// Unduh PDF langsung dari server tanpa meninggalkan halaman (PRD §6 Cetak & Unduh): berkas diambil lewat fetch
-// (`Accept: application/pdf, application/json` — server menjawab JSON {pesan, tautan_cetak} bila gagal disusun),
+// Unduh PDF langsung dari server tanpa meninggalkan halaman (PRD §6 Cetak & Unduh): berkas diambil lewat `ambil()`
+// (unduhan.js: batas waktu, luring, `Accept: application/pdf, application/json` — server menjawab JSON {pesan,
+// tautan_cetak} bila gagal disusun),
 // kemajuan dibaca dari aliran respons (Content-Length), lalu disimpan dengan nama berkas baku dari header
 // X-Nama-Berkas/Content-Disposition (cadangan: nama dari server saat halaman dirender). Bisa dibatalkan; gagal →
 // pesan + jalan keluar lewat halaman cetak ("Simpan sebagai PDF").
+
+import { GalatUnduhan, ambil, beritahu, laporkan } from './unduhan';
 
 const KB = 1024;
 
@@ -49,6 +52,7 @@ export default function unduhPdf(url, nama, tautanCetak = null) {
         persen: null,
         diterima: '',
         pesan: '',
+        jenisGalat: null,
         tautanCetak,
         pengendali: null,
 
@@ -64,36 +68,35 @@ export default function unduhPdf(url, nama, tautanCetak = null) {
             this.persen = null;
             this.diterima = '';
             this.pesan = '';
+            this.jenisGalat = null;
             this.pengendali = new AbortController();
             try {
-                const respons = await fetch(url, {
-                    headers: { Accept: 'application/pdf, application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    credentials: 'same-origin',
-                    signal: this.pengendali.signal,
-                });
-                const jenis = respons.headers.get('Content-Type') ?? '';
-                if (!respons.ok || !jenis.includes('application/pdf')) {
-                    const isi = jenis.includes('json') ? await respons.json().catch(() => ({})) : {};
-                    this.tautanCetak = isi.tautan_cetak ?? this.tautanCetak;
-                    throw new Error(isi.pesan ?? (respons.status === 403 ? 'Anda tidak berhak mengunduh dokumen ini.' : 'PDF belum bisa disiapkan — coba lagi sebentar lagi.'));
-                }
+                const respons = await ambil(url, { accept: 'application/pdf, application/json', jenisBerkas: 'application/pdf', sinyal: this.pengendali.signal });
                 const berkas = await this.baca(respons);
-                this.simpan(berkas, namaDariRespons(respons) ?? nama);
+                if (berkas.size === 0) {
+                    throw new GalatUnduhan('berkas');
+                }
+                const namaBerkas = namaDariRespons(respons) ?? nama;
+                this.simpan(berkas, namaBerkas);
                 this.keadaan = 'selesai';
-                window.dispatchEvent(new CustomEvent('notify', { detail: { message: `PDF diunduh (${ukuranBerkas(berkas.size)}).`, type: 'success' } }));
+                beritahu(`${namaBerkas} diunduh (${ukuranBerkas(berkas.size)}).`);
                 window.setTimeout(() => {
                     if (this.keadaan === 'selesai') {
                         this.keadaan = 'siap';
                     }
                 }, 2500);
             } catch (galat) {
-                if (galat.name === 'AbortError') {
+                const g = laporkan(galat, 'Unduhan PDF');
+                if (g.jenis === 'batal') {
                     this.keadaan = 'siap';
+                    beritahu('Unduhan PDF dibatalkan.', 'info');
 
                     return;
                 }
                 this.keadaan = 'gagal';
-                this.pesan = galat.message || 'PDF gagal diunduh.';
+                this.pesan = g.message;
+                this.jenisGalat = g.jenis;
+                this.tautanCetak = g.tautanCetak ?? this.tautanCetak;
             } finally {
                 this.pengendali = null;
             }

@@ -16,10 +16,11 @@
         </button>
         <button type="button" x-cloak x-show="memuat" x-on:click="batal()" class="btn-ghost px-2 py-1 text-xs" data-testid="{{ $testid }}-batal">Batal</button>
     </div>
-    <div x-cloak x-show="keadaan === 'gagal'" role="alert" class="max-w-xs rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-800 ring-1 ring-red-200" data-testid="{{ $testid }}-gagal">
+    <div x-cloak x-show="keadaan === 'gagal'" role="alert" class="max-w-xs rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-800 ring-1 ring-red-200" data-testid="{{ $testid }}-gagal" x-bind:data-galat="jenisGalat">
         <p x-text="pesan"></p>
         <p class="mt-1 flex flex-wrap gap-x-3">
             <button type="button" x-on:click="unduh()" class="font-semibold underline underline-offset-2 hover:no-underline">Coba lagi</button>
+            <button type="button" x-show="['sesi', 'pustaka', 'tidak_ada'].includes(jenisGalat)" x-on:click="window.location.reload()" class="font-semibold underline underline-offset-2 hover:no-underline" data-testid="{{ $testid }}-muat-ulang">Muat ulang halaman</button>
             <a x-show="tautanCetak" x-bind:href="tautanCetak" target="_blank" rel="noopener" class="font-semibold underline underline-offset-2 hover:no-underline">Simpan lewat halaman cetak</a>
         </p>
     </div>

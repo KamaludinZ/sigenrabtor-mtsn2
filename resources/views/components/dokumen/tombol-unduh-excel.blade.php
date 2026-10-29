@@ -22,10 +22,11 @@
         <span x-show="! memuat">{{ $label }}</span>
         <span x-cloak x-show="memuat" aria-live="polite">Menyusun Excel…</span>
     </button>
-    <div x-cloak x-show="keadaan === 'gagal'" role="alert" @class(['max-w-xs rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-800 ring-1 ring-red-200', 'mx-2.5 mb-1' => $ringkas]) data-testid="{{ $testid }}-gagal">
+    <div x-cloak x-show="keadaan === 'gagal'" role="alert" @class(['max-w-xs rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-800 ring-1 ring-red-200', 'mx-2.5 mb-1' => $ringkas]) data-testid="{{ $testid }}-gagal" x-bind:data-galat="jenisGalat">
         <p x-text="pesan"></p>
         <p class="mt-1 flex flex-wrap gap-x-3">
             <button type="button" x-on:click="unduh()" class="font-semibold underline underline-offset-2 hover:no-underline">Coba lagi</button>
+            <button type="button" x-show="['sesi', 'pustaka', 'tidak_ada'].includes(jenisGalat)" x-on:click="window.location.reload()" class="font-semibold underline underline-offset-2 hover:no-underline" data-testid="{{ $testid }}-muat-ulang">Muat ulang halaman</button>
             <a x-bind:href="urlServer" class="font-semibold underline underline-offset-2 hover:no-underline">Unduh dari server</a>
         </p>
     </div>
