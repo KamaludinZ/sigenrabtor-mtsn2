@@ -2,19 +2,29 @@
 
 namespace App\Livewire\Akun;
 
+use App\Contracts\PenggunaRepository;
 use App\Support\Akun\DataAkun;
 use App\Support\Akun\ProfilAkun;
+use App\Support\Akun\UbahProfil;
+use App\Support\MasterKode;
+use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Stub\StubData;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * Halaman Akun saya (PRD §8 "Kelola Profil & Sandi"; `/akun`, rute `akun.profil`, semua pengguna): tab `?tab=` (TAB)
  * profil (nama, surel, jabatan, NIP, peran, leading tertaut, status + ProfilAkun: tercetak di dokumen, kegiatan & dokumen
  * buatan akun, kuota AI hari ini, sesi), sandi (formulir ubah sandi + syarat), aktivitas
  * (riwayat masuk terbaru). Data dari DataAkun::untuk (akun yang sedang masuk; tiruan selama autentikasi belum nyata).
+ * Ubah profil (nama & jabatan) di tempat: `bukaUbah()` → `$isian` (diperiksa saat blur) + pratinjau tanda tangan di klien
+ * → `simpanProfil()` lewat UbahProfil (versi `$versiProfil` terkunci; bentrok → `$bentrok` data terbaru, isian tetap)
+ * → event `profil-diperbarui` {nama, jabatan} (nama di bilah atas ikut berganti); `batalUbah()`/Esc.
  */
 #[Layout('layouts.app')]
 class Profil extends Component
@@ -27,6 +37,18 @@ class Profil extends Component
     #[Url(except: 'profil')]
     public string $tab = 'profil';
 
+    public bool $ubah = false;
+
+    /** @var array{nama: string, jabatan: string} */
+    public array $isian = ['nama' => '', 'jabatan' => ''];
+
+    #[Locked]
+    public ?string $versiProfil = null;
+
+    /** Data tersimpan terbaru saat simpan bentrok. @var array{nama: string, jabatan: string}|null */
+    #[Locked]
+    public ?array $bentrok = null;
+
     public function mount(): void
     {
         $this->tab = array_key_exists($this->tab, self::TAB) ? $this->tab : 'profil';
@@ -35,6 +57,91 @@ class Profil extends Component
     public function updatedTab(): void
     {
         $this->mount();
+        $this->batalUbah();
+    }
+
+    public function bukaUbah(): void
+    {
+        $akun = $this->akunTersimpan();
+        if ($akun === null) {
+            return;
+        }
+        $this->resetErrorBag();
+        $this->isian = ['nama' => (string) $akun['name'], 'jabatan' => (string) ($akun['jabatan'] ?? '')];
+        $this->versiProfil = UbahProfil::versi($akun);
+        $this->bentrok = null;
+        $this->ubah = true;
+    }
+
+    public function batalUbah(): void
+    {
+        $this->resetErrorBag();
+        $this->reset('ubah', 'isian', 'versiProfil', 'bentrok');
+    }
+
+    /** $kunci null = seluruh isian terkirim sekaligus (beberapa kolom berubah sebelum satu permintaan). */
+    public function updatedIsian(mixed $nilai, ?string $kunci = null): void
+    {
+        $galat = UbahProfil::galat(UbahProfil::rapikan($this->isian));
+        foreach ($kunci === null ? array_keys(UbahProfil::ISIAN) : [$kunci] as $k) {
+            $this->resetErrorBag("isian.{$k}");
+            if (isset($galat[$k])) {
+                $this->addError("isian.{$k}", $galat[$k]);
+            }
+        }
+    }
+
+    public function pakaiTerbaru(): void
+    {
+        if ($this->bentrok !== null) {
+            $this->isian = $this->bentrok;
+            $this->bentrok = null;
+        }
+    }
+
+    public function simpanProfil(): void
+    {
+        $this->resetErrorBag();
+        try {
+            $hasil = UbahProfil::simpan(StubData::currentUser(), $this->isian, $this->versiProfil);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kunci => $pesan) {
+                $this->addError("isian.{$kunci}", $pesan[0]);
+            }
+
+            return;
+        } catch (PengaturanBerubah $e) {
+            $akun = $this->akunTersimpan();
+            $this->bentrok = $akun === null ? null : ['nama' => (string) $akun['name'], 'jabatan' => (string) ($akun['jabatan'] ?? '')];
+            $this->versiProfil = $akun === null ? null : UbahProfil::versi($akun);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'warning');
+
+            return;
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+        $this->batalUbah();
+        unset($this->akun, $this->rincian);
+        $this->dispatch('notify', message: $hasil['ringkasan'] === null ? 'Tidak ada perubahan profil.' : 'Profil disimpan.', type: $hasil['ringkasan'] === null ? 'info' : 'success');
+        $this->dispatch('profil-diperbarui', nama: (string) $hasil['akun']['name'], jabatan: (string) ($hasil['akun']['jabatan'] ?? ''));
+    }
+
+    /** Saran jabatan: jabatan penanda tangan leading yang tertaut + jabatan tersimpan. @return list<string> */
+    public function saranJabatan(): array
+    {
+        $akun = $this->akun;
+        $saran = array_map(fn (array $l) => (string) (MasterKode::leading($l['kode'])['jabatan_penanda_tangan'] ?? ''), $akun['leading'] ?? []);
+
+        return array_values(array_unique(array_filter([...$saran, (string) ($akun['jabatan'] ?? '')])));
+    }
+
+    /** @return array<string, mixed>|null */
+    private function akunTersimpan(): ?array
+    {
+        return app(PenggunaRepository::class)->temukan((int) StubData::currentUser()['id']);
     }
 
     /** @return array<string, mixed>|null */

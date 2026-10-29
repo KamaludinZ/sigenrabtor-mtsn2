@@ -35,8 +35,57 @@
     @elseif ($tab === 'profil')
         <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-profil" data-testid="profil-akun">
-                <h2 id="judul-profil" class="text-sm font-semibold text-stone-900">Profil</h2>
-                <p class="mt-0.5 text-xs text-stone-500">Nama & jabatan tercetak sebagai penyusun bila pejabat leading belum diisi.</p>
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h2 id="judul-profil" class="text-sm font-semibold text-stone-900">Profil</h2>
+                        <p class="mt-0.5 text-xs text-stone-500">Nama & jabatan tercetak sebagai penyusun bila pejabat leading belum diisi.</p>
+                    </div>
+                    @unless ($ubah)
+                        <button type="button" wire:click="bukaUbah" class="btn-secondary shrink-0" data-testid="ubah-profil"><x-ui.icon name="pencil" class="size-4" /> Ubah profil</button>
+                    @endunless
+                </div>
+                @if ($ubah)
+                    <form wire:submit="simpanProfil" class="mt-4 space-y-4" data-testid="form-profil" novalidate wire:key="form-profil"
+                          x-data="{ nama: $wire.isian.nama, jabatan: $wire.isian.jabatan }" x-on:keydown.escape.prevent="$wire.batalUbah()">
+                        @if ($bentrok)
+                            <div class="rounded-xl bg-gold-50 p-3 text-sm text-gold-900 ring-1 ring-gold-200" role="alert" data-testid="profil-bentrok">
+                                <p class="font-medium">Profil Anda baru saja diubah di tempat lain.</p>
+                                <p class="mt-1 text-xs">Tersimpan sekarang: <span class="font-semibold">{{ $bentrok['nama'] }}</span>{{ $bentrok['jabatan'] !== '' ? ' · '.$bentrok['jabatan'] : '' }}. Simpan lagi untuk menimpanya dengan isian Anda, atau pakai data terbaru.</p>
+                                <button type="button" wire:click="pakaiTerbaru" x-on:click="$nextTick(() => { nama = $wire.isian.nama; jabatan = $wire.isian.jabatan })" class="mt-2 text-xs font-semibold text-gold-900 underline" data-testid="pakai-terbaru">Pakai data terbaru</button>
+                            </div>
+                        @endif
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <x-ui.field label="Nama lengkap & gelar" for="profil-nama" error="isian.nama" required>
+                                <input id="profil-nama" type="text" wire:model.live.blur="isian.nama" x-on:input="nama = $event.target.value" maxlength="150" autocomplete="name" autofocus
+                                       class="form-input" data-testid="isian-profil-nama" @error('isian.nama') aria-invalid="true" aria-describedby="profil-nama-error" @enderror>
+                            </x-ui.field>
+                            <x-ui.field label="Jabatan" for="profil-jabatan" error="isian.jabatan" hint="Pilih saran atau ketik sendiri.">
+                                <input id="profil-jabatan" type="text" list="saran-jabatan-profil" wire:model.live.blur="isian.jabatan" x-on:input="jabatan = $event.target.value" maxlength="150" autocomplete="organization-title"
+                                       class="form-input" data-testid="isian-profil-jabatan" @error('isian.jabatan') aria-invalid="true" aria-describedby="profil-jabatan-error" @enderror>
+                                <datalist id="saran-jabatan-profil">
+                                    @foreach ($this->saranJabatan() as $saran)
+                                        <option value="{{ $saran }}"></option>
+                                    @endforeach
+                                </datalist>
+                            </x-ui.field>
+                        </div>
+                        <div class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="pratinjau-tanda-tangan">
+                            <p class="text-[11px] font-semibold tracking-wide text-stone-500 uppercase">Tercetak sebagai Pembuat (bila pejabat leading kosong)</p>
+                            <div class="mt-2 border-l-2 border-stone-300 pl-3 text-sm">
+                                <p class="text-stone-600" x-text="(jabatan.trim() || 'Jabatan') + ','"></p>
+                                <p class="mt-3 font-semibold text-stone-900 underline underline-offset-2" x-text="nama.trim().replace(/\s+/g, ' ') || '…'"></p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-stone-500">Surel, NIP, peran, dan tautan leading diatur admin di Pengaturan › Leading & User.</p>
+                        <div class="flex flex-wrap justify-end gap-2">
+                            <button type="button" wire:click="batalUbah" class="btn-ghost" data-testid="batal-profil">Batal</button>
+                            <button type="submit" wire:loading.attr="disabled" wire:target="simpanProfil" class="btn-primary" data-testid="simpan-profil">
+                                <span wire:loading.remove wire:target="simpanProfil">Simpan profil</span>
+                                <span wire:loading wire:target="simpanProfil">Menyimpan…</span>
+                            </button>
+                        </div>
+                    </form>
+                @else
                 <dl class="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
                     @foreach ([
                         'nama' => ['Nama lengkap', $akun['nama']],
@@ -50,6 +99,7 @@
                         </div>
                     @endforeach
                 </dl>
+                @endif
             </section>
             <div class="min-w-0 space-y-6 lg:col-start-1">
                 @if ($akun['peran'] !== 'admin')
@@ -86,7 +136,7 @@
                 <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-kerja-akun" data-testid="kerja-akun">
                     <h2 id="judul-kerja-akun" class="text-sm font-semibold text-stone-900">Kegiatan & dokumen Anda</h2>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <a href="{{ route('kegiatan.index') }}" wire:navigate class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 hover:ring-brand-300" data-testid="kegiatan-buatan" data-jumlah="{{ $rincian['kegiatan']['tahun_aktif'] }}">
+                        <a href="{{ route('kegiatan.index') }}" wire:navigate class="block min-w-0 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 hover:ring-brand-300" data-testid="kegiatan-buatan" data-jumlah="{{ $rincian['kegiatan']['tahun_aktif'] }}">
                             <p class="text-xs text-stone-500">Kegiatan yang Anda buat · TA {{ $rincian['tahun'] }}</p>
                             <p class="mt-1 text-2xl font-bold text-stone-900">{{ $rincian['kegiatan']['tahun_aktif'] }}</p>
                             <p class="text-xs text-stone-500">{{ $rincian['kegiatan']['semua'] }} di semua tahun anggaran</p>
@@ -100,7 +150,7 @@
                                 </div>
                             @endif
                         </a>
-                        <a href="{{ route('dokumen.index') }}" wire:navigate class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 hover:ring-brand-300" data-testid="dokumen-buatan" data-jumlah="{{ $rincian['dokumen']['jumlah'] }}">
+                        <a href="{{ route('dokumen.index') }}" wire:navigate class="block min-w-0 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 hover:ring-brand-300" data-testid="dokumen-buatan" data-jumlah="{{ $rincian['dokumen']['jumlah'] }}">
                             <p class="text-xs text-stone-500">Dokumen yang Anda cetak/unduh</p>
                             <p class="mt-1 text-2xl font-bold text-stone-900">{{ $rincian['dokumen']['jumlah'] }}</p>
                             <p class="text-xs text-stone-500">{{ $rincian['dokumen']['tahun_aktif'] }} di TA {{ $rincian['tahun'] }}</p>

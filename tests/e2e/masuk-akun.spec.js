@@ -117,4 +117,49 @@ test.describe('Masuk & Akun', () => {
         await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Anda sudah keluar.' })).toBeVisible();
         await expect(page.getByTestId('sudah-masuk')).toHaveCount(0);
     });
+    test('ubah profil: nama & jabatan dengan pratinjau tanda tangan, nama bilah atas ikut berganti', async ({ page }, testInfo) => {
+        // Satu akun per proyek (desktop & mobile berjalan bersamaan dengan data E2E yang sama); dipulihkan di akhir.
+        const akun = testInfo.project.name === 'mobile'
+            ? { surel: 'rina.kusumawati@example.com', nama: 'Rina Kusumawati, M.Pd.', jabatan: 'Tim Penjamin Mutu' }
+            : { surel: 'ahmad.fauzan@example.com', nama: 'Ahmad Fauzan, S.Pd.', jabatan: 'Wakil Kepala Bidang Kesiswaan' };
+        await page.goto('/masuk');
+        await page.getByTestId('isian-surel').fill(akun.surel);
+        await page.getByTestId('isian-sandi').fill('apa-saja');
+        await page.getByTestId('tombol-masuk').click();
+        await expect(page).toHaveURL(/\/dashboard/);
+        await page.goto('/akun');
+
+        const ubahProfil = async (nama, jabatan) => {
+            await page.getByTestId('ubah-profil').click();
+            await expect(page.getByTestId('form-profil')).toBeVisible();
+            await page.getByTestId('isian-profil-nama').fill(nama);
+            await page.getByTestId('isian-profil-jabatan').fill(jabatan);
+            await expect(page.getByTestId('pratinjau-tanda-tangan')).toContainText(`${jabatan},`);
+            await expect(page.getByTestId('pratinjau-tanda-tangan')).toContainText(nama);
+            await page.getByTestId('simpan-profil').click();
+            await expect(page.getByTestId('form-profil')).toHaveCount(0);
+        };
+
+        // Batal lewat Esc tidak menyimpan.
+        await page.getByTestId('ubah-profil').click();
+        await page.getByTestId('isian-profil-nama').fill('');
+        await page.getByTestId('isian-profil-nama').blur();
+        await expect(page.locator('#profil-nama-error')).toContainText('wajib diisi');
+        await page.getByTestId('isian-profil-jabatan').press('Escape');
+        await expect(page.getByTestId('form-profil')).toHaveCount(0);
+
+        const namaBaru = `${akun.nama} (uji)`;
+        await ubahProfil(namaBaru, `${akun.jabatan} & Humas`);
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Profil disimpan.' })).toBeVisible();
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(namaBaru);
+        if (testInfo.project.name !== 'mobile') {
+            await expect(page.getByTestId('nama-pengguna')).toHaveText(namaBaru);
+        }
+        await page.screenshot({ path: `storage/playwright/shots/ubah-profil-${testInfo.project.name}.png`, fullPage: true });
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+
+        await ubahProfil(akun.nama, akun.jabatan);
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(akun.nama);
+    });
 });

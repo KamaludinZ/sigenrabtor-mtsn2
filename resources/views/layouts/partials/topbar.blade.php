@@ -18,7 +18,7 @@
                 {{ \Illuminate\Support\Str::of($currentUser['name'])->explode(' ')->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('') }}
             </span>
             <span class="hidden text-left leading-tight sm:block">
-                <span class="block text-sm font-semibold text-stone-800" data-testid="nama-pengguna">{{ $currentUser['name'] }}</span>
+                <span class="block text-sm font-semibold text-stone-800" data-testid="nama-pengguna" x-data x-on:profil-diperbarui.window="$el.textContent = $event.detail.nama">{{ $currentUser['name'] }}</span>
                 <span class="block text-xs text-stone-500">{{ $currentUser['role'] === 'admin' ? 'Admin' : 'Leading' }} · {{ $currentUser['jabatan'] }}</span>
             </span>
             <x-ui.icon name="chevron-down" class="hidden size-4 text-stone-400 sm:block" />
