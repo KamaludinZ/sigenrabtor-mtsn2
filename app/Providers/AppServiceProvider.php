@@ -156,7 +156,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        View::composer(['layouts.app', 'layouts.partials.*'], AppLayoutComposer::class);
+        View::composer(['layouts.app', 'layouts.tamu', 'layouts.partials.*'], AppLayoutComposer::class);
 
         if ($hot = config('sigenrabtor.vite_hot_file')) {
             Vite::useHotFile($hot);

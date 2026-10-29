@@ -30,7 +30,17 @@
                 <p class="text-sm font-semibold text-stone-800">{{ $currentUser['name'] }}</p>
                 <p class="text-xs text-stone-500">{{ $currentUser['jabatan'] }}</p>
             </div>
+            <a href="{{ route('akun.profil') }}" wire:navigate class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-stone-700 hover:bg-stone-100" data-testid="menu-akun">
+                <x-ui.icon name="user" class="size-4 text-stone-500" /> Akun saya
+            </a>
+            <form method="POST" action="{{ route('akun.keluar') }}">
+                @csrf
+                <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-stone-700 hover:bg-stone-100" data-testid="menu-keluar">
+                    <x-ui.icon name="log-out" class="size-4 text-stone-500" /> Keluar
+                </button>
+            </form>
             @if (Route::has('demo.peran'))
+                <div class="my-1 border-t border-stone-100"></div>
                 <p class="px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Mode demo · lihat sebagai</p>
                 @foreach (['admin' => 'Admin', 'leading' => 'Leading'] as $role => $label)
                     <a href="{{ route('demo.peran', $role) }}"
