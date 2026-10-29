@@ -26,6 +26,8 @@
         </div>
     </div>
 
+    @include('livewire.partials.beranda-akun', ['beranda' => $this->beranda])
+
     <x-monitoring.ringkasan :ringkasan="$ringkasan" class="mt-6" />
 
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">

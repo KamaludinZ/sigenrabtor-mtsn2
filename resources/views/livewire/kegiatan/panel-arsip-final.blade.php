@@ -11,7 +11,7 @@
 @endphp
 
 {{-- Arsip final bertanda tangan per sumber dana (PRD F18): unggah selama Disetujui, baca-saja selama Final. --}}
-<section class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:p-5" aria-labelledby="judul-arsip-final" data-testid="panel-arsip-final">
+<section id="arsip-final" class="scroll-mt-24 rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200 sm:p-5" aria-labelledby="judul-arsip-final" data-testid="panel-arsip-final">
     <div class="flex flex-wrap items-start justify-between gap-2">
         <div class="min-w-0">
             <h2 id="judul-arsip-final" class="flex items-center gap-1.5 text-base font-semibold text-stone-900">

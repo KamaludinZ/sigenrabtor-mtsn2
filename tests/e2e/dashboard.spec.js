@@ -34,4 +34,28 @@ test.describe('Dashboard', () => {
         expect(overflow).toBeLessThanOrEqual(0);
         await page.screenshot({ path: `storage/playwright/shots/dashboard-admin-${testInfo.project.name}.png`, fullPage: true });
     });
+    test('bagian pribadi: perlu tindakan, terakhir diubah, aktivitas, pintasan per peran', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/dashboard');
+        const tindakan = page.getByTestId('perlu-tindakan');
+        await expect(tindakan).toBeVisible();
+        await expect(tindakan.getByTestId('tindakan').first()).toHaveAttribute('data-jenis', /^(perbaiki|arsip|ajukan|lengkapi)$/);
+        await expect(page.getByTestId('pintasan-buat')).toHaveAttribute('href', /\/kegiatan\/buat$/);
+        await expect(page.getByTestId('kegiatan-terakhir').first()).toBeVisible();
+        await expect(page.getByTestId('aktivitas').first()).toBeVisible();
+        await expect(page.getByTestId('akun-ringkas')).toContainText('Muslimin');
+        await page.screenshot({ path: `storage/playwright/shots/dashboard-beranda-${testInfo.project.name}.png`, fullPage: true });
+
+        await tindakan.getByTestId('buka-tindakan').first().click();
+        await expect(page).toHaveURL(/\/kegiatan\/\d+\/(edit|pratinjau)/);
+
+        await page.goto('/demo/peran/admin');
+        await page.goto('/dashboard');
+        await expect(page.getByTestId('pintasan-pemeriksaan')).toBeVisible();
+        await expect(page.getByTestId('pintasan-buat')).toHaveCount(0);
+        await expect(page.getByTestId('perlu-tindakan').locator('[data-jenis="permohonan"]')).toBeVisible();
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await page.goto('/demo/peran/leading');
+    });
 });
