@@ -3,7 +3,7 @@
 namespace App\Contracts;
 
 /**
- * Riwayat dokumen (PRD §7 Riwayat Dokumen, F28; calon tabel `documents` + jejak cetak): satu catatan per berkas yang pernah
+ * Riwayat dokumen (PRD §7 Riwayat Dokumen, F28; tabel `riwayat_dokumen` migrasi 000043, model BerkasDokumenTercatat): satu catatan per berkas yang pernah
  * dicetak, diunduh, atau diarsipkan — kegiatan × jenis DokumenKegiatan::JENIS × sumber dana × format — hanya tambah,
  * bernomor versi per kegiatan × jenis × sumber × format. Cuplikan kegiatan (nama, leading, tahun) & isi ringkas ikut
  * tersimpan agar catatan tetap terbaca walau kegiatannya dihapus atau berasal dari tahun lain. Bentuk (disusun

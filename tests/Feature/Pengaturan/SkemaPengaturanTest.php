@@ -31,6 +31,9 @@ class SkemaPengaturanTest extends TestCase
     private const MIGRASI_AKUN = 'database/migrations/2026_10_28_000028_tighten_users_and_riwayat_masuk.php';
 
     /** Dokumen & konfigurasi tahun aktif (000032) merujuk tahun_anggaran dan tabel template yang dibuat 000020. */
+    /** Riwayat dokumen (000043) merujuk documents, tahun anggaran, leading & akun: dibatalkan paling dulu. */
+    private const MIGRASI_RIWAYAT_DOKUMEN = 'database/migrations/2026_10_29_000043_create_riwayat_dokumen_table.php';
+
     private const MIGRASI_DOKUMEN = 'database/migrations/2026_10_28_000032_create_documents_tables.php';
 
     /** Hasil susunan KAK/TOR (000039) merujuk documents. */
@@ -231,6 +234,7 @@ class SkemaPengaturanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_RIWAYAT_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_STATUS_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_HASIL])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_AI])->assertSuccessful();
@@ -257,6 +261,7 @@ class SkemaPengaturanTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI_AI])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_HASIL])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_STATUS_DOKUMEN])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_RIWAYAT_DOKUMEN])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('activity_logs'));
         $this->assertTrue(Schema::hasTable('master_kode_unggahan'));
     }
