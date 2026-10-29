@@ -2,7 +2,7 @@
 // diambil dari `kegiatan.pratinjau.data` (lembar cover & KAK/TOR), lalu penyusun `word-kak.js` — dimuat terpisah saat
 // tombol pertama kali ditekan — membuat berkasnya; nama = nama berkas baku dengan akhiran .docx. Bila penyusun peramban
 // gagal dimuat atau gagal menyusun (`pustaka`/`susun`) dan `urlServer` ada, berkas yang sama diambil dari server
-// (`kegiatan.kak.word`, WordKakTor). Gagal → pesan + Coba lagi.
+// (`kegiatan.kak.word`, WordKakTor); bila server juga gagal, galat asal yang tampil. Gagal → pesan + Coba lagi.
 import { simpanBerkas, ukuranBerkas } from './unduh-pdf';
 import { GalatUnduhan, ambil, beritahu, golongkan, laporkan, muatPustaka } from './unduhan';
 
@@ -41,7 +41,9 @@ export default function unduhWord(urlData, nama, urlServer = null) {
                     if (!urlServer || !['pustaka', 'susun'].includes(g.jenis)) {
                         throw g;
                     }
-                    [berkas, namaBerkas] = await this.ambilServer();
+                    [berkas, namaBerkas] = await this.ambilServer().catch(() => {
+                        throw g;
+                    });
                     server = true;
                 }
                 simpanBerkas(berkas, namaBerkas);

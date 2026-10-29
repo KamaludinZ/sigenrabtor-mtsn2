@@ -3,34 +3,68 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\KegiatanRepository;
+use App\Http\Controllers\Concerns\PermintaanUnduhan;
+use App\Support\Dokumen\Generasi\BerkasDokumen;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Rab\EksporRabExcel;
 use App\Support\Stub\StubData;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use PhpOffice\PhpSpreadsheet\Exception as GalatSpreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Unduh RAB satu kegiatan sebagai .xlsx (EksporRabExcel; hak baca AksesKegiatan): `?sumber=` satu sumber dana yang
- * dipilih, tanpa sumber = semua sumber (satu lembar per sumber); kegiatan tanpa sumber dana / sumber tak dipilih → 404.
+ * Unduh RAB satu kegiatan sebagai .xlsx (`GET /kegiatan/{kegiatan}/rab/excel?sumber=`, rute `kegiatan.rab.excel`;
+ * EksporRabExcel — rumus Jumlah/TOTAL, kaki DRAF & nomor halaman; hak baca AksesKegiatan): `?sumber=` satu sumber dana yang
+ * dipilih, tanpa sumber = semua sumber (satu lembar per sumber). Header unduhan baku BerkasDokumen::headerUnduhan
+ * (X-Nama-Berkas, X-Format-Berkas, X-Draf, no-store). Galat: 404 kegiatan tidak ada / tanpa sumber dana / sumber tak
+ * dipilih, 403, 503 gagal disusun — JSON {pesan} untuk permintaan klien (PermintaanUnduhan), selain itu halaman galat.
+ * Dipakai tombol Excel sebagai cadangan otomatis bila penyusun peramban gagal.
  */
 class EksporRabKegiatan extends Controller
 {
-    public function __invoke(Request $request, KegiatanRepository $repo, int $kegiatan): StreamedResponse
+    use PermintaanUnduhan;
+
+    public function __invoke(Request $request, KegiatanRepository $repo, int $kegiatan): Response|JsonResponse
     {
-        $data = $repo->temukan($kegiatan) ?? abort(404);
-        abort_unless(AksesKegiatan::bolehLihat($data, StubData::currentUser()), 403);
+        $data = $repo->temukan($kegiatan);
+        if ($data === null) {
+            return $this->gagal($request, 404, 'Kegiatan tidak ditemukan.');
+        }
+        if (! AksesKegiatan::bolehLihat($data, StubData::currentUser())) {
+            return $this->gagal($request, 403, AksesKegiatan::PESAN_TOLAK);
+        }
 
         $dipilih = array_column($data['sumber_dana'] ?? [], 'sumber');
         $sumber = filled($request->query('sumber')) ? (string) $request->query('sumber') : null;
-        abort_if($dipilih === [] || ($sumber !== null && ! in_array($sumber, $dipilih, true)), 404);
+        if ($dipilih === []) {
+            return $this->gagal($request, 404, 'Kegiatan ini belum memilih sumber dana, jadi belum punya RAB.');
+        }
+        if ($sumber !== null && ! in_array($sumber, $dipilih, true)) {
+            return $this->gagal($request, 404, "Sumber dana {$sumber} tidak dipilih untuk kegiatan ini.");
+        }
 
-        ['buku' => $buku, 'nama' => $nama] = EksporRabExcel::buat($data, $sumber);
+        try {
+            ['buku' => $buku, 'nama' => $nama, 'draf' => $draf] = EksporRabExcel::buat($data, $sumber);
+            ob_start();
+            try {
+                (new Xlsx($buku))->save('php://output');
+            } finally {
+                $isi = (string) ob_get_clean();
+            }
+        } catch (GalatSpreadsheet) {
+            return $this->gagal($request, 503, 'Berkas Excel RAB gagal disusun di server — coba lagi.');
+        }
 
-        return response()->streamDownload(
-            fn () => (new Xlsx($buku))->save('php://output'),
-            $nama,
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'no-store, private'],
-        );
+        return response($isi, 200, BerkasDokumen::headerUnduhan($nama, 'xlsx', $draf, strlen($isi)));
+    }
+
+    private function gagal(Request $request, int $status, string $pesan): Response|JsonResponse
+    {
+        if ($this->inginJson($request)) {
+            return response()->json(['pesan' => $pesan], $status, ['Cache-Control' => 'no-store, private']);
+        }
+        abort($status, $pesan);
     }
 }

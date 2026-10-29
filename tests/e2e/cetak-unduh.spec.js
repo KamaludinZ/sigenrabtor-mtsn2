@@ -245,13 +245,21 @@ test.describe('Cetak & Unduh', () => {
         await expect(gagalWord.getByTestId('unduh-word-terpilih-muat-ulang')).toBeVisible();
         await page.unroute('**/kegiatan/2/pratinjau/data**');
 
-        // Pustaka penyusun gagal dimuat (mis. sesudah aplikasi diperbarui).
+        // Pustaka penyusun gagal dimuat (mis. sesudah aplikasi diperbarui) dan cadangan server juga gagal: galat asal tetap tampil.
         await page.route('**/build/assets/excel-rab-*.js', (rute) => rute.abort());
+        await page.route('**/kegiatan/2/rab/excel**', (rute) => rute.abort());
         await panel.getByTestId('unduh-excel-terpilih').click();
         const gagalExcel = panel.getByTestId('unduh-excel-terpilih-gagal');
         await expect(gagalExcel).toHaveAttribute('data-galat', 'pustaka');
         await expect(gagalExcel.getByTestId('unduh-excel-terpilih-muat-ulang')).toBeVisible();
         await expect(gagalExcel.getByRole('link', { name: 'Unduh dari server' })).toHaveAttribute('href', /\/kegiatan\/2\/rab\/excel\?sumber=DIPA/);
+        await page.unroute('**/kegiatan/2/rab/excel**');
+
+        // Hanya pustaka yang gagal: berkas otomatis diambil dari server.
+        const [dariServer] = await Promise.all([page.waitForEvent('download'), gagalExcel.getByRole('button', { name: 'Coba lagi' }).click()]);
+        expect(dariServer.suggestedFilename()).toMatch(/^RAB_Supervisi_.*_DIPA_2026(_DRAF)?\.xlsx$/);
+        await expect(toast.filter({ hasText: 'disusun server' })).toHaveAttribute('data-jenis', 'success');
+        await page.unroute('**/build/assets/excel-rab-*.js');
 
         // Batal di tengah unduhan: tanpa pesan galat, notifikasi info.
         await page.route('**/kegiatan/2/rab/pdf**', async (rute) => {

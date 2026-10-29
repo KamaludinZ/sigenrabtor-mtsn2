@@ -32,13 +32,23 @@ final class BerkasDokumen
     /** @return array<string, string> */
     public function header(): array
     {
+        return self::headerUnduhan($this->nama, $this->format, $this->draf, $this->ukuran());
+    }
+
+    /**
+     * Header jawaban unduhan berkas dokumen (dipakai juga endpoint ekspor RAB yang tidak lewat GeneratorBerkasDokumen).
+     *
+     * @return array<string, string>
+     */
+    public static function headerUnduhan(string $nama, string $format, bool $draf, int $ukuran): array
+    {
         return [
-            'Content-Type' => $this->mime(),
-            'Content-Disposition' => 'attachment; filename="'.str_replace('"', '', $this->nama).'"; filename*=UTF-8\'\''.rawurlencode($this->nama),
-            'Content-Length' => (string) $this->ukuran(),
-            'X-Nama-Berkas' => $this->nama,
-            'X-Format-Berkas' => $this->format,
-            'X-Draf' => $this->draf ? '1' : '0',
+            'Content-Type' => FormatBerkas::mime($format),
+            'Content-Disposition' => 'attachment; filename="'.str_replace('"', '', $nama).'"; filename*=UTF-8\'\''.rawurlencode($nama),
+            'Content-Length' => (string) $ukuran,
+            'X-Nama-Berkas' => $nama,
+            'X-Format-Berkas' => $format,
+            'X-Draf' => $draf ? '1' : '0',
             'Cache-Control' => 'no-store, private',
         ];
     }

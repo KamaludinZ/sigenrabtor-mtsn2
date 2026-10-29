@@ -88,6 +88,16 @@ penyusun peramban `resources/js/word-kak.js` — di atas penulis OOXML `DocxSede
 12 pt, kepala "DRAF" & kaki "DRAF — alasan … Halaman x dari y"). Tombol Word memakainya sebagai cadangan bila penyusun
 peramban gagal dimuat/menyusun.
 
+## `GET /kegiatan/{id}/rab/excel?sumber=` — Excel RAB (`kegiatan.rab.excel`)
+
+Buku Excel RAB dari `App\Support\Rab\EksporRabExcel` (`sumber` = satu sumber dana; kosong = satu lembar per sumber dana
+terpilih), isi setara penyusun peramban `resources/js/excel-rab.js`: judul, baris DRAF, kepala, tabel dengan kepala berlatar
+& diulang tiap halaman, Jumlah = `ROUND(Vol × Harga)` dan TOTAL = `SUM` (tetap terhitung bila disunting), terbilang,
+Mekanisme Pembayaran, pengesahan; A4 tegak muat selebar halaman, kaki "DRAF — alasan" & "Halaman x dari y". Header jawaban
+sama dengan unduhan lain (`BerkasDokumen::headerUnduhan`). Galat 404 (kegiatan/sumber dana), 403, 503 → `{ "pesan": "…" }`
+untuk permintaan klien. Tombol Excel memakainya sebagai cadangan otomatis bila penyusun peramban gagal; bila server juga
+gagal, galat asal tampil dengan tautan "Unduh dari server".
+
 ## Perender PDF
 
 `PembuatPdfDokumen` (dipakai format `pdf` dan `kegiatan.cetak.pdf`) dipilih lewat `SIRABTOR_PDF_PERENDER`:

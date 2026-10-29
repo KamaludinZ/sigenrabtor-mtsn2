@@ -106,7 +106,8 @@ class TabelRabDokumenTest extends TestCase
         $kegiatan = app(KegiatanRepository::class)->temukan(2);
         $tabel = SusunanRab::dari($kegiatan, 'DIPA')->tabel();
         $lembar = EksporRabExcel::buat($kegiatan, 'DIPA')['buku']->getActiveSheet();
-        $isi = $lembar->toArray(null, false, false);
+        // Jumlah & total berupa rumus (ROUND/SUM): dibandingkan dengan hasil hitungnya.
+        $isi = array_map(fn (array $r) => array_map(fn ($v) => is_float($v) && floor($v) === $v ? (int) $v : $v, $r), $lembar->toArray(null, true, false));
         $kepala = collect($isi)->search(fn (array $b) => $b[0] === 'No');
 
         $this->assertSame($tabel->judul(), array_slice($isi[$kepala], 0, count($tabel->kolom)));

@@ -13,10 +13,12 @@ use Tests\TestCase;
 
 class EksporRabExcelTest extends TestCase
 {
-    /** @return list<list<mixed>> Baris lembar yang berisi (nilai mentah). */
+    /** @return list<list<mixed>> Baris lembar yang berisi (rumus dihitung; bilangan bulat hasil rumus ditulis int). */
     private static function isi($lembar): array
     {
-        return array_values(array_filter($lembar->toArray(null, false, false, false), fn (array $r) => array_filter($r, fn ($v) => $v !== null && $v !== '') !== []));
+        $baris = array_map(fn (array $r) => array_map(fn ($v) => is_float($v) && floor($v) === $v ? (int) $v : $v, $r), $lembar->toArray(null, true, false, false));
+
+        return array_values(array_filter($baris, fn (array $r) => array_filter($r, fn ($v) => $v !== null && $v !== '') !== []));
     }
 
     public function test_rab_satu_sumber_dana_seperti_dokumen(): void
@@ -40,6 +42,14 @@ class EksporRabExcelTest extends TestCase
         $lembar = $buku->getSheet(0);
         $barisTotal = collect(range(1, $lembar->getHighestRow()))->first(fn (int $r) => $lembar->getCell("A{$r}")->getValue() === 'TOTAL KESELURUHAN');
         $this->assertSame(['#,##0', '#,##0'], [$lembar->getStyle("G{$barisTotal}")->getNumberFormat()->getFormatCode(), $lembar->getStyle('F'.($barisTotal - 1))->getNumberFormat()->getFormatCode()]);
+        $awal = $barisTotal - count($rincian);
+        $this->assertSame("=ROUND(D{$awal}*F{$awal},0)", $lembar->getCell("G{$awal}")->getValue(), 'Jumlah = rumus seperti Excel peramban.');
+        $this->assertSame('=SUM(G'.$awal.':G'.($barisTotal - 1).')', $lembar->getCell("G{$barisTotal}")->getValue());
+        $this->assertSame('#,##0.##', $lembar->getStyle("D{$awal}")->getNumberFormat()->getFormatCode());
+        $this->assertSame('F5F5F4', $lembar->getStyle('A'.($awal - 1))->getFill()->getStartColor()->getRGB(), 'Kepala tabel berlatar.');
+        $kaki = $lembar->getHeaderFooter()->getOddFooter();
+        $this->assertStringContainsString('&L&KB91C1CDRAF — ', $kaki);
+        $this->assertStringEndsWith('&RHalaman &P dari &N', $kaki);
     }
 
     public function test_semua_sumber_termin_dan_unduhan(): void
@@ -50,12 +60,18 @@ class EksporRabExcelTest extends TestCase
         $teks = array_merge([], ...self::isi($buku->getSheet(0)));
         $this->assertContains('Mekanisme Pembayaran', $teks, 'Contoh 1 dibayar dua termin.');
 
-        $respons = $this->get(route('kegiatan.rab.excel', ['kegiatan' => 2]))->assertOk()->assertDownload('RAB_Supervisi_Akademik_dan_Refleksi_Pembelajaran_2026_DRAF.xlsx');
+        $respons = $this->get(route('kegiatan.rab.excel', ['kegiatan' => 2]))->assertOk()
+            ->assertHeader('X-Nama-Berkas', 'RAB_Supervisi_Akademik_dan_Refleksi_Pembelajaran_2026_DRAF.xlsx')
+            ->assertHeader('X-Format-Berkas', 'xlsx')->assertHeader('X-Draf', '1')->assertHeader('Cache-Control', 'no-store, private');
+        $this->assertStringStartsWith('attachment; filename="RAB_Supervisi_Akademik_dan_Refleksi_Pembelajaran_2026_DRAF.xlsx"', (string) $respons->headers->get('Content-Disposition'));
+        $this->assertSame((string) strlen($respons->getContent()), $respons->headers->get('Content-Length'));
         $berkas = tempnam(sys_get_temp_dir(), 'rab').'.xlsx';
-        file_put_contents($berkas, $respons->streamedContent());
+        file_put_contents($berkas, $respons->getContent());
         $this->assertSame(['RAB DIPA', 'RAB Komite'], IOFactory::load($berkas)->getSheetNames());
 
         $this->get(route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'BOS']))->assertNotFound();
+        $klien = ['Accept' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json', 'X-Requested-With' => 'XMLHttpRequest'];
+        $this->get(route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'BOS']), $klien)->assertNotFound()->assertJsonPath('pesan', 'Sumber dana BOS tidak dipilih untuk kegiatan ini.');
         $this->get(route('kegiatan.rab.excel', ['kegiatan' => 1, 'sumber' => 'DIPA']))->assertNotFound();
         $this->get(route('kegiatan.rab.excel', ['kegiatan' => 999]))->assertNotFound();
         $lain = app(KegiatanRepository::class)->simpan(['nama_kegiatan' => 'Kegiatan Leading Lain', 'leading' => '1.2', 'user_id' => 2, 'sumber_dana' => [['sumber' => 'Komite', 'pagu' => 1_000_000]]]);
