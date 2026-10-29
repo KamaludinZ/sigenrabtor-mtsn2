@@ -1,8 +1,9 @@
 {{--
     Riwayat dokumen per kegiatan (RiwayatDokumen::perKegiatan) dalam satu tahun anggaran: kartu kegiatan (nama, leading,
     tautan pratinjau selama kegiatannya tersimpan) berisi satu baris per jenis × sumber × format dengan versi terbaru dan
-    versi sebelumnya yang bisa dibuka; kata kunci `$cari` disorot (RiwayatDokumen::sorot). Variabel: $kegiatan, $waktu,
-    $nadaStatus, $cari.
+    versi sebelumnya yang bisa dibuka; kata kunci `$cari` disorot (RiwayatDokumen::sorot). Selama ada kata kunci/saringan
+    (PenelusuranRiwayat::perKegiatan): jumlah "n dari m dokumen" dan penanda versi lebih baru yang tidak cocok
+    (`lebih_baru`). Variabel: $kegiatan, $waktu, $nadaStatus, $cari.
 --}}
 <ul class="divide-y divide-stone-100" role="list">
     @foreach ($kegiatan as $k)
@@ -14,7 +15,7 @@
                         @if ($k['kode_leading'] !== '')
                             Leading {{ $k['kode_leading'] }}@if ($k['nama_leading']) · {{ $k['nama_leading'] }}@endif ·
                         @endif
-                        {{ $k['jumlah'] }} dokumen
+                        <span data-testid="jumlah-dokumen-kegiatan">{{ ($k['jumlah_semua'] ?? $k['jumlah']) > $k['jumlah'] ? $k['jumlah'].' dari '.$k['jumlah_semua'] : $k['jumlah'] }} dokumen</span>
                     </p>
                 </div>
                 @if ($k['tersedia'])
@@ -51,6 +52,12 @@
                                 </p>
                                 <p class="mt-0.5 truncate font-mono text-[11px] text-stone-500" title="{{ $t['nama_berkas'] }}">{!! \App\Support\Dokumen\RiwayatDokumen::sorot($t['nama_berkas'], $cari) !!}</p>
                                 <p class="mt-0.5 text-xs text-stone-500">{{ $waktu($t['dibuat_pada']) }} · {{ $t['label_asal'] }} oleh {{ $t['dibuat_oleh'] }}@if ($t['ukuran_teks']) · {{ $t['ukuran_teks'] }}@endif</p>
+                                @if ($d['lebih_baru'] ?? null)
+                                    <p class="mt-1 inline-flex items-start gap-1 rounded-md bg-gold-50 px-2 py-1 text-xs text-gold-900 ring-1 ring-gold-200" data-testid="versi-lebih-baru" data-versi="{{ $d['lebih_baru']['versi'] }}">
+                                        <x-ui.icon name="info" class="mt-0.5 size-3.5 shrink-0" />
+                                        <span>Ada versi lebih baru: <span class="font-semibold">v{{ $d['lebih_baru']['versi'] }}</span> · {{ $waktu($d['lebih_baru']['dibuat_pada']) }} · {{ $d['lebih_baru']['label_asal'] }} — tidak cocok dengan pencarian/saringan.</span>
+                                    </p>
+                                @endif
 
                                 @if ($d['lama'] !== [])
                                     <details class="group mt-1.5" data-testid="versi-lama">

@@ -3,11 +3,16 @@
 
 @php
     $semua = $this->semua;
-    $ringkasan = RiwayatDokumen::ringkasan($semua);
+    $telusur = $this->penelusuran;
+    $ringkasan = $telusur->ringkasan();
     [$perTahun, $jumlahButir] = $this->isi();
-    $saringan = RiwayatDokumen::rapikanSaringan($this->saringan());
-    $chip = RiwayatDokumen::labelSaringan($this->saringan());
-    $adaSaringan = $chip !== [] || $saringan['terbalik'] || $cari !== '';
+    $saringan = $telusur->kriteria;
+    $chip = $telusur->label();
+    $aktif = $telusur->aktif();
+    $adaSaringan = $aktif || $saringan['terbalik'];
+    $hitungJenis = $telusur->pilihan('jenis');
+    $hitungFormat = $telusur->pilihan('format');
+    $dariSemua = fn (string $kunci, string $keterangan) => $aktif ? 'dari '.$ringkasan['semua'][$kunci].' '.$keterangan : null;
     $tampil = min($this->batas, $jumlahButir);
     $waktu = fn (string $iso) => Format::tanggal(substr($iso, 0, 10)).' · '.\Carbon\CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->format('H.i');
     $nadaStatus = ['final' => 'bg-stone-800 text-white ring-stone-800', 'disetujui' => 'bg-brand-50 text-brand-800 ring-brand-200'];
@@ -26,14 +31,15 @@
     </div>
 
     {{-- Ringkasan --}}
-    <dl class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="ringkasan-riwayat">
+    {{-- Selama ada kata kunci/saringan angka mengikuti hasilnya ("dari …" = seluruh catatan) --}}
+    <dl class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="ringkasan-riwayat" data-tersaring="{{ $aktif ? '1' : '0' }}">
         @foreach ([
-            'jumlah' => ['Dokumen', $ringkasan['jumlah'], $ringkasan['tahun'].' tahun anggaran'],
-            'kegiatan' => ['Kegiatan', $ringkasan['kegiatan'], 'dengan dokumen tercatat'],
-            'arsip' => ['Arsip final', $ringkasan['arsip'], 'PDF bertanda tangan'],
-            'draf' => ['Bercap DRAF', $ringkasan['draf'], 'dicetak sebelum siap'],
+            'jumlah' => ['Dokumen', $ringkasan['jumlah'], $dariSemua('jumlah', 'dokumen') ?? $ringkasan['tahun'].' tahun anggaran'],
+            'kegiatan' => ['Kegiatan', $ringkasan['kegiatan'], $dariSemua('kegiatan', 'kegiatan') ?? 'dengan dokumen tercatat'],
+            'arsip' => ['Arsip final', $ringkasan['arsip'], $dariSemua('arsip', 'arsip final') ?? 'PDF bertanda tangan'],
+            'draf' => ['Bercap DRAF', $ringkasan['draf'], $dariSemua('draf', 'bercap DRAF') ?? 'dicetak sebelum siap'],
         ] as $kunci => [$label, $angka, $keterangan])
-            <div class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" data-ringkasan="{{ $kunci }}">
+            <div @class(['rounded-2xl p-4 shadow-xs ring-1', 'bg-white ring-stone-200' => ! $aktif, 'bg-brand-50/40 ring-brand-200' => $aktif]) data-ringkasan="{{ $kunci }}">
                 <dt class="text-xs font-semibold text-stone-500">{{ $label }}</dt>
                 <dd class="mt-1 text-2xl font-bold text-stone-900 tabular-nums">{{ $angka }}</dd>
                 <dd class="mt-0.5 text-xs text-stone-500">{{ $keterangan }}</dd>
@@ -45,7 +51,7 @@
         {{-- Tampilan & urutan --}}
         <div class="mt-6 flex flex-wrap items-start justify-between gap-3" data-testid="alat-riwayat">
             <x-ui.kotak-cari model="cari" :nilai="$cari" wire:model.live.debounce.300ms="cari" label="Cari dokumen" placeholder="Cari kegiatan, nama berkas, nomor dokumen, leading…"
-                             :jumlah="count($this->cocok)" :total="count($semua)" satuan="dokumen" testid="cari-riwayat" class="w-full sm:max-w-md sm:flex-1" />
+                             :jumlah="$chip === [] ? count($telusur->cocok) : null" :total="$telusur->total" satuan="dokumen" testid="cari-riwayat" class="w-full sm:max-w-md sm:flex-1" />
             <div class="flex flex-wrap items-center gap-3">
             <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Tampilan" data-testid="tampilan-riwayat" data-tampilan="{{ $tampilan }}">
                 @foreach (\App\Livewire\Dokumen\Riwayat::TAMPILAN as $kunciTampilan => $labelTampilan)
@@ -78,18 +84,18 @@
                 <label class="block">
                     <span class="form-label mb-1 text-xs">Jenis dokumen</span>
                     <select wire:model.live="jenis" class="form-input py-1.5" data-testid="saring-jenis">
-                        <option value="">Semua jenis</option>
+                        <option value="">Semua jenis ({{ array_sum($hitungJenis) }})</option>
                         @foreach (\App\Support\Dokumen\DokumenKegiatan::JENIS as $kunciJenis => $labelJenis)
-                            <option value="{{ $kunciJenis }}">{{ $labelJenis }}</option>
+                            <option value="{{ $kunciJenis }}" data-jumlah="{{ $hitungJenis[$kunciJenis] }}">{{ $labelJenis }} ({{ $hitungJenis[$kunciJenis] }})</option>
                         @endforeach
                     </select>
                 </label>
                 <label class="block">
                     <span class="form-label mb-1 text-xs">Format berkas</span>
                     <select wire:model.live="format" class="form-input py-1.5" data-testid="saring-format">
-                        <option value="">Semua format</option>
+                        <option value="">Semua format ({{ array_sum($hitungFormat) }})</option>
                         @foreach (RiwayatDokumen::FORMAT as $kunciFormat => [$labelFormat])
-                            <option value="{{ $kunciFormat }}">{{ $labelFormat }}</option>
+                            <option value="{{ $kunciFormat }}" data-jumlah="{{ $hitungFormat[$kunciFormat] }}">{{ $labelFormat }} ({{ $hitungFormat[$kunciFormat] }})</option>
                         @endforeach
                     </select>
                 </label>
@@ -115,7 +121,9 @@
 
         @if ($adaSaringan)
             <div class="mt-3 flex flex-wrap items-center gap-2" data-testid="chip-saringan-riwayat">
-                <span class="text-xs text-stone-500">Disaring:</span>
+                <span class="text-xs text-stone-500" aria-live="polite" data-testid="hasil-riwayat" data-jumlah="{{ count($telusur->cocok) }}">
+                    <span class="font-semibold text-stone-800 tabular-nums">{{ count($telusur->cocok) }}</span> dari {{ $telusur->total }} dokumen<span class="sr-only">{{ $telusur->keterangan() ? ' — '.$telusur->keterangan() : '' }}</span>:
+                </span>
                 @if ($cari !== '')
                     <button type="button" wire:click="$set('cari', '')" class="inline-flex items-center gap-1 rounded-full bg-gold-50 px-2.5 py-1 text-xs font-semibold text-gold-800 ring-1 ring-gold-200 hover:bg-gold-100" data-testid="chip-saringan" data-kunci="cari">
                         “{{ $cari }}” <x-ui.icon name="x" class="size-3" /><span class="sr-only">Lepas kata kunci</span>

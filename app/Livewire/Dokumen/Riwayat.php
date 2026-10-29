@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dokumen;
 
+use App\Support\Dokumen\PenelusuranRiwayat;
 use App\Support\Dokumen\RiwayatDokumen;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
@@ -14,10 +15,13 @@ use Livewire\Component;
  * set dokumen yang pernah dicetak, diunduh, atau diarsipkan dalam cakupan akun (RiwayatDokumen::untuk), dikelompokkan per
  * tahun anggaran (terbaru dulu), dengan ringkasan jumlah dokumen, kegiatan, arsip final, dan dokumen bercap DRAF.
  * Saringan `?jenis=&format=&dari=&sampai=` (RiwayatDokumen::saring — rentang terbalik tidak diterapkan; chip `lepasSaringan`,
- * `hapusSaringan`, `pintasanTanggal` 30 hari/TA aktif) dan kata kunci `?cari=` menyaring kedua tampilan (RiwayatDokumen::cari, sorotan RiwayatDokumen::sorot). Tampilan `?tampilan=` (TAMPILAN): `kegiatan` (bawaan) = kartu per kegiatan dengan versi terbaru tiap jenis × sumber ×
- * format dan versi lama yang bisa dibuka (RiwayatDokumen::perKegiatan); `kronologis` = tabel per tahun berurutan `?urut=`
- * (RiwayatDokumen::URUT). Daftar dibatasi `$batas` (PER_HALAMAN, "Tampilkan lebih banyak"); berganti tampilan/urutan
- * mengembalikan batasnya.
+ * `hapusSaringan`, `pintasanTanggal` 30 hari/TA aktif) dan kata kunci `?cari=` (RiwayatDokumen::cari, sorotan
+ * RiwayatDokumen::sorot) diterapkan bersama lewat satu PenelusuranRiwayat (`penelusuran`): daftar kedua tampilan, ringkasan
+ * "dari …", hitungan tiap pilihan jenis/format, dan keterangan hasil. Tampilan `?tampilan=` (TAMPILAN): `kegiatan`
+ * (bawaan) = kartu per kegiatan dengan versi terbaru tiap jenis × sumber × format, versi lama yang bisa dibuka, dan penanda
+ * versi lebih baru yang tersaring (PenelusuranRiwayat::perKegiatan); `kronologis` = tabel per tahun berurutan `?urut=`
+ * (RiwayatDokumen::URUT). Daftar dibatasi `$batas` (PER_HALAMAN, "Tampilkan lebih banyak"); berganti tampilan/urutan/
+ * kriteria mengembalikan batasnya.
  */
 #[Layout('layouts.app')]
 class Riwayat extends Component
@@ -59,7 +63,7 @@ class Riwayat extends Component
 
     public function updated(string $properti): void
     {
-        if (in_array($properti, ['tampilan', 'urut', 'cari', ...RiwayatDokumen::SARINGAN], true)) {
+        if (in_array($properti, ['tampilan', 'urut', ...PenelusuranRiwayat::KRITERIA], true)) {
             $this->rapikan();
             $this->batas = self::PER_HALAMAN;
         }
@@ -74,29 +78,31 @@ class Riwayat extends Component
     {
         $this->tampilan = array_key_exists($this->tampilan, self::TAMPILAN) ? $this->tampilan : 'kegiatan';
         $this->urut = array_key_exists($this->urut, RiwayatDokumen::URUT) ? $this->urut : 'terbaru';
-        $this->cari = mb_substr(trim($this->cari), 0, 100);
+        $this->cari = PenelusuranRiwayat::rapikanCari($this->cari);
         $saringan = RiwayatDokumen::rapikanSaringan($this->saringan());
         foreach (RiwayatDokumen::SARINGAN as $kunci) {
             $this->{$kunci} = $saringan[$kunci];
         }
     }
 
-    /**
-     * Isi tampilan aktif: [kelompok per tahun (dipotong `$batas`), jumlah butir seluruhnya].
-     *
-     * @return array{0: array<int, list<array<string, mixed>>>, 1: int}
-     */
     /** @return array<string, string> */
     public function saringan(): array
     {
         return ['jenis' => $this->jenis, 'format' => $this->format, 'dari' => $this->dari, 'sampai' => $this->sampai];
     }
 
+    /** Kata kunci & saringan atas catatan dalam cakupan akun. */
+    #[Computed]
+    public function penelusuran(): PenelusuranRiwayat
+    {
+        return PenelusuranRiwayat::dari($this->semua, ['cari' => $this->cari] + $this->saringan());
+    }
+
     /** @return list<array<string, mixed>> Catatan yang cocok dengan kata kunci & saringan. */
     #[Computed]
     public function cocok(): array
     {
-        return RiwayatDokumen::saring(RiwayatDokumen::cari($this->semua, $this->cari), $this->saringan());
+        return $this->penelusuran->cocok;
     }
 
     /** Lepas satu saringan (chip): jenis, format, atau tanggal (dari & sampai). */
@@ -128,18 +134,14 @@ class Riwayat extends Component
         $this->batas = self::PER_HALAMAN;
     }
 
+    /**
+     * Isi tampilan aktif: [kelompok per tahun (dipotong `$batas`), jumlah butir seluruhnya].
+     *
+     * @return array{0: array<int, list<array<string, mixed>>>, 1: int}
+     */
     public function isi(): array
     {
-        $butir = $this->tampilan === 'kegiatan'
-            ? RiwayatDokumen::perKegiatan($this->cocok)
-            : ($this->urut === 'terlama' ? array_reverse($this->cocok) : $this->cocok);
-        $kelompok = [];
-        foreach (array_slice($butir, 0, $this->batas) as $b) {
-            $kelompok[(int) $b['tahun_anggaran']][] = $b;
-        }
-        $this->urut === 'terlama' && $this->tampilan === 'kronologis' ? ksort($kelompok) : krsort($kelompok);
-
-        return [$kelompok, count($butir)];
+        return $this->penelusuran->halaman($this->tampilan, $this->urut, $this->batas);
     }
 
     /** @return list<array<string, mixed>> */

@@ -127,4 +127,41 @@ test.describe('Riwayat Dokumen', () => {
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
+
+    test('pencarian & saringan terpadu: hitungan pilihan, ringkasan, keterangan, versi lebih baru', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/dokumen');
+        const mobile = testInfo.project.name === 'mobile';
+        if (mobile) {
+            await page.getByTestId('buka-saringan-riwayat').click();
+        }
+        const ringkasan = page.getByTestId('ringkasan-riwayat');
+        await expect(ringkasan).toHaveAttribute('data-tersaring', '0');
+        await expect(page.getByTestId('saring-format').locator('option[value="pdf"]')).toHaveAttribute('data-jumlah', '7');
+
+        await page.getByTestId('cari-riwayat').fill('workshop');
+        await expect(page).toHaveURL(/cari=workshop/);
+        await expect(page.getByTestId('saring-jenis').locator('option[value="RAB"]')).toHaveAttribute('data-jumlah', '1');
+        await expect(page.getByTestId('saring-format').locator('option[value="pdf"]')).toHaveAttribute('data-jumlah', '1');
+        await expect(ringkasan).toHaveAttribute('data-tersaring', '1');
+        await expect(ringkasan.locator('[data-ringkasan="jumlah"]')).toContainText('dari 9 dokumen');
+        await expect(page.getByTestId('hasil-riwayat')).toHaveAttribute('data-jumlah', '3');
+
+        await page.getByTestId('saring-format').selectOption('xlsx');
+        await expect(page.getByTestId('hasil-riwayat')).toHaveAttribute('data-jumlah', '1');
+        await expect(page.getByTestId('cari-riwayat-hasil')).toHaveText('');
+        await expect(page.getByTestId('kegiatan-riwayat')).toHaveCount(1);
+        await expect(page.getByTestId('jumlah-dokumen-kegiatan')).toHaveText('1 dari 3 dokumen');
+
+        await page.getByTestId('hapus-saringan-riwayat').click();
+        await expect(ringkasan).toHaveAttribute('data-tersaring', '0');
+        await page.goto('/dokumen?sampai=2025-09-30');
+        const lomba = page.getByTestId('kegiatan-riwayat').filter({ hasText: 'Lomba Kreativitas Siswa Akhir Tahun' });
+        await expect(lomba.getByTestId('dokumen-kegiatan')).toHaveAttribute('data-versi', '1');
+        await expect(lomba.getByTestId('versi-lebih-baru')).toHaveAttribute('data-versi', '2');
+        await expect(lomba.getByTestId('versi-lebih-baru')).toContainText('Ada versi lebih baru: v2');
+        await page.screenshot({ path: `storage/playwright/shots/riwayat-terpadu-${testInfo.project.name}.png`, fullPage: true });
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+    });
 });
