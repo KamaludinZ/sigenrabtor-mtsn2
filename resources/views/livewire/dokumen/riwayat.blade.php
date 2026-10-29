@@ -4,7 +4,8 @@
 @php
     $semua = $this->semua;
     $ringkasan = RiwayatDokumen::ringkasan($semua);
-    $perTahun = RiwayatDokumen::perTahun($semua);
+    [$perTahun, $jumlahButir] = $this->isi();
+    $tampil = min($this->batas, $jumlahButir);
     $waktu = fn (string $iso) => Format::tanggal(substr($iso, 0, 10)).' · '.\Carbon\CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->format('H.i');
     $nadaStatus = ['final' => 'bg-stone-800 text-white ring-stone-800', 'disetujui' => 'bg-brand-50 text-brand-800 ring-brand-200'];
 @endphp
@@ -37,6 +38,32 @@
         @endforeach
     </dl>
 
+    @if ($semua !== [])
+        {{-- Tampilan & urutan --}}
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-3" data-testid="alat-riwayat">
+            <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Tampilan" data-testid="tampilan-riwayat" data-tampilan="{{ $tampilan }}">
+                @foreach (\App\Livewire\Dokumen\Riwayat::TAMPILAN as $kunciTampilan => $labelTampilan)
+                    <button type="button" wire:click="$set('tampilan', '{{ $kunciTampilan }}')" aria-pressed="{{ $tampilan === $kunciTampilan ? 'true' : 'false' }}" data-pilih-tampilan="{{ $kunciTampilan }}"
+                            @class(['inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition', 'bg-white text-stone-900 shadow-xs' => $tampilan === $kunciTampilan, 'text-stone-500 hover:text-stone-800' => $tampilan !== $kunciTampilan])>
+                        <x-ui.icon :name="$kunciTampilan === 'kegiatan' ? 'clipboard' : 'history'" class="size-4" /> {{ $labelTampilan }}
+                    </button>
+                @endforeach
+            </div>
+            @if ($tampilan === 'kronologis')
+                <label class="flex items-center gap-2 text-sm text-stone-600">
+                    <span>Urutkan</span>
+                    <select wire:model.live="urut" class="form-input w-auto py-1.5" data-testid="urut-riwayat">
+                        @foreach (RiwayatDokumen::URUT as $kunciUrut => $labelUrut)
+                            <option value="{{ $kunciUrut }}">{{ $labelUrut }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @else
+                <p class="text-xs text-stone-500">Versi terbaru tiap dokumen; buka "versi sebelumnya" untuk riwayatnya.</p>
+            @endif
+        </div>
+    @endif
+
     @if ($semua === [])
         <div class="mt-6 rounded-2xl bg-white px-5 py-12 text-center shadow-xs ring-1 ring-stone-200" data-testid="riwayat-kosong">
             <x-ui.icon name="history" class="mx-auto size-9 text-stone-300" />
@@ -45,13 +72,17 @@
             <a href="{{ route('cetak.index') }}" wire:navigate class="btn-primary mt-4"><x-ui.icon name="printer" class="size-4" /> Buka Cetak &amp; Unduh</a>
         </div>
     @else
-        <div class="mt-6 space-y-6">
+        <div class="mt-4 space-y-6">
             @foreach ($perTahun as $tahun => $baris)
                 <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-tahun-{{ $tahun }}" data-testid="riwayat-tahun" data-tahun="{{ $tahun }}" wire:key="tahun-{{ $tahun }}">
                     <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-stone-100 px-4 py-3.5 sm:px-5">
                         <h2 id="judul-tahun-{{ $tahun }}" class="text-base font-semibold text-stone-900">Tahun Anggaran {{ $tahun }}</h2>
-                        <span class="text-xs text-stone-500 tabular-nums">{{ count($baris) }} dokumen</span>
+                        <span class="text-xs text-stone-500 tabular-nums">{{ $tampilan === 'kegiatan' ? count($baris).' kegiatan · '.array_sum(array_column($baris, 'jumlah')).' dokumen' : count($baris).' dokumen' }}</span>
                     </header>
+
+                    @if ($tampilan === 'kegiatan')
+                        @include('livewire.dokumen.partials.per-kegiatan', ['kegiatan' => $baris])
+                    @else
 
                     {{-- Layar lebar: tabel --}}
                     <div class="hidden lg:block">
@@ -138,8 +169,18 @@
                             </li>
                         @endforeach
                     </ul>
+                    @endif
                 </section>
             @endforeach
         </div>
+
+        @if ($jumlahButir > $tampil)
+            <div class="mt-4 text-center">
+                <button type="button" wire:click="tampilkanLebih" class="btn-secondary" data-testid="tampilkan-lebih-riwayat">
+                    Tampilkan {{ min(\App\Livewire\Dokumen\Riwayat::PER_HALAMAN, $jumlahButir - $tampil) }} lagi
+                    <span class="font-normal text-stone-500">({{ $tampil }} dari {{ $jumlahButir }} {{ $tampilan === 'kegiatan' ? 'kegiatan' : 'dokumen' }})</span>
+                </button>
+            </div>
+        @endif
     @endif
 </div>

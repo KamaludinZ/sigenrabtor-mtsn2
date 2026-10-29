@@ -164,6 +164,67 @@ final class RiwayatDokumen
         return $kelompok;
     }
 
+    /** Urutan jenis di kartu kegiatan: set lengkap dulu, lalu KAK/TOR, lalu RAB. */
+    public const URUT_JENIS = ['lengkap', 'KAK+TOR', 'KAK', 'TOR', 'RAB'];
+
+    /** Urutan tampilan kronologis → label. */
+    public const URUT = ['terbaru' => 'Terbaru dulu', 'terlama' => 'Terlama dulu'];
+
+    /**
+     * Kelompok per kegiatan (kegiatan tersimpan per id, kegiatan yang tidak tersimpan per nama × tahun), kegiatan yang
+     * dokumennya terakhir dibuat paling baru dulu; di dalamnya satu baris per jenis × sumber × format (`kunciVersi`) berisi
+     * versi terbaru dan versi lama (terbaru dulu), urut sumber lalu jenis (`URUT_JENIS`) lalu format.
+     *
+     * @param  list<array<string, mixed>>  $baris  Catatan siap tampil (`untuk`), terbaru dulu.
+     * @return list<array<string, mixed>>
+     */
+    public static function perKegiatan(array $baris): array
+    {
+        $kegiatan = [];
+        foreach ($baris as $b) {
+            $kunci = $b['kegiatan_id'] !== null ? 'k'.$b['kegiatan_id'] : 'x'.$b['tahun_anggaran'].'|'.mb_strtolower($b['nama_kegiatan']);
+            $kegiatan[$kunci] ??= [
+                'kunci' => $kunci,
+                'kegiatan_id' => $b['kegiatan_id'],
+                'nama_kegiatan' => $b['nama_kegiatan'],
+                'tahun_anggaran' => (int) $b['tahun_anggaran'],
+                'kode_leading' => $b['kode_leading'],
+                'nama_leading' => $b['nama_leading'] ?? null,
+                'tersedia' => $b['tersedia'] ?? false,
+                'tautan_kegiatan' => $b['tautan_kegiatan'] ?? null,
+                'terakhir' => $b['dibuat_pada'],
+                'dokumen' => [],
+            ];
+            $kegiatan[$kunci]['terakhir'] = max($kegiatan[$kunci]['terakhir'], $b['dibuat_pada']);
+            $versi = self::kunciVersi($b);
+            if (! isset($kegiatan[$kunci]['dokumen'][$versi])) {
+                $kegiatan[$kunci]['dokumen'][$versi] = ['kunci' => $versi, 'terbaru' => $b, 'lama' => []];
+            } elseif ($b['dibuat_pada'] > $kegiatan[$kunci]['dokumen'][$versi]['terbaru']['dibuat_pada']) {
+                array_unshift($kegiatan[$kunci]['dokumen'][$versi]['lama'], $kegiatan[$kunci]['dokumen'][$versi]['terbaru']);
+                $kegiatan[$kunci]['dokumen'][$versi]['terbaru'] = $b;
+            } else {
+                $kegiatan[$kunci]['dokumen'][$versi]['lama'][] = $b;
+            }
+        }
+        $jenis = array_flip(self::URUT_JENIS);
+        $format = array_flip(array_keys(self::FORMAT));
+        foreach ($kegiatan as &$k) {
+            foreach ($k['dokumen'] as &$d) {
+                usort($d['lama'], fn (array $a, array $b) => $b['dibuat_pada'] <=> $a['dibuat_pada']);
+            }
+            unset($d);
+            $k['dokumen'] = array_values($k['dokumen']);
+            usort($k['dokumen'], fn (array $a, array $b) => [(string) $a['terbaru']['sumber'], $jenis[$a['terbaru']['jenis']] ?? 9, $format[$a['terbaru']['format']] ?? 9]
+                <=> [(string) $b['terbaru']['sumber'], $jenis[$b['terbaru']['jenis']] ?? 9, $format[$b['terbaru']['format']] ?? 9]);
+            $k['jumlah'] = array_sum(array_map(fn (array $d) => 1 + count($d['lama']), $k['dokumen']));
+        }
+        unset($k);
+        $kegiatan = array_values($kegiatan);
+        usort($kegiatan, fn (array $a, array $b) => $b['terakhir'] <=> $a['terakhir']);
+
+        return $kegiatan;
+    }
+
     /**
      * @param  list<array<string, mixed>>  $baris
      * @return array{jumlah: int, kegiatan: int, tahun: int, arsip: int, draf: int, format: array<string, int>}
