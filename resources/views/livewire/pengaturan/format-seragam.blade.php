@@ -270,6 +270,66 @@
                 </section>
             </div>
 
+            @php
+                $pratinjau = $this->pratinjau;
+                $asalPratinjau = ['leading' => 'template khusus leading', 'jenis' => 'template jenis kegiatan', 'bawaan' => 'susunan baku & cover default'];
+            @endphp
+            <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pratinjau-template" data-testid="pratinjau-template">
+                <header class="flex flex-wrap items-end justify-between gap-3 border-b border-stone-100 px-5 py-4">
+                    <div class="min-w-0">
+                        <h2 id="judul-pratinjau-template" class="text-sm font-semibold text-stone-900">Pratinjau dengan template terpilih</h2>
+                        <p class="mt-0.5 text-xs text-stone-500">Mengikuti pilihan di atas, termasuk yang belum disimpan.</p>
+                    </div>
+                    @if ($pratinjau)
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label class="min-w-0">
+                                <span class="sr-only">Contoh kegiatan</span>
+                                <select wire:model.live="contohKegiatan" class="form-input max-w-xs py-1.5 text-xs" aria-label="Contoh kegiatan pratinjau" data-testid="contoh-pratinjau-template">
+                                    @foreach ($this->daftarContoh as $contoh)
+                                        <option value="{{ $contoh['id'] }}">{{ $contoh['nama'] }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            @if (count($pratinjau['kegiatan']['sumber']) > 1)
+                                <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Sumber dana pratinjau">
+                                    @foreach ($pratinjau['kegiatan']['sumber'] as $sumberContoh)
+                                        <button type="button" wire:click="$set('contohSumber', '{{ $sumberContoh }}')" aria-pressed="{{ $sumberContoh === $pratinjau['sumber'] ? 'true' : 'false' }}"
+                                                @class(['rounded-md px-2.5 py-1 text-xs font-semibold', 'bg-white text-stone-900 shadow-xs' => $sumberContoh === $pratinjau['sumber'], 'text-stone-500 hover:text-stone-800' => $sumberContoh !== $pratinjau['sumber']])>{{ $sumberContoh }}</button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                </header>
+                @if ($pratinjau === null)
+                    <p class="px-5 py-8 text-center text-sm text-stone-500" data-testid="pratinjau-template-kosong">Belum ada kegiatan TA aktif untuk dipratinjau.</p>
+                @else
+                    <p class="border-b border-stone-100 bg-stone-50 px-5 py-2.5 text-xs text-stone-600" data-testid="asal-pratinjau-template" data-asal="{{ $pratinjau['asal'] }}" data-jenis="{{ $pratinjau['kegiatan']['jenis'] }}">
+                        Jenis kegiatan: <span class="font-semibold text-stone-800">{{ $pratinjau['kegiatan']['label_jenis'] }}</span>
+                        @if ($pratinjau['kegiatan']['leading'] !== '') · Leading {{ $pratinjau['kegiatan']['leading'] }} @endif
+                        · memakai <span class="font-semibold text-stone-800">{{ $asalPratinjau[$pratinjau['asal']] }}</span>
+                    </p>
+                    <div class="grid gap-5 p-5 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+                        <div class="min-w-0">
+                            <h3 class="text-xs font-semibold text-stone-500">Cover — <span data-testid="nama-cover-pratinjau">{{ $pratinjau['cover']['nama'] ?? 'cover default' }}</span></h3>
+                            <div class="mt-2 max-w-[18rem]">
+                                <x-dokumen.cover :gambar="$pratinjau['cover']['gambar']" :teks="$pratinjau['cover']['teks']" :nilai="$pratinjau['cover']['nilai']" :jangkar="false" class="shadow-sm" />
+                            </div>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="text-xs font-semibold text-stone-500">KAK/TOR — <span data-testid="nama-kak-pratinjau">{{ $pratinjau['master'] ? $pratinjau['master']['nama'].' · '.$pratinjau['master']['jenis'] : 'susunan baku aplikasi (bagian 1–3)' }}</span></h3>
+                            <div class="mt-2 max-h-[32rem] overflow-y-auto rounded-xl bg-stone-100 p-3 ring-1 ring-stone-200" data-testid="isi-pratinjau-template">
+                                @if ($pratinjau['isi_master'])
+                                    @include('livewire.pengaturan.partials.isi-master', ['isiMaster' => $pratinjau['isi_master'], 'modeMaster' => 'isi'])
+                                @else
+                                    <x-dokumen.kak-tor :susunan="$pratinjau['susunan']" :bagian="[1, 2, 3]" :cap="false" />
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </section>
+
             @unless ($terkunci)
                 <div class="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-2 rounded-2xl bg-white/95 px-4 py-3 shadow-md ring-1 ring-stone-200 backdrop-blur" data-testid="aksi-template">
                     @if ($this->templateBerubah)

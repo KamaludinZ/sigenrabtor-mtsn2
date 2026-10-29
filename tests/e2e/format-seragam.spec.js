@@ -26,6 +26,13 @@ test.describe('Format Seragam', () => {
         await page.getByTestId('tab-format').locator('[data-tab="template"]').click();
         await expect(page.getByTestId('template-jenis')).toHaveCount(5);
         await expect(page.getByTestId('pilih-kak-workshop').locator('option').first()).toHaveText('Susunan baku aplikasi');
+        const pratinjau = page.getByTestId('pratinjau-template');
+        await expect(pratinjau.getByTestId('asal-pratinjau-template')).toHaveAttribute('data-asal', 'bawaan');
+        await expect(pratinjau.getByTestId('isi-pratinjau-template')).toContainText('Latar Belakang');
+        await pratinjau.getByTestId('contoh-pratinjau-template').selectOption({ label: 'Supervisi Akademik dan Refleksi Pembelajaran' });
+        await expect(pratinjau.getByTestId('asal-pratinjau-template')).toHaveAttribute('data-jenis', 'supervisi');
+        await expect(pratinjau.getByTestId('isi-pratinjau-template')).toContainText('Supervisi Akademik');
+        await pratinjau.screenshot({ path: `storage/playwright/shots/format-pratinjau-${testInfo.project.name}.png` });
 
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);

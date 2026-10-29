@@ -2,17 +2,28 @@
 
 namespace App\Livewire\Pengaturan;
 
+use App\Contracts\KegiatanRepository;
 use App\Contracts\PilihanTemplateRepository;
+use App\Contracts\TemplateCoverRepository;
+use App\Contracts\TemplateDokumenRepository;
 use App\Enums\SumberDana;
+use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\DokumenKegiatan;
 use App\Support\Dokumen\FormatSeragam as AturanFormat;
+use App\Support\Dokumen\NilaiVariabel;
+use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Dokumen\PratinjauTemplate;
+use App\Support\Dokumen\SusunanKak;
+use App\Support\Dokumen\TeksCover;
 use App\Support\Kegiatan\KonteksAi;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubFormatSeragam;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -26,7 +37,8 @@ use RuntimeException;
  * baku (sembilan bagian KAK/TOR, kepala & kolom RAB — AturanFormat::susunan), penomoran (aturan per jenis dokumen + contoh
  * nomor berikutnya AturanFormat::nomor), pilihan template (template KAK/TOR & cover per jenis kegiatan dan khusus leading —
  * PilihanTemplate; disunting di `$pilihan` lalu `simpanTemplate()`/`batalTemplate()`, baris khusus leading `tambahLeading()`/
- * `hapusLeading($i)`, galat ke `pilihan.*`). Aturan penomoran masih tiruan (StubFormatSeragam); kop dari profil madrasah
+ * `hapusLeading($i)`, galat ke `pilihan.*`; `pratinjau` = contoh kegiatan `?contoh=` × sumber `contohSumber` dengan template yang
+ * berlaku menurut pilihan yang sedang disunting — cover & isi master/susunan baku). Aturan penomoran masih tiruan (StubFormatSeragam); kop dari profil madrasah
  * (KelolaProfilMadrasah::data).
  */
 #[Layout('layouts.app')]
@@ -103,6 +115,64 @@ class FormatSeragam extends Component
         unset($this->template, $this->ringkasan);
         $this->muatPilihan();
         $this->dispatch('notify', message: $hasil['ringkasan'] === null ? 'Tidak ada perubahan pilihan template.' : 'Pilihan template disimpan.', type: $hasil['ringkasan'] === null ? 'info' : 'success');
+    }
+
+    /** Contoh kegiatan pratinjau (id; '' = kegiatan pertama tahun aktif) dan sumber dananya ('' = sumber pertama). */
+    #[Url(as: 'contoh', except: '')]
+    public string $contohKegiatan = '';
+
+    public string $contohSumber = '';
+
+    public function updatedContohKegiatan(): void
+    {
+        $this->contohSumber = '';
+    }
+
+    /** @return list<array{id: int, nama: string, leading: string, sumber: list<string>}> Kegiatan tahun aktif untuk pratinjau. */
+    #[Computed]
+    public function daftarContoh(): array
+    {
+        return array_values(array_map(fn (array $k) => [
+            'id' => (int) $k['id'], 'nama' => (string) ($k['nama_kegiatan'] ?? 'Tanpa nama'), 'leading' => (string) ($k['leading'] ?? ''),
+            'sumber' => array_values(array_column($k['sumber_dana'] ?? [], 'sumber')),
+        ], array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => TahunKegiatan::dari($k) === $this->tahun())));
+    }
+
+    /**
+     * Pratinjau dokumen contoh kegiatan dengan template yang berlaku menurut pilihan yang sedang disunting: cover (template
+     * cover atau cover default) dan KAK/TOR (isi master ber-variabel PratinjauTemplate, atau tiga bagian awal susunan baku).
+     *
+     * @return array<string, mixed>|null null = belum ada kegiatan tahun aktif.
+     */
+    #[Computed]
+    public function pratinjau(): ?array
+    {
+        $contoh = collect($this->daftarContoh)->firstWhere('id', (int) $this->contohKegiatan) ?? ($this->daftarContoh[0] ?? null);
+        if ($contoh === null) {
+            return null;
+        }
+        $kegiatan = app(KegiatanRepository::class)->temukan($contoh['id']);
+        $sumber = in_array($this->contohSumber, $contoh['sumber'], true) ? $this->contohSumber : ($contoh['sumber'][0] ?? null);
+        $berlaku = PilihanTemplate::untukKegiatan($kegiatan, $this->tahun(), $this->pilihan);
+
+        $cover = $berlaku['cover'] !== null ? app(TemplateCoverRepository::class)->temukan($berlaku['cover']) : null;
+        $desain = $cover !== null
+            ? ['gambar' => route('dokumen.cover.gambar', ['cover' => $cover['id'], 'v' => $cover['diperbarui_pada']]), 'teks' => TeksCover::rapikan($cover['teks_items'])]
+            : CoverDokumen::desain($this->tahun());
+        $master = $berlaku['kak'] !== null ? app(TemplateDokumenRepository::class)->temukan($berlaku['kak']) : null;
+        $isiMaster = $master !== null && Storage::disk('local')->exists($master['file_path'])
+            ? PratinjauTemplate::susun(PembacaTemplateDocx::paragraf(Storage::disk('local')->path($master['file_path'])), NilaiVariabel::untuk($kegiatan, $sumber))
+            : null;
+
+        return [
+            'kegiatan' => $contoh + ['jenis' => $berlaku['jenis'], 'label_jenis' => KonteksAi::jenisKegiatan()[$berlaku['jenis']] ?? $berlaku['jenis']],
+            'sumber' => $sumber,
+            'asal' => $berlaku['asal'],
+            'cover' => $desain + ['nilai' => TeksCover::nilai($kegiatan, $sumber), 'nama' => $cover['nama'] ?? null],
+            'master' => $master !== null ? ['nama' => $master['nama'], 'jenis' => $master['jenis']] : null,
+            'isi_master' => $isiMaster,
+            'susunan' => $isiMaster === null ? SusunanKak::dari($kegiatan, $sumber, tahun: $this->tahun()) : null,
+        ];
     }
 
     /** Ada pilihan yang belum disimpan (dibanding data tersimpan). */

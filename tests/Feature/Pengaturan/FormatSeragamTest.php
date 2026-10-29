@@ -172,6 +172,38 @@ class FormatSeragamTest extends TestCase
         $this->assertSame($t['cover'], app(PilihanTemplateRepository::class)->untuk(2026)['leading'][0]['cover']);
     }
 
+    public function test_pratinjau_dengan_template_terpilih(): void
+    {
+        $komponen = Livewire::test(FormatSeragam::class)->set('tab', 'template');
+        $komponen->assertSeeHtml('data-testid="asal-pratinjau-template" data-asal="bawaan" data-jenis="workshop"')
+            ->assertSeeText('cover default')
+            ->assertSeeText('susunan baku aplikasi (bagian 1–3)')
+            ->assertSeeText('Latar Belakang')
+            ->assertDontSee('data-testid="isi-master"', false);
+
+        $t = $this->templateContoh();
+        $komponen = Livewire::test(FormatSeragam::class)->set('tab', 'template')
+            ->set('pilihan.jenis.workshop.kak', $t['kak'])
+            ->set('pilihan.jenis.workshop.cover', $t['cover'])
+            ->assertSeeHtml('data-testid="asal-pratinjau-template" data-asal="jenis" data-jenis="workshop"')
+            ->assertSeeText('Master Workshop · KAK+TOR')
+            ->assertSeeText('Cover Kesiswaan')
+            ->assertSee('data-testid="isi-master" data-mode="isi"', false)
+            ->assertSeeHtml('data-isi="nama_kegiatan"')
+            ->assertSeeText('Workshop Penyusunan Kurikulum Madrasah dan Perangkat Pembelajaran')
+            ->assertSeeHtml('/dokumen/cover/'.$t['cover'].'/gambar');
+        $this->assertNull(app(PilihanTemplateRepository::class)->untuk(2026)['jenis']['workshop']['kak'] ?? null, 'Pratinjau memakai pilihan yang belum disimpan.');
+
+        $komponen->set('contohKegiatan', '2')
+            ->assertSet('contohSumber', '')
+            ->assertSeeHtml('data-asal="bawaan" data-jenis="supervisi"')
+            ->set('contohSumber', 'Komite')
+            ->assertSee('Sumber dana pratinjau', false)
+            ->set('pilihan.leading', [['leading' => '1.6', 'jenis' => 'supervisi', 'kak' => $t['kak2'], 'cover' => '']])
+            ->assertSeeHtml('data-asal="leading" data-jenis="supervisi"')
+            ->assertSeeText('Master Lomba · TOR');
+    }
+
     public function test_hanya_admin(): void
     {
         session(['stub_role' => 'leading']);
