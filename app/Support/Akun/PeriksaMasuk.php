@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\RateLimiter;
  * Pemeriksaan formulir Masuk (PRD §8 "Daftar & Masuk", N3 keamanan): satu-satunya aturan halaman Masuk —
  * - `rapikanSurel()` (spasi tepi dibuang, huruf kecil), `galatSurel()` (wajib & format; diperiksa saat blur — keberadaan
  *   akun tidak pernah dibocorkan sebelum dikirim);
- * - `periksa($surel)` = akun & peran demo atau pesan penolakan (tidak terdaftar / permohonan menunggu / nonaktif / bukan
- *   akun contoh mode demo) — sandi baru diperiksa autentikasi Laravel kelak;
+ * - `periksa($surel)` = akun aktif yang masuk beserta perannya (`SesiAkun::masuk`) atau pesan penolakan (tidak terdaftar /
+ *   permohonan menunggu / nonaktif) — sandi baru diperiksa autentikasi Laravel kelak;
  * - pembatas percobaan per surel × alamat IP: `MAKS_PERCOBAAN` gagal → dijeda `JEDA_DETIK` (`tunggu()`, `gagal()` →
  *   sisa percobaan, `berhasil()` mengosongkan), `pesanTunggu()`/`pesanSisa()`.
  */
@@ -40,13 +40,11 @@ final class PeriksaMasuk
     public static function periksa(string $surel): array
     {
         $akun = DataAkun::cariSurel($surel);
-        $peran = $akun !== null ? (DataAkun::PERSONA[(int) $akun['id']] ?? null) : null;
 
-        return ['akun' => $akun, 'peran' => $peran, 'galat' => match (true) {
+        return ['akun' => $akun, 'peran' => $akun['role'] ?? null, 'galat' => match (true) {
             $akun === null && PendaftaranAkun::menunggu($surel) !== null => 'Permohonan akun untuk surel ini masih menunggu persetujuan admin.',
             $akun === null => 'Surel ini belum terdaftar — ajukan pendaftaran atau hubungi admin madrasah.',
             ! ($akun['is_active'] ?? true) => 'Akun ini nonaktif — hubungi admin untuk mengaktifkannya kembali.',
-            $peran === null => 'Mode demo: hanya akun contoh di bawah yang bisa masuk sampai autentikasi diaktifkan.',
             default => null,
         }];
     }

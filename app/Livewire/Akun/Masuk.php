@@ -5,6 +5,7 @@ namespace App\Livewire\Akun;
 use App\Contracts\PenggunaRepository;
 use App\Support\Akun\DataAkun;
 use App\Support\Akun\PeriksaMasuk;
+use App\Support\Akun\SesiAkun;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -14,10 +15,10 @@ use RuntimeException;
  * Halaman Masuk (PRD §8 "Daftar & Masuk"; `/masuk`, rute `akun.masuk`, layout tamu): surel + sandi + ingat saya; aturan
  * hanya lewat PeriksaMasuk. Surel diperiksa formatnya saat blur (`updatedSurel`), `?surel=` mengisinya saat dibuka
  * (mis. dari halaman Daftar). Selama autentikasi Laravel belum dipasang (mode demo), surel dicocokkan dengan akun
- * PenggunaRepository (`PeriksaMasuk::periksa`: tidak terdaftar / permohonan menunggu / nonaktif / bukan akun contoh
- * ditolak); akun contoh masuk sebagai peran demonya (session `stub_role`, waktu masuk dicatat `catatMasuk`) — sandi belum
- * diperiksa. Percobaan gagal dibatasi per surel × IP (`$peringatan` sisa percobaan, jeda → event `masuk-dijeda` {detik}).
- * `masukSebagai($id)` = pintasan akun contoh.
+ * PenggunaRepository (`PeriksaMasuk::periksa`: tidak terdaftar / permohonan menunggu / nonaktif ditolak); akun aktif masuk
+ * lewat state tiruan `SesiAkun::masuk` (waktu masuk dicatat `catatMasuk`) — sandi belum diperiksa. Percobaan gagal dibatasi
+ * per surel × IP (`$peringatan` sisa percobaan, jeda → event `masuk-dijeda` {detik}). `masukSebagai($id)` = pintasan akun
+ * contoh (`DataAkun::PERSONA`). Selama sudah masuk, halaman menampilkan kartu `sudah-masuk` (lanjut atau keluar).
  */
 #[Layout('layouts.tamu')]
 class Masuk extends Component
@@ -82,14 +83,14 @@ class Masuk extends Component
         }
         PeriksaMasuk::berhasil($surel, $ip);
 
-        return $this->masukkan((int) $hasil['akun']['id'], (string) $hasil['peran']);
+        return $this->masukkan($hasil['akun']);
     }
 
     public function masukSebagai(int $id)
     {
-        $peran = DataAkun::PERSONA[$id] ?? null;
+        $akun = isset(DataAkun::PERSONA[$id]) ? app(PenggunaRepository::class)->temukan($id) : null;
 
-        return $peran === null ? null : $this->masukkan($id, $peran);
+        return $akun === null ? null : $this->masukkan(['role' => DataAkun::PERSONA[$id]] + $akun);
     }
 
     private function tolak(string $pesan, int $jeda): null
@@ -103,22 +104,26 @@ class Masuk extends Component
         return null;
     }
 
-    private function masukkan(int $id, string $peran)
+    /** @param  array<string, mixed>  $akun */
+    private function masukkan(array $akun)
     {
-        session(['stub_role' => $peran]);
-        session()->regenerate();
+        SesiAkun::masuk(['id' => (int) $akun['id'], 'role' => (string) $akun['role']]);
         try {
-            app(PenggunaRepository::class)->catatMasuk($id, request()->ip(), request()->userAgent());
+            app(PenggunaRepository::class)->catatMasuk((int) $akun['id'], request()->ip(), request()->userAgent());
         } catch (RuntimeException $e) {
             report($e);
         }
-        session()->flash('notify', ['message' => 'Selamat datang kembali.', 'type' => 'success']);
+        $nama = (string) $akun['name'];
+        session()->flash('notify', ['message' => 'Selamat datang kembali, '.$nama.(str_ends_with($nama, '.') ? '' : '.'), 'type' => 'success']);
 
         return $this->redirectIntended(route('dashboard'), navigate: false);
     }
 
     public function render()
     {
-        return view('livewire.akun.masuk', ['persona' => DataAkun::persona()])->title('Masuk');
+        return view('livewire.akun.masuk', [
+            'persona' => DataAkun::persona(),
+            'sesi' => SesiAkun::sudahMasuk() ? SesiAkun::pengguna() : null,
+        ])->title('Masuk');
     }
 }

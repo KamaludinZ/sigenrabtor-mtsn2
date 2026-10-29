@@ -2,6 +2,7 @@
 
 namespace App\View\Composers;
 
+use App\Support\Akun\SesiAkun;
 use App\Support\Stub\StubData;
 use Illuminate\View\View;
 
@@ -15,6 +16,8 @@ class AppLayoutComposer
         $view->with([
             'tahunAktif' => StubData::tahunAktif(),
             'currentUser' => StubData::currentUser(),
+            // Sesi akun (surel & waktu masuk) untuk menu akun bilah atas.
+            'sesiAkun' => SesiAkun::pengguna(),
             'madrasah' => StubData::madrasah(),
         ]);
     }

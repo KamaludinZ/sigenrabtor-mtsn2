@@ -2,6 +2,17 @@
     <h1 class="text-2xl font-bold tracking-tight text-stone-900">Masuk</h1>
     <p class="mt-1 text-sm text-stone-500">Gunakan akun yang dibuatkan admin madrasah. Dokumen yang Anda susun tersimpan atas nama akun dan leading Anda.</p>
 
+    @if ($sesi !== null)
+        <section class="mt-6 flex flex-wrap items-center gap-3 rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-200" data-testid="sudah-masuk" data-akun="{{ $sesi['id'] }}">
+            <span class="grid size-9 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">{{ \Illuminate\Support\Str::of($sesi['name'])->explode(' ')->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('') }}</span>
+            <p class="min-w-0 flex-1 text-sm text-brand-900">Anda sedang masuk sebagai <span class="font-semibold">{{ $sesi['name'] }}</span> ({{ $sesi['role'] === 'admin' ? 'Admin' : 'Leading' }}).</p>
+            <div class="flex gap-2">
+                <a href="{{ route('dashboard') }}" class="btn-primary" data-testid="lanjut-masuk">Lanjutkan</a>
+                <form method="POST" action="{{ route('akun.keluar') }}">@csrf<button type="submit" class="btn-secondary" data-testid="keluar-dari-masuk">Keluar</button></form>
+            </div>
+        </section>
+    @endif
+
     <form wire:submit="masuk" x-data="formMasuk" x-on:submit="ingatSurel()" x-on:masuk-dijeda.window="mulaiJeda($event.detail.detik)"
           class="mt-8 space-y-5" data-testid="form-masuk" novalidate>
         <div>
@@ -49,7 +60,7 @@
     @if ($persona !== [])
         <section class="mt-8 rounded-2xl bg-gold-50 p-4 ring-1 ring-gold-200" aria-labelledby="judul-demo" data-testid="akun-demo">
             <h2 id="judul-demo" class="flex items-center gap-1.5 text-sm font-semibold text-gold-900"><x-ui.icon name="info" class="size-4" /> Mode demo</h2>
-            <p class="mt-1 text-xs text-gold-900/80">Autentikasi belum diaktifkan; sandi belum diperiksa. Masuk dengan akun contoh:</p>
+            <p class="mt-1 text-xs text-gold-900/80">Autentikasi belum diaktifkan; sandi belum diperiksa. Masuk dengan surel akun aktif mana pun, atau pakai akun contoh:</p>
             <ul class="mt-3 space-y-2" role="list">
                 @foreach ($persona as $p)
                     <li>

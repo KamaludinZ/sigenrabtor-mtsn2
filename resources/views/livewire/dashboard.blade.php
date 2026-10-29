@@ -14,6 +14,7 @@
 <div class="mx-auto max-w-7xl">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div class="min-w-0">
+            <p class="text-sm text-stone-500" data-testid="sapaan-pengguna">Selamat datang, <span class="font-medium text-stone-700">{{ $pengguna['name'] }}</span></p>
             <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Dashboard</h1>
             <p class="mt-1 text-sm text-stone-500" data-testid="cakupan-dashboard">Tahun Anggaran {{ \App\Support\Stub\StubData::tahunAktif()['tahun'] }} · {{ $this->namaCakupan() }}</p>
         </div>

@@ -36,9 +36,7 @@ class MasukAkunTest extends TestCase
             ->set('surel', 'tidak@ada.id')->set('sandi', 'rahasia')->call('masuk')
             ->assertHasErrors('surel')->assertSee('belum terdaftar')->assertSet('sandi', '')
             ->set('surel', 'dewi.kartika@example.com')->set('sandi', 'rahasia')->call('masuk')
-            ->assertSee('Akun ini nonaktif')
-            ->set('surel', 'siti.rohmah@example.com')->set('sandi', 'rahasia')->call('masuk')
-            ->assertSee('Mode demo: hanya akun contoh');
+            ->assertSee('Akun ini nonaktif');
 
         Livewire::test(Masuk::class)
             ->set('surel', 'Puskom@Example.com')->set('sandi', 'apa-saja')

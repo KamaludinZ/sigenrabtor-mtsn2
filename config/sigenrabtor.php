@@ -78,6 +78,20 @@ return [
         'catat_unduhan' => (bool) env('SIRABTOR_CATAT_UNDUHAN', true),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Akun & sesi
+    |--------------------------------------------------------------------------
+    |
+    | wajib_masuk: halaman aplikasi hanya bisa dibuka setelah masuk (middleware WajibMasuk, state SesiAkun). Tes PHPUnit
+    | & E2E mematikannya agar halaman bisa dibuka langsung sebagai persona demo.
+    |
+    */
+
+    'akun' => [
+        'wajib_masuk' => (bool) env('SIRABTOR_WAJIB_MASUK', true),
+    ],
+
     'stub' => [
         'kegiatan_file' => env('STUB_KEGIATAN_FILE', 'stub/kegiatan.json'),
         'rab_file' => env('STUB_RAB_FILE', 'stub/rab.json'),

@@ -18,7 +18,7 @@
                 {{ \Illuminate\Support\Str::of($currentUser['name'])->explode(' ')->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('') }}
             </span>
             <span class="hidden text-left leading-tight sm:block">
-                <span class="block text-sm font-semibold text-stone-800">{{ $currentUser['name'] }}</span>
+                <span class="block text-sm font-semibold text-stone-800" data-testid="nama-pengguna">{{ $currentUser['name'] }}</span>
                 <span class="block text-xs text-stone-500">{{ $currentUser['role'] === 'admin' ? 'Admin' : 'Leading' }} · {{ $currentUser['jabatan'] }}</span>
             </span>
             <x-ui.icon name="chevron-down" class="hidden size-4 text-stone-400 sm:block" />
@@ -26,9 +26,15 @@
 
         <div x-cloak x-show="open" x-transition.origin.top.right
              class="absolute right-0 mt-2 w-60 rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-stone-200">
-            <div class="border-b border-stone-100 px-2.5 pt-1.5 pb-2.5 sm:hidden">
-                <p class="text-sm font-semibold text-stone-800">{{ $currentUser['name'] }}</p>
-                <p class="text-xs text-stone-500">{{ $currentUser['jabatan'] }}</p>
+            <div class="border-b border-stone-100 px-2.5 pt-1.5 pb-2.5" data-testid="menu-identitas">
+                <p class="text-sm font-semibold text-stone-800 sm:hidden">{{ $currentUser['name'] }}</p>
+                <p class="text-xs text-stone-500 sm:hidden">{{ $currentUser['jabatan'] }}</p>
+                @if ($sesiAkun['email'])
+                    <p class="truncate text-xs text-stone-500" data-testid="surel-pengguna">{{ $sesiAkun['email'] }}</p>
+                @endif
+                @if ($sesiAkun['masuk_pada'])
+                    <p class="text-[11px] text-stone-400" data-testid="waktu-masuk">Masuk {{ \App\Support\Format::tanggal($sesiAkun['masuk_pada']) }} · {{ \Illuminate\Support\Carbon::parse($sesiAkun['masuk_pada'])->timezone(config('app.timezone'))->format('H.i') }}</p>
+                @endif
             </div>
             <a href="{{ route('akun.profil') }}" wire:navigate class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-stone-700 hover:bg-stone-100" data-testid="menu-akun">
                 <x-ui.icon name="user" class="size-4 text-stone-500" /> Akun saya

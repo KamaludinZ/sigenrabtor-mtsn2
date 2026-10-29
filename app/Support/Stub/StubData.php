@@ -4,9 +4,9 @@ namespace App\Support\Stub;
 
 use App\Contracts\DasarHukumRepository;
 use App\Contracts\LeadingRepository;
-use App\Contracts\PenggunaRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Akun\SesiAkun;
 use App\Support\Pengaturan\DaftarDasarHukum;
 use App\Support\Pengaturan\PejabatBerlaku;
 use App\Support\Pengaturan\TeksBaku;
@@ -41,19 +41,11 @@ class StubData
      */
     public static function currentUser(): array
     {
-        $bawaan = session('stub_role') === 'admin'
-            ? ['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin', 'jabatan' => 'Admin Aplikasi', 'leadings' => []]
-            : ['id' => 1, 'name' => 'Muslimin, M.Pd.', 'role' => 'leading', 'jabatan' => 'Tim Penjamin Mutu', 'leadings' => ['1.6']];
-        // Nama, jabatan, dan tautan leading mengikuti akun di Pengaturan › Leading & User; perannya tetap peran demo.
-        $akun = app(PenggunaRepository::class)->temukan($bawaan['id']);
+        // Akun yang sedang masuk (state autentikasi tiruan SesiAkun): nama, jabatan, dan tautan leading mengikuti akun di
+        // Pengaturan › Leading & User; tanpa sesi = persona peran demo.
+        $p = SesiAkun::pengguna();
 
-        return $akun === null ? $bawaan : [
-            'id' => $bawaan['id'],
-            'name' => $akun['name'],
-            'role' => $bawaan['role'],
-            'jabatan' => $akun['jabatan'] ?? $bawaan['jabatan'],
-            'leadings' => $bawaan['role'] === 'admin' ? [] : $akun['leadings'],
-        ];
+        return ['id' => $p['id'], 'name' => $p['name'], 'role' => $p['role'], 'jabatan' => $p['jabatan'], 'leadings' => $p['leadings']];
     }
 
     /**

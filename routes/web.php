@@ -146,10 +146,10 @@ use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use App\Livewire\SaranAi\Riwayat as SaranAiRiwayat;
+use App\Support\Akun\SesiAkun;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Master\JenisKode;
 use App\Support\Pengaturan\PenyediaAi;
-use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -317,9 +317,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
 Route::get('/masuk', AkunMasuk::class)->name('akun.masuk');
 Route::get('/daftar', AkunDaftar::class)->name('akun.daftar');
 Route::post('/keluar', function () {
-    session()->forget('stub_role');
-    session()->invalidate();
-    session()->regenerateToken();
+    SesiAkun::keluar();
 
     return redirect()->route('akun.masuk')->with('notify', ['message' => 'Anda sudah keluar.', 'type' => 'info']);
 })->name('akun.keluar');
@@ -327,10 +325,10 @@ Route::get('/akun', AkunProfil::class)->name('akun.profil');
 
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.
 Route::get('/demo/peran/{role}', function (string $role) {
-    session(['stub_role' => $role]);
+    $id = SesiAkun::masukPersona($role);
     // Padanan peristiwa masuk: waktu masuk terakhir akun persona tercatat di Pengaturan › Leading & User.
     try {
-        app(PenggunaRepository::class)->catatMasuk(StubData::currentUser()['id'], request()->ip(), request()->userAgent());
+        app(PenggunaRepository::class)->catatMasuk($id, request()->ip(), request()->userAgent());
     } catch (RuntimeException $e) {
         report($e);
     }

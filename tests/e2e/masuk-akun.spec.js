@@ -20,7 +20,7 @@ test.describe('Masuk & Akun', () => {
 
         await page.getByTestId('akun-demo').locator('[data-peran="leading"]').click();
         await expect(page).toHaveURL(/\/dashboard/);
-        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Selamat datang kembali.' })).toBeVisible();
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Selamat datang kembali, Muslimin, M.Pd.' })).toBeVisible();
 
         await page.goto('/akun');
         await expect(page.getByTestId('profil-akun')).toContainText('muslimin@example.com');
@@ -81,5 +81,31 @@ test.describe('Masuk & Akun', () => {
         // Dari halaman Daftar: ?surel= mengisi surel.
         await page.goto('/masuk?surel=Nur.Laili@Example.com');
         await expect(page.getByTestId('isian-surel')).toHaveValue('nur.laili@example.com');
+    });
+    test('sesi akun: nama, surel & leading akun yang masuk, kartu sudah masuk, keluar', async ({ page }, testInfo) => {
+        await page.goto('/masuk');
+        await page.getByTestId('isian-surel').fill('siti.rohmah@example.com');
+        await page.getByTestId('isian-sandi').fill('apa-saja');
+        await page.getByTestId('tombol-masuk').click();
+        await expect(page).toHaveURL(/\/dashboard/);
+        await expect(page.getByTestId('sapaan-pengguna')).toContainText('Siti Rohmah, M.Pd.');
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Selamat datang kembali, Siti Rohmah, M.Pd.' })).toBeVisible();
+        if (testInfo.project.name !== 'mobile') {
+            await expect(page.getByTestId('nama-pengguna')).toHaveText('Siti Rohmah, M.Pd.');
+        }
+        await page.locator('header').getByRole('button', { expanded: false }).last().click();
+        await expect(page.getByTestId('surel-pengguna')).toHaveText('siti.rohmah@example.com');
+        await expect(page.getByTestId('waktu-masuk')).toContainText('Masuk ');
+
+        await page.goto('/akun');
+        await expect(page.getByTestId('profil-akun')).toContainText('siti.rohmah@example.com');
+        await expect(page.getByTestId('leading-akun')).toContainText('1.1');
+
+        await page.goto('/masuk');
+        await expect(page.getByTestId('sudah-masuk')).toHaveAttribute('data-akun', '3');
+        await page.screenshot({ path: `storage/playwright/shots/sudah-masuk-${testInfo.project.name}.png`, fullPage: true });
+        await page.getByTestId('keluar-dari-masuk').click();
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Anda sudah keluar.' })).toBeVisible();
+        await expect(page.getByTestId('sudah-masuk')).toHaveCount(0);
     });
 });
