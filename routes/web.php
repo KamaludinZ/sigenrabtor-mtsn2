@@ -115,6 +115,7 @@ use App\Http\Controllers\UnggahArsipFinal;
 use App\Http\Controllers\UnggahMasterKode;
 use App\Http\Controllers\UnggahPerkinKegiatan;
 use App\Http\Middleware\HanyaAdmin;
+use App\Livewire\Akun\Daftar as AkunDaftar;
 use App\Livewire\Akun\Masuk as AkunMasuk;
 use App\Livewire\Akun\Profil as AkunProfil;
 use App\Livewire\Buku\Daftar as BukuDaftar;
@@ -312,8 +313,9 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/template/master/{template}/unduh', UnduhMasterTemplate::class)->whereUuid('template')->name('template.master.unduh');
 });
 
-// Masuk & Akun (PRD §8): halaman masuk (layout tamu), keluar, dan akun saya.
+// Masuk & Akun (PRD §8): halaman masuk & daftar (layout tamu), keluar, dan akun saya.
 Route::get('/masuk', AkunMasuk::class)->name('akun.masuk');
+Route::get('/daftar', AkunDaftar::class)->name('akun.daftar');
 Route::post('/keluar', function () {
     session()->forget('stub_role');
     session()->invalidate();

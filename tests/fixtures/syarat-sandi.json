@@ -1,0 +1,14 @@
+[
+    { "sandi": "", "nama": "", "surel": "", "syarat": { "panjang": false, "campur": false, "pribadi": true } },
+    { "sandi": "abc12345", "nama": "Nur Laili Fitriani, S.Pd.", "surel": "nur.laili@example.com", "syarat": { "panjang": true, "campur": true, "pribadi": true } },
+    { "sandi": "Laili2026!", "nama": "Nur Laili Fitriani, S.Pd.", "surel": "nur.laili@example.com", "syarat": { "panjang": true, "campur": true, "pribadi": false } },
+    { "sandi": "12345678", "nama": "Ahmad", "surel": "a@b.id", "syarat": { "panjang": true, "campur": false, "pribadi": true } },
+    { "sandi": "abcdefgh", "nama": "", "surel": "", "syarat": { "panjang": true, "campur": false, "pribadi": true } },
+    { "sandi": "Ab1", "nama": "Siti Rohmah", "surel": "siti.rohmah@example.com", "syarat": { "panjang": false, "campur": true, "pribadi": true } },
+    { "sandi": "Siti.Rohmah9", "nama": "Siti Rohmah, M.Pd.", "surel": "siti.rohmah@example.com", "syarat": { "panjang": true, "campur": true, "pribadi": false } },
+    { "sandi": "puskom2026", "nama": "Koordinator PUSKOM", "surel": "PUSKOM@example.com ", "syarat": { "panjang": true, "campur": true, "pribadi": false } },
+    { "sandi": "Ñandú2026x", "nama": "José Ñandú", "surel": "jose@x.id", "syarat": { "panjang": true, "campur": true, "pribadi": false } },
+    { "sandi": "example123", "nama": "Budi", "surel": "budi@example.com", "syarat": { "panjang": true, "campur": true, "pribadi": true } },
+    { "sandi": "ani12345", "nama": "Ani", "surel": "ani@x.id", "syarat": { "panjang": true, "campur": true, "pribadi": true } },
+    { "sandi": "Guru2024!", "nama": "Bu Guru", "surel": "guru2024@example.com", "syarat": { "panjang": true, "campur": true, "pribadi": false } }
+]

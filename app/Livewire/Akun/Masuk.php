@@ -4,6 +4,7 @@ namespace App\Livewire\Akun;
 
 use App\Contracts\PenggunaRepository;
 use App\Support\Akun\DataAkun;
+use App\Support\Akun\PendaftaranAkun;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use RuntimeException;
@@ -13,7 +14,8 @@ use RuntimeException;
  * autentikasi Laravel belum dipasang (mode demo), surel dicocokkan dengan akun PenggunaRepository: tidak terdaftar /
  * nonaktif / bukan akun contoh (DataAkun::PERSONA) ditolak dengan pesannya; akun contoh masuk sebagai peran demonya
  * (session `stub_role`, waktu masuk dicatat `catatMasuk`) — sandi belum diperiksa. `masukSebagai($id)` = pintasan akun
- * contoh. Akun baru hanya dibuat admin (tidak ada pendaftaran mandiri).
+ * contoh. Surel yang permohonan akunnya (halaman Daftar, PendaftaranAkun) masih menunggu diberi tahu bahwa admin belum
+ * mengaktifkannya.
  */
 #[Layout('layouts.tamu')]
 class Masuk extends Component
@@ -46,7 +48,8 @@ class Masuk extends Component
         $akun = DataAkun::cariSurel($this->surel);
         $peran = $akun !== null ? (DataAkun::PERSONA[(int) $akun['id']] ?? null) : null;
         $galat = match (true) {
-            $akun === null => 'Surel ini belum terdaftar — akun dibuat oleh admin madrasah.',
+            $akun === null && PendaftaranAkun::menunggu($this->surel) !== null => 'Permohonan akun untuk surel ini masih menunggu persetujuan admin.',
+            $akun === null => 'Surel ini belum terdaftar — ajukan pendaftaran atau hubungi admin madrasah.',
             ! ($akun['is_active'] ?? true) => 'Akun ini nonaktif — hubungi admin untuk mengaktifkannya kembali.',
             $peran === null => 'Mode demo: hanya akun contoh di bawah yang bisa masuk sampai autentikasi diaktifkan.',
             default => null,

@@ -33,6 +33,8 @@
         </button>
     </form>
 
+    <p class="mt-6 text-center text-sm text-stone-500">Belum punya akun? <a href="{{ route('akun.daftar') }}" class="font-medium text-brand-700 hover:underline" data-testid="tautan-daftar">Ajukan pendaftaran</a></p>
+
     @if ($persona !== [])
         <section class="mt-8 rounded-2xl bg-gold-50 p-4 ring-1 ring-gold-200" aria-labelledby="judul-demo" data-testid="akun-demo">
             <h2 id="judul-demo" class="flex items-center gap-1.5 text-sm font-semibold text-gold-900"><x-ui.icon name="info" class="size-4" /> Mode demo</h2>

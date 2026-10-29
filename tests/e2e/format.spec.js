@@ -19,6 +19,16 @@ const KASUS_TEKS_BAKU = JSON.parse(readFileSync(new URL('../fixtures/teks-baku.j
 const KASUS_ARSIP = JSON.parse(readFileSync(new URL('../fixtures/arsip-final.json', import.meta.url), 'utf-8'));
 // Kasus terbilang bersama dengan App\Support\Terbilang.
 const KASUS_TERBILANG = JSON.parse(readFileSync(new URL('../fixtures/terbilang.json', import.meta.url), 'utf-8'));
+// Syarat sandi pendaftaran bersama: juga diuji di tests/Feature/Akun/PendaftaranAkunTest.php terhadap PendaftaranAkun.
+const KASUS_SANDI = JSON.parse(readFileSync(new URL('../fixtures/syarat-sandi.json', import.meta.url), 'utf-8'));
+
+test.describe('Syarat sandi di klien', () => {
+    test('syaratSandi klien sama dengan PendaftaranAkun server', async ({ page }) => {
+        await page.goto('/daftar');
+        const hasil = await page.evaluate((kasus) => kasus.map((k) => window.SIRABTOR.syaratSandi(k.sandi, k.nama, k.surel)), KASUS_SANDI);
+        expect(hasil).toEqual(KASUS_SANDI.map((k) => k.syarat));
+    });
+});
 
 test.describe('Format mata uang di klien', () => {
     test('helper $rupiah/$angka sama dengan format server', async ({ page }) => {

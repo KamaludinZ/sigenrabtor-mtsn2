@@ -1,6 +1,6 @@
 {{--
     Layout halaman tamu (belum masuk): panel identitas aplikasi & madrasah di kiri (layar lebar), isi halaman di kanan.
-    Dipakai halaman Masuk (`Akun\Masuk`). Variabel global dari AppLayoutComposer ($madrasah, $tahunAktif).
+    Dipakai halaman Masuk (`Akun\Masuk`) dan Daftar akun (`Akun\Daftar`). Variabel global dari AppLayoutComposer ($madrasah, $tahunAktif).
 --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">

@@ -97,6 +97,7 @@ return [
         'dasar_hukum_file' => env('STUB_DASAR_HUKUM_FILE', 'stub/dasar-hukum.json'),
         'leading_file' => env('STUB_LEADING_FILE', 'stub/leading.json'),
         'pengguna_file' => env('STUB_PENGGUNA_FILE', 'stub/pengguna.json'),
+        'permohonan_akun_file' => env('STUB_PERMOHONAN_AKUN_FILE', 'stub/permohonan-akun.json'),
         'arsip_file' => env('STUB_ARSIP_FILE', 'stub/arsip-final.json'),
         'notifikasi_file' => env('STUB_NOTIFIKASI_FILE', 'stub/notifikasi.json'),
         'buku_file' => env('STUB_BUKU_FILE', 'stub/buku-dokumen.json'),

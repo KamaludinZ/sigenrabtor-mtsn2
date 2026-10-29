@@ -19,6 +19,7 @@ export const E2E_DATA_PAGU_FILE = 'stub/data-pagu-e2e.json';
 export const E2E_DASAR_HUKUM_FILE = 'stub/dasar-hukum-e2e.json';
 export const E2E_LEADING_FILE = 'stub/leading-e2e.json';
 export const E2E_PENGGUNA_FILE = 'stub/pengguna-e2e.json';
+export const E2E_PERMOHONAN_AKUN_FILE = 'stub/permohonan-akun-e2e.json';
 export const E2E_ARSIP_FILE = 'stub/arsip-final-e2e.json';
 export const E2E_NOTIFIKASI_FILE = 'stub/notifikasi-e2e.json';
 export const E2E_BUKU_FILE = 'stub/buku-dokumen-e2e.json';
@@ -87,6 +88,7 @@ export default defineConfig({
             STUB_DASAR_HUKUM_FILE: E2E_DASAR_HUKUM_FILE,
             STUB_LEADING_FILE: E2E_LEADING_FILE,
             STUB_PENGGUNA_FILE: E2E_PENGGUNA_FILE,
+            STUB_PERMOHONAN_AKUN_FILE: E2E_PERMOHONAN_AKUN_FILE,
             STUB_ARSIP_FILE: E2E_ARSIP_FILE,
             STUB_NOTIFIKASI_FILE: E2E_NOTIFIKASI_FILE,
             STUB_BUKU_FILE: E2E_BUKU_FILE,

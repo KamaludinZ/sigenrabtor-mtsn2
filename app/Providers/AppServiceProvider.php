@@ -33,6 +33,7 @@ use App\Contracts\PengubahPdf;
 use App\Contracts\PenomoranDokumenRepository;
 use App\Contracts\PenyusunSaranKalimat;
 use App\Contracts\PenyusunUsulanJadwal;
+use App\Contracts\PermohonanAkunRepository;
 use App\Contracts\PilihanTemplateRepository;
 use App\Contracts\ProfilMadrasahRepository;
 use App\Contracts\PromptAiRepository;
@@ -77,6 +78,7 @@ use App\Support\Stub\StubPembuatPdfDokumen;
 use App\Support\Stub\StubPengaturanAiRepository;
 use App\Support\Stub\StubPenggunaRepository;
 use App\Support\Stub\StubPenomoranDokumenRepository;
+use App\Support\Stub\StubPermohonanAkunRepository;
 use App\Support\Stub\StubPilihanTemplateRepository;
 use App\Support\Stub\StubProfilMadrasahRepository;
 use App\Support\Stub\StubPromptAiRepository;
@@ -135,6 +137,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(DasarHukumRepository::class, StubDasarHukumRepository::class);
         $this->app->singleton(LeadingRepository::class, StubLeadingRepository::class);
         $this->app->singleton(PenggunaRepository::class, StubPenggunaRepository::class);
+        $this->app->singleton(PermohonanAkunRepository::class, StubPermohonanAkunRepository::class);
         // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         // Penyusun AI: tanpa penyedia aktif dijawab tiruan, selain itu lewat layanan LLM (KlienLlm).
         $this->app->singleton(KlienLlm::class, KlienLlmHttp::class);
