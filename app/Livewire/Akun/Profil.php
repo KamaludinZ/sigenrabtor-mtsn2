@@ -3,6 +3,7 @@
 namespace App\Livewire\Akun;
 
 use App\Support\Akun\DataAkun;
+use App\Support\Akun\ProfilAkun;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -11,7 +12,8 @@ use Livewire\Component;
 
 /**
  * Halaman Akun saya (PRD §8 "Kelola Profil & Sandi"; `/akun`, rute `akun.profil`, semua pengguna): tab `?tab=` (TAB)
- * profil (nama, surel, jabatan, NIP, peran, leading tertaut, status), sandi (formulir ubah sandi + syarat), aktivitas
+ * profil (nama, surel, jabatan, NIP, peran, leading tertaut, status + ProfilAkun: tercetak di dokumen, kegiatan & dokumen
+ * buatan akun, kuota AI hari ini, sesi), sandi (formulir ubah sandi + syarat), aktivitas
  * (riwayat masuk terbaru). Data dari DataAkun::untuk (akun yang sedang masuk; tiruan selama autentikasi belum nyata).
  */
 #[Layout('layouts.app')]
@@ -40,6 +42,13 @@ class Profil extends Component
     public function akun(): ?array
     {
         return DataAkun::untuk(StubData::currentUser());
+    }
+
+    /** Kegiatan & dokumen buatan akun, penanda tangan tercetak, kuota AI, sesi (ProfilAkun). @return array<string, mixed> */
+    #[Computed]
+    public function rincian(): array
+    {
+        return ProfilAkun::untuk(StubData::currentUser());
     }
 
     public function render()

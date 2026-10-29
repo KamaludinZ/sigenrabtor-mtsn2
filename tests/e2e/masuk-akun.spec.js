@@ -100,6 +100,15 @@ test.describe('Masuk & Akun', () => {
         await page.goto('/akun');
         await expect(page.getByTestId('profil-akun')).toContainText('siti.rohmah@example.com');
         await expect(page.getByTestId('leading-akun')).toContainText('1.1');
+        // Data profil: penanda tangan tercetak per leading, kegiatan & dokumen buatan, kuota AI, sesi ini.
+        await expect(page.getByTestId('tercetak-leading')).toHaveAttribute('data-leading', '1.1');
+        await expect(page.getByTestId('tercetak-leading')).toHaveAttribute('data-sumber', /^(akun|pejabat|kosong)$/);
+        await expect(page.getByTestId('kegiatan-buatan')).toHaveAttribute('data-jumlah', /^\d+$/);
+        await expect(page.getByTestId('kuota-akun')).toContainText('permintaan AI hari ini');
+        await expect(page.getByTestId('sesi-ini')).toContainText('Masuk ');
+        await page.screenshot({ path: `storage/playwright/shots/profil-data-${testInfo.project.name}.png`, fullPage: true });
+        const lebarProfil = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebarProfil).toBeLessThanOrEqual(0);
 
         await page.goto('/masuk');
         await expect(page.getByTestId('sudah-masuk')).toHaveAttribute('data-akun', '3');

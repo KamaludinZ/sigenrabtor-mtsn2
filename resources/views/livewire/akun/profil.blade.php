@@ -3,6 +3,7 @@
 
 @php
     $akun = $this->akun;
+    $rincian = $akun !== null ? $this->rincian : null;
     $waktu = fn (?string $iso) => $iso ? Format::tanggal(substr($iso, 0, 10)).' · '.\Carbon\CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->format('H.i') : '—';
 @endphp
 
@@ -50,7 +51,67 @@
                     @endforeach
                 </dl>
             </section>
-            <aside class="min-w-0 space-y-4">
+            <div class="min-w-0 space-y-6 lg:col-start-1">
+                @if ($akun['peran'] !== 'admin')
+                    <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-tercetak" data-testid="tercetak-akun">
+                        <h2 id="judul-tercetak" class="text-sm font-semibold text-stone-900">Tercetak di dokumen</h2>
+                        <p class="mt-0.5 text-xs text-stone-500">Penanda tangan kolom Pembuat di lembar pengesahan KAK/TOR & RAB TA {{ $rincian['tahun'] }}.</p>
+                        @if ($rincian['tercetak'] === [])
+                            <p class="mt-3 text-sm text-stone-500">Belum ada leading tertaut.</p>
+                        @else
+                            <ul class="mt-3 space-y-3" role="list">
+                                @foreach ($rincian['tercetak'] as $c)
+                                    <li class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="tercetak-leading" data-leading="{{ $c['kode'] }}" data-sumber="{{ $c['sumber'] }}">
+                                        <div class="flex flex-wrap items-center justify-between gap-2">
+                                            <p class="text-xs font-semibold text-stone-700">{{ $c['kode'] }} · {{ $c['nama_unit'] }}</p>
+                                            <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset',
+                                                'bg-brand-50 text-brand-800 ring-brand-200' => $c['sumber'] === 'akun',
+                                                'bg-white text-stone-700 ring-stone-200' => $c['sumber'] === 'pejabat',
+                                                'bg-gold-50 text-gold-800 ring-gold-200' => $c['sumber'] === 'kosong'])>{{ $c['label_sumber'] }}</span>
+                                        </div>
+                                        <div class="mt-2 border-l-2 border-stone-300 pl-3 text-sm">
+                                            <p class="text-stone-600">{{ $c['jabatan'] }},</p>
+                                            <p class="mt-3 font-semibold text-stone-900 underline underline-offset-2">{{ $c['nama'] ?? '…' }}</p>
+                                            @if ($c['nip'])
+                                                <p class="font-mono text-xs text-stone-600">NIP. {{ $c['nip'] }}</p>
+                                            @endif
+                                        </div>
+                                        <p class="mt-2 text-xs text-stone-500">{{ $c['keterangan'] }}</p>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </section>
+                @endif
+                <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-kerja-akun" data-testid="kerja-akun">
+                    <h2 id="judul-kerja-akun" class="text-sm font-semibold text-stone-900">Kegiatan & dokumen Anda</h2>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <a href="{{ route('kegiatan.index') }}" wire:navigate class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 hover:ring-brand-300" data-testid="kegiatan-buatan" data-jumlah="{{ $rincian['kegiatan']['tahun_aktif'] }}">
+                            <p class="text-xs text-stone-500">Kegiatan yang Anda buat · TA {{ $rincian['tahun'] }}</p>
+                            <p class="mt-1 text-2xl font-bold text-stone-900">{{ $rincian['kegiatan']['tahun_aktif'] }}</p>
+                            <p class="text-xs text-stone-500">{{ $rincian['kegiatan']['semua'] }} di semua tahun anggaran</p>
+                            @if ($rincian['kegiatan']['tahun_aktif'] > 0)
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    @foreach ($rincian['kegiatan']['per_status'] as $status => $n)
+                                        @if ($n > 0)
+                                            <span class="inline-flex items-center gap-1" data-status="{{ $status }}"><x-ui.status-badge :status="$status" /> <span class="text-xs text-stone-600">{{ $n }}</span></span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
+                        </a>
+                        <a href="{{ route('dokumen.index') }}" wire:navigate class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 hover:ring-brand-300" data-testid="dokumen-buatan" data-jumlah="{{ $rincian['dokumen']['jumlah'] }}">
+                            <p class="text-xs text-stone-500">Dokumen yang Anda cetak/unduh</p>
+                            <p class="mt-1 text-2xl font-bold text-stone-900">{{ $rincian['dokumen']['jumlah'] }}</p>
+                            <p class="text-xs text-stone-500">{{ $rincian['dokumen']['tahun_aktif'] }} di TA {{ $rincian['tahun'] }}</p>
+                            @if ($d = $rincian['dokumen']['terakhir'])
+                                <p class="mt-2 truncate text-xs text-stone-600" title="{{ $d['nama_berkas'] }}">Terakhir: {{ $d['nama_berkas'] }} · {{ $waktu($d['dibuat_pada']) }}</p>
+                            @endif
+                        </a>
+                    </div>
+                </section>
+            </div>
+            <aside class="min-w-0 space-y-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
                 <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-peran" data-testid="peran-akun">
                     <h2 id="judul-peran" class="text-sm font-semibold text-stone-900">Peran & leading</h2>
                     <p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-800 ring-1 ring-brand-200" data-peran="{{ $akun['peran'] }}">{{ $akun['label_peran'] }}</p>
@@ -74,7 +135,12 @@
                         <div class="flex justify-between gap-2"><dt class="text-stone-500">Status</dt><dd class="font-semibold {{ $akun['aktif'] ? 'text-brand-800' : 'text-red-700' }}">{{ $akun['aktif'] ? 'Aktif' : 'Nonaktif' }}</dd></div>
                         <div class="flex justify-between gap-2"><dt class="text-stone-500">Terakhir masuk</dt><dd class="text-right text-stone-700">{{ $waktu($akun['terakhir_masuk']) }}</dd></div>
                         <div class="flex justify-between gap-2"><dt class="text-stone-500">Akun dibuat</dt><dd class="text-right text-stone-700">{{ $waktu($akun['dibuat_pada']) }}</dd></div>
+                        <div class="flex justify-between gap-2" data-testid="sesi-ini"><dt class="text-stone-500">Sesi ini</dt><dd class="text-right text-stone-700">{{ $rincian['sesi']['masuk_pada'] ? 'Masuk '.$waktu($rincian['sesi']['masuk_pada']) : 'Mode demo (tanpa masuk)' }}</dd></div>
                     </dl>
+                </section>
+                <section class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-kuota-akun" data-testid="kuota-akun">
+                    <h2 id="judul-kuota-akun" class="mb-3 text-sm font-semibold text-stone-900">Bantuan AI hari ini</h2>
+                    <x-ai.status-kuota :status="$rincian['kuota']" />
                 </section>
             </aside>
         </div>
