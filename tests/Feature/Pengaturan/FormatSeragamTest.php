@@ -2,11 +2,22 @@
 
 namespace Tests\Feature\Pengaturan;
 
+use App\Contracts\KegiatanRepository;
+use App\Contracts\PilihanTemplateRepository;
+use App\Contracts\RiwayatPengaturanRepository;
+use App\Contracts\TemplateCoverRepository;
+use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Pengaturan\FormatSeragam;
 use App\Support\Dokumen\FormatSeragam as AturanFormat;
+use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Dokumen\TeksCover;
 use App\Support\Navigation;
 use App\Support\Pengaturan\BagianPengaturan;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Tests\Support\Docx;
 use Tests\TestCase;
 
 class FormatSeragamTest extends TestCase
@@ -62,10 +73,103 @@ class FormatSeragamTest extends TestCase
             ->assertSeeText('{bulan_romawi}')
             ->set('tab', 'template')
             ->assertSeeHtml('data-testid="template-jenis" data-jenis="lomba"')
-            ->assertSeeText('Master KAK/TOR Lomba Siswa')
-            ->assertSeeHtml('data-testid="template-leading" data-leading="1.6"')
+            ->assertSee('data-testid="template-kosong"', false)
+            ->assertSee('data-testid="template-leading-kosong"', false)
             ->set('tab', 'asing')
             ->assertSet('tab', 'ringkasan');
+    }
+
+    /** @return array{kak: string, kak2: string, cover: string} id template contoh TA 2026. */
+    private function templateContoh(): array
+    {
+        $docx = fn (string $nama) => UploadedFile::fake()->createWithContent($nama, Docx::isi(['KAK ${nama_kegiatan}', 'Total ${total}']));
+
+        return [
+            'kak' => app(TemplateDokumenRepository::class)->tambah(2026, 'Master Workshop', 'KAK+TOR', $docx('workshop.docx'), ['nama_kegiatan', 'total']),
+            'kak2' => app(TemplateDokumenRepository::class)->tambah(2026, 'Master Lomba', 'TOR', $docx('lomba.docx'), ['nama_kegiatan']),
+            'cover' => app(TemplateCoverRepository::class)->tambah(2026, 'Cover Kesiswaan', new UploadedFile(base_path('tests/fixtures/cover-contoh.png'), 'cover.png', 'image/png', null, true), TeksCover::bawaan()),
+        ];
+    }
+
+    public function test_aturan_pilihan_template(): void
+    {
+        $t = $this->templateContoh();
+        $this->assertSame(['Master Workshop', 'Master Lomba'], array_column(PilihanTemplate::pilihanKak(2026), 'nama'));
+        $this->assertSame('Master Workshop · KAK+TOR (default)', PilihanTemplate::pilihanKak(2026)[0]['label']);
+        $this->assertSame(['Cover Kesiswaan (default)'], array_column(PilihanTemplate::pilihanCover(2026), 'label'));
+
+        $rapi = PilihanTemplate::rapikan(['jenis' => ['workshop' => ['kak' => " {$t['kak']} ", 'cover' => ''], 'asing' => ['kak' => 'x']], 'leading' => [['leading' => '', 'jenis' => '', 'kak' => '', 'cover' => ''], ['leading' => '1.6', 'jenis' => 'supervisi', 'kak' => $t['kak2'], 'cover' => '']]]);
+        $this->assertSame(['kak' => $t['kak'], 'cover' => null], $rapi['jenis']['workshop']);
+        $this->assertArrayNotHasKey('asing', $rapi['jenis']);
+        $this->assertCount(1, $rapi['leading'], 'Baris leading kosong dibuang.');
+        $this->assertSame([], PilihanTemplate::galat($rapi, 2026));
+
+        $galat = PilihanTemplate::galat(PilihanTemplate::rapikan(['jenis' => ['lomba' => ['kak' => 'tidak-ada', 'cover' => $t['kak']]], 'leading' => [
+            ['leading' => '9.9', 'jenis' => 'aneh', 'kak' => null, 'cover' => null],
+            ['leading' => '1.6', 'jenis' => 'lomba', 'kak' => $t['kak'], 'cover' => null],
+            ['leading' => '1.6', 'jenis' => 'lomba', 'kak' => null, 'cover' => $t['cover']],
+        ]]), 2026);
+        $this->assertSame(['jenis.lomba.kak', 'jenis.lomba.cover', 'leading.0.leading', 'leading.0.jenis', 'leading.0.kak', 'leading.2.jenis'], array_keys($galat));
+        $this->assertSame('Leading & jenis kegiatan ini sudah diatur di baris 2.', $galat['leading.2.jenis']);
+
+        $admin = ['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin'];
+        $hasil = PilihanTemplate::simpan(2026, ['jenis' => ['workshop' => ['kak' => $t['kak'], 'cover' => $t['cover']]], 'leading' => [['leading' => '1.6', 'jenis' => 'supervisi', 'kak' => $t['kak2'], 'cover' => '']]], $admin);
+        $this->assertSame('Workshop / pelatihan guru: KAK/TOR susunan baku → Master Workshop; Workshop / pelatihan guru: cover default → Cover Kesiswaan; khusus leading 1.6 · Supervisi / evaluasi / rapat kerja ditambah', $hasil['ringkasan']);
+        $this->assertSame($t['kak'], app(PilihanTemplateRepository::class)->untuk(2026)['jenis']['workshop']['kak']);
+        $riwayat = collect(app(RiwayatPengaturanRepository::class)->semua())->firstWhere('aksi', 'ubah_pilihan_template');
+        $this->assertStringStartsWith('TA 2026 — Workshop / pelatihan guru: KAK/TOR susunan baku → Master Workshop', $riwayat['keterangan']);
+        $this->assertNull(PilihanTemplate::simpan(2026, $hasil['pilihan'], $admin)['ringkasan'], 'Tanpa perubahan tidak dicatat.');
+
+        $kegiatan = app(KegiatanRepository::class)->temukan(1);
+        $this->assertSame(['jenis' => 'workshop', 'asal' => 'jenis', 'kak' => $t['kak'], 'cover' => $t['cover']], PilihanTemplate::untukKegiatan($kegiatan), 'Workshop Penyusunan Kurikulum.');
+        $supervisi = app(KegiatanRepository::class)->temukan(2);
+        $this->assertSame(['jenis' => 'supervisi', 'asal' => 'leading', 'kak' => $t['kak2'], 'cover' => null], PilihanTemplate::untukKegiatan($supervisi));
+        $this->assertSame('bawaan', PilihanTemplate::untukKegiatan(['nama_kegiatan' => 'Lomba Kreativitas', 'leading' => '1.2'])['asal']);
+
+        app(TemplateDokumenRepository::class)->hapus($t['kak']);
+        $data = PilihanTemplate::data(2026);
+        $this->assertTrue(collect($data['jenis'])->firstWhere('kunci', 'workshop')['kak_hilang'], 'Template terhapus ditandai.');
+
+        try {
+            PilihanTemplate::simpan(2026, [], ['role' => 'leading']);
+            $this->fail('Hanya admin.');
+        } catch (AuthorizationException) {
+            $this->addToAssertionCount(1);
+        }
+        $this->expectException(ValidationException::class);
+        PilihanTemplate::simpan(2026, ['leading' => [['leading' => '1.6']]], $admin);
+    }
+
+    public function test_formulir_pilihan_template(): void
+    {
+        $t = $this->templateContoh();
+        Livewire::test(FormatSeragam::class, ['tab' => 'template'])
+            ->set('tab', 'template')
+            ->assertDontSee('data-testid="template-kosong"', false)
+            ->assertSeeHtml('<option value="'.$t['kak'].'">Master Workshop · KAK+TOR (default)</option>')
+            ->assertSeeHtml('data-berubah="0"')
+            ->set('pilihan.jenis.workshop.kak', $t['kak'])
+            ->assertSeeHtml('data-berubah="1"')
+            ->assertSee('data-testid="template-belum-disimpan"', false)
+            ->call('tambahLeading')
+            ->assertSee('data-testid="pilih-leading-0"', false)
+            ->set('pilihan.leading.0.leading', '1.6')
+            ->call('simpanTemplate')
+            ->assertHasErrors(['pilihan.leading.0.jenis', 'pilihan.leading.0.kak'])
+            ->assertSee('data-testid="pilih-kak-leading-0-galat"', false)
+            ->assertDispatched('notify', type: 'error')
+            ->set('pilihan.leading.0.jenis', 'supervisi')
+            ->set('pilihan.leading.0.cover', $t['cover'])
+            ->call('simpanTemplate')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify', type: 'success')
+            ->assertSeeHtml('data-berubah="0"')
+            ->assertSee('data-testid="template-tersimpan"', false)
+            ->call('hapusLeading', 0)
+            ->assertSee('data-testid="template-leading-kosong"', false)
+            ->call('batalTemplate')
+            ->assertSeeHtml('data-testid="template-leading" data-leading="1.6"');
+        $this->assertSame($t['cover'], app(PilihanTemplateRepository::class)->untuk(2026)['leading'][0]['cover']);
     }
 
     public function test_hanya_admin(): void

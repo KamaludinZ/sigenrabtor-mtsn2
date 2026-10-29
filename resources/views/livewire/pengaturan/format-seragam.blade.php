@@ -187,38 +187,100 @@
     @else
         @php
             $template = $this->template;
+            $tanpaTemplate = $template['kak'] === [] && $template['cover'] === [];
+            $terkunci = \App\Support\Stub\StubData::tahunAktif()['is_locked'];
         @endphp
-        <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" data-testid="template-format">
-            <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-jenis">
-                <header class="border-b border-stone-100 px-5 py-4">
-                    <h2 id="judul-template-jenis" class="text-sm font-semibold text-stone-900">Template per jenis kegiatan</h2>
-                    <p class="mt-0.5 text-xs text-stone-500">Jenis kegiatan ditebak dari nama kegiatan; tanpa template khusus dokumen memakai susunan baku & cover default.</p>
-                </header>
-                <ul class="divide-y divide-stone-100" role="list">
-                    @foreach ($template['jenis'] as $t)
-                        <li class="grid gap-2 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] sm:items-center" data-testid="template-jenis" data-jenis="{{ $t['kunci'] }}">
-                            <p class="text-sm font-medium text-stone-800">{{ $t['label'] }}</p>
-                            <p class="text-xs text-stone-600"><span class="text-stone-400 sm:hidden">KAK/TOR: </span>{{ $t['kak'] ?? 'Susunan baku' }}</p>
-                            <p class="text-xs text-stone-600"><span class="text-stone-400 sm:hidden">Cover: </span>{{ $t['cover'] ?? 'Cover default' }}</p>
-                        </li>
-                    @endforeach
-                </ul>
-            </section>
-            <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-leading">
-                <h2 id="judul-template-leading" class="text-sm font-semibold text-stone-900">Khusus leading</h2>
-                <p class="mt-0.5 text-xs text-stone-500">Mengalahkan template per jenis untuk leading itu.</p>
-                <ul class="mt-3 space-y-2" role="list">
-                    @forelse ($template['leading'] as $t)
-                        <li class="rounded-xl bg-stone-50 px-3 py-2.5 text-xs ring-1 ring-stone-200" data-testid="template-leading" data-leading="{{ $t['leading'] }}">
-                            <p class="font-semibold text-stone-800">Leading {{ $t['leading'] }} · {{ $t['nama_leading'] }}</p>
-                            <p class="mt-0.5 text-stone-500">{{ $t['label_jenis'] }}</p>
-                            <p class="mt-1 text-stone-700">KAK/TOR: {{ $t['kak'] ?? 'mengikuti jenis' }} · Cover: {{ $t['cover'] ?? 'mengikuti jenis' }}</p>
-                        </li>
-                    @empty
-                        <li class="text-xs text-stone-500">Belum ada template khusus leading.</li>
-                    @endforelse
-                </ul>
-            </section>
-        </div>
+        <form wire:submit="simpanTemplate" class="mt-6 space-y-6" data-testid="template-format" data-berubah="{{ $this->templateBerubah ? '1' : '0' }}">
+            @if ($tanpaTemplate)
+                <div class="flex flex-col gap-2 rounded-2xl bg-gold-50 px-5 py-4 text-sm text-gold-900 ring-1 ring-gold-200 sm:flex-row sm:items-center sm:justify-between" data-testid="template-kosong">
+                    <p class="flex items-start gap-2"><x-ui.icon name="info" class="mt-0.5 size-4 shrink-0" /> Belum ada master KAK/TOR maupun cover TA {{ \App\Support\Stub\StubData::tahunAktif()['tahun'] }} — semua kegiatan memakai susunan baku & cover default. Unggah template dulu untuk membuat variasi.</p>
+                    <div class="flex shrink-0 gap-2">
+                        <a href="{{ route('pengaturan.template.index', ['tab' => 'kak']) }}" wire:navigate class="btn-secondary px-3 py-1.5 text-xs">Master KAK/TOR</a>
+                        <a href="{{ route('pengaturan.template.index') }}" wire:navigate class="btn-secondary px-3 py-1.5 text-xs">Cover</a>
+                    </div>
+                </div>
+            @endif
+
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+                <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-jenis">
+                    <header class="border-b border-stone-100 px-5 py-4">
+                        <h2 id="judul-template-jenis" class="text-sm font-semibold text-stone-900">Template per jenis kegiatan</h2>
+                        <p class="mt-0.5 text-xs text-stone-500">Jenis kegiatan ditebak dari nama kegiatan. Tanpa pilihan, dokumen memakai susunan baku & cover default.</p>
+                    </header>
+                    <ul class="divide-y divide-stone-100" role="list">
+                        @foreach ($template['jenis'] as $t)
+                            <li class="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)] sm:items-start" data-testid="template-jenis" data-jenis="{{ $t['kunci'] }}" wire:key="tj-{{ $t['kunci'] }}">
+                                <p class="pt-1 text-sm font-medium text-stone-800 sm:pt-6">{{ $t['label'] }}</p>
+                                <x-pengaturan.pilih-template :pilihan="$template['kak']" :terpilih="$t['kak']" :hilang="$t['kak_hilang']" bawaan="Susunan baku aplikasi" label="KAK/TOR"
+                                                             wire:model.live="pilihan.jenis.{{ $t['kunci'] }}.kak" error="pilihan.jenis.{{ $t['kunci'] }}.kak" testid="pilih-kak-{{ $t['kunci'] }}" />
+                                <x-pengaturan.pilih-template :pilihan="$template['cover']" :terpilih="$t['cover']" :hilang="$t['cover_hilang']" bawaan="Cover default" label="Cover"
+                                                             wire:model.live="pilihan.jenis.{{ $t['kunci'] }}.cover" error="pilihan.jenis.{{ $t['kunci'] }}.cover" testid="pilih-cover-{{ $t['kunci'] }}" />
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+
+                <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-template-leading">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h2 id="judul-template-leading" class="text-sm font-semibold text-stone-900">Khusus leading</h2>
+                            <p class="mt-0.5 text-xs text-stone-500">Mengalahkan template per jenis untuk leading itu.</p>
+                        </div>
+                        @unless ($terkunci)
+                            <button type="button" wire:click="tambahLeading" class="btn-secondary shrink-0 px-2.5 py-1.5 text-xs" data-testid="tambah-template-leading"><x-ui.icon name="plus" class="size-3.5" /> Tambah</button>
+                        @endunless
+                    </div>
+                    <ul class="mt-3 space-y-3" role="list">
+                        @forelse ($pilihan['leading'] as $i => $baris)
+                            <li class="rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200" data-testid="template-leading" data-leading="{{ $baris['leading'] }}" wire:key="tl-{{ $i }}">
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    <label class="block">
+                                        <span class="mb-1 block text-xs font-semibold text-stone-500">Leading</span>
+                                        <select wire:model.live="pilihan.leading.{{ $i }}.leading" class="form-input w-full py-1.5 text-sm" data-testid="pilih-leading-{{ $i }}">
+                                            <option value="">Pilih leading…</option>
+                                            @foreach ($template['leadings'] as $l)
+                                                <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error("pilihan.leading.{$i}.leading")<span class="mt-1 block text-xs font-medium text-red-700" role="alert">{{ $message }}</span>@enderror
+                                    </label>
+                                    <label class="block">
+                                        <span class="mb-1 block text-xs font-semibold text-stone-500">Jenis kegiatan</span>
+                                        <select wire:model.live="pilihan.leading.{{ $i }}.jenis" class="form-input w-full py-1.5 text-sm" data-testid="pilih-jenis-{{ $i }}">
+                                            <option value="">Pilih jenis…</option>
+                                            @foreach ($template['jenis_kegiatan'] as $kunciJenis => $labelJenis)
+                                                <option value="{{ $kunciJenis }}">{{ $labelJenis }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error("pilihan.leading.{$i}.jenis")<span class="mt-1 block text-xs font-medium text-red-700" role="alert">{{ $message }}</span>@enderror
+                                    </label>
+                                    <x-pengaturan.pilih-template :pilihan="$template['kak']" :terpilih="$baris['kak'] ?: null" :hilang="$template['leading'][$i]['kak_hilang'] ?? false" bawaan="Ikuti jenis kegiatan" label="KAK/TOR"
+                                                                 wire:model.live="pilihan.leading.{{ $i }}.kak" error="pilihan.leading.{{ $i }}.kak" testid="pilih-kak-leading-{{ $i }}" />
+                                    <x-pengaturan.pilih-template :pilihan="$template['cover']" :terpilih="$baris['cover'] ?: null" :hilang="$template['leading'][$i]['cover_hilang'] ?? false" bawaan="Ikuti jenis kegiatan" label="Cover"
+                                                                 wire:model.live="pilihan.leading.{{ $i }}.cover" error="pilihan.leading.{{ $i }}.cover" testid="pilih-cover-leading-{{ $i }}" />
+                                </div>
+                                @unless ($terkunci)
+                                    <button type="button" wire:click="hapusLeading({{ $i }})" class="mt-2 text-xs font-semibold text-red-700 hover:text-red-800" data-testid="hapus-template-leading-{{ $i }}">Hapus baris</button>
+                                @endunless
+                            </li>
+                        @empty
+                            <li class="rounded-xl border border-dashed border-stone-300 px-3 py-4 text-center text-xs text-stone-500" data-testid="template-leading-kosong">Belum ada template khusus leading.</li>
+                        @endforelse
+                    </ul>
+                </section>
+            </div>
+
+            @unless ($terkunci)
+                <div class="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-2 rounded-2xl bg-white/95 px-4 py-3 shadow-md ring-1 ring-stone-200 backdrop-blur" data-testid="aksi-template">
+                    @if ($this->templateBerubah)
+                        <span class="mr-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gold-800" data-testid="template-belum-disimpan"><span class="size-2 rounded-full bg-gold-500"></span> Belum disimpan</span>
+                        <button type="button" wire:click="batalTemplate" class="btn-ghost" data-testid="batal-template">Batalkan</button>
+                    @elseif ($template['diperbarui_pada'])
+                        <span class="mr-auto text-xs text-stone-500" data-testid="template-tersimpan">Tersimpan {{ \App\Support\Format::tanggal(substr($template['diperbarui_pada'], 0, 10)) }}</span>
+                    @endif
+                    <button type="submit" wire:loading.attr="disabled" wire:target="simpanTemplate" class="btn-primary" data-testid="simpan-template"><x-ui.icon name="save" class="size-4" /> Simpan pilihan</button>
+                </div>
+            @endunless
+        </form>
     @endif
 </div>

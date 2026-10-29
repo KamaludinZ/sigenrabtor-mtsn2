@@ -25,8 +25,30 @@ test.describe('Format Seragam', () => {
 
         await page.getByTestId('tab-format').locator('[data-tab="template"]').click();
         await expect(page.getByTestId('template-jenis')).toHaveCount(5);
-        await expect(page.locator('[data-testid="template-leading"][data-leading="1.6"]')).toContainText('Master KAK/TOR Penjaminan Mutu');
+        await expect(page.getByTestId('pilih-kak-workshop').locator('option').first()).toHaveText('Susunan baku aplikasi');
 
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+    });
+
+    test('pilihan template: baris khusus leading, galat, batalkan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/format?tab=template');
+        const form = page.getByTestId('template-format');
+        await expect(form).toHaveAttribute('data-berubah', '0');
+        await expect(page.getByTestId('template-leading-kosong')).toBeVisible();
+        await page.getByTestId('tambah-template-leading').click();
+        await page.getByTestId('pilih-leading-0').selectOption('1.6');
+        await page.getByTestId('pilih-jenis-0').selectOption('supervisi');
+        await expect(form).toHaveAttribute('data-berubah', '1');
+        await expect(page.getByTestId('template-belum-disimpan')).toBeVisible();
+        await page.getByTestId('simpan-template').click();
+        await expect(page.getByTestId('pilih-kak-leading-0-galat')).toContainText('Pilih master KAK/TOR atau cover');
+        await expect(page.locator('[data-testid="toast"][data-jenis="error"]')).toContainText('Pilihan template belum disimpan');
+        await page.screenshot({ path: `storage/playwright/shots/format-template-${testInfo.project.name}.png`, fullPage: true });
+        await page.getByTestId('batal-template').click();
+        await expect(page.getByTestId('template-leading-kosong')).toBeVisible();
+        await expect(form).toHaveAttribute('data-berubah', '0');
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
