@@ -12,7 +12,7 @@ namespace App\Contracts;
  * bertanda_draf, nomor_dokumen|null, versi, ringkas {total_rab|null, bagian_lengkap|null, jumlah_bagian|null},
  * user_id|null, dibuat_oleh, dibuat_pada (ISO 8601 bermikrodetik zona aplikasi), isi|null (cuplikan isi saat dibuat
  * IsiRiwayatDokumen::cuplikan: sidik, cover, bagian, rab)}. `catat()` melempar RuntimeException bila
- * gagal ditulis.
+ * gagal ditulis. Catatan hanya ditambah; satu-satunya perubahan = `beriNomor()` sekali pada catatan yang belum bernomor.
  */
 interface RiwayatDokumenRepository
 {
@@ -33,4 +33,13 @@ interface RiwayatDokumenRepository
      * @return array<string, mixed>
      */
     public function catat(array $entri): array;
+
+    /**
+     * Beri nomor dokumen pada catatan yang belum bernomor (satu-satunya perubahan yang diizinkan pada catatan).
+     *
+     * @return array<string, mixed>|null Catatan sesudahnya; null bila catatan tidak ada atau sudah bernomor.
+     *
+     * @throws \RuntimeException Gagal ditulis.
+     */
+    public function beriNomor(string $id, string $nomor): ?array;
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\GeneratorBerkasDokumen;
 use App\Contracts\KegiatanRepository;
 use App\Http\Controllers\Concerns\PermintaanUnduhan;
+use App\Support\Dokumen\CatatRiwayatDokumen;
 use App\Support\Dokumen\Generasi\GagalBuatBerkas;
 use App\Support\Dokumen\Generasi\PermintaanBerkas;
 use App\Support\Kegiatan\AksesKegiatan;
@@ -20,7 +21,8 @@ use Illuminate\Validation\ValidationException;
  * `kegiatan.berkas.unduh`): PermintaanBerkas::dari → GeneratorBerkasDokumen::buat → berkas biner dengan
  * BerkasDokumen::header(). Galat: 404 kegiatan, 403 AksesKegiatan, 422 {pesan, galat} isian, 501 {pesan, jenis
  * tidak_didukung, klien: true, tautan_cetak} format yang disusun peramban, 503 {pesan, jenis gagal, tautan_cetak}. Permintaan
- * bukan JSON yang gagal kembali ke Cetak & Unduh dengan notifikasi. Kontrak lengkap: docs/api/generasi-dokumen.md.
+ * bukan JSON yang gagal kembali ke Cetak & Unduh dengan notifikasi. Berkas yang berhasil dicatat ke Riwayat Dokumen
+ * (CatatRiwayatDokumen::dariBerkas; header X-Riwayat-Dokumen = id catatan). Kontrak lengkap: docs/api/generasi-dokumen.md.
  */
 class UnduhBerkasKegiatan extends Controller
 {
@@ -47,6 +49,8 @@ class UnduhBerkasKegiatan extends Controller
                 : redirect()->route('cetak.index')->with('notify', ['message' => $e->getMessage(), 'type' => 'error']);
         }
 
-        return response($berkas->isi, 200, $berkas->header());
+        $catatan = CatatRiwayatDokumen::dariBerkas($berkas, $pengguna);
+
+        return response($berkas->isi, 200, $berkas->header() + array_filter(['X-Riwayat-Dokumen' => $catatan['id'] ?? null]));
     }
 }

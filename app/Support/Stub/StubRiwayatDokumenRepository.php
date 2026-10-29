@@ -90,6 +90,26 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
         return $hasil;
     }
 
+    public function beriNomor(string $id, string $nomor): ?array
+    {
+        $semua = $this->baca();
+        foreach ($semua as $i => $c) {
+            if ($c['id'] === $id) {
+                if (($c['nomor_dokumen'] ?? null) !== null) {
+                    return null;
+                }
+                $semua[$i]['nomor_dokumen'] = $nomor;
+                if (! $this->tulis($semua)) {
+                    throw new RuntimeException('Riwayat dokumen gagal disimpan — coba lagi.');
+                }
+
+                return $semua[$i];
+            }
+        }
+
+        return null;
+    }
+
     /**
      * @param  array<string, mixed>  $entri
      * @return array<string, mixed>

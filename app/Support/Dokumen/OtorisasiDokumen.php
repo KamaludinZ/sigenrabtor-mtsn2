@@ -21,6 +21,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  * - `buka_ulang` (pratinjau, cetak ulang, unduh dengan data terbaru): `lihat` + kegiatannya masih tersimpan + kegiatan itu
  *   masih dalam cakupan akun (AksesKegiatan::bolehLihat) + sumber dananya masih dipilih.
  * - `unduh_arsip`: `buka_ulang` + catatan arsip final versi terbaru (arsip lama sudah diganti).
+ * - `beriNomor()` (di luar `AKSI`): `lihat` + admin atau akun tertaut ke leading catatan.
  * - `duplikat` (salin sebagai dasar kegiatan baru): `lihat` + tahun anggaran aktif terbuka + kegiatannya tersimpan & dalam
  *   cakupan + admin, atau akun leading yang tertaut ke leading kegiatan itu (pembuat yang tidak lagi tertaut tidak boleh
  *   membuat kegiatan untuk leading tersebut) + leading masih aktif.
@@ -105,6 +106,20 @@ final class OtorisasiDokumen
         $leading = MasterKode::leading($kode);
 
         return $leading !== null && ! $leading['is_active'] ? 'Leading '.$leading['kode'].' kini nonaktif — kegiatannya tidak bisa disalin.' : null;
+    }
+
+    /**
+     * Beri nomor dokumen (PATCH `dokumen.perbarui`): `lihat` + admin atau akun yang tertaut ke leading catatan itu (bukan
+     * sekadar pembuatnya); catatan yang sudah bernomor tidak diberi nomor lagi.
+     *
+     * @param  array<string, mixed>  $catatan
+     */
+    public static function beriNomor(array $catatan, array $pengguna): ?string
+    {
+        return self::lihat($catatan, $pengguna) ?? match (true) {
+            ! TautanAkunLeading::bolehAkses($pengguna, ($catatan['kode_leading'] ?? '') ?: null) => 'Nomor dokumen hanya bisa diberikan admin atau akun yang tertaut ke leading dokumen ini.',
+            default => null,
+        };
     }
 
     /**

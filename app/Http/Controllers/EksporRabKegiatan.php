@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\KegiatanRepository;
 use App\Http\Controllers\Concerns\PermintaanUnduhan;
+use App\Support\Dokumen\CatatRiwayatDokumen;
 use App\Support\Dokumen\Generasi\BerkasDokumen;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Rab\EksporRabExcel;
@@ -20,7 +21,8 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  * dipilih, tanpa sumber = semua sumber (satu lembar per sumber). Header unduhan baku BerkasDokumen::headerUnduhan
  * (X-Nama-Berkas, X-Format-Berkas, X-Draf, no-store). Galat: 404 kegiatan tidak ada / tanpa sumber dana / sumber tak
  * dipilih, 403, 503 gagal disusun — JSON {pesan} untuk permintaan klien (PermintaanUnduhan), selain itu halaman galat.
- * Dipakai tombol Excel sebagai cadangan otomatis bila penyusun peramban gagal.
+ * Dipakai tombol Excel sebagai cadangan otomatis bila penyusun peramban gagal. Unduhan satu sumber dana dicatat ke Riwayat
+ * Dokumen (CatatRiwayatDokumen::dariLembar, header X-Riwayat-Dokumen).
  */
 class EksporRabKegiatan extends Controller
 {
@@ -57,7 +59,9 @@ class EksporRabKegiatan extends Controller
             return $this->gagal($request, 503, 'Berkas Excel RAB gagal disusun di server — coba lagi.');
         }
 
-        return response($isi, 200, BerkasDokumen::headerUnduhan($nama, 'xlsx', $draf, strlen($isi)));
+        $catatan = $sumber !== null ? CatatRiwayatDokumen::dariLembar($data, $sumber, ['rab'], 'xlsx', strlen($isi), StubData::currentUser()) : null;
+
+        return response($isi, 200, BerkasDokumen::headerUnduhan($nama, 'xlsx', $draf, strlen($isi)) + array_filter(['X-Riwayat-Dokumen' => $catatan['id'] ?? null]));
     }
 
     private function gagal(Request $request, int $status, string $pesan): Response|JsonResponse

@@ -65,6 +65,28 @@ jenis × sumber × format yang sama, terbaru dulu), `perbedaan`, `kegiatan` (nul
 `isi` = `{ "sidik": "md5", "cover": {kotak teks cover} | null, "bagian": [{nomor, judul, isi: [blok], status, kurang, periksa, sidik}], "rab": {judul, kepala, tabel, mekanisme, pengesahan, kurang} | null }`
 menurut lembar jenis dokumen. Juga `dokumen` (baris + `izin`), `label_sumber`, `catatan`. 404/403 `{pesan}`.
 
+## Memperbarui dokumen (`dokumen.perbarui`)
+
+Catatan riwayat hanya ditambah; "memperbarui" tidak mengubah isi catatan lama.
+
+- `PUT /dokumen/{id}` `{ "asal": "cetak" | "unduh", "nomor_dokumen": "…", "versi": 2 }` (semua opsional) — terbitkan ulang:
+  catat **versi baru** jenis × sumber dana × format yang sama dari data kegiatan terbaru (nama berkas, cap DRAF, ringkas, dan
+  cuplikan isi saat ini; nomor bawaan = nomor versi sebelumnya). `versi` = versi terbaru yang terakhir dilihat (berbeda →
+  409). Butuh izin `buka_ulang`. 201 `{dokumen, sebelumnya: {id, versi}, perbedaan, pesan}`.
+- `PATCH /dokumen/{id}` `{ "nomor_dokumen": "RAB/001/2026" }` — beri nomor **sekali** pada catatan yang belum bernomor
+  (satu-satunya perubahan yang diizinkan database). Nomor: huruf/angka/spasi/`.`/`/`/`-`, ≤ 100, tidak dipakai dokumen
+  lain di tahun anggaran yang sama. Admin atau akun yang tertaut ke leading dokumen. 200 `{dokumen, pesan}`; sudah
+  bernomor → 409.
+
+Galat: 422 `{pesan, galat: {asal | nomor_dokumen}}`, 403 `{pesan}`, 404 `{pesan}`, 409 `{pesan}`.
+
+## Pencatatan otomatis
+
+Setiap berkas yang diunduh dari server — `kegiatan.berkas.unduh`, `kegiatan.kak.word`, `kegiatan.cetak.pdf` (lembar yang
+membentuk jenis), `kegiatan.rab.excel` (satu sumber dana) — dicatat ke riwayat (`CatatRiwayatDokumen`, asal `unduh`,
+ukuran berkas, cuplikan isi) dan jawabannya membawa header `X-Riwayat-Dokumen` (id catatan). Dimatikan lewat
+`SIRABTOR_CATAT_UNDUHAN=false`; kegagalan mencatat tidak menggagalkan unduhan.
+
 ## Duplikasi dokumen menjadi kegiatan baru
 
 `GET /dokumen/{id}/duplikat` (`dokumen.duplikat.rencana`) = `AksiRiwayatDokumen::rencanaDuplikat`: `bisa`, `alasan`,

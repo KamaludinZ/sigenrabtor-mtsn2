@@ -24,6 +24,8 @@ class SkemaRiwayatDokumenTest extends TestCase
 
     private const MIGRASI_ISI = 'database/migrations/2026_10_29_000044_add_isi_to_riwayat_dokumen_table.php';
 
+    private const MIGRASI_NOMOR = 'database/migrations/2026_10_29_000045_allow_nomor_riwayat_dokumen.php';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -156,8 +158,19 @@ class SkemaRiwayatDokumenTest extends TestCase
         $this->ditolak(fn () => DB::table('riwayat_dokumen')->where('id', $id)->update(['isi' => null]), 'hanya bisa ditambah');
     }
 
+    public function test_nomor_dokumen_diberikan_sekali(): void
+    {
+        $id = $this->catatan();
+        DB::table('riwayat_dokumen')->where('id', $id)->update(['nomor_dokumen' => 'RAB/001/2026']);
+        $this->assertSame('RAB/001/2026', DB::table('riwayat_dokumen')->where('id', $id)->value('nomor_dokumen'));
+        $this->ditolak(fn () => DB::table('riwayat_dokumen')->where('id', $id)->update(['nomor_dokumen' => 'RAB/002/2026']), 'hanya bisa ditambah');
+        $this->ditolak(fn () => DB::table('riwayat_dokumen')->where('id', $id)->update(['nomor_dokumen' => null]), 'hanya bisa ditambah');
+        $this->ditolak(fn () => DB::table('riwayat_dokumen')->where('id', $this->catatan(['versi' => 2]))->update(['nomor_dokumen' => 'X/1', 'versi' => 3]), 'hanya bisa ditambah');
+    }
+
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_NOMOR])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_ISI])->assertSuccessful();
         $this->assertFalse(Schema::hasColumn('riwayat_dokumen', 'isi'));
         $this->assertNull(DB::selectOne("SELECT to_regproc('riwayat_isi_sah') AS f")->f);
@@ -171,6 +184,7 @@ class SkemaRiwayatDokumenTest extends TestCase
         $this->assertNull(DB::selectOne("SELECT to_regproc('riwayat_ringkas_sah') AS f")->f);
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_ISI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_NOMOR])->assertSuccessful();
         $this->assertTrue(Schema::hasColumn('riwayat_dokumen', 'isi'));
     }
 }

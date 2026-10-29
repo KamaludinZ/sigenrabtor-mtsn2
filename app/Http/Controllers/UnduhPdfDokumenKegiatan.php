@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PembuatPdfDokumen;
 use App\Http\Controllers\Concerns\PermintaanUnduhan;
+use App\Support\Dokumen\CatatRiwayatDokumen;
 use App\Support\Dokumen\CetakDokumen;
 use App\Support\Dokumen\GagalUbahPdf;
 use App\Support\Dokumen\SusunanKak;
@@ -18,7 +19,8 @@ use Illuminate\Http\Response;
 /**
  * Unduh PDF set dokumen langsung (`GET /kegiatan/{kegiatan}/cetak/pdf?sumber=&dokumen=`, rute `kegiatan.cetak.pdf`):
  * PembuatPdfDokumen untuk lembar CetakDokumen::pilihan, nama berkas baku CetakDokumen::namaBerkas (header
- * `Content-Disposition` + `X-Nama-Berkas`). Hak baca AksesKegiatan; sumber tidak dipilih → 404. Gagal disusun → 503 JSON
+ * `Content-Disposition` + `X-Nama-Berkas`; dicatat ke Riwayat Dokumen lewat CatatRiwayatDokumen::dariLembar, header
+ * X-Riwayat-Dokumen). Hak baca AksesKegiatan; sumber tidak dipilih → 404. Gagal disusun → 503 JSON
  * {pesan, tautan_cetak} untuk permintaan klien (Alpine `unduhPdf`), selain itu kembali ke Cetak & Unduh dengan notifikasi.
  */
 class UnduhPdfDokumenKegiatan extends Controller
@@ -45,7 +47,9 @@ class UnduhPdfDokumenKegiatan extends Controller
                 : redirect()->route('cetak.index', ['pilih' => $kegiatan.'|'.($sumber ?? '')])->with('notify', ['message' => $e->getMessage(), 'type' => 'error']);
         }
 
-        return response($isi, 200, [
+        $catatan = CatatRiwayatDokumen::dariLembar($data, $sumber, $lembar, 'pdf', strlen($isi), StubData::currentUser());
+
+        return response($isi, 200, array_filter(['X-Riwayat-Dokumen' => $catatan['id'] ?? null]) + [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$nama.'"',
             'Content-Length' => (string) strlen($isi),

@@ -64,6 +64,20 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Riwayat dokumen
+    |--------------------------------------------------------------------------
+    |
+    | catat_unduhan: setiap berkas yang diunduh dari server (PDF, Word, Excel RAB) dicatat ke Riwayat Dokumen beserta
+    | cuplikan isinya (CatatRiwayatDokumen). E2E mematikannya agar data riwayat bersama tetap.
+    |
+    */
+
+    'riwayat' => [
+        'catat_unduhan' => (bool) env('SIRABTOR_CATAT_UNDUHAN', true),
+    ],
+
     'stub' => [
         'kegiatan_file' => env('STUB_KEGIATAN_FILE', 'stub/kegiatan.json'),
         'rab_file' => env('STUB_RAB_FILE', 'stub/rab.json'),
