@@ -5,9 +5,11 @@ namespace App\Support\Dokumen;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatDokumenRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Format;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\TautanAkunLeading;
+use DateTimeImmutable;
 
 /**
  * Struktur riwayat dokumen (PRD §7 Riwayat Dokumen, F28) lewat RiwayatDokumenRepository: `entri()` menyusun satu catatan
@@ -208,6 +210,85 @@ final class RiwayatDokumen
         $bagian = preg_split($pola, $teks, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$teks];
 
         return implode('', array_map(fn (string $p, int $i) => $i % 2 === 1 ? '<mark class="rounded-sm bg-gold-100 px-0.5 text-inherit">'.e($p).'</mark>' : e($p), $bagian, array_keys($bagian)));
+    }
+
+    /** Saringan halaman Riwayat Dokumen (selain kata kunci). */
+    public const SARINGAN = ['jenis', 'format', 'dari', 'sampai'];
+
+    /**
+     * Saringan dirapikan: jenis `DokumenKegiatan::JENIS`, format `FORMAT`, tanggal Y-m-d sah (lainnya kosong); `terbalik`
+     * = sampai sebelum dari (rentang tidak diterapkan sampai diperbaiki).
+     *
+     * @param  array<string, mixed>  $nilai
+     * @return array{jenis: string, format: string, dari: string, sampai: string, terbalik: bool}
+     */
+    public static function rapikanSaringan(array $nilai): array
+    {
+        $tanggal = function (mixed $t): string {
+            $t = is_string($t) ? trim($t) : '';
+            $tanggal = preg_match('/^\d{4}-\d{2}-\d{2}$/', $t) ? DateTimeImmutable::createFromFormat('!Y-m-d', $t) : false;
+
+            return $tanggal && $tanggal->format('Y-m-d') === $t ? $t : '';
+        };
+        $hasil = [
+            'jenis' => isset(DokumenKegiatan::JENIS[$nilai['jenis'] ?? '']) ? (string) $nilai['jenis'] : '',
+            'format' => isset(self::FORMAT[$nilai['format'] ?? '']) ? (string) $nilai['format'] : '',
+            'dari' => $tanggal($nilai['dari'] ?? null),
+            'sampai' => $tanggal($nilai['sampai'] ?? null),
+        ];
+
+        return $hasil + ['terbalik' => $hasil['dari'] !== '' && $hasil['sampai'] !== '' && $hasil['sampai'] < $hasil['dari']];
+    }
+
+    /**
+     * Catatan yang cocok dengan saringan jenis, format, dan rentang tanggal dibuat (inklusif, tanggal zona aplikasi);
+     * rentang terbalik diabaikan.
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @param  array<string, mixed>  $saringan
+     * @return list<array<string, mixed>>
+     */
+    public static function saring(array $baris, array $saringan): array
+    {
+        $s = self::rapikanSaringan($saringan);
+        $dari = $s['terbalik'] ? '' : $s['dari'];
+        $sampai = $s['terbalik'] ? '' : $s['sampai'];
+
+        return array_values(array_filter($baris, function (array $b) use ($s, $dari, $sampai) {
+            $tanggal = substr((string) $b['dibuat_pada'], 0, 10);
+
+            return ($s['jenis'] === '' || $b['jenis'] === $s['jenis'])
+                && ($s['format'] === '' || $b['format'] === $s['format'])
+                && ($dari === '' || $tanggal >= $dari)
+                && ($sampai === '' || $tanggal <= $sampai);
+        }));
+    }
+
+    /**
+     * Saringan aktif sebagai chip: kunci (jenis|format|tanggal) → label.
+     *
+     * @param  array<string, mixed>  $saringan
+     * @return array<string, string>
+     */
+    public static function labelSaringan(array $saringan): array
+    {
+        $s = self::rapikanSaringan($saringan);
+        $label = [];
+        if ($s['jenis'] !== '') {
+            $label['jenis'] = DokumenKegiatan::JENIS[$s['jenis']];
+        }
+        if ($s['format'] !== '') {
+            $label['format'] = self::FORMAT[$s['format']][0];
+        }
+        if (! $s['terbalik'] && ($s['dari'] !== '' || $s['sampai'] !== '')) {
+            $label['tanggal'] = match (true) {
+                $s['dari'] !== '' && $s['sampai'] !== '' => Format::tanggal($s['dari']).' – '.Format::tanggal($s['sampai']),
+                $s['dari'] !== '' => 'Sejak '.Format::tanggal($s['dari']),
+                default => 'Sampai '.Format::tanggal($s['sampai']),
+            };
+        }
+
+        return $label;
     }
 
     /** Urutan jenis di kartu kegiatan: set lengkap dulu, lalu KAK/TOR, lalu RAB. */

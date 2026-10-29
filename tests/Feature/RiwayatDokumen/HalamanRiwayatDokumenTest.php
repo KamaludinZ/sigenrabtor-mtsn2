@@ -6,6 +6,7 @@ use App\Contracts\RiwayatDokumenRepository;
 use App\Livewire\Dokumen\Riwayat;
 use App\Support\Dokumen\RiwayatDokumen;
 use App\Support\Navigation;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -133,5 +134,43 @@ class HalamanRiwayatDokumenTest extends TestCase
             ->set('cari', str_repeat('a', 150))
             ->call('$refresh');
         $this->assertSame(100, mb_strlen(Livewire::withQueryParams(['cari' => str_repeat('b', 150)])->test(Riwayat::class)->get('cari')));
+    }
+
+    public function test_saringan_jenis_format_dan_rentang_tanggal(): void
+    {
+        $semua = RiwayatDokumen::untuk(self::ADMIN);
+        $this->assertSame(['rd-2026-6', 'rd-2026-1', 'rd-2025-2'], array_column(RiwayatDokumen::saring($semua, ['jenis' => 'RAB']), 'id'));
+        $this->assertSame(['rd-2026-5', 'rd-2025-1'], array_column(RiwayatDokumen::saring($semua, ['format' => 'docx']), 'id'));
+        $this->assertSame(['rd-2026-1'], array_column(RiwayatDokumen::saring($semua, ['jenis' => 'RAB', 'format' => 'pdf', 'dari' => '2026-02-01', 'sampai' => '2026-02-28']), 'id'), 'Semua saringan berlaku bersama.');
+        $this->assertSame(['rd-2026-3', 'rd-2026-2', 'rd-2026-1'], array_column(RiwayatDokumen::saring($semua, ['dari' => '2026-02-10', 'sampai' => '2026-02-12']), 'id'), 'Rentang inklusif.');
+        $this->assertCount(5, RiwayatDokumen::saring($semua, ['sampai' => '2025-12-31']));
+        $this->assertCount(12, RiwayatDokumen::saring($semua, ['dari' => '2026-03-01', 'sampai' => '2026-01-01']), 'Rentang terbalik tidak diterapkan.');
+        $this->assertSame(['jenis' => '', 'format' => '', 'dari' => '', 'sampai' => '2026-02-28', 'terbalik' => false], RiwayatDokumen::rapikanSaringan(['jenis' => 'Surat', 'format' => 'exe', 'dari' => '2026-02-30', 'sampai' => '2026-02-28']));
+        $this->assertSame(['jenis' => 'RAB', 'format' => 'Excel', 'tanggal' => '1 Februari 2026 – 28 Februari 2026'], RiwayatDokumen::labelSaringan(['jenis' => 'RAB', 'format' => 'xlsx', 'dari' => '2026-02-01', 'sampai' => '2026-02-28']));
+        $this->assertSame(['tanggal' => 'Sejak 1 Maret 2026'], RiwayatDokumen::labelSaringan(['dari' => '2026-03-01']));
+
+        $this->travelTo(CarbonImmutable::parse('2026-03-20 10:00', config('app.timezone')));
+        Livewire::test(Riwayat::class)
+            ->set('jenis', 'RAB')
+            ->assertSee('data-testid="chip-saringan" data-kunci="jenis"', false)
+            ->assertDontSee('Review RKJM dan Penyusunan RKTM')
+            ->set('dari', '2026-03-01')->set('sampai', '2026-02-01')
+            ->assertSee('data-testid="rentang-terbalik"', false)
+            ->assertDontSee('data-kunci="tanggal"', false)
+            ->call('pintasanTanggal', '30hari')
+            ->assertSet('dari', '2026-02-19')->assertSet('sampai', '2026-03-20')
+            ->assertSee('data-kunci="tanggal"', false)
+            ->call('lepasSaringan', 'tanggal')
+            ->assertSet('dari', '')->assertSet('sampai', '')
+            ->call('pintasanTanggal', 'ta')
+            ->assertSet('dari', '2026-01-01')->assertSet('sampai', '2026-12-31')
+            ->set('format', 'docx')
+            ->assertSee('data-testid="riwayat-tanpa-hasil"', false)
+            ->assertSee('Tidak ada dokumen yang cocok dengan saringan yang dipilih.')
+            ->call('hapusSaringan')
+            ->assertSet('jenis', '')->assertSet('format', '')->assertSet('dari', '')
+            ->assertDontSee('data-testid="chip-saringan-riwayat"', false);
+
+        $this->assertSame('', Livewire::withQueryParams(['jenis' => 'Surat', 'dari' => 'kemarin'])->test(Riwayat::class)->get('dari'));
     }
 }

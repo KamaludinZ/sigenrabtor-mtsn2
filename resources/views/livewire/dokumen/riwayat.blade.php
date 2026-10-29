@@ -5,6 +5,9 @@
     $semua = $this->semua;
     $ringkasan = RiwayatDokumen::ringkasan($semua);
     [$perTahun, $jumlahButir] = $this->isi();
+    $saringan = RiwayatDokumen::rapikanSaringan($this->saringan());
+    $chip = RiwayatDokumen::labelSaringan($this->saringan());
+    $adaSaringan = $chip !== [] || $saringan['terbalik'] || $cari !== '';
     $tampil = min($this->batas, $jumlahButir);
     $waktu = fn (string $iso) => Format::tanggal(substr($iso, 0, 10)).' · '.\Carbon\CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->format('H.i');
     $nadaStatus = ['final' => 'bg-stone-800 text-white ring-stone-800', 'disetujui' => 'bg-brand-50 text-brand-800 ring-brand-200'];
@@ -64,14 +67,76 @@
             @endif
             </div>
         </div>
+
+        {{-- Saringan jenis, format, rentang tanggal dibuat; x-data tetap (nilai awal lewat data-buka-awal) agar panel tidak tertutup saat saringan berubah --}}
+        <div class="mt-3 rounded-2xl bg-white p-3 shadow-xs ring-1 ring-stone-200 sm:p-4" data-testid="saringan-riwayat" data-buka-awal="{{ $chip !== [] || $saringan['terbalik'] ? '1' : '0' }}" x-data="{ buka: $el.dataset.bukaAwal === '1' }">
+            <button type="button" class="flex w-full items-center justify-between text-sm font-semibold text-stone-700 sm:hidden" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" data-testid="buka-saringan-riwayat">
+                <span class="inline-flex items-center gap-1.5"><x-ui.icon name="filter" class="size-4" /> Saringan @if (count($chip) > 0)<span class="rounded-full bg-brand-100 px-1.5 text-[11px] text-brand-800">{{ count($chip) }}</span>@endif</span>
+                <x-ui.icon name="chevron-down" class="size-4 transition" x-bind:class="{ 'rotate-180': buka, 'rotate-0': ! buka }" />
+            </button>
+            <div class="mt-3 gap-3 sm:mt-0 sm:grid sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]" x-bind:class="{ 'grid': buka, 'hidden': ! buka }">
+                <label class="block">
+                    <span class="form-label mb-1 text-xs">Jenis dokumen</span>
+                    <select wire:model.live="jenis" class="form-input py-1.5" data-testid="saring-jenis">
+                        <option value="">Semua jenis</option>
+                        @foreach (\App\Support\Dokumen\DokumenKegiatan::JENIS as $kunciJenis => $labelJenis)
+                            <option value="{{ $kunciJenis }}">{{ $labelJenis }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="form-label mb-1 text-xs">Format berkas</span>
+                    <select wire:model.live="format" class="form-input py-1.5" data-testid="saring-format">
+                        <option value="">Semua format</option>
+                        @foreach (RiwayatDokumen::FORMAT as $kunciFormat => [$labelFormat])
+                            <option value="{{ $kunciFormat }}">{{ $labelFormat }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="form-label mb-1 text-xs">Dibuat sejak</span>
+                    <input type="date" wire:model.live.blur="dari" max="{{ $saringan['sampai'] ?: '' }}" class="form-input py-1.5" data-testid="saring-dari">
+                </label>
+                <label class="block">
+                    <span class="form-label mb-1 text-xs">Sampai</span>
+                    <input type="date" wire:model.live.blur="sampai" min="{{ $saringan['dari'] ?: '' }}" class="form-input py-1.5" data-testid="saring-sampai">
+                </label>
+                <div class="flex items-end gap-1.5 sm:col-span-2 lg:col-span-1">
+                    <button type="button" wire:click="pintasanTanggal('30hari')" class="btn-ghost px-2.5 py-1.5 text-xs" data-testid="pintasan-30hari">30 hari terakhir</button>
+                    <button type="button" wire:click="pintasanTanggal('ta')" class="btn-ghost px-2.5 py-1.5 text-xs" data-testid="pintasan-ta">TA {{ \App\Support\Stub\StubData::tahunAktif()['tahun'] }}</button>
+                </div>
+            </div>
+            @if ($saringan['terbalik'])
+                <p class="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700" role="alert" data-testid="rentang-terbalik">
+                    <x-ui.icon name="alert" class="size-3.5" /> Tanggal akhir sebelum tanggal awal — rentang tanggal belum diterapkan sampai diperbaiki.
+                </p>
+            @endif
+        </div>
+
+        @if ($adaSaringan)
+            <div class="mt-3 flex flex-wrap items-center gap-2" data-testid="chip-saringan-riwayat">
+                <span class="text-xs text-stone-500">Disaring:</span>
+                @if ($cari !== '')
+                    <button type="button" wire:click="$set('cari', '')" class="inline-flex items-center gap-1 rounded-full bg-gold-50 px-2.5 py-1 text-xs font-semibold text-gold-800 ring-1 ring-gold-200 hover:bg-gold-100" data-testid="chip-saringan" data-kunci="cari">
+                        “{{ $cari }}” <x-ui.icon name="x" class="size-3" /><span class="sr-only">Lepas kata kunci</span>
+                    </button>
+                @endif
+                @foreach ($chip as $kunciChip => $labelChip)
+                    <button type="button" wire:click="lepasSaringan('{{ $kunciChip }}')" class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-100" data-testid="chip-saringan" data-kunci="{{ $kunciChip }}">
+                        {{ $labelChip }} <x-ui.icon name="x" class="size-3" /><span class="sr-only">Lepas saringan</span>
+                    </button>
+                @endforeach
+                <button type="button" wire:click="hapusSaringan" class="text-xs font-semibold text-stone-600 underline underline-offset-2 hover:text-stone-900" data-testid="hapus-saringan-riwayat">Hapus semua</button>
+            </div>
+        @endif
     @endif
 
     @if ($semua !== [] && $this->cocok === [])
         <div class="mt-4 rounded-2xl bg-white px-5 py-10 text-center shadow-xs ring-1 ring-stone-200" data-testid="riwayat-tanpa-hasil">
             <x-ui.icon name="search" class="mx-auto size-8 text-stone-300" />
-            <p class="mt-2 text-sm font-semibold text-stone-700">Tidak ada dokumen yang cocok dengan “{{ $cari }}”.</p>
-            <p class="mt-1 text-sm text-stone-500">Coba kata lain — mis. sebagian nama kegiatan, kode leading, atau nomor dokumen.</p>
-            <button type="button" wire:click="$set('cari', '')" class="mt-3 text-sm font-semibold text-brand-700 hover:text-brand-800">Hapus pencarian</button>
+            <p class="mt-2 text-sm font-semibold text-stone-700">{{ $cari !== '' ? 'Tidak ada dokumen yang cocok dengan “'.$cari.'”'.($chip !== [] ? ' dan saringan yang dipilih.' : '.') : 'Tidak ada dokumen yang cocok dengan saringan yang dipilih.' }}</p>
+            <p class="mt-1 text-sm text-stone-500">Coba kata lain atau longgarkan saringan — mis. sebagian nama kegiatan, kode leading, atau rentang tanggal yang lebih lebar.</p>
+            <button type="button" wire:click="hapusSaringan" class="mt-3 text-sm font-semibold text-brand-700 hover:text-brand-800">Hapus pencarian &amp; saringan</button>
         </div>
     @elseif ($semua === [])
         <div class="mt-6 rounded-2xl bg-white px-5 py-12 text-center shadow-xs ring-1 ring-stone-200" data-testid="riwayat-kosong">
