@@ -174,6 +174,23 @@ test.describe('Cetak & Unduh', () => {
         expect(dariMenu.suggestedFilename()).toMatch(/^KAK-TOR_.*_KOMITE_2026(_DRAF)?\.docx$/);
     });
 
+    test('unduh Word: cadangan server bila penyusun peramban gagal dimuat', async ({ page }) => {
+        await page.route('**/build/assets/word-kak-*.js', (rute) => rute.abort());
+        await page.goto('/demo/peran/leading');
+        await page.goto('/cetak?pilih=2%7CDIPA');
+        const panel = page.getByTestId('panel-cetak-terpilih');
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), panel.getByTestId('unduh-word-terpilih').click()]);
+        expect(unduhan.suggestedFilename()).toMatch(/^KAK-TOR_Supervisi_.*_DIPA_2026(_DRAF)?\.docx$/);
+        const zip = await JSZip.loadAsync(fs.readFileSync(await unduhan.path()));
+        const isi = await zip.file('word/document.xml').async('string');
+        for (const teks of ['KERANGKA ACUAN KERJA', '1. LATAR BELAKANG', '9. LEMBAR PENGESAHAN', 'Supervisi Akademik']) {
+            expect(isi).toContain(teks);
+        }
+        expect(await zip.file('word/footer2.xml').async('string')).toContain('NUMPAGES');
+        await expect(page.getByTestId('toast').filter({ hasText: 'disusun server' })).toHaveAttribute('data-jenis', 'success');
+        await expect(panel.getByTestId('unduh-word-terpilih-gagal')).toBeHidden();
+    });
+
     test('unduh Excel RAB disusun di peramban', async ({ page }) => {
         await page.goto('/demo/peran/leading');
         await page.goto('/cetak?pilih=2%7CDIPA');

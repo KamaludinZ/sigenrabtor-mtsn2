@@ -8,6 +8,7 @@ use App\Contracts\PembuatPdfDokumen;
 use App\Support\Dokumen\CetakDokumen;
 use App\Support\Dokumen\DokumenKegiatan;
 use App\Support\Dokumen\GagalUbahPdf;
+use App\Support\Dokumen\Generasi\BerkasDokumen;
 use App\Support\Dokumen\Generasi\FormatBerkas;
 use App\Support\Dokumen\Generasi\GagalBuatBerkas;
 use App\Support\Dokumen\Generasi\GeneratorBerkasServer;
@@ -68,11 +69,11 @@ class GenerasiDokumenServerTest extends TestCase
         $this->assertArrayHasKey('sumber', $this->galat($tanpa, ['format' => 'pdf', 'jenis' => 'lengkap']));
     }
 
-    public function test_generator_server_pdf_excel_dan_word_di_peramban(): void
+    public function test_generator_server_pdf_excel_dan_word(): void
     {
         $generator = app(GeneratorBerkasDokumen::class);
         $this->assertInstanceOf(GeneratorBerkasServer::class, $generator);
-        $this->assertSame([true, false, true], [$generator->mendukung('pdf'), $generator->mendukung('docx'), $generator->mendukung('xlsx')]);
+        $this->assertSame([true, true, true, false], [$generator->mendukung('pdf'), $generator->mendukung('docx'), $generator->mendukung('xlsx'), $generator->mendukung('odt')]);
         $k = $this->kegiatan(2);
 
         $pdf = $generator->buat(PermintaanBerkas::dari($k, ['format' => 'pdf', 'jenis' => 'RAB', 'sumber' => 'DIPA']));
@@ -89,15 +90,18 @@ class GenerasiDokumenServerTest extends TestCase
         $this->assertSame(['RAB DIPA'], IOFactory::load($sementara)->getSheetNames(), 'Satu lembar untuk sumber dana permintaan.');
         unlink($sementara);
 
+        $docx = $generator->buat(PermintaanBerkas::dari($k, ['format' => 'docx']));
+        $this->assertStringStartsWith('PK', $docx->isi);
+        $this->assertSame(GeneratorBerkasServer::nama(PermintaanBerkas::dari($k, ['format' => 'docx'])), $docx->nama);
+        $this->assertStringEndsWith('_DRAF.docx', $docx->nama);
+
         try {
-            $generator->buat(PermintaanBerkas::dari($k, ['format' => 'docx']));
-            $this->fail('Word belum dibuat server.');
+            $generator->buat(new PermintaanBerkas($k, 'KAK+TOR', 'DIPA', 'odt', ['cover', 'kak']));
+            $this->fail('Format tak dikenal tidak dibuat server.');
         } catch (GagalBuatBerkas $e) {
             $this->assertSame(['tidak_didukung', 501], [$e->jenis, $e->status()]);
-            $this->assertStringContainsString('disusun di peramban', $e->getMessage());
             $this->assertStringContainsString('/kegiatan/2/cetak', (string) $e->tautanCetak);
         }
-        $this->assertStringEndsWith('.docx', GeneratorBerkasServer::nama(PermintaanBerkas::dari($k, ['format' => 'docx'])));
     }
 
     public function test_katalog_berkas(): void
@@ -110,7 +114,7 @@ class GenerasiDokumenServerTest extends TestCase
         $this->assertNotContains('KAK+TOR|Komite|pdf', $kunci, 'Jenis KAK/TOR hanya pada sumber pertama.');
         $this->assertNotContains('lengkap|DIPA|docx', $kunci);
         $word = collect($katalog)->first(fn (array $b) => $b['format'] === 'docx');
-        $this->assertSame([false, true], [$word['server'], $word['klien']]);
+        $this->assertSame([true, true], [$word['server'], $word['klien']]);
         $this->assertSame(route('kegiatan.berkas.unduh', ['kegiatan' => 2, 'jenis' => 'KAK+TOR', 'sumber' => 'DIPA', 'format' => 'docx']), $word['tautan']);
         $this->assertSame(['pdf', 'docx', 'xlsx'], array_keys(KatalogBerkas::format()));
 
@@ -118,7 +122,7 @@ class GenerasiDokumenServerTest extends TestCase
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertJsonPath('kegiatan_id', 2)
-            ->assertJsonPath('format.docx.server', false)
+            ->assertJsonPath('format.docx.server', true)
             ->assertJsonPath('format.xlsx.perlu_sumber', true)
             ->assertJsonCount(count($katalog), 'berkas');
         $this->getJson(route('kegiatan.berkas', ['kegiatan' => 999]))->assertNotFound();
@@ -142,8 +146,23 @@ class GenerasiDokumenServerTest extends TestCase
             ->assertStatus(422)->assertJsonStructure(['pesan', 'galat' => ['format']]);
         $this->get(route('kegiatan.berkas.unduh', ['kegiatan' => 2, 'format' => 'odt']))
             ->assertRedirect(route('cetak.index'))->assertSessionHas('notify.type', 'error');
+        $this->get(route('kegiatan.berkas.unduh', ['kegiatan' => 2, 'format' => 'docx']))->assertOk()->assertHeader('Content-Type', FormatBerkas::mime('docx'));
+        $this->app->instance(GeneratorBerkasDokumen::class, new class implements GeneratorBerkasDokumen
+        {
+            public function mendukung(string $format): bool
+            {
+                return false;
+            }
+
+            public function buat(PermintaanBerkas $permintaan): BerkasDokumen
+            {
+                throw new GagalBuatBerkas('tidak_didukung', 'Word disusun di peramban.', '/kegiatan/2/cetak');
+            }
+        });
         $this->getJson(route('kegiatan.berkas.unduh', ['kegiatan' => 2, 'format' => 'docx']))
             ->assertStatus(501)->assertJsonPath('jenis', 'tidak_didukung')->assertJsonPath('klien', true);
+        $this->app->forgetInstance(GeneratorBerkasDokumen::class);
+        $this->app->singleton(GeneratorBerkasDokumen::class, GeneratorBerkasServer::class);
 
         $this->app->instance(PembuatPdfDokumen::class, new class implements PembuatPdfDokumen
         {
@@ -152,7 +171,11 @@ class GenerasiDokumenServerTest extends TestCase
                 throw new GagalUbahPdf('Perender PDF sedang tidak tersedia.');
             }
         });
-        $this->getJson(route('kegiatan.berkas.unduh', ['kegiatan' => 2, 'format' => 'pdf']))
+        $klien = ['Accept' => 'application/pdf, application/json', 'X-Requested-With' => 'XMLHttpRequest'];
+        $this->get(route('kegiatan.cetak.pdf', ['kegiatan' => 2]), $klien)
+            ->assertStatus(503)->assertJsonPath('pesan', 'Perender PDF sedang tidak tersedia.');
+        $this->get(route('kegiatan.cetak.pdf', ['kegiatan' => 2]))->assertRedirect();
+        $this->get(route('kegiatan.berkas.unduh', ['kegiatan' => 2, 'format' => 'pdf']), $klien)
             ->assertStatus(503)->assertJsonPath('jenis', 'gagal')->assertJsonPath('pesan', 'Perender PDF sedang tidak tersedia.')
             ->assertJsonPath('tautan_cetak', CetakDokumen::tautan(2, 'DIPA', ['cover', 'kak', 'rab']));
 

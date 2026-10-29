@@ -5,23 +5,27 @@ namespace App\Support\Dokumen\Generasi;
 use App\Contracts\GeneratorBerkasDokumen;
 use App\Contracts\PembuatPdfDokumen;
 use App\Support\Dokumen\CetakDokumen;
+use App\Support\Dokumen\DataPratinjau;
 use App\Support\Dokumen\DokumenKegiatan;
 use App\Support\Dokumen\GagalUbahPdf;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Rab\EksporRabExcel;
+use App\Support\Stub\StubData;
 use PhpOffice\PhpSpreadsheet\Exception as GalatSpreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use RuntimeException;
 
 /**
- * Implementasi server GeneratorBerkasDokumen: PDF lewat PembuatPdfDokumen (lembar permintaan, GagalUbahPdf → `gagal`),
- * Excel RAB lewat EksporRabExcel (lembar satu sumber dana), Word belum didukung server (`SERVER`) → GagalBuatBerkas
- * `tidak_didukung` (disusun di peramban oleh `unduhWord`). Nama berkas & cap DRAF dari StatusCetak kegiatan × sumber dana
+ * Implementasi server GeneratorBerkasDokumen (`SERVER`): PDF lewat PembuatPdfDokumen (lembar permintaan, GagalUbahPdf →
+ * `gagal`), Excel RAB lewat EksporRabExcel (lembar satu sumber dana), Word KAK/TOR lewat WordKakTor dari data pratinjau
+ * (DataPratinjau::untuk lembar cover + KAK/TOR — sama dengan penyusun Word di peramban); format lain → GagalBuatBerkas
+ * `tidak_didukung`. Nama berkas & cap DRAF dari StatusCetak kegiatan × sumber dana
  * (CetakDokumen::statusDraf lembar itu); tautan cetak = halaman cetak lembar yang sama sebagai jalan lain.
  */
 final class GeneratorBerkasServer implements GeneratorBerkasDokumen
 {
     /** Format yang dibuat server saat ini. */
-    public const SERVER = ['pdf', 'xlsx'];
+    public const SERVER = ['pdf', 'docx', 'xlsx'];
 
     public function mendukung(string $format): bool
     {
@@ -41,11 +45,14 @@ final class GeneratorBerkasServer implements GeneratorBerkasDokumen
             $isi = match ($permintaan->format) {
                 'pdf' => app(PembuatPdfDokumen::class)->buat($permintaan->kegiatan, $permintaan->sumber, $permintaan->lembar),
                 'xlsx' => $this->excel($permintaan),
+                'docx' => WordKakTor::susun(DataPratinjau::untuk($permintaan->kegiatan, $permintaan->sumber, $permintaan->pengguna ?: StubData::currentUser(), $permintaan->lembar)),
             };
         } catch (GagalUbahPdf $e) {
             throw new GagalBuatBerkas('gagal', $e->getMessage(), $tautan, $e);
         } catch (GalatSpreadsheet $e) {
             throw new GagalBuatBerkas('gagal', 'Berkas Excel RAB gagal disusun di server — coba lagi atau gunakan unduhan Excel di peramban.', $tautan, $e);
+        } catch (RuntimeException $e) {
+            throw new GagalBuatBerkas('gagal', FormatBerkas::label($permintaan->format).' gagal disusun di server — coba lagi.', $tautan, $e);
         }
 
         return new BerkasDokumen($isi, self::nama($permintaan, $cetak), $permintaan->format, $draf->draf, array_column($draf->alasan, 'teks'), $permintaan);

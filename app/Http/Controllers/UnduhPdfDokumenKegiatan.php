@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PembuatPdfDokumen;
+use App\Http\Controllers\Concerns\PermintaanUnduhan;
 use App\Support\Dokumen\CetakDokumen;
 use App\Support\Dokumen\GagalUbahPdf;
 use App\Support\Dokumen\SusunanKak;
@@ -22,6 +23,8 @@ use Illuminate\Http\Response;
  */
 class UnduhPdfDokumenKegiatan extends Controller
 {
+    use PermintaanUnduhan;
+
     public function __invoke(Request $request, KegiatanRepository $repo, int $kegiatan): Response|JsonResponse|RedirectResponse
     {
         $data = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
@@ -37,7 +40,7 @@ class UnduhPdfDokumenKegiatan extends Controller
         } catch (GagalUbahPdf $e) {
             $tautan = CetakDokumen::tautan($kegiatan, $sumber, $lembar, otomatis: true);
 
-            return $request->expectsJson()
+            return $this->inginJson($request)
                 ? response()->json(['pesan' => $e->getMessage(), 'tautan_cetak' => $tautan], 503, ['Cache-Control' => 'no-store, private'])
                 : redirect()->route('cetak.index', ['pilih' => $kegiatan.'|'.($sumber ?? '')])->with('notify', ['message' => $e->getMessage(), 'type' => 'error']);
         }

@@ -10,7 +10,7 @@ atau buatannya), dan `Cache-Control: no-store, private`.
 | Format | Kunci | MIME | Lembar yang dimuat | Per sumber dana | Server | Peramban |
 |---|---|---|---|---|---|---|
 | PDF | `pdf` | `application/pdf` | cover, KAK/TOR, RAB | tidak | ya | — |
-| Word | `docx` | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | cover, KAK/TOR | tidak | belum (501) | ya (`unduhWord`) |
+| Word | `docx` | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | cover, KAK/TOR | tidak | ya (`WordKakTor`) | ya (`unduhWord`) |
 | Excel | `xlsx` | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | RAB | ya | ya | ya (`unduhExcel`) |
 
 Jenis dokumen (`DokumenKegiatan::JENIS`) → lembar berkas (`FormatBerkas::LEMBAR_JENIS`) → format yang cocok:
@@ -68,15 +68,25 @@ Jawaban 200 = isi berkas dengan header:
 | `X-Format-Berkas` | `pdf` / `docx` / `xlsx` |
 | `X-Draf` | `1` bila bercap DRAF, selain itu `0` |
 
-Galat (permintaan dengan `Accept: application/json`; permintaan biasa dialihkan ke Cetak & Unduh dengan notifikasi):
+Galat dijawab JSON bila permintaan `Accept`-nya memuat JSON di posisi mana pun bersama `X-Requested-With: XMLHttpRequest`
+(seperti `ambil()` di `resources/js/unduhan.js`: `Accept: <mime berkas>, application/json`) atau `expectsJson()`; navigasi
+biasa dialihkan ke Cetak & Unduh dengan notifikasi:
 
 | Status | Isi | Kapan |
 |---|---|---|
 | 404 | — | kegiatan tidak ada |
 | 403 | — | di luar cakupan akun |
 | 422 | `{ "pesan": "…", "galat": { "format" \| "jenis" \| "sumber": "…" } }` | format/jenis tidak dikenal, jenis × format tidak cocok, sumber dana tidak dipilih / dibutuhkan |
-| 501 | `{ "pesan": "…", "jenis": "tidak_didukung", "klien": true, "tautan_cetak": "…" }` | format belum dibuat server (Word) — susun di peramban |
+| 501 | `{ "pesan": "…", "jenis": "tidak_didukung", "klien": true, "tautan_cetak": "…" }` | format yang tidak dibuat generator terpasang — susun di peramban |
 | 503 | `{ "pesan": "…", "jenis": "gagal", "tautan_cetak": "…" }` | perender/pengubah berkas gagal — `tautan_cetak` = halaman cetak sebagai jalan lain |
+
+## `GET /kegiatan/{id}/kak/word?jenis=&sumber=` — Word KAK/TOR (`kegiatan.kak.word`)
+
+Pintasan `kegiatan.berkas.unduh` dengan `format=docx` dan `jenis` bawaan `KAK+TOR` (boleh `KAK`/`TOR`). Isi disusun
+`App\Support\Dokumen\Generasi\WordKakTor` dari data pratinjau (`DataPratinjau::untuk`, lembar cover + KAK/TOR) — kembaran
+penyusun peramban `resources/js/word-kak.js` — di atas penulis OOXML `DocxSederhana` (A4, margin 2 cm, Times New Roman
+12 pt, kepala "DRAF" & kaki "DRAF — alasan … Halaman x dari y"). Tombol Word memakainya sebagai cadangan bila penyusun
+peramban gagal dimuat/menyusun.
 
 ## Perender PDF
 

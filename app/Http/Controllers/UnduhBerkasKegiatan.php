@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\GeneratorBerkasDokumen;
 use App\Contracts\KegiatanRepository;
+use App\Http\Controllers\Concerns\PermintaanUnduhan;
 use App\Support\Dokumen\Generasi\GagalBuatBerkas;
 use App\Support\Dokumen\Generasi\PermintaanBerkas;
 use App\Support\Kegiatan\AksesKegiatan;
@@ -23,6 +24,8 @@ use Illuminate\Validation\ValidationException;
  */
 class UnduhBerkasKegiatan extends Controller
 {
+    use PermintaanUnduhan;
+
     public function __invoke(Request $request, KegiatanRepository $repo, int $kegiatan): Response|JsonResponse|RedirectResponse
     {
         $data = $repo->temukan($kegiatan) ?? abort(404, 'Kegiatan tidak ditemukan.');
@@ -35,11 +38,11 @@ class UnduhBerkasKegiatan extends Controller
         } catch (ValidationException $e) {
             $pesan = collect($e->errors())->flatten()->first();
 
-            return $request->expectsJson()
+            return $this->inginJson($request)
                 ? response()->json(['pesan' => $pesan, 'galat' => array_map(fn (array $p) => $p[0], $e->errors())], 422, $tanpaCache)
                 : redirect()->route('cetak.index')->with('notify', ['message' => $pesan, 'type' => 'error']);
         } catch (GagalBuatBerkas $e) {
-            return $request->expectsJson()
+            return $this->inginJson($request)
                 ? response()->json(array_filter(['pesan' => $e->getMessage(), 'jenis' => $e->jenis, 'klien' => $e->jenis === 'tidak_didukung' ? true : null, 'tautan_cetak' => $e->tautanCetak], fn ($v) => $v !== null), $e->status(), $tanpaCache)
                 : redirect()->route('cetak.index')->with('notify', ['message' => $e->getMessage(), 'type' => 'error']);
         }

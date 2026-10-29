@@ -1,15 +1,16 @@
 {{--
     Tombol unduh KAK/TOR sebagai Word (.docx) yang disusun di peramban (Alpine `unduhWord`, resources/js/unduh-word.js +
-    word-kak.js): data cover & KAK/TOR dari `kegiatan.pratinjau.data`, nama berkas baku berakhiran .docx. `testid` =
-    data-testid tombol utama.
+    word-kak.js): data cover & KAK/TOR dari `kegiatan.pratinjau.data`, nama berkas baku berakhiran .docx; bila penyusun
+    peramban gagal, berkas diambil dari server `kegiatan.kak.word` (WordKakTor). `testid` = data-testid tombol utama.
 --}}
 @props(['kegiatanId', 'sumber' => null, 'nama' => 'KAK-TOR.pdf', 'label' => 'Word KAK/TOR', 'testid' => 'unduh-word'])
 
 @php
     $url = route('kegiatan.pratinjau.data', array_filter(['kegiatan' => $kegiatanId, 'sumber' => $sumber, 'dokumen' => 'cover,kak']));
+    $urlServer = route('kegiatan.kak.word', array_filter(['kegiatan' => $kegiatanId, 'sumber' => $sumber]));
 @endphp
 
-<div {{ $attributes->class(['inline-flex flex-col items-start gap-1']) }} x-data="unduhWord(@js($url), @js($nama))" data-unduh-word>
+<div {{ $attributes->class(['inline-flex flex-col items-start gap-1']) }} x-data="unduhWord(@js($url), @js($nama), @js($urlServer))" data-unduh-word data-url-server="{{ $urlServer }}">
     <button type="button" x-on:click="unduh()" x-bind:disabled="memuat" x-bind:aria-busy="memuat ? 'true' : 'false'" data-testid="{{ $testid }}" x-bind:data-keadaan="keadaan" class="btn-secondary">
         <x-ui.icon name="file-text" class="size-4" x-show="! memuat" />
         <svg x-cloak x-show="memuat" class="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".25" stroke-width="3" /><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" /></svg>
