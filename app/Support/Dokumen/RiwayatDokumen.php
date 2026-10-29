@@ -5,6 +5,7 @@ namespace App\Support\Dokumen;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatDokumenRepository;
 use App\Enums\StatusKegiatan;
+use App\Enums\SumberDana;
 use App\Support\Format;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
@@ -212,15 +213,19 @@ final class RiwayatDokumen
         return implode('', array_map(fn (string $p, int $i) => $i % 2 === 1 ? '<mark class="rounded-sm bg-gold-100 px-0.5 text-inherit">'.e($p).'</mark>' : e($p), $bagian, array_keys($bagian)));
     }
 
-    /** Saringan halaman Riwayat Dokumen (selain kata kunci). */
-    public const SARINGAN = ['jenis', 'format', 'dari', 'sampai'];
+    /** Saringan halaman & endpoint Riwayat Dokumen (selain kata kunci; PRD §7 "Cari & Saring"). */
+    public const SARINGAN = ['jenis', 'format', 'leading', 'sumber', 'status', 'dari', 'sampai'];
+
+    /** Saringan pilihan → kolom catatan yang dibandingkan. */
+    public const KOLOM_SARINGAN = ['jenis' => 'jenis', 'format' => 'format', 'leading' => 'kode_leading', 'sumber' => 'sumber', 'status' => 'status'];
 
     /**
-     * Saringan dirapikan: jenis `DokumenKegiatan::JENIS`, format `FORMAT`, tanggal Y-m-d sah (lainnya kosong); `terbalik`
-     * = sampai sebelum dari (rentang tidak diterapkan sampai diperbaiki).
+     * Saringan dirapikan: jenis `DokumenKegiatan::JENIS`, format `FORMAT`, leading yang dikenal master (termasuk nonaktif),
+     * sumber dana `SumberDana`, status `StatusKegiatan` (status kegiatan saat dokumen dibuat), tanggal Y-m-d sah (lainnya
+     * kosong); `terbalik` = sampai sebelum dari (rentang tidak diterapkan sampai diperbaiki).
      *
      * @param  array<string, mixed>  $nilai
-     * @return array{jenis: string, format: string, dari: string, sampai: string, terbalik: bool}
+     * @return array{jenis: string, format: string, leading: string, sumber: string, status: string, dari: string, sampai: string, terbalik: bool}
      */
     public static function rapikanSaringan(array $nilai): array
     {
@@ -230,9 +235,13 @@ final class RiwayatDokumen
 
             return $tanggal && $tanggal->format('Y-m-d') === $t ? $t : '';
         };
+        $teks = fn (string $kunci) => is_string($nilai[$kunci] ?? null) ? trim($nilai[$kunci]) : '';
         $hasil = [
-            'jenis' => isset(DokumenKegiatan::JENIS[$nilai['jenis'] ?? '']) ? (string) $nilai['jenis'] : '',
-            'format' => isset(self::FORMAT[$nilai['format'] ?? '']) ? (string) $nilai['format'] : '',
+            'jenis' => isset(DokumenKegiatan::JENIS[$teks('jenis')]) ? $teks('jenis') : '',
+            'format' => isset(self::FORMAT[$teks('format')]) ? $teks('format') : '',
+            'leading' => $teks('leading') !== '' && MasterKode::leading($teks('leading')) !== null ? MasterKode::leading($teks('leading'))['kode'] : '',
+            'sumber' => SumberDana::tryFrom($teks('sumber'))?->value ?? '',
+            'status' => StatusKegiatan::tryFrom($teks('status'))?->value ?? '',
             'dari' => $tanggal($nilai['dari'] ?? null),
             'sampai' => $tanggal($nilai['sampai'] ?? null),
         ];
@@ -241,8 +250,8 @@ final class RiwayatDokumen
     }
 
     /**
-     * Catatan yang cocok dengan saringan jenis, format, dan rentang tanggal dibuat (inklusif, tanggal zona aplikasi);
-     * rentang terbalik diabaikan.
+     * Catatan yang cocok dengan saringan pilihan (`KOLOM_SARINGAN`, sama persis) dan rentang tanggal dibuat (inklusif,
+     * tanggal zona aplikasi); rentang terbalik diabaikan.
      *
      * @param  list<array<string, mixed>>  $baris
      * @param  array<string, mixed>  $saringan
@@ -257,15 +266,19 @@ final class RiwayatDokumen
         return array_values(array_filter($baris, function (array $b) use ($s, $dari, $sampai) {
             $tanggal = substr((string) $b['dibuat_pada'], 0, 10);
 
-            return ($s['jenis'] === '' || $b['jenis'] === $s['jenis'])
-                && ($s['format'] === '' || $b['format'] === $s['format'])
-                && ($dari === '' || $tanggal >= $dari)
+            foreach (self::KOLOM_SARINGAN as $kunci => $kolom) {
+                if ($s[$kunci] !== '' && (string) ($b[$kolom] ?? '') !== $s[$kunci]) {
+                    return false;
+                }
+            }
+
+            return ($dari === '' || $tanggal >= $dari)
                 && ($sampai === '' || $tanggal <= $sampai);
         }));
     }
 
     /**
-     * Saringan aktif sebagai chip: kunci (jenis|format|tanggal) → label.
+     * Saringan aktif sebagai chip: kunci (jenis|format|leading|sumber|status|tanggal) → label.
      *
      * @param  array<string, mixed>  $saringan
      * @return array<string, string>
@@ -279,6 +292,15 @@ final class RiwayatDokumen
         }
         if ($s['format'] !== '') {
             $label['format'] = self::FORMAT[$s['format']][0];
+        }
+        if ($s['leading'] !== '') {
+            $label['leading'] = 'Leading '.$s['leading'];
+        }
+        if ($s['sumber'] !== '') {
+            $label['sumber'] = 'Sumber dana '.$s['sumber'];
+        }
+        if ($s['status'] !== '') {
+            $label['status'] = 'Status '.StatusKegiatan::from($s['status'])->label();
         }
         if (! $s['terbalik'] && ($s['dari'] !== '' || $s['sampai'] !== '')) {
             $label['tanggal'] = match (true) {

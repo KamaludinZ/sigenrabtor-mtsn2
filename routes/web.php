@@ -7,6 +7,7 @@ use App\Http\Controllers\BatalImporKegiatan;
 use App\Http\Controllers\BukaKunciFinal;
 use App\Http\Controllers\CatatanPemeriksaanKegiatan;
 use App\Http\Controllers\CetakDokumenKegiatan;
+use App\Http\Controllers\DaftarRiwayatDokumen;
 use App\Http\Controllers\DataAgregasiMonitoring;
 use App\Http\Controllers\DataAkun;
 use App\Http\Controllers\DataArsipFinal;
@@ -165,6 +166,7 @@ Route::post('/kegiatan/impor-perkin/{impor}/batal', BatalImporKegiatan::class)->
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
 Route::get('/cetak', CetakDaftar::class)->name('cetak.index');
 Route::get('/dokumen', RiwayatDokumen::class)->name('dokumen.index');
+Route::get('/dokumen/data', DaftarRiwayatDokumen::class)->name('dokumen.data');
 Route::get('/buku', BukuDaftar::class)->name('buku.index');
 Route::get('/buku/kegiatan', KegiatanBukuDokumen::class)->name('buku.kegiatan');
 Route::get('/buku/riwayat', RiwayatBukuDokumen::class)->name('buku.riwayat');

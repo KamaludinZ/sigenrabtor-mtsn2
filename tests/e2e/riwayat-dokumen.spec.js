@@ -118,6 +118,18 @@ test.describe('Riwayat Dokumen', () => {
         await expect(chip('tanggal')).toContainText('1 Januari 2026 – 31 Desember 2026');
         await expect(butir('rd-2025-5')).toHaveCount(0);
 
+        await expect(page.getByTestId('saring-leading')).toHaveCount(0);
+        await page.getByTestId('saring-sumber').selectOption('DIPA');
+        await expect(chip('sumber')).toContainText('Sumber dana DIPA');
+        await expect(page.getByTestId('saring-status').locator('option[value="draf"]')).toHaveAttribute('data-jumlah', '2');
+        await page.getByTestId('saring-status').selectOption('draf');
+        await expect(page).toHaveURL(/sumber=DIPA/);
+        await expect(page).toHaveURL(/status=draf/);
+        await expect(butir('rd-2026-1')).toBeVisible();
+        await expect(butir('rd-2026-6')).toHaveCount(0);
+        await chip('status').click();
+        await chip('sumber').click();
+        await expect(page).not.toHaveURL(/sumber=|status=/);
         await page.getByTestId('saring-jenis').selectOption('KAK');
         await expect(page.getByTestId('riwayat-tanpa-hasil')).toBeVisible();
         await expect(page.getByTestId('saran-longgar')).toHaveCount(1);

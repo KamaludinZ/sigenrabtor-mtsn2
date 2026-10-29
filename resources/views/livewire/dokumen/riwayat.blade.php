@@ -12,6 +12,9 @@
     $adaSaringan = $aktif || $saringan['terbalik'];
     $hitungJenis = $telusur->pilihan('jenis');
     $hitungFormat = $telusur->pilihan('format');
+    $hitungLeading = $telusur->pilihan('leading');
+    $hitungSumber = $telusur->pilihan('sumber');
+    $hitungStatus = $telusur->pilihan('status');
     $dariSemua = fn (string $kunci, string $keterangan) => $aktif ? 'dari '.$ringkasan['semua'][$kunci].' '.$keterangan : null;
     $tampil = min($this->batas, $jumlahButir);
     $waktu = fn (string $iso) => Format::tanggal(substr($iso, 0, 10)).' · '.\Carbon\CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->format('H.i');
@@ -82,7 +85,7 @@
                 <span class="inline-flex items-center gap-1.5"><x-ui.icon name="filter" class="size-4" /> Saringan @if (count($chip) > 0)<span class="rounded-full bg-brand-100 px-1.5 text-[11px] text-brand-800">{{ count($chip) }}</span>@endif</span>
                 <x-ui.icon name="chevron-down" class="size-4 transition" x-bind:class="{ 'rotate-180': buka, 'rotate-0': ! buka }" />
             </button>
-            <div class="mt-3 gap-3 sm:mt-0 sm:grid sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]" x-bind:class="{ 'grid': buka, 'hidden': ! buka }">
+            <div class="mt-3 gap-3 sm:mt-0 sm:grid sm:grid-cols-2 lg:grid-cols-4" x-bind:class="{ 'grid': buka, 'hidden': ! buka }">
                 <label class="block">
                     <span class="form-label mb-1 text-xs">Jenis dokumen</span>
                     <select wire:model.live="jenis" class="form-input py-1.5" data-testid="saring-jenis">
@@ -101,6 +104,35 @@
                         @endforeach
                     </select>
                 </label>
+                @if (count($hitungLeading) > 1 || $saringan['leading'] !== '')
+                    <label class="block">
+                        <span class="form-label mb-1 text-xs">Leading</span>
+                        <select wire:model.live="leading" class="form-input py-1.5" data-testid="saring-leading">
+                            <option value="">Semua leading ({{ array_sum($hitungLeading) }})</option>
+                            @foreach ($hitungLeading as $kodeLeading => $jumlahLeading)
+                                <option value="{{ $kodeLeading }}" data-jumlah="{{ $jumlahLeading }}">{{ $kodeLeading }} · {{ \App\Support\MasterKode::leading($kodeLeading)['nama_unit'] ?? '' }} ({{ $jumlahLeading }})</option>
+                            @endforeach
+                        </select>
+                    </label>
+                @endif
+                <label class="block">
+                    <span class="form-label mb-1 text-xs">Sumber dana</span>
+                    <select wire:model.live="sumber" class="form-input py-1.5" data-testid="saring-sumber">
+                        <option value="">Semua sumber dana ({{ array_sum($hitungSumber) }})</option>
+                        @foreach ($hitungSumber as $kunciSumber => $jumlahSumber)
+                            <option value="{{ $kunciSumber }}" data-jumlah="{{ $jumlahSumber }}">{{ $kunciSumber }} ({{ $jumlahSumber }})</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="form-label mb-1 text-xs">Status saat dibuat</span>
+                    <select wire:model.live="status" class="form-input py-1.5" data-testid="saring-status">
+                        <option value="">Semua status ({{ array_sum($hitungStatus) }})</option>
+                        @foreach ($hitungStatus as $kunciStatus => $jumlahStatus)
+                            <option value="{{ $kunciStatus }}" data-jumlah="{{ $jumlahStatus }}">{{ \App\Enums\StatusKegiatan::from($kunciStatus)->label() }} ({{ $jumlahStatus }})</option>
+                        @endforeach
+                    </select>
+                </label>
                 <label class="block">
                     <span class="form-label mb-1 text-xs">Dibuat sejak</span>
                     <input type="date" wire:model.live.blur="dari" max="{{ $saringan['sampai'] ?: '' }}" class="form-input py-1.5" data-testid="saring-dari">
@@ -109,7 +141,7 @@
                     <span class="form-label mb-1 text-xs">Sampai</span>
                     <input type="date" wire:model.live.blur="sampai" min="{{ $saringan['dari'] ?: '' }}" class="form-input py-1.5" data-testid="saring-sampai">
                 </label>
-                <div class="flex items-end gap-1.5 sm:col-span-2 lg:col-span-1">
+                <div class="flex items-end gap-1.5 sm:col-span-2 lg:col-span-2">
                     <button type="button" wire:click="pintasanTanggal('30hari')" class="btn-ghost px-2.5 py-1.5 text-xs" data-testid="pintasan-30hari">30 hari terakhir</button>
                     <button type="button" wire:click="pintasanTanggal('ta')" class="btn-ghost px-2.5 py-1.5 text-xs" data-testid="pintasan-ta">TA {{ \App\Support\Stub\StubData::tahunAktif()['tahun'] }}</button>
                 </div>

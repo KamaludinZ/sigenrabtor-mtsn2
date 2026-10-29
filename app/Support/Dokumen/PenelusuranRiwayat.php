@@ -2,6 +2,9 @@
 
 namespace App\Support\Dokumen;
 
+use App\Enums\StatusKegiatan;
+use App\Enums\SumberDana;
+
 /**
  * Satu alur penelusuran daftar Riwayat Dokumen: kata kunci (`RiwayatDokumen::cari`) lalu saringan jenis/format/rentang
  * tanggal (`RiwayatDokumen::saring`) atas catatan dalam cakupan akun, beserta semua angka yang menyertai daftar — dipakai
@@ -10,8 +13,9 @@ namespace App\Support\Dokumen;
  *
  * - `kriteria` = kata kunci rapi + `RiwayatDokumen::rapikanSaringan`; `aktif()` = ada kriteria yang diterapkan.
  * - `cocok` = catatan yang lolos semua kriteria (urut catatan, terbaru dulu); `total` = jumlah catatan dalam cakupan.
- * - `pilihan($kunci)` = hitungan tiap pilihan jenis/format terhadap kriteria lain (pilihan itu sendiri diabaikan) sehingga
- *   pengguna melihat berapa dokumen yang akan tampil sebelum memilih.
+ * - `pilihan($kunci)` = hitungan tiap pilihan jenis/format/leading/sumber dana/status terhadap kriteria lain (pilihan itu
+ *   sendiri diabaikan) sehingga pengguna melihat berapa dokumen yang akan tampil sebelum memilih; daftar leading = leading
+ *   yang ada di catatan dalam cakupan akun (urut kode alami), lainnya daftar baku.
  * - `ringkasan()` = `RiwayatDokumen::ringkasan` hasil + `semua` (ringkasan seluruh catatan, untuk "dari …").
  * - `keterangan()` = kalimat hasil ("3 dari 9 dokumen cocok dengan “lomba” · RAB · …"), null bila tanpa kriteria.
  * - `perKegiatan()` = `RiwayatDokumen::perKegiatan` hasil, tiap kegiatan + `jumlah_semua` (dokumennya tanpa kriteria) dan
@@ -27,8 +31,8 @@ class PenelusuranRiwayat
     /** Kriteria penelusuran (kata kunci + saringan). */
     public const KRITERIA = ['cari', ...RiwayatDokumen::SARINGAN];
 
-    /** Saringan yang berupa pilihan (hitungan per pilihan). */
-    public const PILIHAN = ['jenis', 'format'];
+    /** Saringan yang berupa pilihan (hitungan per pilihan) — kunci RiwayatDokumen::KOLOM_SARINGAN. */
+    public const PILIHAN = ['jenis', 'format', 'leading', 'sumber', 'status'];
 
     /** @var array{cari: string, jenis: string, format: string, dari: string, sampai: string, terbalik: bool} */
     public readonly array $kriteria;
@@ -73,7 +77,7 @@ class PenelusuranRiwayat
     }
 
     /**
-     * Hitungan tiap pilihan saringan `jenis` atau `format` bila pilihan itu dipilih bersama kriteria lain yang berlaku.
+     * Hitungan tiap pilihan saringan PILIHAN bila pilihan itu dipilih bersama kriteria lain yang berlaku.
      *
      * @return array<string, int>
      */
@@ -82,16 +86,36 @@ class PenelusuranRiwayat
         if (! in_array($kunci, self::PILIHAN, true)) {
             throw new \InvalidArgumentException("Saringan {$kunci} bukan pilihan.");
         }
+        $kolom = RiwayatDokumen::KOLOM_SARINGAN[$kunci];
         $lain = $this->terapkan([$kunci => ''] + $this->kriteria);
-        $daftar = $kunci === 'jenis' ? array_keys(DokumenKegiatan::JENIS) : array_keys(RiwayatDokumen::FORMAT);
-        $hitung = array_fill_keys($daftar, 0);
+        $hitung = array_fill_keys($this->daftarPilihan($kunci), 0);
         foreach ($lain as $c) {
-            if (isset($hitung[$c[$kunci]])) {
-                $hitung[$c[$kunci]]++;
+            if (isset($hitung[(string) ($c[$kolom] ?? '')])) {
+                $hitung[(string) $c[$kolom]]++;
             }
         }
 
         return $hitung;
+    }
+
+    /** @return list<string> */
+    private function daftarPilihan(string $kunci): array
+    {
+        return match ($kunci) {
+            'jenis' => array_keys(DokumenKegiatan::JENIS),
+            'format' => array_keys(RiwayatDokumen::FORMAT),
+            'sumber' => array_map(fn (SumberDana $s) => $s->value, SumberDana::cases()),
+            'status' => array_map(fn (StatusKegiatan $s) => $s->value, StatusKegiatan::cases()),
+            default => (function () {
+                $kode = array_values(array_unique(array_filter(array_map(fn (array $c) => (string) ($c['kode_leading'] ?? ''), $this->catatan))));
+                if ($this->kriteria['leading'] !== '' && ! in_array($this->kriteria['leading'], $kode, true)) {
+                    $kode[] = $this->kriteria['leading'];
+                }
+                usort($kode, 'version_compare');
+
+                return $kode;
+            })(),
+        };
     }
 
     /** @return array<string, mixed> Ringkasan hasil + `semua` (ringkasan seluruh catatan). */
@@ -111,7 +135,7 @@ class PenelusuranRiwayat
     }
 
     /** Kriteria yang bisa dilepas → teks saran ("Lepas …"). */
-    public const LEPAS = ['cari' => 'kata kunci', 'jenis' => 'jenis', 'format' => 'format', 'tanggal' => 'rentang tanggal'];
+    public const LEPAS = ['cari' => 'kata kunci', 'jenis' => 'jenis', 'format' => 'format', 'leading' => 'saringan', 'sumber' => 'saringan', 'status' => 'saringan', 'tanggal' => 'rentang tanggal'];
 
     /** @return list<array{kunci: string, label: string, jumlah: int}> */
     public function saranLonggar(): array

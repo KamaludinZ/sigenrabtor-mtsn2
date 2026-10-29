@@ -20,7 +20,7 @@ use RuntimeException;
  * Halaman Riwayat Dokumen (PRD §7, F28; `/dokumen`, rute `dokumen.index`, semua pengguna): semua berkas KAK/TOR, RAB, dan
  * set dokumen yang pernah dicetak, diunduh, atau diarsipkan dalam cakupan akun (RiwayatDokumen::untuk), dikelompokkan per
  * tahun anggaran (terbaru dulu), dengan ringkasan jumlah dokumen, kegiatan, arsip final, dan dokumen bercap DRAF.
- * Saringan `?jenis=&format=&dari=&sampai=` (RiwayatDokumen::saring — rentang terbalik tidak diterapkan; chip `lepasSaringan`,
+ * Saringan `?jenis=&format=&leading=&sumber=&status=&dari=&sampai=` (RiwayatDokumen::saring — rentang terbalik tidak diterapkan; chip `lepasSaringan`,
  * `hapusSaringan`, `pintasanTanggal` 30 hari/TA aktif) dan kata kunci `?cari=` (RiwayatDokumen::cari, sorotan
  * RiwayatDokumen::sorot) diterapkan bersama lewat satu PenelusuranRiwayat (`penelusuran`): daftar kedua tampilan, ringkasan
  * "dari …", hitungan tiap pilihan jenis/format, dan keterangan hasil. Tampilan `?tampilan=` (TAMPILAN): `kegiatan`
@@ -50,12 +50,21 @@ class Riwayat extends Component
     #[Url(except: '')]
     public string $cari = '';
 
-    /** Saringan RiwayatDokumen::SARINGAN (jenis dokumen, format berkas, tanggal dibuat Y-m-d). */
+    /** Saringan RiwayatDokumen::SARINGAN (jenis dokumen, format berkas, leading, sumber dana, status saat dibuat, tanggal dibuat Y-m-d). */
     #[Url(except: '')]
     public string $jenis = '';
 
     #[Url(except: '')]
     public string $format = '';
+
+    #[Url(except: '')]
+    public string $leading = '';
+
+    #[Url(except: '')]
+    public string $sumber = '';
+
+    #[Url(except: '')]
+    public string $status = '';
 
     #[Url(except: '')]
     public string $dari = '';
@@ -113,7 +122,7 @@ class Riwayat extends Component
     /** @return array<string, string> */
     public function saringan(): array
     {
-        return ['jenis' => $this->jenis, 'format' => $this->format, 'dari' => $this->dari, 'sampai' => $this->sampai];
+        return array_combine(RiwayatDokumen::SARINGAN, array_map(fn (string $kunci) => $this->{$kunci}, RiwayatDokumen::SARINGAN));
     }
 
     /** Kata kunci & saringan atas catatan dalam cakupan akun. */
@@ -130,20 +139,20 @@ class Riwayat extends Component
         return $this->penelusuran->cocok;
     }
 
-    /** Lepas satu saringan (chip): jenis, format, atau tanggal (dari & sampai). */
+    /** Lepas satu saringan (chip): pilihan PenelusuranRiwayat::PILIHAN atau tanggal (dari & sampai). */
     public function lepasSaringan(string $kunci): void
     {
-        match ($kunci) {
-            'tanggal' => $this->reset('dari', 'sampai'),
-            'jenis', 'format' => $this->reset($kunci),
-            default => null,
-        };
+        if ($kunci === 'tanggal') {
+            $this->reset('dari', 'sampai');
+        } elseif (in_array($kunci, PenelusuranRiwayat::PILIHAN, true)) {
+            $this->reset($kunci);
+        }
         $this->batas = self::PER_HALAMAN;
     }
 
     public function hapusSaringan(): void
     {
-        $this->reset('cari', 'jenis', 'format', 'dari', 'sampai');
+        $this->reset('cari', ...RiwayatDokumen::SARINGAN);
         $this->batas = self::PER_HALAMAN;
     }
 

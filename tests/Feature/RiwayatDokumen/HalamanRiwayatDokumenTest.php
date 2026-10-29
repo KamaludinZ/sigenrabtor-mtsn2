@@ -214,7 +214,12 @@ class HalamanRiwayatDokumenTest extends TestCase
         $this->assertSame(['rd-2026-3', 'rd-2026-2', 'rd-2026-1'], array_column(RiwayatDokumen::saring($semua, ['dari' => '2026-02-10', 'sampai' => '2026-02-12']), 'id'), 'Rentang inklusif.');
         $this->assertCount(5, RiwayatDokumen::saring($semua, ['sampai' => '2025-12-31']));
         $this->assertCount(12, RiwayatDokumen::saring($semua, ['dari' => '2026-03-01', 'sampai' => '2026-01-01']), 'Rentang terbalik tidak diterapkan.');
-        $this->assertSame(['jenis' => '', 'format' => '', 'dari' => '', 'sampai' => '2026-02-28', 'terbalik' => false], RiwayatDokumen::rapikanSaringan(['jenis' => 'Surat', 'format' => 'exe', 'dari' => '2026-02-30', 'sampai' => '2026-02-28']));
+        $this->assertSame(['jenis' => '', 'format' => '', 'leading' => '', 'sumber' => '', 'status' => '', 'dari' => '', 'sampai' => '2026-02-28', 'terbalik' => false], RiwayatDokumen::rapikanSaringan(['jenis' => 'Surat', 'format' => 'exe', 'leading' => '9.9', 'sumber' => 'BOS', 'status' => 'ditolak', 'dari' => '2026-02-30', 'sampai' => '2026-02-28']));
+        $this->assertSame(['leading' => '1.2', 'sumber' => 'Komite', 'status' => 'final'], array_intersect_key(RiwayatDokumen::rapikanSaringan(['leading' => ' 1.2 ', 'sumber' => 'Komite', 'status' => 'final']), ['leading' => 0, 'sumber' => 0, 'status' => 0]));
+        $this->assertSame(['rd-2025-5', 'rd-2025-3'], array_column(RiwayatDokumen::saring($semua, ['status' => 'final']), 'id'), 'Status saat dibuat.');
+        $this->assertSame(['rd-2025-5'], array_column(RiwayatDokumen::saring($semua, ['status' => 'final', 'sumber' => 'Komite']), 'id'), 'Status & sumber dana.');
+        $this->assertSame(['rd-2025-1'], array_column(RiwayatDokumen::saring($semua, ['leading' => '1.2']), 'id'));
+        $this->assertSame(['leading' => 'Leading 1.2', 'sumber' => 'Sumber dana DIPA', 'status' => 'Status Final'], RiwayatDokumen::labelSaringan(['leading' => '1.2', 'sumber' => 'DIPA', 'status' => 'final']));
         $this->assertSame(['jenis' => 'RAB', 'format' => 'Excel', 'tanggal' => '1 Februari 2026 – 28 Februari 2026'], RiwayatDokumen::labelSaringan(['jenis' => 'RAB', 'format' => 'xlsx', 'dari' => '2026-02-01', 'sampai' => '2026-02-28']));
         $this->assertSame(['tanggal' => 'Sejak 1 Maret 2026'], RiwayatDokumen::labelSaringan(['dari' => '2026-03-01']));
 
