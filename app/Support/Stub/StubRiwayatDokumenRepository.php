@@ -45,7 +45,8 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
     }
 
     /**
-     * Contoh riwayat (urutan bebas; `semua()` mengurutkan terbaru dulu).
+     * Contoh riwayat (urutan bebas; `semua()` mengurutkan terbaru dulu). rd-2026-6 diunduh saat total RAB Komite kegiatan 1
+     * masih Rp9.250.000 (kini Rp10.000.000) — contoh dokumen yang isinya berbeda bila dibuka ulang (konfirmasi buka ulang).
      *
      * @return list<array<string, mixed>>
      */
@@ -69,7 +70,7 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
             ['rd-2026-3', $kegiatan[2], 'lengkap', 'Komite', 'pdf', 'cetak', 498_700, 'draf', true, null, '2026-02-12 09:03', $leading, [2_500_000, 7, 9]],
             ['rd-2026-4', $kegiatan[1], 'lengkap', 'Komite', 'pdf', 'cetak', 534_100, 'draf', true, null, '2026-03-02 11:45', $leading, [10_000_000, 8, 9]],
             ['rd-2026-5', $kegiatan[1], 'KAK+TOR', 'Komite', 'docx', 'unduh', 51_330, 'draf', true, null, '2026-03-02 11:47', $leading, [null, 8, 9]],
-            ['rd-2026-6', $kegiatan[1], 'RAB', 'Komite', 'xlsx', 'unduh', 13_020, 'draf', true, null, '2026-03-05 08:30', $admin, [10_000_000, null, null]],
+            ['rd-2026-6', $kegiatan[1], 'RAB', 'Komite', 'xlsx', 'unduh', 13_020, 'draf', true, null, '2026-03-05 08:30', $admin, [9_250_000, null, null]],
             ['rd-2026-7', $kegiatan[3], 'lengkap', 'Komite', 'pdf', 'cetak', 541_800, 'draf', true, null, '2026-04-01 15:20', $leading, [7_950_000, 8, 9]],
         ];
 

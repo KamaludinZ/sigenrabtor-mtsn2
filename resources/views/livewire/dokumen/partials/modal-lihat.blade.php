@@ -1,7 +1,10 @@
 {{--
     Modal Lihat dokumen Riwayat Dokumen (AksiRiwayatDokumen::lihat): rincian catatan, keadaan kegiatan sekarang, cara
     membuka ulang (arsip final / pratinjau / cetak ulang / unduh dengan data terbaru), dan semua versi jenis × sumber ×
-    format yang sama. Esc/latar menutup (`tutupLihat`). Variabel: $rincian, $waktu, $nadaStatus.
+    format yang sama. Bila dokumen susunan ulang akan berbeda dari catatan ini (`perbedaan`: versi lama, total RAB, status,
+    cap DRAF), tombol buka ulang baru tampil setelah dikonfirmasi (`konfirmasi-buka-ulang`, Alpine `setuju`; nilai awal lewat
+    `data-perbedaan`); cetak ulang memberi notifikasi tab baru. Esc/latar menutup (`tutupLihat`). Variabel: $rincian, $waktu,
+    $nadaStatus.
 --}}
 @php
     $d = $rincian['dokumen'];
@@ -102,12 +105,29 @@
                         @endif
                         Berkas cetak & unduhan tidak disimpan — dokumen disusun ulang dari data kegiatan terbaru{{ $buka['draf'] ? ' (masih bercap DRAF)' : '' }}.
                     </p>
-                    <div class="mt-2.5 flex flex-wrap items-start gap-2">
-                        @if ($buka['arsip'])
-                            <a href="{{ $buka['arsip'] }}" target="_blank" rel="noopener" class="btn-primary" data-testid="buka-arsip"><x-ui.icon name="check-badge" class="size-4" /> Buka PDF arsip final</a>
-                        @endif
-                        <a href="{{ $buka['pratinjau'] }}" wire:navigate class="btn-secondary" data-testid="buka-pratinjau"><x-ui.icon name="eye" class="size-4" /> Pratinjau</a>
-                        <a href="{{ $buka['cetak'] }}" target="_blank" rel="noopener" class="btn-secondary" data-testid="cetak-ulang"><x-ui.icon name="printer" class="size-4" /> Cetak ulang</a>
+                    @if ($buka['arsip'])
+                        <a href="{{ $buka['arsip'] }}" target="_blank" rel="noopener" class="btn-primary mt-2.5" data-testid="buka-arsip"
+                           x-on:click="$dispatch('notify', { message: 'PDF arsip final dibuka di tab baru.', type: 'info' })"><x-ui.icon name="check-badge" class="size-4" /> Buka PDF arsip final</a>
+                    @endif
+                    <div data-perbedaan="{{ count($rincian['perbedaan']) }}" x-data="{ setuju: $el.dataset.perbedaan === '0' }">
+                    @if ($rincian['perbedaan'] !== [])
+                        <div x-show="! setuju" class="mt-2.5 rounded-lg bg-gold-50 px-3 py-2.5 text-xs text-gold-900 ring-1 ring-gold-200" role="alert" data-testid="konfirmasi-buka-ulang">
+                            <p class="flex items-start gap-1.5 font-semibold"><x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> Dokumen yang dibuka ulang akan berbeda dari catatan v{{ $d['versi'] }} ini:</p>
+                            <ul class="mt-1 list-disc space-y-0.5 pl-6" role="list">
+                                @foreach ($rincian['perbedaan'] as $beda)
+                                    <li data-perbedaan="{{ $beda['kunci'] }}">{{ $beda['teks'] }}</li>
+                                @endforeach
+                            </ul>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button type="button" x-on:click="setuju = true; $nextTick(() => $refs.bukaPertama?.focus())" class="btn-primary px-3 py-1.5 text-xs" data-testid="setujui-buka-ulang">Mengerti, buka dengan data terbaru</button>
+                            </div>
+                        </div>
+                        <p x-cloak x-show="setuju" class="mt-2 flex items-start gap-1.5 text-xs text-gold-800" data-testid="buka-ulang-disetujui"><x-ui.icon name="info" class="mt-px size-3.5 shrink-0" /> Dibuka dengan data terbaru — {{ count($rincian['perbedaan']) }} perbedaan dari catatan v{{ $d['versi'] }}.</p>
+                    @endif
+                    <div @if ($rincian['perbedaan'] !== []) x-cloak @endif x-show="setuju" class="mt-2.5 flex flex-wrap items-start gap-2" data-testid="tombol-buka-ulang">
+                        <a href="{{ $buka['pratinjau'] }}" wire:navigate class="btn-secondary" x-ref="bukaPertama" data-testid="buka-pratinjau"><x-ui.icon name="eye" class="size-4" /> Pratinjau</a>
+                        <a href="{{ $buka['cetak'] }}" target="_blank" rel="noopener" class="btn-secondary" data-testid="cetak-ulang"
+                           x-on:click="$dispatch('notify', { message: @js('Cetak ulang '.$d['label_jenis'].' dibuka di tab baru — isinya mengikuti data kegiatan terbaru.'), type: 'info' })"><x-ui.icon name="printer" class="size-4" /> Cetak ulang</a>
                         <x-dokumen.tombol-unduh-pdf :url="$buka['pdf']" :nama="$buka['nama_pdf']" label="PDF" testid="unduh-ulang-pdf" wire:key="ulang-pdf-{{ $d['id'] }}" />
                         @if ($buka['word'])
                             <x-dokumen.tombol-unduh-word :kegiatan-id="$d['kegiatan_id']" :sumber="$d['sumber']" :nama="$buka['nama_word']" label="Word" testid="unduh-ulang-word" wire:key="ulang-word-{{ $d['id'] }}" />
@@ -115,6 +135,7 @@
                         @if ($buka['excel'])
                             <x-dokumen.tombol-unduh-excel :kegiatan-id="$d['kegiatan_id']" :sumber="$d['sumber']" :nama="$buka['nama_excel']" label="Excel" testid="unduh-ulang-excel" wire:key="ulang-excel-{{ $d['id'] }}" />
                         @endif
+                    </div>
                     </div>
                 @endif
             </section>

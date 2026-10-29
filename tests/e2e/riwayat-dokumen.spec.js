@@ -216,4 +216,40 @@ test.describe('Riwayat Dokumen', () => {
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
+
+    test('konfirmasi buka ulang, notifikasi cetak ulang & duplikasi', async ({ page, context }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/dokumen?tampilan=kronologis');
+        const mobile = testInfo.project.name === 'mobile';
+        await page.locator(`[data-testid="${mobile ? 'kartu-riwayat' : 'dokumen-riwayat'}"][data-id="rd-2026-6"]`).getByTestId('lihat-dokumen').click();
+        const lihat = page.getByTestId('modal-lihat-dokumen');
+        const konfirmasi = lihat.getByTestId('konfirmasi-buka-ulang');
+        await expect(konfirmasi).toContainText('Total RAB Komite kini Rp10.000.000 (saat dibuat Rp9.250.000).');
+        await expect(lihat.getByTestId('tombol-buka-ulang')).toBeHidden();
+        await page.screenshot({ path: `storage/playwright/shots/riwayat-konfirmasi-buka-${testInfo.project.name}.png` });
+        await konfirmasi.getByTestId('setujui-buka-ulang').click();
+        await expect(konfirmasi).toBeHidden();
+        await expect(lihat.getByTestId('buka-ulang-disetujui')).toContainText('1 perbedaan dari catatan v1');
+        await expect(lihat.getByTestId('buka-pratinjau')).toBeFocused();
+        const tabBaru = context.waitForEvent('page');
+        await lihat.getByTestId('cetak-ulang').click();
+        const cetak = await tabBaru;
+        await expect(cetak).toHaveURL(/\/kegiatan\/1\/cetak\?sumber=Komite&dokumen=rab/);
+        await cetak.close();
+        await expect(page.locator('[data-testid="toast"][data-jenis="info"]').filter({ hasText: 'Cetak ulang RAB dibuka di tab baru' })).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        await page.locator(`[data-testid="${mobile ? 'kartu-riwayat' : 'dokumen-riwayat'}"][data-id="rd-2026-1"]`).getByTestId('duplikat-dokumen').click();
+        const duplikat = page.getByTestId('modal-duplikat-dokumen');
+        await expect(duplikat.getByTestId('ringkasan-salin')).toContainText('RAB DIPA');
+        await duplikat.getByTestId('nama-duplikat').fill('Supervisi Akademik Tahap Dua');
+        await expect(duplikat.getByTestId('akan-dibuat')).toContainText('Akan dibuat: draf “Supervisi Akademik Tahap Dua” TA 2026');
+        await page.keyboard.press('Escape');
+        await expect(duplikat).toBeHidden();
+
+        await page.evaluate(() => window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'Kegiatan “Contoh” dibuat sebagai draf TA 2026.', type: 'success', tautan: { label: 'Buka kegiatan baru', url: '/kegiatan/1/edit' } } })));
+        const tautan = page.getByTestId('toast-tautan');
+        await expect(tautan).toHaveText('Buka kegiatan baru');
+        await expect(tautan).toHaveAttribute('href', '/kegiatan/1/edit');
+    });
 });

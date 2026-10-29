@@ -3,6 +3,7 @@
 namespace App\Support\Dokumen;
 
 use App\Contracts\KegiatanRepository;
+use App\Contracts\MatrikJadwalRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
@@ -26,11 +27,14 @@ use RuntimeException;
  *   sama (terbaru dulu), keadaan kegiatan sekarang (status, total RAB sumber itu dibanding saat dibuat), dan cara membuka
  *   ulang: PDF arsip final (hanya versi arsip terbaru — arsip lama sudah diganti), pratinjau, cetak ulang & unduh PDF/Word/
  *   Excel dengan data terbaru (berkas cetak/unduhan lama tidak disimpan, hanya catatannya). Tanpa kegiatan tersimpan atau
- *   sumber dananya tidak dipilih lagi → `alasan_buka`.
+ *   sumber dananya tidak dipilih lagi → `alasan_buka`. `perbedaan` = hal yang membuat dokumen susunan ulang berbeda dari
+ *   catatan ini (`PERBEDAAN`: versi lama, total RAB, status, cap DRAF) — modal meminta konfirmasi sebelum membuka ulang.
  * - `rencanaDuplikat()` = apakah dokumen bisa disalin sebagai dasar kegiatan baru: kegiatan tahun lalu → draf tahun aktif
  *   lewat LayananDuplikat (nama tetap, sudah ada → ditolak dengan tautan); kegiatan tahun aktif → kegiatan baru bernama lain
  *   (bawaan "… (salinan)") lewat DuplikatKegiatan::jalankan; kegiatan tidak tersimpan, di luar cakupan, leading nonaktif,
- *   atau tahun aktif terkunci → `bisa` false + `alasan` (+ `tautan`).
+ *   atau tahun aktif terkunci → `bisa` false + `alasan` (+ `tautan`). `ringkasan` = yang ikut disalin (rincian RAB per sumber,
+ *   tanda bulan matrik, baris jadwal terisi) dan `salinan_sebelumnya` = kegiatan tahun aktif yang sudah pernah disalin dari
+ *   kegiatan yang sama (peringatan, tidak memblokir).
  * - `duplikat($id, $nama, $pengguna)` = jalankan rencana itu → {id, nama, catatan, tautan (Data Kegiatan), tautan_dokumen
  *   (Susun KAK/TOR dengan jenis & sumber dokumen asal), pesan}; galat `nama` (wajib, ≤ MAKS_NAMA, unik di tahun aktif) atau
  *   `duplikat` (tidak bisa diduplikat).
@@ -45,6 +49,9 @@ final class AksiRiwayatDokumen
     public const PESAN_TIDAK_ADA = 'Catatan dokumen tidak ditemukan.';
 
     public const PESAN_TOLAK = 'Dokumen ini di luar cakupan akun Anda.';
+
+    /** Jenis perbedaan dokumen susunan ulang dengan catatan riwayatnya. */
+    public const PERBEDAAN = ['versi' => 'Versi', 'total' => 'Total RAB', 'status' => 'Status', 'draf' => 'Cap DRAF'];
 
     public const PESAN_PAGU_SALINAN = 'Sumber dana & pagu disalin dari kegiatan asal — sesuaikan bila kegiatan baru memakai pagu lain.';
 
@@ -108,7 +115,9 @@ final class AksiRiwayatDokumen
             ];
             $anggaran = $c['sumber'] !== null ? (AnggaranKegiatan::perSumber($kegiatan)[$c['sumber']] ?? null) : null;
             $status = StatusKegiatan::tryFrom((string) ($kegiatan['status'] ?? '')) ?? StatusKegiatan::Draf;
+            $drafKini = CetakDokumen::statusDraf($cetak, $lembar)->draf;
             $sekarang = [
+                'draf' => $drafKini,
                 'status' => $status->value,
                 'label_status' => $status->label(),
                 'total_rab' => $anggaran?->total(),
@@ -117,15 +126,43 @@ final class AksiRiwayatDokumen
             ];
         }
 
+        $totalTeks = $c['ringkas']['total_rab'] !== null ? Format::rupiah((int) $c['ringkas']['total_rab']) : null;
+
         return [
-            'dokumen' => $c + ['total_teks' => $c['ringkas']['total_rab'] !== null ? Format::rupiah((int) $c['ringkas']['total_rab']) : null],
+            'dokumen' => $c + ['total_teks' => $totalTeks],
             'terbaru' => $terbaru,
+            'perbedaan' => $sekarang === null ? [] : self::perbedaan($c, $versi[0], $terbaru, $sekarang, $totalTeks),
             'versi' => $versi,
             'kegiatan' => $kegiatan === null ? null : ['id' => (int) $kegiatan['id'], 'tautan' => route('kegiatan.edit', ['kegiatan' => $kegiatan['id']])],
             'sekarang' => $sekarang,
             'buka' => $buka,
             'alasan_buka' => $alasan,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $c  Catatan yang dilihat.
+     * @param  array<string, mixed>  $terbaruCatatan  Versi terbaru jenis × sumber × format yang sama.
+     * @param  array<string, mixed>  $kini  Keadaan kegiatan sekarang.
+     * @return list<array{kunci: string, teks: string}>
+     */
+    private static function perbedaan(array $c, array $terbaruCatatan, bool $terbaru, array $kini, ?string $totalTeks): array
+    {
+        $beda = [];
+        if (! $terbaru) {
+            $beda[] = ['kunci' => 'versi', 'teks' => 'Ini v'.$c['versi'].'; isinya tidak tersimpan — yang disusun ulang adalah data terbaru (versi terakhir tercatat v'.$terbaruCatatan['versi'].').'];
+        }
+        if ($kini['total_berubah']) {
+            $beda[] = ['kunci' => 'total', 'teks' => 'Total RAB '.$c['sumber'].' kini '.$kini['total_teks'].' (saat dibuat '.$totalTeks.').'];
+        }
+        if ($kini['status'] !== $c['status']) {
+            $beda[] = ['kunci' => 'status', 'teks' => 'Status kegiatan kini '.$kini['label_status'].' (saat dibuat '.$c['label_status'].').'];
+        }
+        if ($kini['draf'] !== (bool) $c['bertanda_draf']) {
+            $beda[] = ['kunci' => 'draf', 'teks' => $kini['draf'] ? 'Dokumen kini bercap DRAF (saat dibuat tanpa cap).' : 'Dokumen kini siap tanpa cap DRAF (saat dibuat bercap DRAF).'];
+        }
+
+        return $beda;
     }
 
     /**
@@ -169,7 +206,7 @@ final class AksiRiwayatDokumen
                 return $tolak(($rencana['dilewati'][0]['alasan'] ?? $rencana['gagal'][0]['alasan'] ?? 'Kegiatan tidak bisa diduplikat.'), $ada !== null ? ['label' => 'Buka kegiatan TA '.$tahun, 'url' => route('kegiatan.edit', ['kegiatan' => $ada])] : null);
             }
 
-            return ['bisa' => true, 'mode' => 'tahun_lalu', 'perubahan' => self::perubahan($tahun), 'catatan' => $rencana['siap'][0]['catatan']] + $hasil;
+            return ['bisa' => true, 'mode' => 'tahun_lalu', 'perubahan' => self::perubahan($tahun), 'catatan' => $rencana['siap'][0]['catatan'], 'ringkasan' => self::ringkasanSalin($kegiatan), 'salinan_sebelumnya' => []] + $hasil;
         }
 
         $nama = self::namaSalinan((string) $kegiatan['nama_kegiatan'], $tahun);
@@ -178,6 +215,8 @@ final class AksiRiwayatDokumen
             'bisa' => true, 'mode' => 'tahun_ini', 'nama' => $nama, 'nama_terkunci' => false,
             'perubahan' => array_values(array_filter(self::perubahan($tahun), fn (array $p) => in_array($p[0], [DuplikatKegiatan::PERUBAHAN['status'][0], DuplikatKegiatan::PERUBAHAN['anggaran'][0]], true))),
             'catatan' => self::catatanTahunIni(DuplikatKegiatan::rencana(['nama_kegiatan' => $nama] + $kegiatan)['catatan']),
+            'ringkasan' => self::ringkasanSalin($kegiatan),
+            'salinan_sebelumnya' => self::salinanSebelumnya((int) $kegiatan['id'], $tahun),
         ] + $hasil;
     }
 
@@ -226,6 +265,36 @@ final class AksiRiwayatDokumen
             'tautan_dokumen' => route('kegiatan.dokumen', array_filter(['kegiatan' => $baru, 'jenis' => $c['jenis'], 'sumber' => in_array($c['sumber'], $sumberDipilih, true) ? $c['sumber'] : null])),
             'pesan' => 'Kegiatan “'.$namaBaru.'” dibuat sebagai draf TA '.$rencana['tahun'].'.',
         ];
+    }
+
+    /**
+     * Yang ikut disalin: rincian RAB per sumber dana terpilih, tanda bulan matrik tahapan, baris jadwal terisi.
+     *
+     * @param  array<string, mixed>  $kegiatan
+     * @return array{rab: array<string, int>, matrik: int, jadwal: int}
+     */
+    public static function ringkasanSalin(array $kegiatan): array
+    {
+        $matrikJadwal = app(MatrikJadwalRepository::class);
+
+        return [
+            'rab' => array_map(fn ($a) => $a->jumlahItem(), AnggaranKegiatan::perSumber($kegiatan)),
+            'matrik' => $matrikJadwal->matrik((int) $kegiatan['id'])->jumlahTanda(),
+            'jadwal' => $matrikJadwal->jadwal((int) $kegiatan['id'])->jumlahTerisi(),
+        ];
+    }
+
+    /**
+     * Kegiatan tahun $tahun yang disalin dari kegiatan $sumberId.
+     *
+     * @return list<array{id: int, nama: string, tautan: string}>
+     */
+    public static function salinanSebelumnya(int $sumberId, int $tahun): array
+    {
+        return array_values(array_map(fn (array $k) => ['id' => (int) $k['id'], 'nama' => (string) $k['nama_kegiatan'], 'tautan' => route('kegiatan.edit', ['kegiatan' => $k['id']])], array_filter(
+            app(KegiatanRepository::class)->semua(),
+            fn (array $k) => (int) ($k['duplikat_dari']['id'] ?? 0) === $sumberId && TahunKegiatan::dari($k) === $tahun,
+        )));
     }
 
     /** Pesan galat nama kegiatan salinan (null = sah). */

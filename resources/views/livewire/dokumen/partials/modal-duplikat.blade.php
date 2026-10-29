@@ -2,7 +2,9 @@
     Modal Duplikat dokumen Riwayat Dokumen (AksiRiwayatDokumen::rencanaDuplikat → duplikat): salin kegiatan dokumen itu
     sebagai dasar kegiatan baru — tahun lalu menjadi draf tahun aktif (nama tetap), tahun aktif menjadi kegiatan baru
     bernama lain (`namaDuplikat`). Tidak bisa → alasan + tautan; selesai → tautan draf baru & Susun KAK/TOR jenis asal.
-    Esc/latar menutup (`tutupDuplikat`). Variabel: $rencana, $hasil.
+    Konfirmasi memuat yang ikut disalin (`ringkasan-salin`), salinan sebelumnya dari kegiatan yang sama (`salinan-sebelumnya`,
+    tidak memblokir), dan kalimat "Akan dibuat …" yang mengikuti ketikan nama. Esc/latar menutup (`tutupDuplikat`).
+    Variabel: $rencana, $hasil.
 --}}
 @php
     $dok = $rencana['dokumen'];
@@ -73,6 +75,25 @@
                     </dl>
                 </div>
 
+                @php
+                    $ikut = array_map(fn ($n, $s) => 'RAB '.$s.' '.$n.' rincian', $rencana['ringkasan']['rab'], array_keys($rencana['ringkasan']['rab']));
+                    $ikut[] = $rencana['ringkasan']['matrik'] > 0 ? 'matrik '.$rencana['ringkasan']['matrik'].' tanda bulan' : 'matrik (kosong)';
+                    $ikut[] = $rencana['ringkasan']['jadwal'] > 0 ? 'jadwal '.$rencana['ringkasan']['jadwal'].' baris' : 'jadwal (kosong)';
+                @endphp
+                <p class="text-xs text-stone-600" data-testid="ringkasan-salin"><span class="font-semibold text-stone-700">Ikut disalin:</span> {{ $rencana['ringkasan']['rab'] === [] ? 'tanpa RAB · ' : '' }}{{ implode(' · ', $ikut) }}.</p>
+
+                @if ($rencana['salinan_sebelumnya'] !== [])
+                    <div class="rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-900 ring-1 ring-gold-200" data-testid="salinan-sebelumnya">
+                        <p class="font-semibold">Kegiatan ini sudah pernah disalin di TA {{ $rencana['tahun'] }}:</p>
+                        <ul class="mt-0.5 space-y-0.5" role="list">
+                            @foreach ($rencana['salinan_sebelumnya'] as $salinan)
+                                <li><a href="{{ $salinan['tautan'] }}" wire:navigate class="underline underline-offset-2 hover:text-gold-950">{{ $salinan['nama'] }}</a></li>
+                            @endforeach
+                        </ul>
+                        <p class="mt-0.5">Pastikan Anda memang butuh salinan baru.</p>
+                    </div>
+                @endif
+
                 @if ($rencana['catatan'] !== [])
                     <div class="space-y-1" data-testid="catatan-duplikat">
                         @foreach ($rencana['catatan'] as $c)
@@ -80,6 +101,12 @@
                         @endforeach
                     </div>
                 @endif
+            @endif
+
+            @if (! $hasil && $rencana['bisa'])
+                <p class="rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-700 ring-1 ring-stone-200" data-testid="akan-dibuat">
+                    Akan dibuat: draf “<span class="font-semibold" @if (! $rencana['nama_terkunci']) x-text="$wire.namaDuplikat.trim() || '…'" @endif>{{ $rencana['mode'] === 'tahun_ini' ? $this->namaDuplikat : $rencana['nama'] }}</span>” TA {{ $rencana['tahun'] }} — kegiatan asal tidak berubah.
+                </p>
             @endif
 
             @error('duplikat')

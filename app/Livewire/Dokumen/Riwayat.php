@@ -234,7 +234,7 @@ class Riwayat extends Component
         $this->resetErrorBag();
         try {
             $this->hasilDuplikat = AksiRiwayatDokumen::duplikat($this->diduplikat, $this->namaDuplikat, StubData::currentUser());
-            $this->dispatch('notify', message: $this->hasilDuplikat['pesan'], type: 'success');
+            $this->dispatch('notify', message: $this->hasilDuplikat['pesan'], type: 'success', tautan: ['label' => 'Buka kegiatan baru', 'url' => $this->hasilDuplikat['tautan']]);
         } catch (ValidationException $e) {
             foreach ($e->errors() as $kunci => $pesan) {
                 $this->addError($kunci === 'nama' ? 'namaDuplikat' : 'duplikat', $pesan[0]);
@@ -242,6 +242,7 @@ class Riwayat extends Component
             unset($this->rencanaDuplikat);
         } catch (AuthorizationException|RuntimeException $e) {
             $this->addError('duplikat', $e->getMessage());
+            $this->dispatch('notify', message: 'Duplikat gagal: '.$e->getMessage(), type: 'error');
         }
     }
 
