@@ -32,6 +32,10 @@ test.describe('Format Seragam', () => {
         await expect(pratinjau.getByTestId('asal-pratinjau-template')).toHaveAttribute('data-jenis', 'supervisi');
         await expect(pratinjau.getByTestId('isi-pratinjau-template')).toContainText('Supervisi Akademik');
         await pratinjau.screenshot({ path: `storage/playwright/shots/format-pratinjau-${testInfo.project.name}.png` });
+        const aksi = pratinjau.getByTestId('aksi-pratinjau-template');
+        await expect(aksi).toHaveAttribute('data-terkunci', '0');
+        await expect(aksi.getByTestId('cetak-contoh-template')).toHaveAttribute('href', /\/kegiatan\/2\/cetak\?sumber=DIPA&otomatis=1/);
+        await expect(aksi.getByTestId('unduh-word-contoh')).toBeVisible();
 
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);

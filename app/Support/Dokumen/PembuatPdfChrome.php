@@ -19,7 +19,7 @@ use Throwable;
  * DRAF, nomor "Halaman x dari y", @page A4 & sampul tanpa margin) dirender di proses PHP lalu dicetak ke PDF oleh Chrome/
  * Chromium headless (`--print-to-pdf`, media cetak) sehingga hasilnya sama dengan Cetak › Simpan sebagai PDF di peramban.
  * `html()` merender dalam mode build Vite (tanpa server dev) dan mengarahkan aset `/build/…` ke berkas `public/build`
- * (file://); gambar cover tertanam sebagai data URI (CoverDokumen::gambarData) karena rutenya butuh sesi. Setiap pembuatan
+ * (file://); gambar cover kegiatan (CoverDokumen::untukKegiatan) tertanam sebagai data URI (gambarDataCover) karena rutenya butuh sesi. Setiap pembuatan
  * memakai folder kerja & profil peramban sementara sendiri (dihapus sesudahnya), argumen array tanpa shell. Program dari
  * config `sigenrabtor.pdf.chrome` (kosong = dicari: `PROGRAM`), batas waktu `sigenrabtor.pdf.batas_detik`. Gagal →
  * GagalUbahPdf berpesan siap tampil (aset belum dibangun, Chrome tidak ada, terlalu lama, hasil bukan PDF).
@@ -93,7 +93,7 @@ class PembuatPdfChrome implements PembuatPdfDokumen
     {
         $data = CetakDokumen::untuk($kegiatan, $sumber, $lembar);
         if ($data['cover']['gambar'] !== null) {
-            $data['cover']['gambar'] = CoverDokumen::gambarData();
+            $data['cover']['gambar'] = CoverDokumen::gambarDataCover($data['cover']['cover_id'] ?? null) ?? CoverDokumen::gambarData();
         }
 
         $vite = app(Vite::class);

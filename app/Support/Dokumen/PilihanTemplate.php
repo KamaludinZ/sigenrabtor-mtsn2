@@ -11,6 +11,7 @@ use App\Support\Pengaturan\RiwayatPengaturan;
 use App\Support\Pengaturan\TahunDipilih;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -220,6 +221,24 @@ final class PilihanTemplate
         }
 
         return $bagian === [] ? null : implode('; ', $bagian);
+    }
+
+    /**
+     * Master KAK/TOR terpilih untuk kegiatan itu yang berkasnya ada (dipakai unduhan Word lewat PengisiTemplateDocx); null =
+     * susunan baku.
+     *
+     * @param  array<string, mixed>  $kegiatan
+     * @return array{id: string, nama: string, jenis: string, path: string}|null
+     */
+    public static function masterKak(array $kegiatan, ?int $tahun = null): ?array
+    {
+        $id = self::untukKegiatan($kegiatan, $tahun)['kak'];
+        $master = $id !== null ? app(TemplateDokumenRepository::class)->temukan($id) : null;
+        if ($master === null || ! Storage::disk('local')->exists($master['file_path'])) {
+            return null;
+        }
+
+        return ['id' => (string) $master['id'], 'nama' => (string) $master['nama'], 'jenis' => (string) $master['jenis'], 'path' => Storage::disk('local')->path($master['file_path'])];
     }
 
     /**

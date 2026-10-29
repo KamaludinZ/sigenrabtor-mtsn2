@@ -8,6 +8,9 @@ use App\Support\Dokumen\CetakDokumen;
 use App\Support\Dokumen\DataPratinjau;
 use App\Support\Dokumen\DokumenKegiatan;
 use App\Support\Dokumen\GagalUbahPdf;
+use App\Support\Dokumen\NilaiVariabel;
+use App\Support\Dokumen\PengisiTemplateDocx;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Rab\EksporRabExcel;
 use App\Support\Stub\StubData;
@@ -17,7 +20,8 @@ use RuntimeException;
 
 /**
  * Implementasi server GeneratorBerkasDokumen (`SERVER`): PDF lewat PembuatPdfDokumen (lembar permintaan, GagalUbahPdf →
- * `gagal`), Excel RAB lewat EksporRabExcel (lembar satu sumber dana), Word KAK/TOR lewat WordKakTor dari data pratinjau
+ * `gagal`), Excel RAB lewat EksporRabExcel (lembar satu sumber dana), Word KAK/TOR: master KAK/TOR terpilih Format
+ * Seragam (PilihanTemplate::masterKak) diisi PengisiTemplateDocx, selain itu WordKakTor dari data pratinjau
  * (DataPratinjau::untuk lembar cover + KAK/TOR — sama dengan penyusun Word di peramban); format lain → GagalBuatBerkas
  * `tidak_didukung`. Nama berkas & cap DRAF dari StatusCetak kegiatan × sumber dana
  * (CetakDokumen::statusDraf lembar itu); tautan cetak = halaman cetak lembar yang sama sebagai jalan lain.
@@ -45,7 +49,9 @@ final class GeneratorBerkasServer implements GeneratorBerkasDokumen
             $isi = match ($permintaan->format) {
                 'pdf' => app(PembuatPdfDokumen::class)->buat($permintaan->kegiatan, $permintaan->sumber, $permintaan->lembar),
                 'xlsx' => $this->excel($permintaan),
-                'docx' => WordKakTor::susun(DataPratinjau::untuk($permintaan->kegiatan, $permintaan->sumber, $permintaan->pengguna ?: StubData::currentUser(), $permintaan->lembar)),
+                'docx' => ($master = PilihanTemplate::masterKak($permintaan->kegiatan)) !== null
+                    ? PengisiTemplateDocx::isi($master['path'], NilaiVariabel::untuk($permintaan->kegiatan, $permintaan->sumber))
+                    : WordKakTor::susun(DataPratinjau::untuk($permintaan->kegiatan, $permintaan->sumber, $permintaan->pengguna ?: StubData::currentUser(), $permintaan->lembar)),
             };
         } catch (GagalUbahPdf $e) {
             throw new GagalBuatBerkas('gagal', $e->getMessage(), $tautan, $e);

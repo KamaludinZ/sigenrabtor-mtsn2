@@ -15,7 +15,8 @@ use InvalidArgumentException;
  * kelengkapan per bagian (KelengkapanDokumen), kaidah dokumen (KaidahDokumen), dan bidang yang bisa disunting langsung
  * per bagian (SuntingDokumen: label, jenis, batas, petunjuk, teks penyunting, tampil di dokumen) beserta jejak sunting
  * terakhir (RiwayatSunting). `lembar` membatasi lembar yang diisi (CetakDokumen::pilihan; kosong = semua); sumber yang
- * tidak dipilih kegiatan → InvalidArgumentException. `versi` = UbahDataKegiatan::versi untuk dikirim balik saat menyunting.
+ * tidak dipilih kegiatan → InvalidArgumentException. `template` = master KAK/TOR terpilih Format Seragam (PilihanTemplate::masterKak;
+ * Word kegiatan itu disusun server dari master). `versi` = UbahDataKegiatan::versi untuk dikirim balik saat menyunting.
  */
 final class DataPratinjau
 {
@@ -40,7 +41,7 @@ final class DataPratinjau
         $kak = SusunanKak::dari($kegiatan, $sumber);
         $rab = SusunanRab::dari($kegiatan, $sumber);
         $cetak = StatusCetak::dari($kegiatan, $kak->sumber, $kak, $rab);
-        $cover = CoverDokumen::desain() + ['nilai' => TeksCover::nilai($kegiatan, $kak->sumber)];
+        $cover = CoverDokumen::untukKegiatan($kegiatan, $kak->sumber) + ['nilai' => TeksCover::nilai($kegiatan, $kak->sumber)];
         $penanda = PenandaKosong::daftar($kak, $rab);
         $kaidah = KaidahDokumen::periksa($kegiatan, $kak, $rab, $cover);
         $kelengkapan = KelengkapanDokumen::dari($kak, $rab, $kegiatan, $pengguna, $cetak->set);
@@ -56,6 +57,7 @@ final class DataPratinjau
             'sumber' => $kak->sumber,
             'daftar_sumber' => array_keys(AnggaranKegiatan::perSumber($kegiatan)),
             'lembar' => $lembar,
+            'template' => ($master = PilihanTemplate::masterKak($kegiatan)) !== null ? ['kak' => $master['id'], 'nama' => $master['nama']] : ['kak' => null, 'nama' => null],
             'dapat_diubah' => $alasanTerkunci === null,
             'alasan_terkunci' => $alasanTerkunci,
             'versi' => UbahDataKegiatan::versi($kegiatan),

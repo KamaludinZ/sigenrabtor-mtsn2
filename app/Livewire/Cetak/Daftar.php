@@ -109,7 +109,7 @@ class Daftar extends Component
             'kak' => $kak,
             'rab' => $rab,
             'cetak' => $cetak,
-            'cover' => CoverDokumen::desain() + ['nilai' => TeksCover::nilai($kegiatan, $baris['sumber'])],
+            'cover' => CoverDokumen::untukKegiatan($kegiatan, $baris['sumber']) + ['nilai' => TeksCover::nilai($kegiatan, $baris['sumber'])],
             'lembar' => $lembar,
             'nama_berkas' => CetakDokumen::namaBerkas($cetak, $lembar),
             'tautan_cetak' => CetakDokumen::tautan($baris['kegiatan_id'], $baris['sumber'], $lembar, otomatis: true),

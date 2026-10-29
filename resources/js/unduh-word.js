@@ -2,7 +2,8 @@
 // diambil dari `kegiatan.pratinjau.data` (lembar cover & KAK/TOR), lalu penyusun `word-kak.js` — dimuat terpisah saat
 // tombol pertama kali ditekan — membuat berkasnya; nama = nama berkas baku dengan akhiran .docx. Bila penyusun peramban
 // gagal dimuat atau gagal menyusun (`pustaka`/`susun`) dan `urlServer` ada, berkas yang sama diambil dari server
-// (`kegiatan.kak.word`, WordKakTor); bila server juga gagal, galat asal yang tampil. Gagal → pesan + Coba lagi.
+// (`kegiatan.kak.word`, WordKakTor); bila server juga gagal, galat asal yang tampil. Kegiatan bermaster KAK/TOR terpilih
+// (`data.template.kak`) selalu diunduh dari server (PengisiTemplateDocx). Gagal → pesan + Coba lagi.
 import { simpanBerkas, ukuranBerkas } from './unduh-pdf';
 import { GalatUnduhan, ambil, beritahu, golongkan, laporkan, muatPustaka } from './unduhan';
 
@@ -66,6 +67,10 @@ export default function unduhWord(urlData, nama, urlServer = null) {
         async susunPeramban() {
             const [penyusun, respons] = await Promise.all([muatPustaka(() => import('./word-kak')), ambil(urlData)]);
             const data = await respons.json();
+            if (data.template?.kak && urlServer) {
+                // Master KAK/TOR terpilih (Format Seragam): diisi server dari berkas master aslinya.
+                return this.ambilServer();
+            }
             const berkas = await penyusun.susunWord(data).catch(() => {
                 throw new GalatUnduhan('susun');
             });

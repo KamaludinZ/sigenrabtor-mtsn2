@@ -76,7 +76,7 @@ final class CetakDokumen
         return [
             'kak' => $kak,
             'rab' => $rab,
-            'cover' => CoverDokumen::desain() + ['nilai' => TeksCover::nilai($kegiatan, $kak->sumber)],
+            'cover' => CoverDokumen::untukKegiatan($kegiatan, $kak->sumber) + ['nilai' => TeksCover::nilai($kegiatan, $kak->sumber)],
             'cetak' => $cetak,
             'draf' => $draf,
             'lembar' => $lembar,

@@ -325,6 +325,20 @@
                         @if ($pratinjau['kegiatan']['leading'] !== '') · Leading {{ $pratinjau['kegiatan']['leading'] }} @endif
                         · memakai <span class="font-semibold text-stone-800">{{ $asalPratinjau[$pratinjau['asal']] }}</span>
                     </p>
+                    @php
+                        $idContoh = $pratinjau['kegiatan']['id'];
+                        $cetakContoh = \App\Support\Dokumen\CetakDokumen::untuk(app(\App\Contracts\KegiatanRepository::class)->temukan($idContoh), $pratinjau['sumber'], array_keys(\App\Support\Dokumen\CetakDokumen::LEMBAR));
+                    @endphp
+                    <div class="flex flex-wrap items-start gap-2 border-b border-stone-100 px-5 py-3" data-testid="aksi-pratinjau-template" data-terkunci="{{ $this->templateBerubah ? '1' : '0' }}">
+                        @if ($this->templateBerubah)
+                            <p class="flex items-center gap-1.5 text-xs text-gold-800" data-testid="simpan-dulu-pratinjau"><x-ui.icon name="info" class="size-3.5" /> Simpan pilihan dulu untuk mencetak atau mengunduh contoh dengan template ini.</p>
+                        @else
+                            <a href="{{ \App\Support\Dokumen\CetakDokumen::tautan($idContoh, $pratinjau['sumber'], [], true) }}" target="_blank" rel="noopener" class="btn-secondary px-3 py-1.5 text-xs" data-testid="cetak-contoh-template"><x-ui.icon name="printer" class="size-3.5" /> Cetak contoh</a>
+                            <x-dokumen.tombol-unduh-pdf :url="\App\Support\Dokumen\CetakDokumen::tautanPdf($idContoh, $pratinjau['sumber'], [])" :nama="$cetakContoh['nama_berkas']" label="PDF" testid="unduh-pdf-contoh" wire:key="pdf-contoh-{{ $idContoh }}-{{ $pratinjau['sumber'] }}" />
+                            <x-dokumen.tombol-unduh-word :kegiatan-id="$idContoh" :sumber="$pratinjau['sumber']" :nama="\App\Support\Dokumen\CetakDokumen::namaBerkas($cetakContoh['cetak'], ['cover', 'kak'])" label="Word KAK/TOR" testid="unduh-word-contoh" wire:key="word-contoh-{{ $idContoh }}-{{ $pratinjau['sumber'] }}" />
+                            <p class="basis-full text-[11px] text-stone-500">Cover mengikuti template terpilih di cetak, PDF, dan Word; master KAK/TOR terpilih dipakai untuk Word — cetak & PDF menyusun KAK/TOR dengan susunan baku.</p>
+                        @endif
+                    </div>
                     <div class="grid gap-5 p-5 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
                         <div class="min-w-0">
                             <h3 class="text-xs font-semibold text-stone-500">Cover — <span data-testid="nama-cover-pratinjau">{{ $pratinjau['cover']['nama'] ?? 'cover default' }}</span></h3>

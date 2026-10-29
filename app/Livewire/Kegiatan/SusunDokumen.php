@@ -438,7 +438,7 @@ class SusunDokumen extends Component
     #[Computed]
     public function cover(): array
     {
-        return CoverDokumen::desain() + ['nilai' => TeksCover::nilai($this->dataKegiatan, $this->kak->sumber)];
+        return CoverDokumen::untukKegiatan($this->dataKegiatan, $this->kak->sumber) + ['nilai' => TeksCover::nilai($this->dataKegiatan, $this->kak->sumber)];
     }
 
     /** Keadaan cetak set dokumen sumber dana ini (cap DRAF + alasan). */
