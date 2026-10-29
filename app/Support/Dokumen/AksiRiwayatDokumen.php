@@ -36,9 +36,11 @@ use RuntimeException;
  *   atau tahun aktif terkunci → `bisa` false + `alasan` (+ `tautan`). `ringkasan` = yang ikut disalin (rincian RAB per sumber,
  *   tanda bulan matrik, baris jadwal terisi) dan `salinan_sebelumnya` = kegiatan tahun aktif yang sudah pernah disalin dari
  *   kegiatan yang sama (peringatan, tidak memblokir).
- * - `duplikat($id, $nama, $pengguna)` = jalankan rencana itu → {id, nama, catatan, tautan (Data Kegiatan), tautan_dokumen
- *   (Susun KAK/TOR dengan jenis & sumber dokumen asal), pesan}; galat `nama` (wajib, ≤ MAKS_NAMA, unik di tahun aktif) atau
- *   `duplikat` (tidak bisa diduplikat).
+ * - `duplikat($id, $nama, $pengguna)` = jalankan rencana itu → {id, nama, mode, catatan, draf (draf dokumen jenis × sumber
+ *   dana yang sama untuk kegiatan salinan lewat DrafDokumen::simpan, null + catatan `draf` bila belum bisa), tautan (Data
+ *   Kegiatan), tautan_dokumen (Susun KAK/TOR draf itu), pesan}; OtorisasiDokumen::duplikat ditolak → AuthorizationException
+ *   (kegiatan di luar cakupan, leading tidak tertaut/nonaktif, tahun terkunci); galat `nama` (wajib, ≤ MAKS_NAMA, unik di
+ *   tahun aktif) atau `duplikat` (kegiatan tidak tersimpan, sudah ada di tahun aktif).
  */
 final class AksiRiwayatDokumen
 {
@@ -212,12 +214,15 @@ final class AksiRiwayatDokumen
      */
     public static function duplikat(string $id, ?string $nama, array $pengguna): array
     {
+        $c = self::temukan($id, $pengguna);
+        $kegiatan = $c['tersedia'] ? app(KegiatanRepository::class)->temukan((int) $c['kegiatan_id']) : null;
+        if ($kegiatan !== null) {
+            OtorisasiDokumen::pastikan('duplikat', $c, $kegiatan, $pengguna);
+        }
         $rencana = self::rencanaDuplikat($id, $pengguna);
         if (! $rencana['bisa']) {
             throw ValidationException::withMessages(['duplikat' => $rencana['alasan']]);
         }
-        $c = self::temukan($id, $pengguna);
-        $kegiatan = app(KegiatanRepository::class)->temukan((int) $c['kegiatan_id']);
 
         if ($rencana['mode'] === 'tahun_lalu') {
             $jalan = LayananDuplikat::jalankan([(int) $kegiatan['id']], $pengguna);
@@ -240,15 +245,39 @@ final class AksiRiwayatDokumen
 
         $baruData = app(KegiatanRepository::class)->temukan($baru) ?? [];
         $sumberDipilih = array_column($baruData['sumber_dana'] ?? [], 'sumber');
+        $sumberDraf = in_array($c['sumber'], $sumberDipilih, true) ? $c['sumber'] : null;
+        $draf = self::siapkanDraf($baru, $c['jenis'], $sumberDraf, $pengguna);
+        if ($draf === null) {
+            $catatan[] = ['jenis' => 'draf', 'teks' => 'Draf '.DrafDokumen::nama($c['jenis'], $sumberDraf).' belum bisa disiapkan — susun dari tab Susun KAK/TOR setelah melengkapi sumber dana.'];
+        }
 
         return [
             'id' => $baru,
             'nama' => $namaBaru,
+            'mode' => $rencana['mode'],
             'catatan' => $catatan,
+            'draf' => $draf,
             'tautan' => route('kegiatan.edit', ['kegiatan' => $baru]),
-            'tautan_dokumen' => route('kegiatan.dokumen', array_filter(['kegiatan' => $baru, 'jenis' => $c['jenis'], 'sumber' => in_array($c['sumber'], $sumberDipilih, true) ? $c['sumber'] : null])),
-            'pesan' => 'Kegiatan “'.$namaBaru.'” dibuat sebagai draf TA '.$rencana['tahun'].'.',
+            'tautan_dokumen' => $draf['tautan'] ?? route('kegiatan.dokumen', array_filter(['kegiatan' => $baru, 'jenis' => $c['jenis'], 'sumber' => $sumberDraf])),
+            'pesan' => 'Kegiatan “'.$namaBaru.'” dibuat sebagai draf TA '.$rencana['tahun'].($draf !== null ? ' beserta draf '.$draf['nama'].'.' : '.'),
         ];
+    }
+
+    /**
+     * Draf dokumen jenis × sumber dana yang sama untuk kegiatan salinan (DrafDokumen::simpan) agar penyusunan langsung
+     * berlanjut; null bila belum bisa (mis. jenis per sumber dana tanpa sumber dana terpilih).
+     *
+     * @return array{jenis: string, sumber: string|null, nama: string, tautan: string}|null
+     */
+    private static function siapkanDraf(int $kegiatan, string $jenis, ?string $sumber, array $pengguna): ?array
+    {
+        try {
+            $draf = DrafDokumen::simpan($kegiatan, $jenis, $sumber, $pengguna)['draf'];
+        } catch (ValidationException|AuthorizationException|RuntimeException) {
+            return null;
+        }
+
+        return ['jenis' => $draf['jenis'], 'sumber' => $draf['sumber'], 'nama' => DrafDokumen::nama($draf['jenis'], $draf['sumber']), 'tautan' => DrafDokumen::tautan($draf)];
     }
 
     /**

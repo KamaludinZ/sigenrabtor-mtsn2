@@ -65,6 +65,26 @@ jenis × sumber × format yang sama, terbaru dulu), `perbedaan`, `kegiatan` (nul
 `isi` = `{ "sidik": "md5", "cover": {kotak teks cover} | null, "bagian": [{nomor, judul, isi: [blok], status, kurang, periksa, sidik}], "rab": {judul, kepala, tabel, mekanisme, pengesahan, kurang} | null }`
 menurut lembar jenis dokumen. Juga `dokumen` (baris + `izin`), `label_sumber`, `catatan`. 404/403 `{pesan}`.
 
+## Duplikasi dokumen menjadi kegiatan baru
+
+`GET /dokumen/{id}/duplikat` (`dokumen.duplikat.rencana`) = `AksiRiwayatDokumen::rencanaDuplikat`: `bisa`, `alasan`,
+`tautan`, `mode` (`tahun_lalu` — kegiatan TA lain menjadi draf TA aktif lewat `LayananDuplikat`, nama tetap;
+`tahun_ini` — kegiatan TA aktif disalin dengan nama baru, bawaan "… (salinan)"), `nama`, `nama_terkunci`, `perubahan`,
+`catatan`, `ringkasan` {rab per sumber, matrik, jadwal}, `salinan_sebelumnya`, `dokumen`.
+
+`POST /dokumen/{id}/duplikat` `{ "nama": "…" }` (`dokumen.duplikat`; `nama` hanya untuk `tahun_ini`) → 201:
+
+```json
+{ "id": 4, "nama": "Supervisi Akademik Semester Genap", "mode": "tahun_ini", "catatan": [{ "jenis": "pagu_lama", "teks": "…" }],
+  "draf": { "jenis": "RAB", "sumber": "DIPA", "nama": "RAB · DIPA", "tautan": "/kegiatan/4/dokumen?jenis=RAB&sumber=DIPA" },
+  "tautan": "/kegiatan/4/edit", "tautan_dokumen": "/kegiatan/4/dokumen?jenis=RAB&sumber=DIPA",
+  "pesan": "Kegiatan “…” dibuat sebagai draf TA 2026 beserta draf RAB · DIPA." }
+```
+
+Kegiatan salinan langsung mendapat draf dokumen jenis × sumber dana yang sama (`DrafDokumen::simpan`); bila belum bisa,
+`draf` null + catatan `draf`. Galat: 422 `{pesan, galat: {nama | duplikat}}` (nama kosong/ganda, kegiatan tidak tersimpan,
+sudah ada di TA aktif), 403 `{pesan}` (otorisasi `duplikat`), 404 `{pesan}`.
+
 ## Otorisasi (`App\Support\Dokumen\OtorisasiDokumen`)
 
 | Aksi | Syarat |

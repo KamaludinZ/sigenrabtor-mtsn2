@@ -28,7 +28,7 @@
             @if ($hasil)
                 <div class="flex items-start gap-2.5 rounded-xl bg-brand-50 px-4 py-3 text-brand-900 ring-1 ring-brand-200" data-testid="hasil-duplikat-dokumen">
                     <x-ui.icon name="check-circle" class="mt-0.5 size-4 shrink-0" />
-                    <p>{{ $hasil['pesan'] }} Lengkapi isiannya, lalu susun dokumennya.</p>
+                    <p>{{ $hasil['pesan'] }} Lengkapi isiannya, lalu {{ $hasil['draf'] ? 'lanjutkan drafnya' : 'susun dokumennya' }}.</p>
                 </div>
                 @foreach ($hasil['catatan'] as $c)
                     <p class="flex items-start gap-1.5 text-xs text-gold-800" data-catatan="{{ $c['jenis'] }}"><x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $c['teks'] }}</p>
