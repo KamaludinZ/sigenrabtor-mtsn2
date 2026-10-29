@@ -15,7 +15,7 @@
 
 <div class="mx-auto max-w-7xl">
     {{-- Kepala halaman --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between print:hidden">
         <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
                 <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Cetak &amp; Unduh</h1>
@@ -31,7 +31,7 @@
     </div>
 
     {{-- Ringkasan sekaligus saringan keadaan --}}
-    <nav class="mt-6 grid grid-cols-3 gap-3" aria-label="Keadaan cetak" data-testid="ringkasan-cetak">
+    <nav class="mt-6 grid grid-cols-3 gap-3 print:hidden" aria-label="Keadaan cetak" data-testid="ringkasan-cetak">
         @foreach (['' => ['Semua dokumen', $ringkasan['jumlah'], 'text-stone-900'], 'siap' => [DaftarCetak::KEADAAN['siap'], $ringkasan['siap'], 'text-brand-800'], 'draf' => [DaftarCetak::KEADAAN['draf'], $ringkasan['draf'], 'text-red-700']] as $kunci => [$label, $angka, $warna])
             <button type="button" wire:click="$set('keadaan', '{{ $kunci }}')" aria-pressed="{{ $keadaan === $kunci ? 'true' : 'false' }}" data-keadaan-saring="{{ $kunci === '' ? 'semua' : $kunci }}"
                     @class(['rounded-2xl p-3 text-left ring-1 transition sm:p-4', 'bg-white shadow-xs ring-2 ring-brand-600' => $keadaan === $kunci, 'bg-white/70 ring-stone-200 hover:bg-white hover:ring-stone-300' => $keadaan !== $kunci])>
@@ -41,9 +41,9 @@
         @endforeach
     </nav>
 
-    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+    <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] print:mt-0 print:block">
         {{-- Daftar dokumen --}}
-        <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-daftar-cetak" data-testid="daftar-cetak">
+        <section class="min-w-0 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200 print:hidden" aria-labelledby="judul-daftar-cetak" data-testid="daftar-cetak">
             <header class="space-y-3 border-b border-stone-100 px-4 py-4 sm:px-5">
                 <div class="flex items-baseline justify-between gap-2">
                     <h2 id="judul-daftar-cetak" class="text-base font-semibold text-stone-900">Dokumen kegiatan</h2>
@@ -130,8 +130,8 @@
                     $b = $dokumen['baris'];
                     $draf = $dokumen['cetak']->set->draf;
                 @endphp
-                <div class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" wire:key="terpilih-{{ $b['kunci'] }}">
-                    <header class="border-b border-stone-100 px-4 py-4 sm:px-5">
+                <div class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200 print:rounded-none print:shadow-none print:ring-0" wire:key="terpilih-{{ $b['kunci'] }}">
+                    <header class="border-b border-stone-100 px-4 py-4 sm:px-5 print:hidden">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-base font-semibold text-stone-900" data-testid="judul-terpilih">{{ $b['nama'] }}</h2>
@@ -154,7 +154,7 @@
                         @endif
                     </header>
 
-                    <div class="space-y-4 px-4 py-4 sm:px-5">
+                    <div class="space-y-4 px-4 py-4 sm:px-5 print:hidden">
                         {{-- Lembar yang dicetak --}}
                         <fieldset>
                             <legend class="text-xs font-semibold text-stone-600">Lembar yang dicetak</legend>
@@ -200,11 +200,11 @@
                     </div>
 
                     {{-- Pratinjau kecil lembar terpilih (komponen yang sama dengan halaman cetak) --}}
-                    <div class="border-t border-stone-100 bg-stone-100/70 px-3 py-4 sm:px-5">
-                        <p class="mb-3 text-xs font-semibold text-stone-600">Pratinjau lembar</p>
-                        <div class="max-h-[40rem] space-y-4 overflow-y-auto overflow-x-hidden" data-testid="pratinjau-lembar-cetak">
+                    <div class="border-t border-stone-100 bg-stone-100/70 px-3 py-4 sm:px-5 print:border-0 print:bg-transparent print:p-0">
+                        <p class="mb-3 text-xs font-semibold text-stone-600 print:hidden">Pratinjau lembar</p>
+                        <div class="max-h-[40rem] space-y-4 overflow-y-auto overflow-x-hidden" data-testid="pratinjau-lembar-cetak" data-area-cetak>
                             @foreach ($dokumen['lembar'] as $kunciLembar)
-                                <div class="mx-auto w-[210mm] [zoom:0.4] sm:[zoom:0.55] lg:[zoom:0.6]" data-lembar-mini="{{ $kunciLembar }}" wire:key="mini-{{ $b['kunci'] }}-{{ $kunciLembar }}">
+                                <div class="mx-auto w-[210mm] [zoom:0.4] sm:[zoom:0.55] lg:[zoom:0.6]" data-lembar-mini="{{ $kunciLembar }}" data-lembar-wadah="{{ $kunciLembar }}" wire:key="mini-{{ $b['kunci'] }}-{{ $kunciLembar }}">
                                     <div class="lembar-cetak">
                                         @switch($kunciLembar)
                                             @case('cover')
@@ -222,6 +222,12 @@
                         </div>
                     </div>
                 </div>
+                @if ($draf)
+                    {{-- Ctrl+P: tanda air DRAF di setiap halaman cetak. --}}
+                    <div class="pointer-events-none fixed inset-0 z-10 hidden items-center justify-center" aria-hidden="true" data-tanda-air-cetak>
+                        <span class="-rotate-30 text-[110pt] font-bold tracking-[0.2em] text-stone-900/[0.07]">DRAF</span>
+                    </div>
+                @endif
             @endif
         </section>
     </div>

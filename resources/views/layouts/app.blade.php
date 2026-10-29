@@ -13,7 +13,7 @@
 <body class="h-full">
     <div x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false" class="min-h-full">
         {{-- Sidebar mobile (off-canvas) --}}
-        <div x-cloak x-show="sidebarOpen" class="relative z-50 lg:hidden" role="dialog" aria-modal="true">
+        <div x-cloak x-show="sidebarOpen" class="relative z-50 lg:hidden print:hidden" role="dialog" aria-modal="true">
             <div x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 bg-stone-900/50" @click="sidebarOpen = false"></div>
             <div x-show="sidebarOpen"
                  x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
@@ -30,14 +30,14 @@
         </div>
 
         {{-- Sidebar desktop --}}
-        <aside class="hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:w-68 lg:flex-col">
+        <aside class="hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:w-68 lg:flex-col print:hidden">
             @include('layouts.partials.sidebar')
         </aside>
 
-        <div class="lg:pl-68">
+        <div class="lg:pl-68 print:pl-0">
             @include('layouts.partials.topbar')
 
-            <main class="px-4 py-6 sm:px-6 lg:px-8">
+            <main class="px-4 py-6 sm:px-6 lg:px-8 print:p-0">
                 {{ $slot }}
             </main>
         </div>

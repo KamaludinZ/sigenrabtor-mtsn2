@@ -107,3 +107,88 @@
         @apply mt-1.5 text-xs font-medium text-red-600;
     }
 }
+
+/*
+ * Cetak peramban yang bersih (Ctrl+P / window.print dari halaman aplikasi): bingkai aplikasi & kendali layar bertanda
+ * `print:hidden`; wadah dokumen `[data-area-cetak]` mencetak tiap lembar `[data-lembar-wadah]` apa adanya — halaman bernama
+ * `dokumen` (A4, margin atas/bawah, "Halaman x dari y"), lembar berikutnya mulai di halaman baru, cover di halaman `sampul`
+ * tanpa margin — tanpa perbesaran layar, bayangan, garis perkiraan batas halaman, dan cap komponen (diganti tanda air
+ * `[data-tanda-air-cetak]` di setiap halaman). Leluhur wadah dokumen wajib berupa blok biasa saat dicetak (`print:block`):
+ * Chrome mengabaikan halaman bernama di dalam grid/flex. Halaman cetak khusus `dokumen.cetak` menimpa @page bawaan.
+ */
+@page {
+    size: A4;
+    margin: 15mm;
+}
+
+@page dokumen {
+    margin: 18mm 0 16mm;
+
+    @bottom-right {
+        content: 'Halaman ' counter(page) ' dari ' counter(pages);
+        margin-right: 15mm;
+        font: 8pt sans-serif;
+        color: #57534e;
+    }
+}
+
+@page sampul {
+    margin: 0;
+}
+
+@media print {
+    html,
+    body {
+        background: #fff !important;
+    }
+
+    [data-area-cetak] {
+        page: dokumen;
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        background: none !important;
+    }
+
+    [data-area-cetak] [data-lembar-wadah] {
+        zoom: 1 !important;
+        width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+
+    /* Sesudah cover, pergantian halaman bernama (sampul → dokumen) sudah memulai halaman baru. */
+    [data-area-cetak] [data-lembar-wadah]:not([data-lembar-wadah='cover']) + [data-lembar-wadah] {
+        break-before: page;
+    }
+
+    [data-area-cetak] [data-lembar-wadah='cover'] {
+        page: sampul;
+    }
+
+    [data-area-cetak] [data-lembar],
+    [data-area-cetak] [data-lembar-wadah] article,
+    [data-area-cetak] [data-lembar-wadah] .lembar-cetak > * {
+        zoom: 1 !important;
+        max-width: none !important;
+        box-shadow: none !important;
+    }
+
+    [data-area-cetak] [data-lembar] {
+        width: auto !important;
+    }
+
+    [data-area-cetak] [data-batas-halaman],
+    [data-area-cetak] [data-testid='cap-draf'] {
+        display: none !important;
+    }
+
+    [data-area-cetak] [data-testid='pratinjau-cover'] {
+        height: 296mm;
+        aspect-ratio: auto;
+    }
+
+    [data-tanda-air-cetak] {
+        display: flex !important;
+    }
+}

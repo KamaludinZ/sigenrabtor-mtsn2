@@ -70,4 +70,44 @@ test.describe('Cetak & Unduh', () => {
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
+
+    test('cetak peramban bersih dari Pratinjau & Cetak dan Unduh (Ctrl+P)', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/kegiatan/2/pratinjau?sumber=DIPA');
+        await expect(page.locator('[data-lembar="kak"]')).toBeVisible();
+        await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+        await page.emulateMedia({ media: 'print' });
+
+        for (const id of ['panel-kaidah', 'bilah-pratinjau', 'kendali-penampil']) {
+            await expect(page.getByTestId(id)).toBeHidden();
+        }
+        await expect(page.locator('header.sticky').first()).toBeHidden();
+        await expect(page.getByRole('heading', { name: 'Pratinjau Dokumen', level: 1 })).toBeHidden();
+        const kak = page.locator('[data-lembar="kak"]');
+        await expect(kak).toHaveClass(/lembar-cetak/);
+        expect(await kak.evaluate((el) => getComputedStyle(el).zoom)).toBe('1');
+        await expect(page.locator('[data-tanda-air-cetak]')).toBeVisible();
+        await expect(page.locator('[data-area-cetak] [data-testid="cap-draf"]').first()).toBeHidden();
+
+        if (testInfo.project.name === 'desktop') {
+            const pdf = await page.pdf({ preferCSSPageSize: true, path: 'storage/playwright/shots/cetak-peramban-pratinjau.pdf' });
+            const halaman = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+            expect(halaman).toBeGreaterThanOrEqual(4);
+        }
+
+        await page.emulateMedia({ media: 'screen' });
+        await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+        await expect(page.getByTestId('panel-kaidah')).toBeVisible();
+
+        await page.goto('/cetak?pilih=2%7CDIPA');
+        await expect(page.getByTestId('judul-terpilih')).toBeVisible();
+        await page.emulateMedia({ media: 'print' });
+        await expect(page.getByTestId('daftar-cetak')).toBeHidden();
+        await expect(page.getByTestId('aksi-cetak')).toBeHidden();
+        const mini = page.locator('[data-lembar-wadah="kak"]');
+        await expect(mini).toBeVisible();
+        expect(await mini.evaluate((el) => getComputedStyle(el).zoom)).toBe('1');
+        await expect(page.locator('[data-tanda-air-cetak]')).toBeVisible();
+        await page.emulateMedia({ media: 'screen' });
+    });
 });

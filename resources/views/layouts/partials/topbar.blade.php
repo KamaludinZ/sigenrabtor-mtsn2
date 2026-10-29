@@ -1,4 +1,4 @@
-<header class="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-3 border-b border-stone-200 bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
+<header class="sticky top-0 z-30 flex h-16 print:hidden shrink-0 items-center gap-x-3 border-b border-stone-200 bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
     <button type="button" class="-m-2 rounded-md p-2 text-stone-600 hover:bg-stone-100 lg:hidden" @click="sidebarOpen = true">
         <span class="sr-only">Buka menu</span>
         <x-ui.icon name="menu" />

@@ -33,6 +33,7 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
         bagianAktif: isi[0]?.kunci ?? null,
         isiTerbuka: false,
         kosongKe: 0,
+        mencetak: false,
 
         init() {
             let simpanan = null;
@@ -70,6 +71,14 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
                     });
                 }
             };
+            window.addEventListener('beforeprint', () => {
+                this.mencetak = true;
+                // Kelas dipasang langsung: tata letak cetak dihitung sebelum pembaruan Alpine berikutnya.
+                this.$refs.ruang.querySelectorAll('[data-lembar]').forEach((el) => el.classList.add('lembar-cetak'));
+            });
+            window.addEventListener('afterprint', () => {
+                this.mencetak = false;
+            });
             window.addEventListener('scroll', jadwalkan, { passive: true });
             window.addEventListener('resize', jadwalkan, { passive: true });
             this.$watch('perbesaran', (nilai) => {
@@ -82,8 +91,9 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
             });
         },
 
+        // Ctrl+P / window.print: lembar selalu bergaya cetak (`lembar-cetak`) tanpa perbesaran layar, apa pun pilihannya.
         get cetak() {
-            return this.perbesaran !== 'layar';
+            return this.mencetak || this.perbesaran !== 'layar';
         },
 
         get skala() {
@@ -99,7 +109,7 @@ export default function penampilDokumen(pilihan, bawaan, isi = []) {
         },
 
         gayaLembar() {
-            return this.cetak ? { width: '210mm', zoom: this.skala } : {};
+            return this.cetak && !this.mencetak ? { width: '210mm', zoom: this.skala } : {};
         },
 
         get totalHalaman() {
