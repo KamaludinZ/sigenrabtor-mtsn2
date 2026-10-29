@@ -44,6 +44,7 @@ use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\Generasi\GeneratorBerkasServer;
+use App\Support\Dokumen\PembuatPdfChrome;
 use App\Support\Dokumen\PenggabungPdfPoppler;
 use App\Support\Dokumen\PengubahPdfLibreOffice;
 use App\Support\Kegiatan\KlienLlmHttp;
@@ -121,7 +122,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ImporKegiatanRepository::class, StubImporKegiatanRepository::class);
         $this->app->singleton(BukuDokumenRepository::class, StubBukuDokumenRepository::class);
         $this->app->singleton(PembuatPdfBuku::class, StubPembuatPdfBuku::class);
-        $this->app->singleton(PembuatPdfDokumen::class, StubPembuatPdfDokumen::class);
+        $this->app->singleton(PembuatPdfDokumen::class, fn () => config('sigenrabtor.pdf.perender') === 'tiruan' ? new StubPembuatPdfDokumen : new PembuatPdfChrome);
         $this->app->singleton(GeneratorBerkasDokumen::class, GeneratorBerkasServer::class);
         $this->app->singleton(PejabatRepository::class, StubPejabatRepository::class);
         $this->app->singleton(DataPaguRepository::class, StubDataPaguRepository::class);

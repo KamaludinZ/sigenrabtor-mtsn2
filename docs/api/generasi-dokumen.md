@@ -78,6 +78,19 @@ Galat (permintaan dengan `Accept: application/json`; permintaan biasa dialihkan 
 | 501 | `{ "pesan": "…", "jenis": "tidak_didukung", "klien": true, "tautan_cetak": "…" }` | format belum dibuat server (Word) — susun di peramban |
 | 503 | `{ "pesan": "…", "jenis": "gagal", "tautan_cetak": "…" }` | perender/pengubah berkas gagal — `tautan_cetak` = halaman cetak sebagai jalan lain |
 
+## Perender PDF
+
+`PembuatPdfDokumen` (dipakai format `pdf` dan `kegiatan.cetak.pdf`) dipilih lewat `SIRABTOR_PDF_PERENDER`:
+
+- `chrome` (bawaan) — `App\Support\Dokumen\PembuatPdfChrome`: halaman cetak `dokumen.cetak` dirender di server (mode build
+  Vite, aset `public/build` lewat `file://`, gambar cover sebagai data URI) lalu dicetak Chrome/Chromium headless
+  (`--print-to-pdf`). Hasilnya sama dengan Cetak › Simpan sebagai PDF: A4, cover tanpa margin, tanda air & kaki DRAF,
+  "Halaman x dari y". Butuh `npm run build` dan Chrome/Chromium (`SIRABTOR_CHROME` = path/nama program; kosong = dicari:
+  google-chrome, google-chrome-stable, chromium, chromium-browser). Batas waktu `SIRABTOR_PDF_BATAS_DETIK` (bawaan 90).
+- `tiruan` — PDF teks sederhana (pengembangan & PHPUnit).
+
+Program tidak ada, aset belum dibangun, terlalu lama, atau hasil bukan PDF → `GagalUbahPdf` → 503 dengan `tautan_cetak`.
+
 ## Kontrak PHP
 
 ```php

@@ -32,6 +32,10 @@ return [
         'pdfunite' => env('SIRABTOR_PDFUNITE', 'pdfunite'),
         'pdfinfo' => env('SIRABTOR_PDFINFO', 'pdfinfo'),
         'batas_detik' => (int) env('SIRABTOR_PDF_BATAS_DETIK', 90),
+        // Pembuat PDF set dokumen: `chrome` (halaman cetak → Chrome/Chromium headless) atau `tiruan` (PDF teks, pengembangan/tes).
+        'perender' => env('SIRABTOR_PDF_PERENDER', 'chrome'),
+        // Program Chrome/Chromium; kosong = dicari otomatis (google-chrome, chromium, …).
+        'chrome' => env('SIRABTOR_CHROME', ''),
     ],
 
     /*
