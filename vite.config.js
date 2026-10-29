@@ -16,6 +16,10 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
+    build: {
+        // word-kak.js (docx) & excel-rab.js (exceljs) sengaja chunk besar terpisah yang dimuat hanya saat tombol unduh ditekan.
+        chunkSizeWarningLimit: 1000,
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

@@ -59,10 +59,7 @@
                 </button>
                 <div id="panel-unduh" x-cloak x-show="buka" x-transition.origin.top.right class="absolute left-0 z-30 sm:right-0 sm:left-auto mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 text-sm shadow-lg ring-1 ring-stone-200" data-testid="panel-unduh">
                     @if ($rabBerisi)
-                        <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $kegiatanId, 'sumber' => $sumberAktif]) }}" class="flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-stone-50" data-testid="unduh-rab-excel">
-                            <x-ui.icon name="sheet" class="mt-0.5 size-4 shrink-0 text-brand-700" />
-                            <span><span class="block font-semibold text-stone-900">RAB {{ $sumberAktif }} — Excel</span><span class="block text-xs text-stone-500">.xlsx, rincian & total seperti dokumen</span></span>
-                        </a>
+                        <x-dokumen.tombol-unduh-excel :kegiatan-id="$kegiatanId" :sumber="$sumberAktif" :nama="$this->statusCetak->namaBerkas('RAB', 'xlsx')" label="RAB {{ $sumberAktif }} — Excel (.xlsx)" testid="unduh-rab-excel" ringkas wire:key="unduh-excel-{{ $sumberAktif }}" />
                         <a href="{{ route('kegiatan.rab.pdf', ['kegiatan' => $kegiatanId, 'sumber' => $sumberAktif]) }}" class="flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-stone-50" data-testid="unduh-rab-pdf">
                             <x-ui.icon name="file-text" class="mt-0.5 size-4 shrink-0 text-brand-700" />
                             <span><span class="block font-semibold text-stone-900">RAB {{ $sumberAktif }} — PDF</span><span class="block text-xs text-stone-500">Disusun server dari lembar Excel RAB</span></span>

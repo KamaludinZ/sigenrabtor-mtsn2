@@ -1,7 +1,7 @@
 {{--
     Tombol aksi Cetak & Unduh satu kegiatan (PRD §6 Cetak & Unduh, F12/F16): menu per sumber dana — cetak/simpan PDF set
     dokumen (halaman cetak `kegiatan.cetak`, dialog cetak otomatis, tab baru), KAK/TOR Word (.docx) disusun di peramban
-    (Alpine `unduhWord`), RAB Excel/PDF selama RAB berisi — ditambah pratinjau dokumen dan halaman Cetak & Unduh untuk
+    (Alpine `unduhWord`), RAB Excel (disusun di peramban, Alpine `unduhExcel`) & PDF selama RAB berisi — ditambah pratinjau dokumen dan halaman Cetak & Unduh untuk
     mengatur lembar. `sumber` = daftar {sumber, item}
     (null = dibaca dari data tersimpan kegiatan); kegiatan tanpa sumber dana hanya mencetak cover + KAK/TOR.
     `ringkas` = tombol kecil untuk baris tabel; `kunci` membedakan id menu bila satu kegiatan tampil dua kali di halaman.
@@ -61,10 +61,7 @@
                     <span x-cloak x-show="keadaan === 'gagal'" class="text-red-700" x-text="pesan + ' Klik untuk mencoba lagi.'"></span>
                 </button>
                 @if ($s['sumber'] && $s['item'] > 0)
-                    <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $kegiatanId, 'sumber' => $s['sumber']]) }}" role="menuitem" x-on:click="buka = false"
-                       class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-stone-700 hover:bg-stone-100" data-testid="aksi-rab-excel-{{ $kunci }}">
-                        <x-ui.icon name="sheet" class="size-4 text-stone-400" /> RAB {{ $s['sumber'] }} — Excel
-                    </a>
+                    <x-dokumen.tombol-unduh-excel :kegiatan-id="$kegiatanId" :sumber="$s['sumber']" testid="aksi-rab-excel-{{ $kunci }}" ringkas />
                     <a href="{{ route('kegiatan.rab.pdf', ['kegiatan' => $kegiatanId, 'sumber' => $s['sumber']]) }}" role="menuitem" x-on:click="buka = false"
                        class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-stone-700 hover:bg-stone-100" data-testid="aksi-rab-pdf-{{ $kunci }}">
                         <x-ui.icon name="download" class="size-4 text-stone-400" /> RAB {{ $s['sumber'] }} — PDF

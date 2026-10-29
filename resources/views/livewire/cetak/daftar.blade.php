@@ -187,9 +187,7 @@
                                 <x-ui.icon name="eye" class="size-4" /> Pratinjau lengkap
                             </a>
                             @if ($b['sumber'] && $b['rincian'] > 0)
-                                <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $b['kegiatan_id'], 'sumber' => $b['sumber']]) }}" class="btn-secondary" data-testid="unduh-excel-terpilih">
-                                    <x-ui.icon name="download" class="size-4" /> RAB Excel
-                                </a>
+                                <x-dokumen.tombol-unduh-excel :kegiatan-id="$b['kegiatan_id']" :sumber="$b['sumber']" :nama="$dokumen['cetak']->namaBerkas('RAB', 'xlsx')" label="RAB Excel" testid="unduh-excel-terpilih" wire:key="unduh-excel-{{ $b['kunci'] }}" />
                                 <x-dokumen.tombol-unduh-pdf :url="route('kegiatan.rab.pdf', ['kegiatan' => $b['kegiatan_id'], 'sumber' => $b['sumber']])" :nama="$dokumen['cetak']->namaBerkas('RAB', 'pdf')" label="RAB PDF" testid="unduh-pdf-terpilih" wire:key="unduh-rab-{{ $b['kunci'] }}" />
                             @endif
                             <x-dokumen.tombol-unduh-word :kegiatan-id="$b['kegiatan_id']" :sumber="$b['sumber']" :nama="CetakDokumen::namaBerkas($dokumen['cetak'], ['cover', 'kak'])" testid="unduh-word-terpilih" wire:key="unduh-word-{{ $b['kunci'] }}" />

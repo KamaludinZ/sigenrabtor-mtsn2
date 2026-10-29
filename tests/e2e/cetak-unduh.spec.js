@@ -68,7 +68,7 @@ test.describe('Cetak & Unduh', () => {
         const tab = page.locator('[data-testid="aksi-cetak"][data-kegiatan="1"]');
         await tab.getByTestId('buka-aksi-cetak').click();
         await expect(tab.getByTestId('aksi-cetak-set-Komite')).toBeVisible();
-        await expect(tab.getByTestId('aksi-rab-excel-Komite')).toHaveAttribute('href', /\/kegiatan\/1\/rab\/excel\?sumber=Komite/);
+        await expect(tab.getByTestId('aksi-rab-excel-Komite')).toBeVisible();
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
@@ -172,5 +172,29 @@ test.describe('Cetak & Unduh', () => {
         await aksi.getByTestId('buka-aksi-cetak').click();
         const [dariMenu] = await Promise.all([page.waitForEvent('download'), aksi.getByTestId('aksi-word-Komite').click()]);
         expect(dariMenu.suggestedFilename()).toMatch(/^KAK-TOR_.*_KOMITE_2026(_DRAF)?\.docx$/);
+    });
+
+    test('unduh Excel RAB disusun di peramban', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/cetak?pilih=2%7CDIPA');
+        const panel = page.getByTestId('panel-cetak-terpilih');
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), panel.getByTestId('unduh-excel-terpilih').click()]);
+        expect(unduhan.suggestedFilename()).toMatch(/^RAB_Supervisi_.*_DIPA_2026(_DRAF)?\.xlsx$/);
+        const zip = await JSZip.loadAsync(fs.readFileSync(await unduhan.path()));
+        const lembar = await zip.file('xl/worksheets/sheet1.xml').async('string');
+        const teks = await zip.file('xl/sharedStrings.xml').async('string');
+        expect(lembar).toMatch(/<f>SUM\([A-Z]+\d+:[A-Z]+\d+\)<\/f><v>5400000<\/v>/);
+        expect(lembar).toMatch(/<f>ROUND\([A-Z]\d+\*[A-Z]\d+,0\)<\/f><v>450000<\/v>/);
+        for (const isi of ['TOTAL KESELURUHAN', 'Terbilang: Lima Juta Empat Ratus Ribu Rupiah', 'Penggandaan instrumen supervisi akademik', 'Menyetujui,']) {
+            expect(teks).toContain(isi);
+        }
+        expect(await zip.file('xl/workbook.xml').async('string')).toContain('RAB DIPA');
+
+        // Menu Cetak di ruang kerja: Excel RAB per sumber dana.
+        await page.goto('/kegiatan/1/rab');
+        const tab = page.locator('[data-testid="aksi-cetak"][data-kegiatan="1"]');
+        await tab.getByTestId('buka-aksi-cetak').click();
+        const [dariMenu] = await Promise.all([page.waitForEvent('download'), tab.getByTestId('aksi-rab-excel-Komite').click()]);
+        expect(dariMenu.suggestedFilename()).toMatch(/^RAB_.*_KOMITE_2026(_DRAF)?\.xlsx$/);
     });
 });

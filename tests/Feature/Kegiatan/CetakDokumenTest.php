@@ -79,7 +79,8 @@ class CetakDokumenTest extends TestCase
         $this->assertStringContainsString('data-testid="cetak-sekarang"', $html);
         $this->assertStringContainsString('data-testid="cetak-draf"', $html);
         $this->assertMatchesRegularExpression('#kegiatan\\\\?/2\\\\?/cetak\?sumber=DIPA#', $html, 'Dasar tautan cetak sumber dana yang tampil.');
-        $this->assertStringContainsString('href="'.route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'DIPA']).'"', $html);
+        $this->assertStringContainsString('data-testid="unduh-rab-excel"', $html, 'Excel RAB disusun di peramban.');
+        $this->assertStringContainsString('unduhExcel(', $html);
         $this->assertStringContainsString('href="'.route('kegiatan.rab.pdf', ['kegiatan' => 2, 'sumber' => 'DIPA']).'"', $html);
         $this->assertStringContainsString('href="'.e(CetakDokumen::tautan(2, 'DIPA', [], true)).'" target="_blank"', $html);
         $this->assertStringContainsString('data-testid="unduh-word-kak"', $html, 'Word KAK/TOR disusun di peramban.');

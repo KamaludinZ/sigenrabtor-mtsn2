@@ -53,7 +53,7 @@ class CetakDaftarTest extends TestCase
         $halaman->call('aturLembar', 'kak')->call('aturLembar', 'rab')->assertSet('lembar', 'rab', 'Lembar terakhir tidak bisa dilepas.');
         $halaman->call('aturLembar', 'cover')->call('aturLembar', 'kak')->assertSet('lembar', '');
         $halaman->assertSee('data-testid="unduh-word-terpilih"', false)->assertSee('unduhWord(', false)->assertSee('dokumen=cover%2Ckak', false);
-        $halaman->assertSee('data-testid="unduh-excel-terpilih"', false)->assertSee(route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'DIPA']), false);
+        $halaman->assertSee('data-testid="unduh-excel-terpilih"', false)->assertSee('unduhExcel(', false)->assertSee('rab\\/excel?sumber=DIPA', false);
 
         $halaman->call('pilih', '99|DIPA')->assertSet('pilihan', '2|DIPA', 'Dokumen di luar daftar diabaikan.');
         $halaman->set('sumber', 'Komite')->assertSee('data-kunci="1|Komite"', false)->assertDontSee('data-kunci="2|DIPA"', false)
@@ -76,7 +76,7 @@ class CetakDaftarTest extends TestCase
         $daftar = $this->get(route('kegiatan.index'))->assertOk();
         $daftar->assertSee('data-testid="aksi-cetak" data-kegiatan="2"', false)
             ->assertSee(e(CetakDokumen::tautan(2, 'DIPA', ['cover', 'kak', 'rab'], otomatis: true)), false)
-            ->assertSee(e(route('kegiatan.rab.excel', ['kegiatan' => 2, 'sumber' => 'DIPA'])), false)
+            ->assertSee('data-testid="aksi-rab-excel-DIPA"', false)
             ->assertSee(e(route('cetak.index', ['pilih' => '2|DIPA'])), false);
 
         $rab = $this->get(route('kegiatan.rab', 1))->assertOk();
