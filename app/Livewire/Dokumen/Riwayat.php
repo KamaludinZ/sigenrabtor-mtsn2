@@ -4,6 +4,7 @@ namespace App\Livewire\Dokumen;
 
 use App\Support\Dokumen\PenelusuranRiwayat;
 use App\Support\Dokumen\RiwayatDokumen;
+use App\Support\Dokumen\RiwayatKosong;
 use App\Support\Stub\StubData;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -21,7 +22,9 @@ use Livewire\Component;
  * (bawaan) = kartu per kegiatan dengan versi terbaru tiap jenis × sumber × format, versi lama yang bisa dibuka, dan penanda
  * versi lebih baru yang tersaring (PenelusuranRiwayat::perKegiatan); `kronologis` = tabel per tahun berurutan `?urut=`
  * (RiwayatDokumen::URUT). Daftar dibatasi `$batas` (PER_HALAMAN, "Tampilkan lebih banyak"); berganti tampilan/urutan/
- * kriteria mengembalikan batasnya.
+ * kriteria mengembalikan batasnya. Keadaan kosong: tanpa catatan sama sekali = cara dokumen tercatat + dokumen tahun aktif
+ * yang bisa dicetak / tautan membuat kegiatan (RiwayatKosong, `kosong`); tanpa hasil = saran melepas satu kriteria
+ * beserta jumlah dokumennya (PenelusuranRiwayat::saranLonggar).
  */
 #[Layout('layouts.app')]
 class Riwayat extends Component
@@ -142,6 +145,13 @@ class Riwayat extends Component
     public function isi(): array
     {
         return $this->penelusuran->halaman($this->tampilan, $this->urut, $this->batas);
+    }
+
+    /** @return array<string, mixed> Langkah berikutnya selama belum ada dokumen tercatat (RiwayatKosong). */
+    #[Computed]
+    public function kosong(): array
+    {
+        return RiwayatKosong::untuk(StubData::currentUser());
     }
 
     /** @return list<array<string, mixed>> */

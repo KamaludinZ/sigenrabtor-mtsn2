@@ -17,6 +17,8 @@ namespace App\Support\Dokumen;
  * - `perKegiatan()` = `RiwayatDokumen::perKegiatan` hasil, tiap kegiatan + `jumlah_semua` (dokumennya tanpa kriteria) dan
  *   tiap baris dokumen + `lebih_baru` = versi terbaru jenis × sumber × format itu yang tidak cocok dengan kriteria (null bila
  *   versi yang tampil memang yang terbaru) — saringan tanggal tidak boleh membuat versi lama tampak terbaru.
+ * - `saranLonggar()` = untuk keadaan tanpa hasil: tiap kriteria yang diterapkan (kata kunci, jenis, format, rentang tanggal)
+ *   beserta jumlah dokumen bila hanya kriteria itu dilepas — yang menghasilkan dokumen saja, terbanyak dulu.
  * - `halaman($tampilan, $urut, $batas)` = [kelompok per tahun dipotong `$batas`, jumlah butir] untuk tampilan
  *   `kegiatan` (per kegiatan) atau `kronologis` (dokumen, `terlama` membalik urutan & tahun).
  */
@@ -106,6 +108,32 @@ class PenelusuranRiwayat
         $bagian = [count($this->cocok).' dari '.$this->total.' dokumen'.($this->kriteria['cari'] !== '' ? ' cocok dengan “'.$this->kriteria['cari'].'”' : '')];
 
         return implode(' · ', [...$bagian, ...array_values($this->label())]);
+    }
+
+    /** Kriteria yang bisa dilepas → teks saran ("Lepas …"). */
+    public const LEPAS = ['cari' => 'kata kunci', 'jenis' => 'jenis', 'format' => 'format', 'tanggal' => 'rentang tanggal'];
+
+    /** @return list<array{kunci: string, label: string, jumlah: int}> */
+    public function saranLonggar(): array
+    {
+        $label = $this->label();
+        $saran = [];
+        foreach (array_keys(self::LEPAS) as $kunci) {
+            if ($kunci === 'cari' ? $this->kriteria['cari'] === '' : ! isset($label[$kunci])) {
+                continue;
+            }
+            $tanpa = match ($kunci) {
+                'tanggal' => ['dari' => '', 'sampai' => ''] + $this->kriteria,
+                default => [$kunci => ''] + $this->kriteria,
+            };
+            $jumlah = count($this->terapkan($tanpa));
+            if ($jumlah > 0) {
+                $saran[] = ['kunci' => $kunci, 'label' => self::LEPAS[$kunci].' '.($kunci === 'cari' ? '“'.$this->kriteria['cari'].'”' : $label[$kunci]), 'jumlah' => $jumlah];
+            }
+        }
+        usort($saran, fn (array $a, array $b) => $b['jumlah'] <=> $a['jumlah']);
+
+        return $saran;
     }
 
     /** @return list<array<string, mixed>> */

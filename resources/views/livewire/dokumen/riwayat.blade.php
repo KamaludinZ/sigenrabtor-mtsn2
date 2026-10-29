@@ -31,7 +31,8 @@
     </div>
 
     {{-- Ringkasan --}}
-    {{-- Selama ada kata kunci/saringan angka mengikuti hasilnya ("dari …" = seluruh catatan) --}}
+    {{-- Selama ada kata kunci/saringan angka mengikuti hasilnya ("dari …" = seluruh catatan); tanpa catatan tidak tampil --}}
+    @if ($semua !== [])
     <dl class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="ringkasan-riwayat" data-tersaring="{{ $aktif ? '1' : '0' }}">
         @foreach ([
             'jumlah' => ['Dokumen', $ringkasan['jumlah'], $dariSemua('jumlah', 'dokumen') ?? $ringkasan['tahun'].' tahun anggaran'],
@@ -46,6 +47,7 @@
             </div>
         @endforeach
     </dl>
+    @endif
 
     @if ($semua !== [])
         {{-- Tampilan & urutan --}}
@@ -144,15 +146,89 @@
             <x-ui.icon name="search" class="mx-auto size-8 text-stone-300" />
             <p class="mt-2 text-sm font-semibold text-stone-700">{{ $cari !== '' ? 'Tidak ada dokumen yang cocok dengan “'.$cari.'”'.($chip !== [] ? ' dan saringan yang dipilih.' : '.') : 'Tidak ada dokumen yang cocok dengan saringan yang dipilih.' }}</p>
             <p class="mt-1 text-sm text-stone-500">Coba kata lain atau longgarkan saringan — mis. sebagian nama kegiatan, kode leading, atau rentang tanggal yang lebih lebar.</p>
-            <button type="button" wire:click="hapusSaringan" class="mt-3 text-sm font-semibold text-brand-700 hover:text-brand-800">Hapus pencarian &amp; saringan</button>
+            @php
+                $saranLonggar = $telusur->saranLonggar();
+            @endphp
+            @if ($saranLonggar !== [])
+                <div class="mt-4 flex flex-wrap justify-center gap-2" data-testid="saran-longgar-riwayat">
+                    @foreach ($saranLonggar as $saran)
+                        <button type="button" wire:click="{{ $saran['kunci'] === 'cari' ? "\$set('cari', '')" : "lepasSaringan('".$saran['kunci']."')" }}" class="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50 hover:ring-stone-400" data-testid="saran-longgar" data-kunci="{{ $saran['kunci'] }}" data-jumlah="{{ $saran['jumlah'] }}">
+                            <x-ui.icon name="x" class="size-3" /> Lepas {{ $saran['label'] }} <span class="font-normal text-stone-500 tabular-nums">→ {{ $saran['jumlah'] }} dokumen</span>
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+            <button type="button" wire:click="hapusSaringan" class="mt-3 text-sm font-semibold text-brand-700 hover:text-brand-800" data-testid="tanpa-hasil-hapus">Hapus pencarian &amp; saringan</button>
         </div>
     @elseif ($semua === [])
-        <div class="mt-6 rounded-2xl bg-white px-5 py-12 text-center shadow-xs ring-1 ring-stone-200" data-testid="riwayat-kosong">
-            <x-ui.icon name="history" class="mx-auto size-9 text-stone-300" />
-            <p class="mt-3 text-sm font-semibold text-stone-700">Belum ada dokumen yang tercatat.</p>
-            <p class="mt-1 text-sm text-stone-500">Dokumen tercatat di sini setelah dicetak, diunduh, atau arsip finalnya diunggah.</p>
-            <a href="{{ route('cetak.index') }}" wire:navigate class="btn-primary mt-4"><x-ui.icon name="printer" class="size-4" /> Buka Cetak &amp; Unduh</a>
-        </div>
+        @php
+            $kosong = $this->kosong;
+        @endphp
+        <section class="mt-6 overflow-hidden rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-riwayat-kosong" data-testid="riwayat-kosong">
+            <div class="px-5 pt-9 pb-7 text-center sm:px-8">
+                <span class="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700 ring-1 ring-brand-100"><x-ui.icon name="history" class="size-6" /></span>
+                <h2 id="judul-riwayat-kosong" class="mt-3 text-base font-semibold text-stone-900">Belum ada dokumen yang tercatat.</h2>
+                <p class="mx-auto mt-1 max-w-xl text-sm text-stone-500">Riwayat terisi sendiri setiap kali KAK/TOR, RAB, atau set dokumen dicetak, diunduh, atau arsip finalnya diunggah — lengkap dengan versi, waktu, dan siapa yang membuatnya.</p>
+            </div>
+
+            <ol class="grid gap-px border-t border-stone-100 bg-stone-100 sm:grid-cols-3" role="list" data-testid="cara-tercatat">
+                @foreach (\App\Support\Dokumen\RiwayatKosong::LANGKAH as $kunciLangkah => [$ikonLangkah, $judulLangkah, $teksLangkah])
+                    <li class="flex gap-3 bg-white px-5 py-4" data-langkah="{{ $kunciLangkah }}">
+                        <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-600"><x-ui.icon :name="$ikonLangkah" class="size-4" /></span>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-stone-800">{{ $judulLangkah }}</p>
+                            <p class="mt-0.5 text-xs text-stone-500">{{ $teksLangkah }}</p>
+                        </div>
+                    </li>
+                @endforeach
+            </ol>
+
+            <div class="border-t border-stone-100 bg-stone-50/60 px-5 py-5 sm:px-6" data-testid="langkah-berikutnya">
+                @if ($kosong['contoh'] !== [])
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 class="text-sm font-semibold text-stone-900">Dokumen TA {{ $kosong['tahun'] }} yang bisa dicetak sekarang</h3>
+                        <p class="text-xs text-stone-500 tabular-nums" data-testid="ringkasan-siap-cetak">{{ $kosong['dokumen']['siap'] }} siap dicetak · {{ $kosong['dokumen']['draf'] }} bercap DRAF · {{ $kosong['dokumen']['kegiatan'] }} kegiatan</p>
+                    </div>
+                    <ul class="mt-3 space-y-2" role="list">
+                        @foreach ($kosong['contoh'] as $contoh)
+                            <li class="flex flex-col gap-2 rounded-xl bg-white px-3.5 py-3 ring-1 ring-stone-200 sm:flex-row sm:items-center sm:justify-between" data-testid="contoh-cetak" data-keadaan="{{ $contoh['keadaan'] }}" wire:key="contoh-{{ $contoh['kunci'] }}">
+                                <div class="min-w-0">
+                                    <p class="flex flex-wrap items-center gap-1.5 text-sm">
+                                        <span class="font-semibold text-stone-900">{{ $contoh['nama'] }}</span>
+                                        @if ($contoh['sumber'])
+                                            <x-rab.lencana-sumber :sumber="$contoh['sumber']" />
+                                        @endif
+                                    </p>
+                                    <p @class(['mt-0.5 text-xs', 'text-brand-700' => $contoh['keadaan'] === 'siap', 'text-red-700' => $contoh['keadaan'] === 'draf'])>
+                                        {{ $contoh['label_keadaan'] }}@if ($contoh['keadaan'] === 'draf' && $contoh['alasan']) <span class="text-stone-500">— {{ $contoh['alasan'] }}</span>@endif
+                                    </p>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-1.5">
+                                    <a href="{{ $contoh['tautan_pratinjau'] }}" wire:navigate class="btn-ghost px-2.5 py-1.5 text-xs" data-testid="contoh-pratinjau"><x-ui.icon name="eye" class="size-3.5" /> Pratinjau</a>
+                                    <a href="{{ $contoh['tautan_cetak'] }}" target="_blank" rel="noopener" class="btn-secondary px-2.5 py-1.5 text-xs" data-testid="contoh-cetak-tautan"><x-ui.icon name="printer" class="size-3.5" /> Cetak</a>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <div class="mt-4 text-center sm:text-left">
+                        <a href="{{ route('cetak.index') }}" wire:navigate class="btn-primary"><x-ui.icon name="printer" class="size-4" /> Buka Cetak &amp; Unduh</a>
+                    </div>
+                @elseif ($kosong['buat'])
+                    <div class="text-center" data-testid="kosong-tanpa-kegiatan">
+                        <p class="text-sm text-stone-600">Belum ada kegiatan TA {{ $kosong['tahun'] }}. Buat kegiatan dulu, lengkapi data & RAB-nya, lalu cetak dokumennya — riwayatnya akan muncul di sini.</p>
+                        <a href="{{ $kosong['buat'] }}" wire:navigate class="btn-primary mt-3" data-testid="kosong-buat-kegiatan"><x-ui.icon name="plus" class="size-4" /> Buat kegiatan</a>
+                    </div>
+                @else
+                    <p class="text-center text-sm text-stone-600" data-testid="kosong-tanpa-kegiatan">
+                        @if ($kosong['terkunci'])
+                            Tahun Anggaran {{ $kosong['tahun'] }} dikunci, dan belum ada kegiatan yang bisa dicetak.
+                        @else
+                            Belum ada kegiatan TA {{ $kosong['tahun'] }} dalam cakupan akun Anda — minta admin menautkan leading Anda di Pengaturan › Leading &amp; Akun.
+                        @endif
+                    </p>
+                @endif
+            </div>
+        </section>
     @else
         <div class="mt-4 space-y-6">
             @foreach ($perTahun as $tahun => $baris)

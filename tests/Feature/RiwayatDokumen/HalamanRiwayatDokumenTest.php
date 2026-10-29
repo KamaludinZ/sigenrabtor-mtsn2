@@ -3,8 +3,11 @@
 namespace Tests\Feature\RiwayatDokumen;
 
 use App\Contracts\RiwayatDokumenRepository;
+use App\Contracts\TahunAnggaranRepository;
 use App\Livewire\Dokumen\Riwayat;
+use App\Support\Dokumen\PenelusuranRiwayat;
 use App\Support\Dokumen\RiwayatDokumen;
+use App\Support\Dokumen\RiwayatKosong;
 use App\Support\Navigation;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
@@ -70,7 +73,73 @@ class HalamanRiwayatDokumenTest extends TestCase
     {
         Storage::disk('local')->put(config('sigenrabtor.stub.riwayat_dokumen_file'), '[]');
         $this->assertSame([], app(RiwayatDokumenRepository::class)->semua());
-        Livewire::test(Riwayat::class)->assertSee('data-testid="riwayat-kosong"', false)->assertSee('Belum ada dokumen yang tercatat.');
+
+        $kosong = RiwayatKosong::untuk(self::LEADING);
+        $this->assertSame(2026, $kosong['tahun']);
+        $this->assertCount(RiwayatKosong::MAKS_CONTOH, $kosong['contoh']);
+        $this->assertSame(3, $kosong['dokumen']['kegiatan']);
+        $this->assertGreaterThan(RiwayatKosong::MAKS_CONTOH, $kosong['dokumen']['jumlah']);
+        $this->assertNull($kosong['buat'], 'Ada kegiatan tahun aktif: arahkan ke cetak, bukan membuat kegiatan.');
+        $keadaan = array_column($kosong['contoh'], 'keadaan');
+        $this->assertSame($keadaan, array_values(array_merge(array_filter($keadaan, fn ($k) => $k === 'siap'), array_filter($keadaan, fn ($k) => $k === 'draf'))), 'Siap dicetak dulu.');
+        $this->assertStringContainsString('/kegiatan/', $kosong['contoh'][0]['tautan_cetak']);
+
+        Livewire::test(Riwayat::class)
+            ->assertSee('data-testid="riwayat-kosong"', false)
+            ->assertSee('Belum ada dokumen yang tercatat.')
+            ->assertDontSee('data-testid="ringkasan-riwayat"', false)
+            ->assertDontSee('data-testid="alat-riwayat"', false)
+            ->assertSeeHtml('data-langkah="cetak"')
+            ->assertSeeHtml('data-langkah="unduh"')
+            ->assertSeeHtml('data-langkah="arsip"')
+            ->assertSeeText('Dokumen TA 2026 yang bisa dicetak sekarang')
+            ->assertSee('data-testid="contoh-cetak-tautan"', false)
+            ->assertDontSee('data-testid="kosong-buat-kegiatan"', false);
+    }
+
+    public function test_riwayat_kosong_tanpa_kegiatan_tahun_aktif(): void
+    {
+        Storage::disk('local')->put(config('sigenrabtor.stub.riwayat_dokumen_file'), '[]');
+        Storage::disk('local')->put(config('sigenrabtor.stub.kegiatan_file'), '[]');
+
+        $kosong = RiwayatKosong::untuk(self::LEADING);
+        $this->assertSame([[], 0], [$kosong['contoh'], $kosong['dokumen']['jumlah']]);
+        $this->assertSame(route('kegiatan.create'), $kosong['buat']);
+        $this->assertNull(RiwayatKosong::untuk(['id' => 9, 'role' => 'leading', 'leadings' => []])['buat'], 'Akun tanpa leading tidak bisa membuat kegiatan.');
+        Livewire::test(Riwayat::class)
+            ->assertSee('data-testid="kosong-buat-kegiatan"', false)
+            ->assertSeeText('Belum ada kegiatan TA 2026.');
+
+        app(TahunAnggaranRepository::class)->kunci(2026, true);
+        $terkunci = RiwayatKosong::untuk(self::ADMIN);
+        $this->assertTrue($terkunci['terkunci']);
+        $this->assertNull($terkunci['buat']);
+        Livewire::test(Riwayat::class)
+            ->assertDontSee('data-testid="kosong-buat-kegiatan"', false)
+            ->assertSeeText('Tahun Anggaran 2026 dikunci');
+    }
+
+    public function test_tanpa_hasil_menyarankan_kriteria_yang_dilepas(): void
+    {
+        $telusur = PenelusuranRiwayat::dari(RiwayatDokumen::untuk(self::LEADING), ['cari' => 'lomba', 'format' => 'xlsx', 'sampai' => '2025-12-31']);
+        $this->assertSame([], $telusur->cocok);
+        $this->assertSame([['kunci' => 'format', 'label' => 'format Excel', 'jumlah' => 2]], $telusur->saranLonggar(), 'Hanya melepas format yang menghasilkan dokumen.');
+        $this->assertSame(
+            [['kunci' => 'cari', 'label' => 'kata kunci “workshop”', 'jumlah' => 1], ['kunci' => 'jenis', 'label' => 'jenis RAB', 'jumlah' => 1], ['kunci' => 'format', 'label' => 'format PDF', 'jumlah' => 1]],
+            PenelusuranRiwayat::dari(RiwayatDokumen::untuk(self::LEADING), ['cari' => 'workshop', 'jenis' => 'RAB', 'format' => 'pdf'])->saranLonggar(),
+            'Setiap kriteria yang dilepas menghasilkan dokumen; jumlah sama tetap urut kriteria.',
+        );
+        $this->assertSame([], PenelusuranRiwayat::dari(RiwayatDokumen::untuk(self::LEADING), [])->saranLonggar());
+
+        Livewire::test(Riwayat::class)
+            ->set('cari', 'lomba')
+            ->set('format', 'xlsx')
+            ->assertSee('data-testid="riwayat-tanpa-hasil"', false)
+            ->assertSeeHtml('data-testid="saran-longgar" data-kunci="format" data-jumlah="2"')
+            ->assertSeeText('Lepas format Excel')
+            ->call('lepasSaringan', 'format')
+            ->assertDontSee('data-testid="riwayat-tanpa-hasil"', false)
+            ->assertSet('cari', 'lomba');
     }
 
     public function test_per_kegiatan_versi_terbaru_dan_lama(): void

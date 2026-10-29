@@ -120,7 +120,9 @@ test.describe('Riwayat Dokumen', () => {
 
         await page.getByTestId('saring-jenis').selectOption('KAK');
         await expect(page.getByTestId('riwayat-tanpa-hasil')).toBeVisible();
-        await page.getByTestId('riwayat-tanpa-hasil').getByRole('button').click();
+        await expect(page.getByTestId('saran-longgar')).toHaveCount(1);
+        await expect(page.locator('[data-testid="saran-longgar"][data-kunci="jenis"]')).toHaveAttribute('data-jumlah', '7');
+        await page.getByTestId('tanpa-hasil-hapus').click();
         await expect(page.getByTestId('chip-saringan-riwayat')).toBeHidden();
         await expect(page).not.toHaveURL(/jenis=|dari=|sampai=/);
         await expect(butir('rd-2025-5')).toBeVisible();
