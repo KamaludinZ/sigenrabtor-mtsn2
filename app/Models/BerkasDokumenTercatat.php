@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Satu catatan Riwayat Dokumen (tabel `riwayat_dokumen`, migrasi 000043): berkas yang dicetak, diunduh, atau diarsipkan
  * beserta cuplikan kegiatannya; id teks, hanya ditambah (trigger `riwayat_dokumen_hanya_tambah`), waktu `dibuat_pada`
- * bermikrodetik. Diisi hanya lewat repositori riwayat dokumen.
+ * bermikrodetik, `isi` cuplikan isi saat dibuat (migrasi 000044, null = tidak disimpan). Diisi hanya lewat repositori
+ * riwayat dokumen.
  */
 #[Table('riwayat_dokumen', keyType: 'string', incrementing: false, timestamps: false, dateFormat: 'Y-m-d H:i:s.uP')]
 #[Unguarded]
@@ -20,6 +21,7 @@ class BerkasDokumenTercatat extends Model
     {
         return [
             'ringkas' => ObjekJson::class,
+            'isi' => 'array',
             'bertanda_draf' => 'boolean',
             'ukuran' => 'integer',
             'versi' => 'integer',

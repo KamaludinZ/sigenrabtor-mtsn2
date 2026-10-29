@@ -25,6 +25,8 @@ class SkemaDokumenTest extends TestCase
     /** Riwayat dokumen (000043) merujuk documents, tahun anggaran, leading & akun: dibatalkan paling dulu. */
     private const MIGRASI_RIWAYAT_DOKUMEN = 'database/migrations/2026_10_29_000043_create_riwayat_dokumen_table.php';
 
+    private const MIGRASI_ISI_RIWAYAT = 'database/migrations/2026_10_29_000044_add_isi_to_riwayat_dokumen_table.php';
+
     /** Status dokumen mengikuti kegiatan (000040): trigger di activities & documents. */
     private const MIGRASI_STATUS_DOKUMEN = 'database/migrations/2026_10_29_000040_sinkron_status_dokumen.php';
 
@@ -142,6 +144,7 @@ class SkemaDokumenTest extends TestCase
     {
         DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
         DB::statement('SET CONSTRAINTS ALL DEFERRED');
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_ISI_RIWAYAT])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_RIWAYAT_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_STATUS_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_HASIL])->assertSuccessful();
@@ -155,6 +158,7 @@ class SkemaDokumenTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI_HASIL])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_STATUS_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_RIWAYAT_DOKUMEN])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_ISI_RIWAYAT])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('documents'));
         $this->assertSame(2026, (int) DB::selectOne('SELECT tahun_aktif() AS t')->t);
     }

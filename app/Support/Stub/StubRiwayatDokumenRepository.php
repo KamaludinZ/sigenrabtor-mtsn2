@@ -101,7 +101,7 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
             $catatan[$kunci] = $entri[$kunci] ?? null;
         }
 
-        return $catatan + ['versi' => $versi, 'ringkas' => $entri['ringkas'] ?? ['total_rab' => null, 'bagian_lengkap' => null, 'jumlah_bagian' => null], 'user_id' => $entri['user_id'] ?? null, 'dibuat_oleh' => $entri['dibuat_oleh'] ?? '', 'dibuat_pada' => $waktu];
+        return $catatan + ['versi' => $versi, 'ringkas' => $entri['ringkas'] ?? ['total_rab' => null, 'bagian_lengkap' => null, 'jumlah_bagian' => null], 'user_id' => $entri['user_id'] ?? null, 'dibuat_oleh' => $entri['dibuat_oleh'] ?? '', 'dibuat_pada' => $waktu, 'isi' => $entri['isi'] ?? null];
     }
 
     /** @return list<array<string, mixed>> */

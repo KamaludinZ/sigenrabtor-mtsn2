@@ -51,6 +51,20 @@ jenis × sumber × format yang sama, terbaru dulu), `perbedaan`, `kegiatan` (nul
 `duplikat` {bisa, mode tahun_lalu|tahun_ini, alasan, tautan, nama, nama_terkunci, tahun}. 404 `{pesan}` tidak ada, 403
 `{pesan}` di luar cakupan atau akun nonaktif.
 
+## `GET /dokumen/{id}/isi` — isi dokumen (`dokumen.isi`)
+
+`App\Support\Dokumen\IsiRiwayatDokumen::untuk`. Berkas cetak & unduhan tidak disimpan, jadi `sumber_isi`:
+
+| `sumber_isi` | Isi |
+|---|---|
+| `tersimpan` | cuplikan isi yang dicatat bersama berkasnya (kolom `riwayat_dokumen.isi`), persis seperti saat itu; `sama_dengan_terbaru` membandingkan sidiknya dengan susunan sekarang |
+| `arsip` | catatan arsip final: `berkas` {tautan PDF bertanda tangan, nama, ukuran} (hanya versi terbaru & bila boleh); `isi` = susunan data terbaru sebagai rujukan |
+| `terbaru` | disusun ulang dari data kegiatan sekarang; `perbedaan` dengan catatan (versi lama, total RAB, status, cap DRAF) |
+| `tidak_ada` | tidak bisa disusun (kegiatan tidak tersimpan / di luar cakupan / sumber dana tidak dipilih); `catatan` = alasannya |
+
+`isi` = `{ "sidik": "md5", "cover": {kotak teks cover} | null, "bagian": [{nomor, judul, isi: [blok], status, kurang, periksa, sidik}], "rab": {judul, kepala, tabel, mekanisme, pengesahan, kurang} | null }`
+menurut lembar jenis dokumen. Juga `dokumen` (baris + `izin`), `label_sumber`, `catatan`. 404/403 `{pesan}`.
+
 ## Otorisasi (`App\Support\Dokumen\OtorisasiDokumen`)
 
 | Aksi | Syarat |

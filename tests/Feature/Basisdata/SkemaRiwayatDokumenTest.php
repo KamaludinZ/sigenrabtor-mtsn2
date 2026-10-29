@@ -22,6 +22,8 @@ class SkemaRiwayatDokumenTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_29_000043_create_riwayat_dokumen_table.php';
 
+    private const MIGRASI_ISI = 'database/migrations/2026_10_29_000044_add_isi_to_riwayat_dokumen_table.php';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -133,13 +135,42 @@ class SkemaRiwayatDokumenTest extends TestCase
         $this->assertSame([null, null, null, 'Rapat Kerja Madrasah', "{$kegiatan}|RAB|DIPA|pdf"], [$baris->activity_id, $baris->document_id, $baris->user_id, $baris->nama_kegiatan, $baris->kunci_versi], 'Catatan tetap ada walau kegiatannya dihapus.');
     }
 
+    public function test_cuplikan_isi_sah_dan_tidak_bisa_diubah(): void
+    {
+        $isi = ['sidik' => md5('isi'), 'cover' => ['nama_kegiatan' => 'RAPAT KERJA'], 'bagian' => [['nomor' => 1, 'judul' => 'Latar Belakang']], 'rab' => null];
+        $id = $this->catatan(['isi' => json_encode($isi)]);
+        $this->assertEquals($isi, BerkasDokumenTercatat::query()->findOrFail($id)->isi);
+        $this->catatan(['isi' => null, 'versi' => 2]);
+
+        foreach ([
+            'bukan objek' => '[]',
+            'kunci asing' => json_encode($isi + ['berkas' => 'x']),
+            'sidik bukan md5' => json_encode(['sidik' => 'abc'] + $isi),
+            'tanpa bagian' => json_encode(array_diff_key($isi, ['bagian' => 1])),
+            'bagian bukan larik' => json_encode(['bagian' => 'x'] + $isi),
+            'tanpa cover' => json_encode(array_diff_key($isi, ['cover' => 1])),
+            'rab bukan objek' => json_encode(['rab' => [1, 2]] + $isi),
+        ] as $kasus => $nilai) {
+            $this->ditolak(fn () => $this->catatan(['isi' => $nilai, 'versi' => 999]), 'riwayat_dokumen_isi_check');
+        }
+        $this->ditolak(fn () => DB::table('riwayat_dokumen')->where('id', $id)->update(['isi' => null]), 'hanya bisa ditambah');
+    }
+
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_ISI])->assertSuccessful();
+        $this->assertFalse(Schema::hasColumn('riwayat_dokumen', 'isi'));
+        $this->assertNull(DB::selectOne("SELECT to_regproc('riwayat_isi_sah') AS f")->f);
+        $id = $this->catatan();
+        $this->ditolak(fn () => DB::table('riwayat_dokumen')->where('id', $id)->update(['nama_berkas' => 'LAIN.pdf']), 'hanya bisa ditambah');
+        DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
+        DB::statement('SET CONSTRAINTS ALL DEFERRED');
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->assertFalse(Schema::hasTable('riwayat_dokumen'));
         $this->assertNull(DB::selectOne("SELECT to_regproc('riwayat_dokumen_hanya_tambah') AS f")->f);
         $this->assertNull(DB::selectOne("SELECT to_regproc('riwayat_ringkas_sah') AS f")->f);
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
-        $this->assertTrue(Schema::hasTable('riwayat_dokumen'));
+        $this->artisan('migrate', ['--path' => self::MIGRASI_ISI])->assertSuccessful();
+        $this->assertTrue(Schema::hasColumn('riwayat_dokumen', 'isi'));
     }
 }

@@ -121,7 +121,7 @@ final class AksiRiwayatDokumen
         $totalTeks = $c['ringkas']['total_rab'] !== null ? Format::rupiah((int) $c['ringkas']['total_rab']) : null;
 
         return [
-            'dokumen' => $c + ['total_teks' => $totalTeks],
+            'dokumen' => array_diff_key($c, ['isi' => true]) + ['total_teks' => $totalTeks, 'ada_isi' => ! empty($c['isi'])],
             'terbaru' => $terbaru,
             'perbedaan' => $sekarang === null ? [] : self::perbedaan($c, $versi[0], $terbaru, $sekarang, $totalTeks),
             'versi' => $versi,
