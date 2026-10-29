@@ -5,6 +5,7 @@ namespace App\Support\Dokumen;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\MatrikJadwalRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Dokumen\Generasi\FormatBerkas;
 use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
@@ -25,7 +26,7 @@ use RuntimeException;
  *
  * - `lihat($id, $pengguna)` = rincian catatan (cakupan RiwayatDokumen::boleh), semua versi jenis × sumber × format yang
  *   sama (terbaru dulu), keadaan kegiatan sekarang (status, total RAB sumber itu dibanding saat dibuat), dan cara membuka
- *   ulang: PDF arsip final (hanya versi arsip terbaru — arsip lama sudah diganti), pratinjau, cetak ulang & unduh PDF/Word/
+ *   ulang (lembar FormatBerkas::lembar): PDF arsip final (hanya versi arsip terbaru — arsip lama sudah diganti), pratinjau, cetak ulang & unduh PDF/Word/
  *   Excel dengan data terbaru (berkas cetak/unduhan lama tidak disimpan, hanya catatannya). Tanpa kegiatan tersimpan atau
  *   sumber dananya tidak dipilih lagi → `alasan_buka`. `perbedaan` = hal yang membuat dokumen susunan ulang berbeda dari
  *   catatan ini (`PERBEDAAN`: versi lama, total RAB, status, cap DRAF) — modal meminta konfirmasi sebelum membuka ulang.
@@ -41,9 +42,6 @@ use RuntimeException;
  */
 final class AksiRiwayatDokumen
 {
-    /** Lembar per jenis dokumen saat dibuka/dicetak ulang. */
-    public const LEMBAR = ['lengkap' => ['cover', 'kak', 'rab'], 'KAK+TOR' => ['cover', 'kak'], 'KAK' => ['cover', 'kak'], 'TOR' => ['cover', 'kak'], 'RAB' => ['rab']];
-
     public const MAKS_NAMA = 255;
 
     public const PESAN_TIDAK_ADA = 'Catatan dokumen tidak ditemukan.';
@@ -97,8 +95,7 @@ final class AksiRiwayatDokumen
         } elseif ($c['sumber'] !== null && ! in_array($c['sumber'], array_column($kegiatan['sumber_dana'] ?? [], 'sumber'), true)) {
             $alasan = 'Sumber dana '.$c['sumber'].' tidak lagi dipilih di kegiatan ini, sehingga dokumen sumber dana itu tidak bisa disusun ulang.';
         } else {
-            $lembar = $c['sumber'] === null ? array_values(array_diff(self::LEMBAR[$c['jenis']] ?? ['cover', 'kak'], ['rab'])) : (self::LEMBAR[$c['jenis']] ?? ['cover', 'kak', 'rab']);
-            $lembar = $lembar === [] ? ['cover', 'kak'] : $lembar;
+            $lembar = FormatBerkas::lembar($c['jenis'], $c['sumber']);
             $cetak = StatusCetak::dari($kegiatan, $c['sumber']);
             $buka = [
                 'arsip' => $c['asal'] === 'arsip' && $terbaru && $c['sumber'] !== null ? route('kegiatan.arsip', ['kegiatan' => $c['kegiatan_id'], 'sumber' => $c['sumber']]) : null,
