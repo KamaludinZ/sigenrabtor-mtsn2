@@ -118,4 +118,18 @@ final class CetakDokumen
             'otomatis' => $otomatis ? 1 : null,
         ]));
     }
+
+    /**
+     * Tautan unduhan PDF langsung (`kegiatan.cetak.pdf`, PembuatPdfDokumen) lembar terpilih.
+     *
+     * @param  list<string>  $lembar
+     */
+    public static function tautanPdf(int $kegiatanId, ?string $sumber, array $lembar): string
+    {
+        return route('kegiatan.cetak.pdf', array_filter([
+            'kegiatan' => $kegiatanId,
+            'sumber' => $sumber,
+            'dokumen' => self::pilihan($lembar) === array_keys(self::LEMBAR) ? null : implode(',', self::pilihan($lembar)),
+        ]));
+    }
 }

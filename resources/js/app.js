@@ -12,10 +12,11 @@ import penyuntingTeks, { adaDrafSunting, adaSuntingKotor, jagaSunting } from './
 import pasangSiaranAnggaran from './siaran';
 import editorTeksBaku, { isiTeksBaku, penandaAsing } from './teks-baku';
 import jumlahTermin, { persenTermin, statusTermin } from './termin';
+import unduhPdf, { ukuranBerkas } from './unduh-pdf';
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu), $ringkasanMatrik(matrik), $nip(teks), $galatNip(teks).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor, adaDrafSunting, adaSuntingKotor };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor, adaDrafSunting, adaSuntingKotor, ukuranBerkas };
 
 pasangSiaranAnggaran();
 
@@ -44,6 +45,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('formAi', formAi);
     window.Alpine.data('penampilDokumen', penampilDokumen);
     window.Alpine.data('penyuntingTeks', penyuntingTeks);
+    window.Alpine.data('unduhPdf', unduhPdf);
 
     // x-jaga-sunting: klik (aksi Livewire) minta konfirmasi selama penyunting teks pratinjau belum disimpan.
     window.Alpine.directive('jaga-sunting', (el) => jagaSunting(el));

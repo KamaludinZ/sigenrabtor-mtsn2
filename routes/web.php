@@ -99,6 +99,7 @@ use App\Http\Controllers\UnduhArsipFinal;
 use App\Http\Controllers\UnduhBuku;
 use App\Http\Controllers\UnduhFormatRincianRab;
 use App\Http\Controllers\UnduhMasterTemplate;
+use App\Http\Controllers\UnduhPdfDokumenKegiatan;
 use App\Http\Controllers\UnduhTemplateDataPagu;
 use App\Http\Controllers\UnduhTemplateImporKegiatan;
 use App\Http\Controllers\UnggahArsipFinal;
@@ -211,6 +212,7 @@ Route::post('/kegiatan/{kegiatan}/status', UbahStatusKegiatan::class)->whereNumb
 Route::get('/kegiatan/{kegiatan}/status-cetak', StatusCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status_cetak');
 Route::get('/kegiatan/{kegiatan}/periksa-cetak', PeriksaCetakKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.periksa_cetak');
 Route::get('/kegiatan/{kegiatan}/cetak', CetakDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.cetak');
+Route::get('/kegiatan/{kegiatan}/cetak/pdf', UnduhPdfDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.cetak.pdf');
 Route::get('/kegiatan/{kegiatan}/draf', DrafDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.draf');
 Route::put('/kegiatan/{kegiatan}/draf', SimpanDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.simpan');
 Route::delete('/kegiatan/{kegiatan}/draf', HapusDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.hapus');

@@ -178,10 +178,11 @@
                         </div>
 
                         {{-- Aksi cetak & unduh --}}
-                        <div class="flex flex-wrap gap-2" data-testid="aksi-cetak">
-                            <a href="{{ $dokumen['tautan_cetak'] }}" target="_blank" rel="noopener" class="btn-primary" data-testid="cetak-terpilih">
+                        <div class="flex flex-wrap items-start gap-2" data-testid="aksi-cetak">
+                            <a href="{{ $dokumen['tautan_cetak'] }}" target="_blank" rel="noopener" class="btn-primary self-start" data-testid="cetak-terpilih">
                                 <x-ui.icon name="printer" class="size-4" /> Cetak / Simpan PDF
                             </a>
+                            <x-dokumen.tombol-unduh-pdf :url="CetakDokumen::tautanPdf($b['kegiatan_id'], $b['sumber'], $dokumen['lembar'])" :nama="$dokumen['nama_berkas']" :cetak="$dokumen['tautan_cetak']" testid="unduh-pdf-set" wire:key="unduh-set-{{ $b['kunci'] }}-{{ implode('-', $dokumen['lembar']) }}" />
                             <a href="{{ $dokumen['pratinjau'] }}" wire:navigate class="btn-secondary" data-testid="buka-pratinjau">
                                 <x-ui.icon name="eye" class="size-4" /> Pratinjau lengkap
                             </a>
@@ -189,9 +190,7 @@
                                 <a href="{{ route('kegiatan.rab.excel', ['kegiatan' => $b['kegiatan_id'], 'sumber' => $b['sumber']]) }}" class="btn-secondary" data-testid="unduh-excel-terpilih">
                                     <x-ui.icon name="download" class="size-4" /> RAB Excel
                                 </a>
-                                <a href="{{ route('kegiatan.rab.pdf', ['kegiatan' => $b['kegiatan_id'], 'sumber' => $b['sumber']]) }}" class="btn-secondary" data-testid="unduh-pdf-terpilih">
-                                    <x-ui.icon name="download" class="size-4" /> RAB PDF
-                                </a>
+                                <x-dokumen.tombol-unduh-pdf :url="route('kegiatan.rab.pdf', ['kegiatan' => $b['kegiatan_id'], 'sumber' => $b['sumber']])" :nama="$dokumen['cetak']->namaBerkas('RAB', 'pdf')" label="RAB PDF" testid="unduh-pdf-terpilih" wire:key="unduh-rab-{{ $b['kunci'] }}" />
                             @endif
                             <span class="btn-secondary cursor-not-allowed opacity-60" aria-disabled="true" data-testid="unduh-word-terpilih">
                                 <x-ui.icon name="file-text" class="size-4" /> Word <x-ui.segera />

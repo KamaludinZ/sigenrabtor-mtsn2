@@ -70,6 +70,10 @@
                     @else
                         <p class="px-2.5 py-2 text-xs text-stone-500" data-testid="unduh-rab-kosong">RAB {{ $sumberAktif }} belum berisi rincian — unduh RAB tersedia setelah rincian diisi.</p>
                     @endif
+                    <div class="px-2.5 py-2" data-testid="unduh-set-pdf-langsung">
+                        <p class="text-xs text-stone-500">Set dokumen (cover, KAK/TOR, RAB) — langsung tersimpan sebagai PDF:</p>
+                        <x-dokumen.tombol-unduh-pdf class="mt-1.5" :url="\App\Support\Dokumen\CetakDokumen::tautanPdf($kegiatanId, $sumberAktif, [])" :nama="\App\Support\Dokumen\CetakDokumen::namaBerkas($this->statusCetak, array_keys(\App\Support\Dokumen\CetakDokumen::LEMBAR))" :cetak="\App\Support\Dokumen\CetakDokumen::tautan($kegiatanId, $sumberAktif, [], true)" label="Unduh PDF set dokumen" testid="unduh-pdf-set" wire:key="unduh-set-{{ $sumberAktif }}" />
+                    </div>
                     <a href="{{ \App\Support\Dokumen\CetakDokumen::tautan($kegiatanId, $sumberAktif, [], true) }}" target="_blank" rel="noopener" class="flex items-start gap-2 rounded-lg px-2.5 py-2 hover:bg-stone-50" data-testid="unduh-set-pdf">
                         <x-ui.icon name="printer" class="mt-0.5 size-4 shrink-0 text-brand-700" />
                         <span><span class="block font-semibold text-stone-900">Set dokumen — PDF</span><span class="block text-xs text-stone-500">Cover, KAK/TOR, RAB lewat Cetak › Simpan sebagai PDF</span></span>

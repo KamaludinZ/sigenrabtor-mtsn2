@@ -110,4 +110,36 @@ test.describe('Cetak & Unduh', () => {
         await expect(page.locator('[data-tanda-air-cetak]')).toBeVisible();
         await page.emulateMedia({ media: 'screen' });
     });
+
+    test('unduh PDF langsung: nama berkas baku, kegagalan dengan jalan keluar', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/cetak?pilih=2%7CDIPA');
+        const panel = page.getByTestId('panel-cetak-terpilih');
+        const nama = (await panel.getByTestId('nama-berkas-terpilih').textContent()).trim();
+
+        const [unduhan] = await Promise.all([page.waitForEvent('download'), panel.getByTestId('unduh-pdf-set').click()]);
+        expect(unduhan.suggestedFilename()).toBe(nama);
+        await expect(panel.getByTestId('unduh-pdf-set')).toHaveAttribute('data-keadaan', /selesai|siap/);
+
+        // RAB PDF lewat LibreOffice di server.
+        const [rab] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), panel.getByTestId('unduh-pdf-terpilih').click()]);
+        expect(rab.suggestedFilename()).toMatch(/^RAB_.*_DIPA_2026(_DRAF)?\.pdf$/);
+
+        // Server gagal menyusun: pesan, Coba lagi, dan jalan keluar lewat halaman cetak.
+        await page.route('**/kegiatan/2/cetak/pdf**', (rute) => rute.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ pesan: 'Penyusun PDF sedang sibuk — coba lagi.', tautan_cetak: '/kegiatan/2/cetak?sumber=DIPA&otomatis=1' }) }));
+        await panel.getByTestId('unduh-pdf-set').click();
+        const gagal = panel.getByTestId('unduh-pdf-set-gagal');
+        await expect(gagal).toContainText('Penyusun PDF sedang sibuk');
+        await expect(gagal.getByRole('link', { name: 'Simpan lewat halaman cetak' })).toHaveAttribute('href', /\/kegiatan\/2\/cetak\?sumber=DIPA&otomatis=1/);
+        await page.unroute('**/kegiatan/2/cetak/pdf**');
+        const [ulang] = await Promise.all([page.waitForEvent('download'), gagal.getByRole('button', { name: 'Coba lagi' }).click()]);
+        expect(ulang.suggestedFilename()).toBe(nama);
+        await expect(gagal).toBeHidden();
+
+        // Pratinjau: unduh PDF set dari panel Unduh.
+        await page.goto('/kegiatan/1/pratinjau');
+        await page.getByTestId('buka-unduh').click();
+        const [pratinjau] = await Promise.all([page.waitForEvent('download'), page.getByTestId('panel-unduh').getByTestId('unduh-pdf-set').click()]);
+        expect(pratinjau.suggestedFilename()).toMatch(/^KAK-TOR_RAB_.*_KOMITE_2026(_DRAF)?\.pdf$/);
+    });
 });
