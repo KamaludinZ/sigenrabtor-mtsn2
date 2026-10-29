@@ -115,6 +115,7 @@ use App\Http\Controllers\UnggahArsipFinal;
 use App\Http\Controllers\UnggahMasterKode;
 use App\Http\Controllers\UnggahPerkinKegiatan;
 use App\Http\Middleware\HanyaAdmin;
+use App\Http\Middleware\HanyaTamu;
 use App\Livewire\Akun\Daftar as AkunDaftar;
 use App\Livewire\Akun\Masuk as AkunMasuk;
 use App\Livewire\Akun\Profil as AkunProfil;
@@ -314,8 +315,8 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
 });
 
 // Masuk & Akun (PRD §8): halaman masuk & daftar (layout tamu), keluar, dan akun saya.
-Route::get('/masuk', AkunMasuk::class)->name('akun.masuk');
-Route::get('/daftar', AkunDaftar::class)->name('akun.daftar');
+Route::get('/masuk', AkunMasuk::class)->middleware(HanyaTamu::class)->name('akun.masuk');
+Route::get('/daftar', AkunDaftar::class)->middleware(HanyaTamu::class)->name('akun.daftar');
 Route::post('/keluar', function () {
     SesiAkun::keluar();
 

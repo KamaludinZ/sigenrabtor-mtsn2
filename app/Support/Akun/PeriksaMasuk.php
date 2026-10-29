@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\RateLimiter;
  * - `periksa($surel)` = akun aktif yang masuk beserta perannya (`SesiAkun::masuk`) atau pesan penolakan (tidak terdaftar /
  *   permohonan menunggu / nonaktif) — sandi baru diperiksa autentikasi Laravel kelak;
  * - pembatas percobaan per surel × alamat IP: `MAKS_PERCOBAAN` gagal → dijeda `JEDA_DETIK` (`tunggu()`, `gagal()` →
- *   sisa percobaan, `berhasil()` mengosongkan), `pesanTunggu()`/`pesanSisa()`.
+ *   sisa percobaan, `berhasil()` mengosongkan), `pesanTunggu()`/`pesanSisa()`;
+ * - `jalurKembali()` = tujuan sesudah masuk dari `?kembali=` (hanya jalur relatif aplikasi — cegah pengalihan terbuka).
  */
 final class PeriksaMasuk
 {
@@ -78,6 +79,16 @@ final class PeriksaMasuk
     public static function pesanSisa(int $sisa): ?string
     {
         return $sisa > 0 && $sisa <= self::PERINGATAN_SISA ? "Sisa {$sisa} percobaan sebelum masuk dijeda ".self::JEDA_DETIK.' detik.' : null;
+    }
+
+    /** Jalur tujuan sesudah masuk dari `?kembali=`: hanya jalur relatif di aplikasi ini ("/…", bukan "//…"), selain itu null. */
+    public static function jalurKembali(mixed $jalur): ?string
+    {
+        if (! is_string($jalur) || mb_strlen($jalur) > 500 || preg_match('#^/(?![/\\\\])[^\s]*$#u', $jalur) !== 1) {
+            return null;
+        }
+
+        return in_array(parse_url($jalur, PHP_URL_PATH), ['/masuk', '/daftar', '/keluar'], true) ? null : $jalur;
     }
 
     private static function kunci(string $surel, ?string $ip): string

@@ -4,14 +4,17 @@ namespace App\Http\Middleware;
 
 use App\Support\Akun\SesiAkun;
 use Closure;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Halaman aplikasi hanya untuk pengguna yang sudah masuk (PRD §8; state autentikasi tiruan SesiAkun — padanan middleware
- * `auth`). Dipasang di grup web; rute `TERBUKA` (masuk, daftar, keluar, sakelar demo) dan permintaan Livewire tidak
- * diperiksa. Belum masuk → halaman: alihkan ke Masuk sambil mengingat tujuan (`redirect()->guest`); data JSON: 401 {pesan}
- * (dibaca klien unduhan sebagai "sesi"). Akun di sesi yang kini nonaktif dikeluarkan (dengan pemberitahuan). Nonaktif seluruhnya bila
+ * `auth`). Dipasang di grup web dan sebagai middleware persisten Livewire (aksi komponen diperiksa terhadap rute halaman
+ * asalnya); rute `TERBUKA` (masuk, daftar, keluar, sakelar demo), aset Livewire, dan `/up` tidak diperiksa. Belum masuk →
+ * halaman: alihkan ke Masuk sambil mengingat tujuan (`redirect()->guest`); data JSON: 401 {pesan} (dibaca klien unduhan
+ * sebagai "sesi"); aksi Livewire: 401 {pesan, masuk} dilempar (`HttpResponseException`, karena respons middleware
+ * persisten diabaikan Livewire) → klien `resources/js/sesi.js` mengalihkan ke Masuk ber-`?sesi=berakhir&kembali=`. Akun di sesi yang kini nonaktif dikeluarkan (dengan pemberitahuan). Nonaktif seluruhnya bila
  * `SesiAkun::wajibMasuk()` false (tes PHPUnit & E2E).
  */
 class WajibMasuk
@@ -41,6 +44,9 @@ class WajibMasuk
 
     private function tolak(Request $request, string $pesan, bool $beritahu = true): Response
     {
+        if ($request->hasHeader('X-Livewire')) {
+            throw new HttpResponseException(response()->json(['pesan' => $pesan, 'masuk' => route('akun.masuk')], 401, ['Cache-Control' => 'no-store']));
+        }
         if ($request->expectsJson() || str_contains((string) $request->header('Accept'), 'json')) {
             return response()->json(['pesan' => $pesan], 401, ['Cache-Control' => 'no-store']);
         }

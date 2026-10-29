@@ -2,6 +2,12 @@
     <h1 class="text-2xl font-bold tracking-tight text-stone-900">Masuk</h1>
     <p class="mt-1 text-sm text-stone-500">Gunakan akun yang dibuatkan admin madrasah. Dokumen yang Anda susun tersimpan atas nama akun dan leading Anda.</p>
 
+    @if ($sesiBerakhir)
+        <p class="mt-6 flex items-start gap-2 rounded-xl bg-gold-50 p-3 text-sm text-gold-900 ring-1 ring-gold-200" role="status" data-testid="sesi-berakhir">
+            <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> Sesi Anda berakhir — masuk kembali untuk melanjutkan; Anda akan kembali ke halaman tadi.
+        </p>
+    @endif
+
     @if ($sesi !== null)
         <section class="mt-6 flex flex-wrap items-center gap-3 rounded-2xl bg-brand-50 p-4 ring-1 ring-brand-200" data-testid="sudah-masuk" data-akun="{{ $sesi['id'] }}">
             <span class="grid size-9 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">{{ \Illuminate\Support\Str::of($sesi['name'])->explode(' ')->take(2)->map(fn ($w) => mb_substr($w, 0, 1))->implode('') }}</span>

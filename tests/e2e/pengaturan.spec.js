@@ -16,7 +16,7 @@ test.describe('Pengaturan admin', () => {
         await expect(kesiapan).toContainText('Kesiapan Tahun Anggaran 2026');
         await expect(page.getByTestId('jumlah-wajib-siap')).toHaveText('4/7 wajib siap');
         await expect(kesiapan.locator('li[data-siap="tidak"]')).toHaveCount(6);
-        await expect(page.locator('article[data-testid^="bagian-"]')).toHaveCount(6);
+        await expect(page.locator('article[data-testid^="bagian-"]')).toHaveCount(7);
         await expect(page.getByTestId('bagian-ai').getByRole('link', { name: 'Buka Pengaturan AI' })).toBeVisible();
         await expect(page.getByTestId('bagian-leading').getByRole('link', { name: 'Buka Leading & User' })).toBeVisible();
         await expect(page.getByTestId('bagian-madrasah').getByRole('link', { name: 'Buka Profil & Pejabat' })).toBeVisible();

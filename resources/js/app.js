@@ -11,6 +11,7 @@ import penampilDokumen from './penampil-dokumen';
 import penyuntingTeks, { adaDrafSunting, adaSuntingKotor, jagaSunting } from './penyunting-teks';
 import formMasuk from './masuk';
 import formDaftar, { formSandi, syaratSandi } from './sandi';
+import pasangPenjagaSesi, { tautanMasuk } from './sesi';
 import pasangSiaranAnggaran from './siaran';
 import editorTeksBaku, { isiTeksBaku, penandaAsing } from './teks-baku';
 import jumlahTermin, { persenTermin, statusTermin } from './termin';
@@ -21,9 +22,10 @@ import { golongkan as golongkanGalatUnduhan, jenisStatus as jenisGalatUnduhan, J
 
 // Helper format tersedia di Alpine sebagai $rupiah(n), $angka(n), $jumlahRab(vol, harga), $rapikanKetikan(teks), $terbilang(n),
 // $statusPagu(total, pagu), $ringkasanMatrik(matrik), $nip(teks), $galatNip(teks).
-window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor, adaDrafSunting, adaSuntingKotor, ukuranBerkas, golongkanGalatUnduhan, jenisGalatUnduhan, PESAN_UNDUHAN, syaratSandi };
+window.SIRABTOR = { angka, rupiah, rapikanKetikan, jumlahRab, terbilang, statusPagu, tanggalPanjang, akhirPekan, aspekTerisi, memuatNip, statusTermin, persenTermin, ringkasanMatrik, periksaKonsistensiBulan, nip, galatNip, isiTeksBaku, penandaAsing, galatArsip, adaFormKotor, adaDrafSunting, adaSuntingKotor, ukuranBerkas, golongkanGalatUnduhan, jenisGalatUnduhan, PESAN_UNDUHAN, syaratSandi, tautanMasuk };
 
 pasangSiaranAnggaran();
+pasangPenjagaSesi();
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.magic('rupiah', () => rupiah);

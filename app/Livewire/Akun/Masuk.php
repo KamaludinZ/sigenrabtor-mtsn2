@@ -18,7 +18,9 @@ use RuntimeException;
  * PenggunaRepository (`PeriksaMasuk::periksa`: tidak terdaftar / permohonan menunggu / nonaktif ditolak); akun aktif masuk
  * lewat state tiruan `SesiAkun::masuk` (waktu masuk dicatat `catatMasuk`) — sandi belum diperiksa. Percobaan gagal dibatasi
  * per surel × IP (`$peringatan` sisa percobaan, jeda → event `masuk-dijeda` {detik}). `masukSebagai($id)` = pintasan akun
- * contoh (`DataAkun::PERSONA`). Selama sudah masuk, halaman menampilkan kartu `sudah-masuk` (lanjut atau keluar).
+ * contoh (`DataAkun::PERSONA`). Selama sudah masuk, halaman menampilkan kartu `sudah-masuk` (lanjut atau keluar; bila
+ * wajib masuk, middleware HanyaTamu sudah mengalihkannya). `?sesi=berakhir` → pemberitahuan `sesi-berakhir`, `?kembali=`
+ * jalur aman (`PeriksaMasuk::jalurKembali`) menjadi tujuan sesudah masuk.
  */
 #[Layout('layouts.tamu')]
 class Masuk extends Component
@@ -32,11 +34,20 @@ class Masuk extends Component
     #[Locked]
     public ?string $peringatan = null;
 
+    /** Sesi berakhir saat aksi berjalan (`?sesi=berakhir`, dari resources/js/sesi.js). */
+    #[Locked]
+    public bool $sesiBerakhir = false;
+
     public function mount(): void
     {
         $surel = request()->query('surel');
         if (is_string($surel)) {
             $this->surel = mb_substr(PeriksaMasuk::rapikanSurel($surel), 0, 255);
+        }
+        $this->sesiBerakhir = request()->query('sesi') === 'berakhir';
+        // `?kembali=` = halaman asal (hanya jalur di aplikasi ini) → tujuan sesudah masuk.
+        if (($kembali = PeriksaMasuk::jalurKembali(request()->query('kembali'))) !== null) {
+            session()->put('url.intended', url($kembali));
         }
     }
 

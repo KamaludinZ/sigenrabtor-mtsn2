@@ -46,6 +46,8 @@ use App\Contracts\RiwayatSuntingRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
+use App\Http\Middleware\HanyaAdmin;
+use App\Http\Middleware\WajibMasuk;
 use App\Support\Dokumen\Generasi\GeneratorBerkasServer;
 use App\Support\Dokumen\PembuatPdfChrome;
 use App\Support\Dokumen\PenggabungPdfPoppler;
@@ -95,6 +97,7 @@ use App\View\Composers\AppLayoutComposer;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -160,6 +163,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::composer(['layouts.app', 'layouts.tamu', 'layouts.partials.*'], AppLayoutComposer::class);
+        // Proteksi rute ikut berlaku untuk aksi Livewire (diperiksa terhadap rute halaman asal komponen).
+        Livewire::addPersistentMiddleware([WajibMasuk::class, HanyaAdmin::class]);
 
         if ($hot = config('sigenrabtor.vite_hot_file')) {
             Vite::useHotFile($hot);
