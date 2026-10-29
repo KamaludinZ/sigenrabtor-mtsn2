@@ -18,7 +18,8 @@ use RuntimeException;
  *   sebelumnya), versi? (versi terbaru yang terakhir dilihat — berbeda → PengaturanBerubah)}. Butuh OtorisasiDokumen
  *   `buka_ulang`. Hasil {dokumen (baris + izin), sebelumnya {id, versi}, perbedaan (catatan lama vs data terbaru), pesan}.
  * - `beriNomor($id, $nomor, $pengguna)` (PATCH `dokumen.perbarui`) = isi nomor dokumen sekali pada catatan yang belum
- *   bernomor (OtorisasiDokumen::beriNomor); sudah bernomor → PengaturanBerubah. Nomor (`galatNomor`): wajib, ≤ MAKS_NOMOR,
+ *   bernomor (OtorisasiDokumen::beriNomor); sudah bernomor → PengaturanBerubah; nomor = usulan PenomoranDokumen →
+ *   penghitung nomor urut maju (PenomoranDokumen::pakai). Nomor (`galatNomor`): wajib, ≤ MAKS_NOMOR,
  *   huruf/angka/spasi/. / - saja, dan tidak dipakai dokumen lain (kunci versi lain) di tahun anggaran yang sama.
  */
 final class PerbaruiRiwayatDokumen
@@ -93,6 +94,7 @@ final class PerbaruiRiwayatDokumen
         if (app(RiwayatDokumenRepository::class)->beriNomor($id, (string) $nomor) === null) {
             throw new PengaturanBerubah('Dokumen ini baru saja diberi nomor di tempat lain — muat ulang.');
         }
+        PenomoranDokumen::pakai($c, (string) $nomor);
         $tampil = collect(RiwayatDokumen::untuk($pengguna))->firstWhere('id', $id);
 
         return ['dokumen' => DataRiwayatDokumen::baris($tampil), 'pesan' => "Nomor {$nomor} diberikan pada ".$tampil['label_jenis'].' v'.$tampil['versi'].'.'];

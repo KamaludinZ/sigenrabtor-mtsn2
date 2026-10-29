@@ -25,6 +25,7 @@ final class RiwayatPengaturan
         'hapus_daftar_isi_khusus' => ['Kembalikan daftar isi ke bawaan', 'template'],
         'ubah_nomor_halaman' => ['Ubah nomor halaman', 'template'],
         'ubah_pilihan_template' => ['Ubah pilihan template', 'template'],
+        'ubah_penomoran' => ['Ubah aturan penomoran dokumen', 'template'],
         'ubah_profil' => ['Ubah profil madrasah', 'madrasah'],
         'unggah_logo' => ['Unggah logo madrasah', 'madrasah'],
         'hapus_logo' => ['Hapus logo madrasah', 'madrasah'],

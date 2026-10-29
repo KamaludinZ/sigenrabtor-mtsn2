@@ -192,6 +192,8 @@ test.describe('Riwayat Dokumen', () => {
         await expect(lihat.getByTestId('cetak-ulang')).toHaveAttribute('href', /\/kegiatan\/2\/cetak\?sumber=DIPA&dokumen=rab/);
         await expect(lihat.getByTestId('unduh-ulang-excel')).toBeVisible();
         await expect(lihat.getByTestId('unduh-ulang-word')).toHaveCount(0);
+        await expect(lihat.getByTestId('isian-nomor-dokumen')).toHaveValue('RAB/013/DIPA/1.6/2026');
+        await expect(lihat.getByTestId('isian-nomor-dokumen')).toHaveAttribute('data-usulan', 'RAB/013/DIPA/1.6/2026');
         await page.screenshot({ path: `storage/playwright/shots/riwayat-modal-lihat-${testInfo.project.name}.png` });
         await page.keyboard.press('Escape');
         await expect(lihat).toBeHidden();

@@ -13,9 +13,8 @@ test.describe('Format Seragam', () => {
 
         await ringkasan.locator('[data-unsur="penomoran"]').getByRole('button', { name: /Lihat aturan/ }).click();
         await expect(page).toHaveURL(/tab=penomoran/);
-        const mobile = testInfo.project.name === 'mobile';
-        const aturan = page.locator(`[data-testid="${mobile ? 'kartu-aturan-nomor' : 'aturan-nomor'}"][data-jenis="KAK+TOR"]`);
-        await expect(aturan).toContainText(/KAK-TOR\/032\/MTsN2KotaMalang\/[IVX]+\/2026/);
+        const aturan = page.locator('[data-testid="aturan-nomor"][data-jenis="KAK+TOR"]');
+        await expect(aturan.getByTestId('contoh-nomor')).toHaveText(/KAK-TOR\/032\/MTsN2KotaMalang\/[IVX]+\/2026/);
         await expect(page.getByTestId('penanda-nomor')).toContainText('{urut}');
         await page.screenshot({ path: `storage/playwright/shots/format-penomoran-${testInfo.project.name}.png`, fullPage: true });
 
@@ -56,6 +55,32 @@ test.describe('Format Seragam', () => {
         await page.getByTestId('batal-template').click();
         await expect(page.getByTestId('template-leading-kosong')).toBeVisible();
         await expect(form).toHaveAttribute('data-berubah', '0');
+        const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(lebar).toBeLessThanOrEqual(0);
+    });
+
+    test('formulir penomoran: sisip penanda, contoh seketika, galat, batalkan', async ({ page }, testInfo) => {
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/format?tab=penomoran');
+        const form = page.getByTestId('penomoran-format');
+        const rab = page.locator('[data-testid="aturan-nomor"][data-jenis="RAB"]');
+        const pola = page.getByTestId('pola-nomor-RAB');
+        await expect(rab.getByTestId('contoh-nomor')).toHaveText('RAB/013/DIPA/1.1/2026');
+        await pola.fill('RAB/{tahun}');
+        await expect(page.getByTestId('galat-pola-RAB')).toContainText('{urut}');
+        await pola.fill('RAB//{tahun}');
+        await pola.evaluate((el) => el.setSelectionRange(4, 4));
+        await page.getByTestId('penanda-nomor').locator('[data-penanda="{urut}"]').click();
+        await expect(pola).toHaveValue('RAB/{urut}/{tahun}');
+        await expect(page.getByTestId('galat-pola-RAB')).toHaveCount(0);
+        await expect(rab.getByTestId('contoh-nomor')).toHaveText('RAB/013/2026');
+        await page.getByTestId('digit-nomor-RAB').selectOption('5');
+        await expect(rab.getByTestId('contoh-nomor')).toHaveText('RAB/00013/2026');
+        await expect(form).toHaveAttribute('data-berubah', '1');
+        await page.screenshot({ path: `storage/playwright/shots/format-penomoran-form-${testInfo.project.name}.png`, fullPage: true });
+        await page.getByTestId('batal-nomor').click();
+        await expect(form).toHaveAttribute('data-berubah', '0');
+        await expect(pola).toHaveValue('RAB/{urut}/{sumber}/{leading}/{tahun}');
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });

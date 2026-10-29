@@ -140,6 +140,24 @@
                 @endif
             </section>
 
+            @if ($rincian['nomor']['boleh'])
+                <section class="rounded-xl bg-brand-50/40 px-4 py-3 ring-1 ring-brand-100" aria-labelledby="judul-beri-nomor" data-testid="beri-nomor">
+                    <h3 id="judul-beri-nomor" class="text-sm font-semibold text-stone-900">Nomor dokumen</h3>
+                    <p class="mt-0.5 text-xs text-stone-500">
+                        {{ $rincian['nomor']['usulan'] ? 'Diusulkan otomatis sesuai aturan penomoran; bisa diubah sebelum diberikan. Nomor hanya diberikan sekali.' : 'Jenis dokumen ini tidak dinomori otomatis — ketik nomornya. Nomor hanya diberikan sekali.' }}
+                    </p>
+                    <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start">
+                        <label class="min-w-0 flex-1">
+                            <span class="sr-only">Nomor dokumen</span>
+                            <input type="text" wire:model="nomorDokumen" maxlength="{{ \App\Support\Dokumen\PerbaruiRiwayatDokumen::MAKS_NOMOR }}" autocomplete="off" x-on:keydown.enter.prevent="$wire.nomorDokumen = $el.value; $wire.beriNomor()"
+                                   @class(['form-input w-full py-1.5 font-mono text-sm', 'ring-red-400' => $errors->has('nomorDokumen')]) data-testid="isian-nomor-dokumen" data-usulan="{{ $rincian['nomor']['usulan'] }}">
+                            @error('nomorDokumen')<span class="mt-1 block text-xs font-medium text-red-700" role="alert" data-testid="galat-nomor-dokumen">{{ $message }}</span>@enderror
+                        </label>
+                        <button type="button" wire:click="beriNomor" wire:loading.attr="disabled" wire:target="beriNomor" class="btn-primary shrink-0 py-1.5" data-testid="beri-nomor-dokumen"><x-ui.icon name="tag" class="size-4" /> Beri nomor</button>
+                    </div>
+                </section>
+            @endif
+
             <section aria-labelledby="judul-versi-dokumen">
                 <h3 id="judul-versi-dokumen" class="text-sm font-semibold text-stone-900">Versi {{ $d['label_jenis'] }}{{ $d['sumber'] ? ' '.$d['sumber'] : '' }} · {{ $d['label_format'] }} <span class="font-normal text-stone-500">({{ count($rincian['versi']) }})</span></h3>
                 <ol class="mt-2 divide-y divide-stone-100 rounded-xl ring-1 ring-stone-200" role="list" data-testid="versi-dokumen">

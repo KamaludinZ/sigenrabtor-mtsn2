@@ -24,7 +24,7 @@ use RuntimeException;
  * `lihat()` membawa `izin`/`alasan`) — dipakai modal Lihat & Duplikat halaman
  * `Dokumen\Riwayat` (dan kelak endpoint-nya):
  *
- * - `lihat($id, $pengguna)` = rincian catatan (cakupan RiwayatDokumen::boleh), semua versi jenis × sumber × format yang
+ * - `lihat($id, $pengguna)` (+ `nomor` {boleh beri nomor, usulan PenomoranDokumen::usulan}) = rincian catatan (cakupan RiwayatDokumen::boleh), semua versi jenis × sumber × format yang
  *   sama (terbaru dulu), keadaan kegiatan sekarang (status, total RAB sumber itu dibanding saat dibuat), dan cara membuka
  *   ulang (lembar FormatBerkas::lembar): PDF arsip final (hanya versi arsip terbaru — arsip lama sudah diganti), pratinjau, cetak ulang & unduh PDF/Word/
  *   Excel dengan data terbaru (berkas cetak/unduhan lama tidak disimpan, hanya catatannya). Tanpa kegiatan tersimpan atau
@@ -133,6 +133,10 @@ final class AksiRiwayatDokumen
             'alasan_buka' => $alasan,
             'izin' => $otorisasi['izin'],
             'alasan' => $otorisasi['alasan'],
+            'nomor' => [
+                'boleh' => $c['nomor_dokumen'] === null && OtorisasiDokumen::beriNomor($c, $pengguna) === null,
+                'usulan' => $c['nomor_dokumen'] === null ? PenomoranDokumen::usulan($c) : null,
+            ],
         ];
     }
 

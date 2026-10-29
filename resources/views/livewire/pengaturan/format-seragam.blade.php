@@ -128,62 +128,78 @@
             </section>
         </div>
     @elseif ($tab === 'penomoran')
-        <section class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-penomoran" data-testid="penomoran-format">
-            <header class="border-b border-stone-100 px-5 py-4">
-                <h2 id="judul-penomoran" class="text-sm font-semibold text-stone-900">Aturan nomor dokumen per jenis</h2>
-                <p class="mt-0.5 text-xs text-stone-500">Nomor diberikan otomatis saat dokumen final; nomor urut dimulai lagi tiap tahun anggaran.</p>
-            </header>
-            <div class="hidden md:block">
-                <table class="w-full table-fixed text-left text-sm">
-                    <colgroup><col class="w-[20%]"><col class="w-[34%]"><col class="w-[26%]"><col class="w-[10%]"><col class="w-[10%]"></colgroup>
-                    <thead class="border-b border-stone-100 text-xs font-semibold text-stone-500">
-                        <tr>
-                            <th scope="col" class="px-5 py-2.5">Jenis dokumen</th>
-                            <th scope="col" class="px-3 py-2.5">Pola</th>
-                            <th scope="col" class="px-3 py-2.5">Nomor berikutnya</th>
-                            <th scope="col" class="px-3 py-2.5 text-right">Terakhir</th>
-                            <th scope="col" class="px-5 py-2.5 text-right">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-stone-100">
-                        @foreach ($this->penomoran as $aturan)
-                            <tr data-testid="aturan-nomor" data-jenis="{{ $aturan['jenis'] }}">
-                                <td class="px-5 py-3 font-medium text-stone-800">{{ $aturan['label'] }}</td>
-                                <td class="px-3 py-3"><code class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs break-all text-stone-700">{{ $aturan['pola'] }}</code></td>
-                                <td class="px-3 py-3 font-mono text-xs break-all text-stone-800" data-testid="contoh-nomor">{{ $aturan['contoh'] }}</td>
-                                <td class="px-3 py-3 text-right text-stone-600 tabular-nums">{{ $aturan['terakhir'] }}</td>
-                                <td class="px-5 py-3 text-right">
-                                    <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold', 'bg-brand-50 text-brand-800' => $aturan['aktif'], 'bg-stone-100 text-stone-500' => ! $aturan['aktif']])>{{ $aturan['aktif'] ? 'Otomatis' : 'Tidak dinomori' }}</span>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <ul class="divide-y divide-stone-100 md:hidden" role="list">
-                @foreach ($this->penomoran as $aturan)
-                    <li class="px-4 py-3.5" data-testid="kartu-aturan-nomor" data-jenis="{{ $aturan['jenis'] }}">
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="text-sm font-semibold text-stone-900">{{ $aturan['label'] }}</p>
-                            <span @class(['rounded-full px-2 py-0.5 text-[11px] font-semibold', 'bg-brand-50 text-brand-800' => $aturan['aktif'], 'bg-stone-100 text-stone-500' => ! $aturan['aktif']])>{{ $aturan['aktif'] ? 'Otomatis' : 'Tidak dinomori' }}</span>
-                        </div>
-                        <p class="mt-1 font-mono text-xs break-all text-stone-600">{{ $aturan['pola'] }}</p>
-                        <p class="mt-1 text-xs text-stone-500">Berikutnya <span class="font-mono font-semibold text-stone-800">{{ $aturan['contoh'] }}</span> · terakhir {{ $aturan['terakhir'] }}</p>
-                    </li>
-                @endforeach
-            </ul>
-            <footer class="border-t border-stone-100 px-5 py-4">
-                <h3 class="text-xs font-semibold text-stone-500">Penanda pola</h3>
-                <dl class="mt-2 grid gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2" data-testid="penanda-nomor">
-                    @foreach (AturanFormat::TOKEN as $penanda => $arti)
-                        <div class="flex gap-2">
-                            <dt><code class="rounded bg-stone-100 px-1 py-0.5 font-mono text-[11px] text-stone-700">{{ $penanda }}</code></dt>
-                            <dd class="text-stone-500">{{ $arti }}</dd>
-                        </div>
+        @php
+            $terkunciNomor = \App\Support\Stub\StubData::tahunAktif()['is_locked'];
+        @endphp
+        <form wire:submit="simpanNomor" class="mt-6 space-y-4" data-testid="penomoran-format" data-berubah="{{ $this->nomorBerubah ? '1' : '0' }}"
+              x-data="{ aktif: null, sisip(t) { const el = this.aktif; if (! el) { return; } const a = el.selectionStart ?? el.value.length; const b = el.selectionEnd ?? a; el.value = el.value.slice(0, a) + t + el.value.slice(b); el.dispatchEvent(new Event('input', { bubbles: true })); el.focus(); el.setSelectionRange(a + t.length, a + t.length) } }">
+            <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-penomoran">
+                <header class="border-b border-stone-100 px-5 py-4">
+                    <h2 id="judul-penomoran" class="text-sm font-semibold text-stone-900">Aturan nomor dokumen per jenis</h2>
+                    <p class="mt-0.5 text-xs text-stone-500">Nomor diusulkan otomatis saat dokumen diberi nomor; nomor urut dimulai lagi tiap tahun anggaran. Contoh memakai leading & sumber dana pertama.</p>
+                </header>
+                <ul class="divide-y divide-stone-100" role="list">
+                    @foreach ($this->penomoran as $aturan)
+                        @php
+                            $kunciNomor = $aturan['jenis'];
+                        @endphp
+                        <li class="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_6rem_minmax(0,14rem)] lg:items-start" data-testid="aturan-nomor" data-jenis="{{ $kunciNomor }}" wire:key="nomor-{{ $kunciNomor }}">
+                            <div class="lg:pt-6">
+                                <p class="text-sm font-semibold text-stone-800">{{ $aturan['label'] }}</p>
+                                <label class="mt-1 inline-flex items-center gap-1.5 text-xs text-stone-600">
+                                    <input type="checkbox" wire:model.live="aturanNomor.{{ $kunciNomor }}.aktif" class="size-4 rounded border-stone-300 text-brand-700 focus:ring-brand-500" @disabled($terkunciNomor) data-testid="nomor-aktif-{{ $kunciNomor }}">
+                                    Nomori otomatis
+                                </label>
+                            </div>
+                            <label class="block min-w-0">
+                                <span class="mb-1 block text-xs font-semibold text-stone-500">Pola</span>
+                                <input type="text" wire:model.live.debounce.300ms="aturanNomor.{{ $kunciNomor }}.pola" x-on:focus="aktif = $el" maxlength="{{ AturanFormat::MAKS_POLA }}" autocomplete="off" spellcheck="false"
+                                       @class(['form-input w-full py-1.5 font-mono text-sm', 'ring-red-400' => $errors->has("aturanNomor.{$kunciNomor}.pola")]) @disabled($terkunciNomor) data-testid="pola-nomor-{{ $kunciNomor }}">
+                                @error("aturanNomor.{$kunciNomor}.pola")<span class="mt-1 block text-xs font-medium text-red-700" role="alert" data-testid="galat-pola-{{ $kunciNomor }}">{{ $message }}</span>@enderror
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-semibold text-stone-500">Digit urut</span>
+                                <select wire:model.live="aturanNomor.{{ $kunciNomor }}.digit" class="form-input w-full py-1.5 text-sm" @disabled($terkunciNomor) data-testid="digit-nomor-{{ $kunciNomor }}">
+                                    @foreach (\App\Support\Dokumen\PenomoranDokumen::DIGIT as $digit)
+                                        <option value="{{ $digit }}">{{ $digit }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <div class="min-w-0 rounded-lg bg-stone-50 px-3 py-2 ring-1 ring-stone-200">
+                                <p class="text-xs font-semibold text-stone-500">Nomor berikutnya (urut {{ $aturan['berikutnya'] }})</p>
+                                <p @class(['mt-0.5 font-mono text-sm break-all', 'text-stone-900' => $aturan['aktif'], 'text-stone-400 line-through' => ! $aturan['aktif']]) data-testid="contoh-nomor">{{ $aturan['contoh'] ?? '—' }}</p>
+                                @unless ($aturan['aktif'])
+                                    <p class="mt-0.5 text-[11px] text-stone-500">Tidak dinomori otomatis.</p>
+                                @endunless
+                            </div>
+                        </li>
                     @endforeach
-                </dl>
-            </footer>
-        </section>
+                </ul>
+                <footer class="border-t border-stone-100 px-5 py-4">
+                    <h3 class="text-xs font-semibold text-stone-500">Penanda pola <span class="font-normal">— klik untuk menyisipkan di pola yang sedang diketik</span></h3>
+                    <div class="mt-2 flex flex-wrap gap-1.5" data-testid="penanda-nomor">
+                        @foreach (AturanFormat::TOKEN as $penanda => $arti)
+                            <button type="button" x-on:mousedown.prevent x-on:click="sisip(@js($penanda))" title="{{ $arti }}" class="rounded-md bg-stone-100 px-2 py-1 font-mono text-[11px] text-stone-700 ring-1 ring-stone-200 hover:bg-brand-50 hover:text-brand-800" @disabled($terkunciNomor) data-penanda="{{ $penanda }}">{{ $penanda }}</button>
+                        @endforeach
+                    </div>
+                    <dl class="mt-3 grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
+                        @foreach (AturanFormat::TOKEN as $penanda => $arti)
+                            <div class="flex gap-2"><dt class="font-mono text-stone-700">{{ $penanda }}</dt><dd class="text-stone-500">{{ $arti }}</dd></div>
+                        @endforeach
+                    </dl>
+                </footer>
+            </section>
+
+            @unless ($terkunciNomor)
+                <div class="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-2 rounded-2xl bg-white/95 px-4 py-3 shadow-md ring-1 ring-stone-200 backdrop-blur" data-testid="aksi-nomor">
+                    @if ($this->nomorBerubah)
+                        <span class="mr-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gold-800" data-testid="nomor-belum-disimpan"><span class="size-2 rounded-full bg-gold-500"></span> Belum disimpan</span>
+                        <button type="button" wire:click="batalNomor" class="btn-ghost" data-testid="batal-nomor">Batalkan</button>
+                    @endif
+                    <button type="submit" wire:loading.attr="disabled" wire:target="simpanNomor" class="btn-primary" data-testid="simpan-nomor"><x-ui.icon name="save" class="size-4" /> Simpan aturan</button>
+                </div>
+            @endunless
+        </form>
     @else
         @php
             $template = $this->template;

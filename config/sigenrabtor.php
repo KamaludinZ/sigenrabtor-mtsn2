@@ -89,6 +89,7 @@ return [
         'daftar_isi_file' => env('STUB_DAFTAR_ISI_FILE', 'stub/daftar-isi.json'),
         'nomor_halaman_file' => env('STUB_NOMOR_HALAMAN_FILE', 'stub/nomor-halaman.json'),
         'pilihan_template_file' => env('STUB_PILIHAN_TEMPLATE_FILE', 'stub/pilihan-template.json'),
+        'penomoran_dokumen_file' => env('STUB_PENOMORAN_DOKUMEN_FILE', 'stub/penomoran-dokumen.json'),
         'riwayat_file' => env('STUB_RIWAYAT_FILE', 'stub/riwayat-pengaturan.json'),
         'profil_file' => env('STUB_PROFIL_FILE', 'stub/profil-madrasah.json'),
         'pejabat_file' => env('STUB_PEJABAT_FILE', 'stub/pejabat.json'),

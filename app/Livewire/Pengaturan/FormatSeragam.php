@@ -12,6 +12,7 @@ use App\Support\Dokumen\DokumenKegiatan;
 use App\Support\Dokumen\FormatSeragam as AturanFormat;
 use App\Support\Dokumen\NilaiVariabel;
 use App\Support\Dokumen\PembacaTemplateDocx;
+use App\Support\Dokumen\PenomoranDokumen;
 use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\SusunanKak;
@@ -21,7 +22,6 @@ use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Stub\StubData;
-use App\Support\Stub\StubFormatSeragam;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -38,7 +38,8 @@ use RuntimeException;
  * nomor berikutnya AturanFormat::nomor), pilihan template (template KAK/TOR & cover per jenis kegiatan dan khusus leading —
  * PilihanTemplate; disunting di `$pilihan` lalu `simpanTemplate()`/`batalTemplate()`, baris khusus leading `tambahLeading()`/
  * `hapusLeading($i)`, galat ke `pilihan.*`; `pratinjau` = contoh kegiatan `?contoh=` × sumber `contohSumber` dengan template yang
- * berlaku menurut pilihan yang sedang disunting — cover & isi master/susunan baku). Aturan penomoran masih tiruan (StubFormatSeragam); kop dari profil madrasah
+ * berlaku menurut pilihan yang sedang disunting — cover & isi master/susunan baku). Penomoran: formulir `$aturanNomor` (PenomoranDokumen) dengan contoh nomor seketika, `simpanNomor()`/`batalNomor()`,
+ * galat ke `aturanNomor.{jenis}.pola|digit`; kop dari profil madrasah
  * (KelolaProfilMadrasah::data).
  */
 #[Layout('layouts.app')]
@@ -59,6 +60,7 @@ class FormatSeragam extends Component
     {
         $this->rapikan();
         $this->muatPilihan();
+        $this->muatAturanNomor();
     }
 
     private function muatPilihan(): void
@@ -208,25 +210,80 @@ class FormatSeragam extends Component
         return AturanFormat::susunan();
     }
 
-    /** @return list<array<string, mixed>> Aturan penomoran per jenis dokumen + contoh nomor berikutnya. */
+    /** @var array<string, array{pola: string, digit: int|string, aktif: bool}> Aturan penomoran yang disunting per jenis. */
+    public array $aturanNomor = [];
+
+    private function muatAturanNomor(): void
+    {
+        $this->aturanNomor = array_map(fn (array $a) => ['pola' => $a['pola'], 'digit' => $a['digit'], 'aktif' => $a['aktif']], PenomoranDokumen::aturan($this->tahun()));
+        $this->resetErrorBag();
+    }
+
+    /** @return list<array<string, mixed>> Aturan penomoran per jenis dokumen (isian formulir) + contoh nomor berikutnya. */
     #[Computed]
     public function penomoran(): array
     {
-        $tahun = (int) StubData::tahunAktif()['tahun'];
-        $contoh = ['leading' => MasterKode::leadings()[0]['kode'] ?? '1.1', 'sumber' => SumberDana::cases()[0]->value, 'bulan' => (int) now()->format('n'), 'tahun' => $tahun];
+        $tahun = $this->tahun();
+        $tersimpan = PenomoranDokumen::aturan($tahun);
+        $isian = PenomoranDokumen::rapikan($this->aturanNomor);
+        $contoh = ['leading' => MasterKode::leadings()[0]['kode'] ?? '1.1', 'sumber' => SumberDana::cases()[0]->value, 'tahun' => $tahun];
         $baris = [];
-        foreach (StubFormatSeragam::penomoran() as $jenis => $aturan) {
-            $berikut = $aturan['terakhir'] + 1;
+        foreach ($tersimpan as $jenis => $a) {
+            $aturan = $isian[$jenis] + ['berikutnya' => $a['berikutnya']];
             $baris[] = $aturan + [
                 'jenis' => $jenis,
                 'label' => DokumenKegiatan::JENIS[$jenis],
-                'berikut' => $berikut,
-                'contoh' => AturanFormat::nomor($aturan['pola'], $berikut, ['jenis' => $jenis] + $contoh, $aturan['digit']),
-                'label_reset' => self::RESET[$aturan['reset']] ?? $aturan['reset'],
+                'terakhir' => $a['terakhir'],
+                'berikutnya' => $a['berikutnya'],
+                'aktif_tersimpan' => $a['aktif'],
+                'contoh' => PenomoranDokumen::nomor(['jenis' => $jenis] + $contoh, ['aktif' => true] + $aturan),
             ];
         }
 
         return $baris;
+    }
+
+    #[Computed]
+    public function nomorBerubah(): bool
+    {
+        return PenomoranDokumen::rapikan($this->aturanNomor) !== array_map(fn (array $a) => array_intersect_key($a, array_flip(['pola', 'digit', 'aktif'])), PenomoranDokumen::aturan($this->tahun()));
+    }
+
+    public function simpanNomor(): void
+    {
+        $this->resetErrorBag();
+        try {
+            $hasil = PenomoranDokumen::simpanAturan($this->tahun(), $this->aturanNomor, StubData::currentUser());
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kunci => $pesan) {
+                $this->addError('aturanNomor.'.$kunci, $pesan[0]);
+            }
+            $this->dispatch('notify', message: 'Aturan penomoran belum disimpan — periksa pola yang ditandai.', type: 'error');
+
+            return;
+        } catch (AuthorizationException|RuntimeException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+        unset($this->penomoran, $this->ringkasan, $this->nomorBerubah);
+        $this->muatAturanNomor();
+        $this->dispatch('notify', message: $hasil['ringkasan'] === null ? 'Tidak ada perubahan aturan penomoran.' : 'Aturan penomoran disimpan.', type: $hasil['ringkasan'] === null ? 'info' : 'success');
+    }
+
+    public function batalNomor(): void
+    {
+        $this->muatAturanNomor();
+    }
+
+    /** Penanda pola diketik: galat pola baris itu diperiksa ulang seketika. */
+    public function updatedAturanNomor(mixed $nilai, string $kunci): void
+    {
+        [$jenis] = explode('.', $kunci) + [''];
+        $this->resetErrorBag(["aturanNomor.{$jenis}.pola", "aturanNomor.{$jenis}.digit"]);
+        foreach (PenomoranDokumen::galat(array_intersect_key(PenomoranDokumen::rapikan($this->aturanNomor), [$jenis => true])) as $k => $pesan) {
+            $this->addError('aturanNomor.'.$k, $pesan);
+        }
     }
 
     /** @return array{jenis: list<array<string, mixed>>, leading: list<array<string, mixed>>, diperbarui_pada: string|null, kak: list<array<string, mixed>>, cover: list<array<string, mixed>>, leadings: list<array<string, mixed>>, jenis_kegiatan: array<string, string>} */
@@ -246,7 +303,7 @@ class FormatSeragam extends Component
     public function ringkasan(): array
     {
         $kurang = $this->profil['kurang'];
-        $nomor = array_filter($this->penomoran, fn (array $b) => $b['aktif']);
+        $nomor = array_filter($this->penomoran, fn (array $b) => $b['aktif_tersimpan']);
         $khusus = count(array_filter($this->template['jenis'], fn (array $t) => $t['kak'] !== null || $t['cover'] !== null));
         $hilang = count(array_filter([...$this->template['jenis'], ...$this->template['leading']], fn (array $t) => $t['kak_hilang'] || $t['cover_hilang']));
 

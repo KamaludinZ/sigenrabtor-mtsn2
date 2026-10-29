@@ -4,6 +4,7 @@ namespace App\Livewire\Dokumen;
 
 use App\Support\Dokumen\AksiRiwayatDokumen;
 use App\Support\Dokumen\PenelusuranRiwayat;
+use App\Support\Dokumen\PerbaruiRiwayatDokumen;
 use App\Support\Dokumen\RiwayatDokumen;
 use App\Support\Dokumen\RiwayatKosong;
 use App\Support\Stub\StubData;
@@ -178,11 +179,40 @@ class Riwayat extends Component
         return $this->penelusuran->halaman($this->tampilan, $this->urut, $this->batas);
     }
 
+    /** Nomor dokumen yang akan diberikan di modal Lihat (terisi usulan PenomoranDokumen). */
+    public string $nomorDokumen = '';
+
     public function bukaLihat(string $id): void
     {
         if ($this->bisaDibuka($id)) {
             $this->dilihat = $id;
+            unset($this->rincian);
+            $this->nomorDokumen = (string) ($this->rincian['nomor']['usulan'] ?? '');
+            $this->resetErrorBag('nomorDokumen');
         }
+    }
+
+    /** Beri nomor dokumen yang dilihat (PerbaruiRiwayatDokumen::beriNomor; usulan otomatis memajukan nomor urut). */
+    public function beriNomor(): void
+    {
+        if ($this->dilihat === null) {
+            return;
+        }
+        $this->resetErrorBag('nomorDokumen');
+        try {
+            $hasil = PerbaruiRiwayatDokumen::beriNomor($this->dilihat, $this->nomorDokumen, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->addError('nomorDokumen', $e->errors()['nomor_dokumen'][0] ?? collect($e->errors())->flatten()->first());
+
+            return;
+        } catch (AuthorizationException|RuntimeException $e) {
+            $this->addError('nomorDokumen', $e->getMessage());
+
+            return;
+        }
+        unset($this->rincian, $this->semua, $this->penelusuran, $this->cocok);
+        $this->nomorDokumen = '';
+        $this->dispatch('notify', message: $hasil['pesan'], type: 'success');
     }
 
     public function tutupLihat(): void

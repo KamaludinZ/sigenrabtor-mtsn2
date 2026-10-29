@@ -11,6 +11,7 @@ export const E2E_MASTER_KODE_FILE = 'stub/master-kode-e2e.json';
 export const E2E_DAFTAR_ISI_FILE = 'stub/daftar-isi-e2e.json';
 export const E2E_NOMOR_HALAMAN_FILE = 'stub/nomor-halaman-e2e.json';
 export const E2E_PILIHAN_TEMPLATE_FILE = 'stub/pilihan-template-e2e.json';
+export const E2E_PENOMORAN_FILE = 'stub/penomoran-dokumen-e2e.json';
 export const E2E_RIWAYAT_FILE = 'stub/riwayat-pengaturan-e2e.json';
 export const E2E_PROFIL_FILE = 'stub/profil-madrasah-e2e.json';
 export const E2E_PEJABAT_FILE = 'stub/pejabat-e2e.json';
@@ -78,6 +79,7 @@ export default defineConfig({
             STUB_DAFTAR_ISI_FILE: E2E_DAFTAR_ISI_FILE,
             STUB_NOMOR_HALAMAN_FILE: E2E_NOMOR_HALAMAN_FILE,
             STUB_PILIHAN_TEMPLATE_FILE: E2E_PILIHAN_TEMPLATE_FILE,
+            STUB_PENOMORAN_DOKUMEN_FILE: E2E_PENOMORAN_FILE,
             STUB_RIWAYAT_FILE: E2E_RIWAYAT_FILE,
             STUB_PROFIL_FILE: E2E_PROFIL_FILE,
             STUB_PEJABAT_FILE: E2E_PEJABAT_FILE,
