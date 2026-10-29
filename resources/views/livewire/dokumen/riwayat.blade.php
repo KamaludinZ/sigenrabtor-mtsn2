@@ -40,7 +40,10 @@
 
     @if ($semua !== [])
         {{-- Tampilan & urutan --}}
-        <div class="mt-6 flex flex-wrap items-center justify-between gap-3" data-testid="alat-riwayat">
+        <div class="mt-6 flex flex-wrap items-start justify-between gap-3" data-testid="alat-riwayat">
+            <x-ui.kotak-cari model="cari" :nilai="$cari" wire:model.live.debounce.300ms="cari" label="Cari dokumen" placeholder="Cari kegiatan, nama berkas, nomor dokumen, leading…"
+                             :jumlah="count($this->cocok)" :total="count($semua)" satuan="dokumen" testid="cari-riwayat" class="w-full sm:max-w-md sm:flex-1" />
+            <div class="flex flex-wrap items-center gap-3">
             <div class="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Tampilan" data-testid="tampilan-riwayat" data-tampilan="{{ $tampilan }}">
                 @foreach (\App\Livewire\Dokumen\Riwayat::TAMPILAN as $kunciTampilan => $labelTampilan)
                     <button type="button" wire:click="$set('tampilan', '{{ $kunciTampilan }}')" aria-pressed="{{ $tampilan === $kunciTampilan ? 'true' : 'false' }}" data-pilih-tampilan="{{ $kunciTampilan }}"
@@ -58,13 +61,19 @@
                         @endforeach
                     </select>
                 </label>
-            @else
-                <p class="text-xs text-stone-500">Versi terbaru tiap dokumen; buka "versi sebelumnya" untuk riwayatnya.</p>
             @endif
+            </div>
         </div>
     @endif
 
-    @if ($semua === [])
+    @if ($semua !== [] && $this->cocok === [])
+        <div class="mt-4 rounded-2xl bg-white px-5 py-10 text-center shadow-xs ring-1 ring-stone-200" data-testid="riwayat-tanpa-hasil">
+            <x-ui.icon name="search" class="mx-auto size-8 text-stone-300" />
+            <p class="mt-2 text-sm font-semibold text-stone-700">Tidak ada dokumen yang cocok dengan “{{ $cari }}”.</p>
+            <p class="mt-1 text-sm text-stone-500">Coba kata lain — mis. sebagian nama kegiatan, kode leading, atau nomor dokumen.</p>
+            <button type="button" wire:click="$set('cari', '')" class="mt-3 text-sm font-semibold text-brand-700 hover:text-brand-800">Hapus pencarian</button>
+        </div>
+    @elseif ($semua === [])
         <div class="mt-6 rounded-2xl bg-white px-5 py-12 text-center shadow-xs ring-1 ring-stone-200" data-testid="riwayat-kosong">
             <x-ui.icon name="history" class="mx-auto size-9 text-stone-300" />
             <p class="mt-3 text-sm font-semibold text-stone-700">Belum ada dokumen yang tercatat.</p>
@@ -107,12 +116,12 @@
                                                 </span>
                                                 <div class="min-w-0">
                                                     <p class="font-semibold text-stone-900">{{ $d['label_jenis'] }} <span class="font-normal text-stone-500">· {{ $d['label_format'] }} · v{{ $d['versi'] }}</span></p>
-                                                    <p class="mt-0.5 truncate font-mono text-[11px] text-stone-500" title="{{ $d['nama_berkas'] }}">{{ $d['nama_berkas'] }}</p>
+                                                    <p class="mt-0.5 truncate font-mono text-[11px] text-stone-500" title="{{ $d['nama_berkas'] }}">{!! RiwayatDokumen::sorot($d['nama_berkas'], $cari) !!}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="px-3 py-3 align-top">
-                                            <p class="line-clamp-2 text-stone-800">{{ $d['nama_kegiatan'] }}</p>
+                                            <p class="line-clamp-2 text-stone-800">{!! RiwayatDokumen::sorot($d['nama_kegiatan'], $cari) !!}</p>
                                             <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
                                                 @if ($d['sumber'])
                                                     <x-rab.lencana-sumber :sumber="$d['sumber']" />
@@ -128,7 +137,7 @@
                                                 <span class="ml-1 text-[11px] font-bold tracking-wider text-red-700">DRAF</span>
                                             @endif
                                             @if ($d['nomor_dokumen'])
-                                                <p class="mt-1 font-mono text-[11px] text-stone-600">{{ $d['nomor_dokumen'] }}</p>
+                                                <p class="mt-1 font-mono text-[11px] text-stone-600">{!! RiwayatDokumen::sorot($d['nomor_dokumen'], $cari) !!}</p>
                                             @endif
                                         </td>
                                         <td class="px-3 py-3 align-top text-xs text-stone-600">
@@ -152,7 +161,7 @@
                                     </span>
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-semibold text-stone-900">{{ $d['label_jenis'] }} <span class="font-normal text-stone-500">· {{ $d['label_format'] }} · v{{ $d['versi'] }}</span></p>
-                                        <p class="mt-0.5 line-clamp-2 text-sm text-stone-700">{{ $d['nama_kegiatan'] }}</p>
+                                        <p class="mt-0.5 line-clamp-2 text-sm text-stone-700">{!! RiwayatDokumen::sorot($d['nama_kegiatan'], $cari) !!}</p>
                                         <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
                                             @if ($d['sumber'])
                                                 <x-rab.lencana-sumber :sumber="$d['sumber']" />
@@ -163,7 +172,7 @@
                                             @endif
                                         </p>
                                         <p class="mt-1.5 text-xs text-stone-500">{{ $waktu($d['dibuat_pada']) }} · {{ $d['label_asal'] }} oleh {{ $d['dibuat_oleh'] }}@if ($d['ukuran_teks']) · {{ $d['ukuran_teks'] }}@endif</p>
-                                        <p class="mt-0.5 truncate font-mono text-[11px] text-stone-400">{{ $d['nama_berkas'] }}</p>
+                                        <p class="mt-0.5 truncate font-mono text-[11px] text-stone-400">{!! RiwayatDokumen::sorot($d['nama_berkas'], $cari) !!}</p>
                                     </div>
                                 </div>
                             </li>

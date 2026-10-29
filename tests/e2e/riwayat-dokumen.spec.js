@@ -43,4 +43,33 @@ test.describe('Riwayat Dokumen', () => {
         const lebar = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(lebar).toBeLessThanOrEqual(0);
     });
+
+    test('pencarian kata kunci: sorotan, hitungan, pintasan, hapus', async ({ page }) => {
+        await page.goto('/demo/peran/leading');
+        await page.goto('/dokumen');
+        const cari = page.getByTestId('cari-riwayat');
+
+        await page.locator('body').click({ position: { x: 5, y: 5 } });
+        await page.keyboard.press('/');
+        await expect(cari).toBeFocused();
+        await cari.pressSequentially('lomba', { delay: 20 });
+        await expect(page).toHaveURL(/cari=lomba/);
+        await expect(page.getByTestId('cari-riwayat-hasil')).toContainText('2 dokumen cocok dengan “lomba” dari 9');
+        await expect(page.getByTestId('kegiatan-riwayat')).toHaveCount(1);
+        await expect(page.getByTestId('kegiatan-riwayat').locator('mark').first()).toHaveText(/lomba/i);
+
+        await cari.press('Escape');
+        await expect(page).not.toHaveURL(/cari=/);
+        await expect(page.getByTestId('kegiatan-riwayat')).toHaveCount(4);
+
+        await cari.fill('tidak ada sama sekali');
+        await expect(page.getByTestId('riwayat-tanpa-hasil')).toBeVisible();
+        await page.getByTestId('cari-riwayat-hapus').click();
+        await expect(page.getByTestId('riwayat-tanpa-hasil')).toBeHidden();
+        await expect(cari).toHaveValue('');
+
+        await page.goto('/dokumen?tampilan=kronologis&cari=KAK%2F031');
+        await expect(page.getByTestId('riwayat-tahun')).toHaveCount(1);
+        await expect(page.getByTestId('cari-riwayat-hasil')).toContainText('1 dokumen cocok');
+    });
 });

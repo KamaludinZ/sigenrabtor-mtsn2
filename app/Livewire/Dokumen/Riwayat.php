@@ -13,7 +13,7 @@ use Livewire\Component;
  * Halaman Riwayat Dokumen (PRD §7, F28; `/dokumen`, rute `dokumen.index`, semua pengguna): semua berkas KAK/TOR, RAB, dan
  * set dokumen yang pernah dicetak, diunduh, atau diarsipkan dalam cakupan akun (RiwayatDokumen::untuk), dikelompokkan per
  * tahun anggaran (terbaru dulu), dengan ringkasan jumlah dokumen, kegiatan, arsip final, dan dokumen bercap DRAF.
- * Tampilan `?tampilan=` (TAMPILAN): `kegiatan` (bawaan) = kartu per kegiatan dengan versi terbaru tiap jenis × sumber ×
+ * Kata kunci `?cari=` menyaring kedua tampilan (RiwayatDokumen::cari, sorotan RiwayatDokumen::sorot). Tampilan `?tampilan=` (TAMPILAN): `kegiatan` (bawaan) = kartu per kegiatan dengan versi terbaru tiap jenis × sumber ×
  * format dan versi lama yang bisa dibuka (RiwayatDokumen::perKegiatan); `kronologis` = tabel per tahun berurutan `?urut=`
  * (RiwayatDokumen::URUT). Daftar dibatasi `$batas` (PER_HALAMAN, "Tampilkan lebih banyak"); berganti tampilan/urutan
  * mengembalikan batasnya.
@@ -31,6 +31,10 @@ class Riwayat extends Component
     #[Url(except: 'terbaru')]
     public string $urut = 'terbaru';
 
+    /** Kata kunci (RiwayatDokumen::cari). */
+    #[Url(except: '')]
+    public string $cari = '';
+
     /** Jumlah kegiatan (tampilan per kegiatan) atau dokumen (kronologis) yang ditampilkan. */
     public int $batas = self::PER_HALAMAN;
 
@@ -41,7 +45,7 @@ class Riwayat extends Component
 
     public function updated(string $properti): void
     {
-        if (in_array($properti, ['tampilan', 'urut'], true)) {
+        if (in_array($properti, ['tampilan', 'urut', 'cari'], true)) {
             $this->rapikan();
             $this->batas = self::PER_HALAMAN;
         }
@@ -56,6 +60,7 @@ class Riwayat extends Component
     {
         $this->tampilan = array_key_exists($this->tampilan, self::TAMPILAN) ? $this->tampilan : 'kegiatan';
         $this->urut = array_key_exists($this->urut, RiwayatDokumen::URUT) ? $this->urut : 'terbaru';
+        $this->cari = mb_substr(trim($this->cari), 0, 100);
     }
 
     /**
@@ -63,11 +68,18 @@ class Riwayat extends Component
      *
      * @return array{0: array<int, list<array<string, mixed>>>, 1: int}
      */
+    /** @return list<array<string, mixed>> Catatan yang cocok dengan kata kunci. */
+    #[Computed]
+    public function cocok(): array
+    {
+        return RiwayatDokumen::cari($this->semua, $this->cari);
+    }
+
     public function isi(): array
     {
         $butir = $this->tampilan === 'kegiatan'
-            ? RiwayatDokumen::perKegiatan($this->semua)
-            : ($this->urut === 'terlama' ? array_reverse($this->semua) : $this->semua);
+            ? RiwayatDokumen::perKegiatan($this->cocok)
+            : ($this->urut === 'terlama' ? array_reverse($this->cocok) : $this->cocok);
         $kelompok = [];
         foreach (array_slice($butir, 0, $this->batas) as $b) {
             $kelompok[(int) $b['tahun_anggaran']][] = $b;

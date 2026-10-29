@@ -1,14 +1,15 @@
 {{--
     Riwayat dokumen per kegiatan (RiwayatDokumen::perKegiatan) dalam satu tahun anggaran: kartu kegiatan (nama, leading,
     tautan pratinjau selama kegiatannya tersimpan) berisi satu baris per jenis × sumber × format dengan versi terbaru dan
-    versi sebelumnya yang bisa dibuka. Variabel: $kegiatan, $waktu, $nadaStatus.
+    versi sebelumnya yang bisa dibuka; kata kunci `$cari` disorot (RiwayatDokumen::sorot). Variabel: $kegiatan, $waktu,
+    $nadaStatus, $cari.
 --}}
 <ul class="divide-y divide-stone-100" role="list">
     @foreach ($kegiatan as $k)
         <li class="px-4 py-4 sm:px-5" data-testid="kegiatan-riwayat" data-kunci="{{ $k['kunci'] }}" wire:key="kg-{{ $k['kunci'] }}">
             <div class="flex flex-wrap items-start justify-between gap-2">
                 <div class="min-w-0">
-                    <h3 class="font-semibold text-stone-900">{{ $k['nama_kegiatan'] }}</h3>
+                    <h3 class="font-semibold text-stone-900">{!! \App\Support\Dokumen\RiwayatDokumen::sorot($k['nama_kegiatan'], $cari) !!}</h3>
                     <p class="mt-0.5 text-xs text-stone-500">
                         @if ($k['kode_leading'] !== '')
                             Leading {{ $k['kode_leading'] }}@if ($k['nama_leading']) · {{ $k['nama_leading'] }}@endif ·
@@ -45,10 +46,10 @@
                                         <span class="text-[11px] font-bold tracking-wider text-red-700">DRAF</span>
                                     @endif
                                     @if ($t['nomor_dokumen'])
-                                        <span class="font-mono text-[11px] text-stone-600">{{ $t['nomor_dokumen'] }}</span>
+                                        <span class="font-mono text-[11px] text-stone-600">{!! \App\Support\Dokumen\RiwayatDokumen::sorot($t['nomor_dokumen'], $cari) !!}</span>
                                     @endif
                                 </p>
-                                <p class="mt-0.5 truncate font-mono text-[11px] text-stone-500" title="{{ $t['nama_berkas'] }}">{{ $t['nama_berkas'] }}</p>
+                                <p class="mt-0.5 truncate font-mono text-[11px] text-stone-500" title="{{ $t['nama_berkas'] }}">{!! \App\Support\Dokumen\RiwayatDokumen::sorot($t['nama_berkas'], $cari) !!}</p>
                                 <p class="mt-0.5 text-xs text-stone-500">{{ $waktu($t['dibuat_pada']) }} · {{ $t['label_asal'] }} oleh {{ $t['dibuat_oleh'] }}@if ($t['ukuran_teks']) · {{ $t['ukuran_teks'] }}@endif</p>
 
                                 @if ($d['lama'] !== [])

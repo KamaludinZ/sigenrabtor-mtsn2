@@ -164,6 +164,52 @@ final class RiwayatDokumen
         return $kelompok;
     }
 
+    /** Kolom catatan siap tampil yang dicari kata kunci. */
+    public const KOLOM_CARI = ['nama_kegiatan', 'nama_berkas', 'nomor_dokumen', 'kode_leading', 'nama_leading', 'dibuat_oleh', 'label_jenis', 'label_format', 'sumber', 'label_status', 'label_asal'];
+
+    /** Kata kunci → daftar kata (huruf kecil, tanpa spasi ganda); maksimal 100 karakter. */
+    public static function kataKunci(?string $kata): array
+    {
+        $kata = mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', mb_substr((string) $kata, 0, 100))));
+
+        return $kata === '' ? [] : array_values(array_unique(explode(' ', $kata)));
+    }
+
+    /**
+     * Catatan yang setiap kata kuncinya muncul di salah satu `KOLOM_CARI` (tanpa beda huruf besar); kata kosong = semua.
+     *
+     * @param  list<array<string, mixed>>  $baris  Catatan siap tampil.
+     * @return list<array<string, mixed>>
+     */
+    public static function cari(array $baris, ?string $kata): array
+    {
+        $daftar = self::kataKunci($kata);
+        if ($daftar === []) {
+            return $baris;
+        }
+
+        return array_values(array_filter($baris, function (array $b) use ($daftar) {
+            $teks = mb_strtolower(implode(' ', array_map(fn (string $k) => (string) ($b[$k] ?? ''), self::KOLOM_CARI)));
+
+            return collect($daftar)->every(fn (string $k) => str_contains($teks, $k));
+        }));
+    }
+
+    /** Teks dengan kata kunci yang cocok dibungkus <mark> (semua bagian di-escape lebih dulu). */
+    public static function sorot(?string $teks, ?string $kata): string
+    {
+        $teks = (string) $teks;
+        $daftar = self::kataKunci($kata);
+        if ($daftar === [] || $teks === '') {
+            return e($teks);
+        }
+        usort($daftar, fn (string $a, string $b) => mb_strlen($b) <=> mb_strlen($a));
+        $pola = '/('.implode('|', array_map(fn (string $k) => preg_quote($k, '/'), $daftar)).')/iu';
+        $bagian = preg_split($pola, $teks, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$teks];
+
+        return implode('', array_map(fn (string $p, int $i) => $i % 2 === 1 ? '<mark class="rounded-sm bg-gold-100 px-0.5 text-inherit">'.e($p).'</mark>' : e($p), $bagian, array_keys($bagian)));
+    }
+
     /** Urutan jenis di kartu kegiatan: set lengkap dulu, lalu KAK/TOR, lalu RAB. */
     public const URUT_JENIS = ['lengkap', 'KAK+TOR', 'KAK', 'TOR', 'RAB'];
 

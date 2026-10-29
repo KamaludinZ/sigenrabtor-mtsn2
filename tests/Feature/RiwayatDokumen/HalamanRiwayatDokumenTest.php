@@ -101,4 +101,37 @@ class HalamanRiwayatDokumenTest extends TestCase
             ->assertSet('batas', Riwayat::PER_HALAMAN)
             ->assertSee('(20 dari 34 dokumen)');
     }
+
+    public function test_pencarian_kata_kunci_dan_sorotan(): void
+    {
+        $semua = RiwayatDokumen::untuk(self::ADMIN);
+        $this->assertSame(['rd-2025-5', 'rd-2025-4'], array_column(RiwayatDokumen::cari($semua, '  LOMBA   kreativitas '), 'id'));
+        $this->assertSame(['rd-2025-5'], array_column(RiwayatDokumen::cari($semua, 'KAK/031'), 'id'), 'Nomor dokumen.');
+        $this->assertSame(['rd-2026-6'], array_column(RiwayatDokumen::cari($semua, 'puskom excel'), 'id'), 'Pembuat & format, semua kata wajib cocok.');
+        $this->assertCount(2, RiwayatDokumen::cari($semua, 'word'), 'Label format.');
+        $this->assertSame([], RiwayatDokumen::cari($semua, 'lomba dipa'));
+        $this->assertSame($semua, RiwayatDokumen::cari($semua, '   '));
+        $this->assertSame(['lomba', 'siswa'], RiwayatDokumen::kataKunci(' Lomba  siswa lomba '));
+
+        $this->assertSame('Lomba <mark class="rounded-sm bg-gold-100 px-0.5 text-inherit">Kreativ</mark>itas &lt;b&gt;', RiwayatDokumen::sorot('Lomba Kreativitas <b>', 'kreativ'));
+        $this->assertSame('a &amp; b', RiwayatDokumen::sorot('a & b', ''));
+        $this->assertSame('<mark class="rounded-sm bg-gold-100 px-0.5 text-inherit">KAK/031</mark>/2025', RiwayatDokumen::sorot('KAK/031/2025', 'kak/031'));
+
+        Livewire::test(Riwayat::class)
+            ->set('cari', 'lomba')
+            ->assertSee('data-testid="cari-riwayat"', false)
+            ->assertSeeText('2 dokumen cocok dengan “lomba” dari 9.')
+            ->assertSeeHtml('<mark class="rounded-sm bg-gold-100 px-0.5 text-inherit">Lomba</mark> Kreativitas Siswa Akhir Tahun')
+            ->assertDontSee('Review RKJM dan Penyusunan RKTM')
+            ->assertSee('data-testid="cari-riwayat-hapus"', false)
+            ->set('tampilan', 'kronologis')
+            ->assertSet('cari', 'lomba')
+            ->assertSee('data-testid="dokumen-riwayat" data-id="rd-2025-4"', false)
+            ->assertDontSee('data-id="rd-2026-7"', false)
+            ->set('cari', 'tidak ada sama sekali')
+            ->assertSee('data-testid="riwayat-tanpa-hasil"', false)
+            ->set('cari', str_repeat('a', 150))
+            ->call('$refresh');
+        $this->assertSame(100, mb_strlen(Livewire::withQueryParams(['cari' => str_repeat('b', 150)])->test(Riwayat::class)->get('cari')));
+    }
 }
