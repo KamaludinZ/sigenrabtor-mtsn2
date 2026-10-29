@@ -10,6 +10,7 @@ use App\Support\Stub\StubPenggunaRepository;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
@@ -117,5 +118,25 @@ class EloquentPenggunaRepositoryTest extends TestCase
 
         $this->get('/demo/peran/leading', ['User-Agent' => 'Peramban Uji'])->assertRedirect();
         $this->assertSame([['Muslimin, M.Pd.', 'Peramban Uji']], DB::table('riwayat_masuk')->get(['pengguna', 'agen'])->map(fn ($r) => [$r->pengguna, $r->agen])->all());
+    }
+
+    #[DataProvider('penyimpanan')]
+    public function test_sandi_dan_ganti_sandi(bool $database): void
+    {
+        $repo = $this->repo($database);
+        // Akun database selalu bersandi (acak saat dibuat); akun contoh tiruan belum punya sandi.
+        $this->assertSame($database, $repo->sandi(4) !== null);
+        $this->assertNull($repo->sandi(99));
+
+        $repo->gantiSandi(4, Hash::make('Madrasah#2026'));
+        $sandi = $repo->sandi(4);
+        $this->assertTrue(Hash::check('Madrasah#2026', $sandi['hash']));
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\+07:00$/', $sandi['diganti_pada']);
+
+        $repo->simpan(['name' => 'Ahmad Fauzan, S.Pd., M.Pd.'], 4);
+        $this->assertTrue(Hash::check('Madrasah#2026', $repo->sandi(4)['hash']), 'Mengubah akun tidak mengganti sandi.');
+
+        $this->expectException(RuntimeException::class);
+        $repo->gantiSandi(99, Hash::make('x'));
     }
 }

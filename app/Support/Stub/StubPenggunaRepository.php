@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
- * Akun tiruan di berkas JSON (disk "local"), tanpa sandi (masuk masih lewat /demo/peran). Saat berkas belum ada, contoh
+ * Akun tiruan di berkas JSON (disk "local"); kunci baris `riwayat_masuk` & `sandi` {hash, diganti_pada} (akun contoh tanpa
+ * sandi sampai diganti di Akun saya) di luar bentuk data `temukan()` dan ikut dipertahankan saat akun disimpan. Saat berkas belum ada, contoh
  * disiapkan: akun 1 (leading 1.6) & 2 (admin) yang dipakai StubData::currentUser(), akun leading lain — satu tertaut ke
  * dua leading — admin kedua, dan satu akun nonaktif. Nama & surel fiktif (example.com).
  */
@@ -37,7 +38,9 @@ class StubPenggunaRepository implements PenggunaRepository
         $lama = $indeks === false ? [] : $semua[$indeks];
         $id ??= max([0, ...array_map('intval', array_column($semua, 'id'))]) + 1;
 
-        $baris = self::rapikan(['id' => $id] + $data + ['dibuat_pada' => $lama['dibuat_pada'] ?? now()->toIso8601String(), 'terakhir_masuk' => $lama['terakhir_masuk'] ?? null] + $lama);
+        $baris = self::rapikan(['id' => $id] + $data + ['dibuat_pada' => $lama['dibuat_pada'] ?? now()->toIso8601String(), 'terakhir_masuk' => $lama['terakhir_masuk'] ?? null] + $lama)
+            // Riwayat masuk & sandi bukan bagian bentuk data akun, tetapi tidak boleh hilang saat akun diubah.
+            + array_intersect_key($lama, array_flip(['riwayat_masuk', 'sandi']));
         if ($indeks === false) {
             $semua[] = $baris;
         } else {
@@ -69,6 +72,25 @@ class StubPenggunaRepository implements PenggunaRepository
         $akun = collect($this->baca())->first(fn (array $a) => (int) $a['id'] === $id);
 
         return array_slice(array_values((array) ($akun['riwayat_masuk'] ?? [])), 0, $batas);
+    }
+
+    public function sandi(int $id): ?array
+    {
+        $akun = collect($this->baca())->first(fn (array $a) => (int) $a['id'] === $id);
+        $sandi = $akun['sandi'] ?? null;
+
+        return is_array($sandi) && filled($sandi['hash'] ?? null) ? ['hash' => (string) $sandi['hash'], 'diganti_pada' => $sandi['diganti_pada'] ?? null] : null;
+    }
+
+    public function gantiSandi(int $id, string $hash): void
+    {
+        $semua = $this->baca();
+        $indeks = array_search($id, array_map('intval', array_column($semua, 'id')), true);
+        if ($indeks === false) {
+            throw new RuntimeException('Akun tidak ditemukan.');
+        }
+        $semua[$indeks]['sandi'] = ['hash' => $hash, 'diganti_pada' => now()->format('Y-m-d\\TH:i:s.uP')];
+        $this->tulis($semua);
     }
 
     /**

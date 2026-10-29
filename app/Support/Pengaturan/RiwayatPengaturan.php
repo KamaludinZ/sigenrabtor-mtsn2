@@ -41,6 +41,7 @@ final class RiwayatPengaturan
         'tambah_akun' => ['Tambah akun', 'leading'],
         'ubah_akun' => ['Ubah akun', 'leading'],
         'ubah_profil_akun' => ['Ubah profil akun sendiri', 'leading'],
+        'ganti_sandi_akun' => ['Ganti sandi akun sendiri', 'leading'],
         'ubah_tautan_leading' => ['Ubah tautan akun–leading', 'leading'],
         'ubah_status_akun' => ['Ubah status akun', 'leading'],
         'ubah_penyedia_ai' => ['Ubah penyedia AI', 'ai'],

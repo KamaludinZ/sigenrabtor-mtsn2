@@ -65,3 +65,35 @@ export default function formDaftar() {
         },
     };
 }
+
+// Alpine.data('formSandi'): ganti sandi di Akun saya — syarat sandi baru (kembaran GantiSandi::syarat: syarat pendaftaran
+// + berbeda dari sandi saat ini) dan kecocokan sandi ulang per ketukan; nama & surel akun dari atribut data-nama/data-surel.
+export function formSandi() {
+    return {
+        lama: '',
+        baru: '',
+        ulang: '',
+        nama: '',
+        surel: '',
+        lihat: false,
+
+        init() {
+            this.nama = this.$root.dataset.nama ?? '';
+            this.surel = this.$root.dataset.surel ?? '';
+        },
+
+        get syarat() {
+            return { ...syaratSandi(this.baru, this.nama, this.surel), beda: this.baru !== '' && this.baru !== this.lama };
+        },
+
+        get cocok() {
+            return this.ulang !== '' && this.ulang === this.baru;
+        },
+
+        kosongkan() {
+            this.lama = '';
+            this.baru = '';
+            this.ulang = '';
+        },
+    };
+}

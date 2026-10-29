@@ -4,6 +4,7 @@
 @php
     $akun = $this->akun;
     $rincian = $akun !== null ? $this->rincian : null;
+    $statusSandi = $akun !== null && $tab === 'sandi' ? $this->statusSandi : null;
     $waktu = fn (?string $iso) => $iso ? Format::tanggal(substr($iso, 0, 10)).' · '.\Carbon\CarbonImmutable::parse($iso)->setTimezone(config('app.timezone'))->format('H.i') : '—';
 @endphp
 
@@ -196,24 +197,54 @@
         </div>
     @elseif ($tab === 'sandi')
         <section class="mt-6 max-w-xl rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-sandi" data-testid="sandi-akun">
-            <h2 id="judul-sandi" class="text-sm font-semibold text-stone-900">Ubah sandi</h2>
-            <p class="mt-0.5 text-xs text-stone-500">Setelah sandi diganti, perangkat lain yang masih masuk dengan akun ini akan keluar.</p>
-            <div class="mt-4 space-y-4">
-                @foreach (['sandi_lama' => ['Sandi saat ini', 'current-password'], 'sandi_baru' => ['Sandi baru', 'new-password'], 'sandi_ulang' => ['Ulangi sandi baru', 'new-password']] as $kunci => [$label, $auto])
-                    <label class="block">
-                        <span class="form-label">{{ $label }}</span>
-                        <input type="password" autocomplete="{{ $auto }}" class="form-input mt-1" disabled data-testid="isian-{{ $kunci }}">
-                    </label>
-                @endforeach
-            </div>
-            <ul class="mt-4 grid gap-1.5 text-xs text-stone-600 sm:grid-cols-2" role="list" data-testid="syarat-sandi">
-                @foreach (Profil::SYARAT_SANDI as $syarat)
-                    <li class="flex items-center gap-1.5"><x-ui.icon name="check" class="size-3.5 text-stone-400" /> {{ $syarat }}</li>
-                @endforeach
-            </ul>
-            <div class="mt-5 flex items-center justify-end gap-2">
-                <button type="button" class="btn-primary" disabled title="Sedang disiapkan">Simpan sandi <x-ui.segera /></button>
-            </div>
+            <h2 id="judul-sandi" class="text-sm font-semibold text-stone-900">Ganti sandi</h2>
+            <p class="mt-0.5 text-xs text-stone-500" data-testid="status-sandi" data-ada="{{ $statusSandi['ada'] ? 'ya' : 'tidak' }}">
+                {{ $statusSandi['diganti_pada'] ? 'Terakhir diganti '.$waktu($statusSandi['diganti_pada']).'.' : 'Sandi belum pernah diganti.' }}
+                Sandi disimpan terenkripsi; admin pun tidak bisa melihatnya.
+            </p>
+            @unless ($statusSandi['ada'])
+                <p class="mt-3 rounded-xl bg-gold-50 p-3 text-xs text-gold-900 ring-1 ring-gold-200" data-testid="sandi-belum-ada">
+                    Akun ini belum punya sandi (akun contoh mode demo) — kolom <span class="font-semibold">Sandi saat ini</span> boleh dikosongkan. Selama mode demo, halaman Masuk belum memeriksa sandi.
+                </p>
+            @endunless
+            <form wire:submit="gantiSandi" x-data="formSandi" data-nama="{{ $akun['nama'] }}" data-surel="{{ $akun['surel'] }}" x-on:sandi-diganti.window="kosongkan()"
+                  class="mt-4 space-y-4" data-testid="form-sandi" novalidate>
+                <x-ui.field label="Sandi saat ini" for="sandi-lama" error="isianSandi.sandi_lama" :required="$statusSandi['ada']">
+                    <input id="sandi-lama" x-bind:type="lihat ? 'text' : 'password'" type="password" wire:model="isianSandi.sandi_lama" x-on:input="lama = $event.target.value" autocomplete="current-password" maxlength="255"
+                           class="form-input" data-testid="isian-sandi_lama" @error('isianSandi.sandi_lama') aria-invalid="true" aria-describedby="sandi-lama-error" @enderror>
+                </x-ui.field>
+                <x-ui.field label="Sandi baru" for="sandi-baru" error="isianSandi.sandi_baru" required>
+                    <div class="relative">
+                        <input id="sandi-baru" x-bind:type="lihat ? 'text' : 'password'" type="password" wire:model="isianSandi.sandi_baru" x-on:input="baru = $event.target.value" autocomplete="new-password" maxlength="64"
+                               class="form-input pr-10" data-testid="isian-sandi_baru" aria-describedby="syarat-sandi @error('isianSandi.sandi_baru') sandi-baru-error @enderror" @error('isianSandi.sandi_baru') aria-invalid="true" @enderror>
+                        <button type="button" x-on:click="lihat = ! lihat" class="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-stone-400 hover:text-stone-700" x-bind:aria-label="lihat ? 'Sembunyikan sandi' : 'Tampilkan sandi'" x-bind:aria-pressed="lihat" data-testid="lihat-sandi-akun">
+                            <x-ui.icon name="eye" class="size-4" />
+                        </button>
+                    </div>
+                    <ul id="syarat-sandi" class="mt-2 grid gap-1 text-xs sm:grid-cols-2" role="list" aria-live="polite" data-testid="syarat-sandi">
+                        @foreach (\App\Support\Akun\GantiSandi::SYARAT as $kunci => $label)
+                            <li class="flex items-center gap-1.5" data-syarat="{{ $kunci }}" x-bind:data-ok="syarat.{{ $kunci }} && baru !== '' ? 'ya' : 'tidak'"
+                                x-bind:class="{ 'text-brand-700': syarat.{{ $kunci }} && baru !== '', 'text-stone-500': ! (syarat.{{ $kunci }} && baru !== '') }">
+                                <span x-show="syarat.{{ $kunci }} && baru !== ''"><x-ui.icon name="check" class="size-3.5" /></span>
+                                <span x-show="! (syarat.{{ $kunci }} && baru !== '')"><x-ui.icon name="circle" class="size-3.5" /></span>
+                                <span>{{ $label }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-ui.field>
+                <x-ui.field label="Ulangi sandi baru" for="sandi-ulang" error="isianSandi.sandi_ulang" required>
+                    <input id="sandi-ulang" x-bind:type="lihat ? 'text' : 'password'" type="password" wire:model="isianSandi.sandi_ulang" x-on:input="ulang = $event.target.value" autocomplete="new-password" maxlength="64"
+                           class="form-input" data-testid="isian-sandi_ulang" @error('isianSandi.sandi_ulang') aria-invalid="true" aria-describedby="sandi-ulang-error" @enderror>
+                    <p class="mt-1.5 text-xs" x-show="ulang !== ''" x-cloak aria-live="polite" data-testid="sandi-baru-cocok" x-bind:data-cocok="cocok ? 'ya' : 'tidak'"
+                       x-bind:class="{ 'text-brand-700': cocok, 'text-gold-700': ! cocok }" x-text="cocok ? 'Sandi sama.' : 'Belum sama dengan sandi baru.'"></p>
+                </x-ui.field>
+                <div class="flex items-center justify-end gap-2">
+                    <button type="submit" wire:loading.attr="disabled" wire:target="gantiSandi" class="btn-primary" data-testid="simpan-sandi">
+                        <span wire:loading.remove wire:target="gantiSandi">Ganti sandi</span>
+                        <span wire:loading wire:target="gantiSandi">Menyimpan…</span>
+                    </button>
+                </div>
+            </form>
         </section>
     @else
         <section class="mt-6 rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-aktivitas" data-testid="aktivitas-akun">

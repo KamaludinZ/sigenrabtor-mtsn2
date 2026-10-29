@@ -88,6 +88,26 @@ class EloquentPenggunaRepository implements PenggunaRepository
         });
     }
 
+    public function sandi(int $id): ?array
+    {
+        $u = DB::table('users')->where('id', $id)->first(['password', 'sandi_diganti_pada']);
+
+        return $u === null || blank($u->password) ? null : ['hash' => (string) $u->password, 'diganti_pada' => $u->sandi_diganti_pada === null ? null : $this->iso($u->sandi_diganti_pada, mikro: true)];
+    }
+
+    public function gantiSandi(int $id, string $hash): void
+    {
+        try {
+            $diubah = DB::table('users')->where('id', $id)->update(['password' => $hash, 'sandi_diganti_pada' => now()->format('Y-m-d H:i:s.uP'), 'remember_token' => null]);
+        } catch (QueryException $e) {
+            report($e);
+            throw new RuntimeException('Sandi gagal disimpan — coba lagi.', previous: $e);
+        }
+        if ($diubah === 0) {
+            throw new RuntimeException('Akun tidak ditemukan.');
+        }
+    }
+
     public function riwayatMasuk(int $id, int $batas = 20): array
     {
         return DB::table('riwayat_masuk')->where('user_id', $id)->orderByDesc('waktu')->orderByDesc('id')->limit($batas)->get()

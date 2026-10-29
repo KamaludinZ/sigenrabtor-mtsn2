@@ -43,4 +43,19 @@ interface PenggunaRepository
      * @return list<array{waktu: string, alamat_ip: string|null, agen: string|null}>
      */
     public function riwayatMasuk(int $id, int $batas = 20): array;
+
+    /**
+     * Sandi tersimpan akun $id: {hash bcrypt, diganti_pada ISO|null}; null bila akun tidak ada atau belum punya sandi
+     * (akun contoh tiruan selama mode demo).
+     *
+     * @return array{hash: string, diganti_pada: string|null}|null
+     */
+    public function sandi(int $id): ?array;
+
+    /**
+     * Ganti sandi akun $id dengan hash bcrypt $hash (waktu penggantian dicatat).
+     *
+     * @throws \RuntimeException Akun tidak ada / penyimpanan gagal.
+     */
+    public function gantiSandi(int $id, string $hash): void;
 }

@@ -162,4 +162,46 @@ test.describe('Masuk & Akun', () => {
         await ubahProfil(akun.nama, akun.jabatan);
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(akun.nama);
     });
+    test('ganti sandi: syarat per ketukan, sandi saat ini diperiksa setelah akun bersandi', async ({ page }, testInfo) => {
+        // Akun yang sama dengan tes ubah profil per proyek; halaman Masuk mode demo tidak memeriksa sandi.
+        const surel = testInfo.project.name === 'mobile' ? 'rina.kusumawati@example.com' : 'ahmad.fauzan@example.com';
+        await page.goto('/masuk');
+        await page.getByTestId('isian-surel').fill(surel);
+        await page.getByTestId('isian-sandi').fill('apa-saja');
+        await page.getByTestId('tombol-masuk').click();
+        await expect(page).toHaveURL(/\/dashboard/);
+        await page.goto('/akun?tab=sandi');
+        await expect(page.getByTestId('form-sandi')).toBeVisible();
+        await expect(page.getByTestId('sandi-belum-ada')).toBeVisible();
+
+        const syarat = (kunci) => page.getByTestId('syarat-sandi').locator(`[data-syarat="${kunci}"]`);
+        await page.getByTestId('isian-sandi_baru').fill('pendek');
+        await expect(syarat('panjang')).toHaveAttribute('data-ok', 'tidak');
+        await page.getByTestId('isian-sandi_baru').fill('Madrasah#2026');
+        for (const kunci of ['panjang', 'campur', 'pribadi', 'beda']) {
+            await expect(syarat(kunci)).toHaveAttribute('data-ok', 'ya');
+        }
+        await page.getByTestId('isian-sandi_ulang').fill('Madrasah#20');
+        await expect(page.getByTestId('sandi-baru-cocok')).toHaveAttribute('data-cocok', 'tidak');
+        await page.getByTestId('isian-sandi_ulang').fill('Madrasah#2026');
+        await expect(page.getByTestId('sandi-baru-cocok')).toHaveAttribute('data-cocok', 'ya');
+        await page.getByTestId('simpan-sandi').click();
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Sandi diganti.' })).toBeVisible();
+        await expect(page.getByTestId('status-sandi')).toHaveAttribute('data-ada', 'ya');
+        await expect(page.getByTestId('isian-sandi_baru')).toHaveValue('');
+
+        // Kini sandi saat ini wajib & diperiksa; sama dengan sandi baru ditandai belum berbeda.
+        await page.getByTestId('isian-sandi_lama').fill('keliru');
+        await page.getByTestId('isian-sandi_baru').fill('keliru');
+        await expect(syarat('beda')).toHaveAttribute('data-ok', 'tidak');
+        await page.getByTestId('isian-sandi_baru').fill('Baru#2027x');
+        await page.getByTestId('isian-sandi_ulang').fill('Baru#2027x');
+        await page.getByTestId('simpan-sandi').click();
+        await expect(page.locator('#sandi-lama-error')).toHaveText('Sandi saat ini salah.');
+        await page.screenshot({ path: `storage/playwright/shots/ganti-sandi-${testInfo.project.name}.png`, fullPage: true });
+        await page.getByTestId('isian-sandi_lama').fill('Madrasah#2026');
+        await page.getByTestId('simpan-sandi').click();
+        await expect(page.locator('#sandi-lama-error')).toHaveCount(0);
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Sandi diganti.' }).first()).toBeVisible();
+    });
 });

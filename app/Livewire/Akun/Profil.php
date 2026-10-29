@@ -4,6 +4,7 @@ namespace App\Livewire\Akun;
 
 use App\Contracts\PenggunaRepository;
 use App\Support\Akun\DataAkun;
+use App\Support\Akun\GantiSandi;
 use App\Support\Akun\ProfilAkun;
 use App\Support\Akun\UbahProfil;
 use App\Support\MasterKode;
@@ -20,7 +21,8 @@ use RuntimeException;
 /**
  * Halaman Akun saya (PRD §8 "Kelola Profil & Sandi"; `/akun`, rute `akun.profil`, semua pengguna): tab `?tab=` (TAB)
  * profil (nama, surel, jabatan, NIP, peran, leading tertaut, status + ProfilAkun: tercetak di dokumen, kegiatan & dokumen
- * buatan akun, kuota AI hari ini, sesi), sandi (formulir ubah sandi + syarat), aktivitas
+ * buatan akun, kuota AI hari ini, sesi), sandi (ganti sandi `gantiSandi()` lewat GantiSandi; syarat per ketukan Alpine
+ * `formSandi`; `statusSandi`), aktivitas
  * (riwayat masuk terbaru). Data dari DataAkun::untuk (akun yang sedang masuk; tiruan selama autentikasi belum nyata).
  * Ubah profil (nama & jabatan) di tempat: `bukaUbah()` → `$isian` (diperiksa saat blur) + pratinjau tanda tangan di klien
  * → `simpanProfil()` lewat UbahProfil (versi `$versiProfil` terkunci; bentrok → `$bentrok` data terbaru, isian tetap)
@@ -30,9 +32,6 @@ use RuntimeException;
 class Profil extends Component
 {
     public const TAB = ['profil' => 'Profil', 'sandi' => 'Sandi', 'aktivitas' => 'Aktivitas masuk'];
-
-    /** Syarat sandi yang ditampilkan di formulir ubah sandi. */
-    public const SYARAT_SANDI = ['Minimal 8 karakter', 'Memuat huruf dan angka', 'Berbeda dari sandi lama', 'Bukan nama atau surel Anda'];
 
     #[Url(except: 'profil')]
     public string $tab = 'profil';
@@ -44,6 +43,9 @@ class Profil extends Component
 
     #[Locked]
     public ?string $versiProfil = null;
+
+    /** @var array{sandi_lama: string, sandi_baru: string, sandi_ulang: string} */
+    public array $isianSandi = ['sandi_lama' => '', 'sandi_baru' => '', 'sandi_ulang' => ''];
 
     /** Data tersimpan terbaru saat simpan bentrok. @var array{nama: string, jabatan: string}|null */
     #[Locked]
@@ -127,6 +129,36 @@ class Profil extends Component
         unset($this->akun, $this->rincian);
         $this->dispatch('notify', message: $hasil['ringkasan'] === null ? 'Tidak ada perubahan profil.' : 'Profil disimpan.', type: $hasil['ringkasan'] === null ? 'info' : 'success');
         $this->dispatch('profil-diperbarui', nama: (string) $hasil['akun']['name'], jabatan: (string) ($hasil['akun']['jabatan'] ?? ''));
+    }
+
+    /** Ada/tidaknya sandi tersimpan & waktu terakhir diganti (GantiSandi). @return array{ada: bool, diganti_pada: string|null} */
+    #[Computed]
+    public function statusSandi(): array
+    {
+        return GantiSandi::status((int) StubData::currentUser()['id']);
+    }
+
+    public function gantiSandi(): void
+    {
+        $this->resetErrorBag();
+        try {
+            GantiSandi::simpan(StubData::currentUser(), $this->isianSandi);
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kunci => $pesan) {
+                $this->addError("isianSandi.{$kunci}", $pesan[0]);
+            }
+
+            return;
+        } catch (RuntimeException $e) {
+            report($e);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+        $this->reset('isianSandi');
+        unset($this->statusSandi);
+        $this->dispatch('sandi-diganti');
+        $this->dispatch('notify', message: 'Sandi diganti. Gunakan sandi baru saat masuk berikutnya.', type: 'success');
     }
 
     /** Saran jabatan: jabatan penanda tangan leading yang tertaut + jabatan tersimpan. @return list<string> */

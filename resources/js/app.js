@@ -10,7 +10,7 @@ import pemilihBulan from './pemilih-bulan';
 import penampilDokumen from './penampil-dokumen';
 import penyuntingTeks, { adaDrafSunting, adaSuntingKotor, jagaSunting } from './penyunting-teks';
 import formMasuk from './masuk';
-import formDaftar, { syaratSandi } from './sandi';
+import formDaftar, { formSandi, syaratSandi } from './sandi';
 import pasangSiaranAnggaran from './siaran';
 import editorTeksBaku, { isiTeksBaku, penandaAsing } from './teks-baku';
 import jumlahTermin, { persenTermin, statusTermin } from './termin';
@@ -55,6 +55,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('unduhExcel', unduhExcel);
     window.Alpine.data('formDaftar', formDaftar);
     window.Alpine.data('formMasuk', formMasuk);
+    window.Alpine.data('formSandi', formSandi);
 
     // x-jaga-sunting: klik (aksi Livewire) minta konfirmasi selama penyunting teks pratinjau belum disimpan.
     window.Alpine.directive('jaga-sunting', (el) => jagaSunting(el));
