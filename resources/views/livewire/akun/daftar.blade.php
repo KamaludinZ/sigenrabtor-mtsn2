@@ -33,7 +33,7 @@
                 <div class="flex justify-between gap-4 py-2.5"><dt class="text-stone-500">Diajukan</dt><dd class="text-right text-stone-900">{{ \App\Support\Format::tanggal($terkirim['diajukan_pada']) }} · {{ \Illuminate\Support\Carbon::parse($terkirim['diajukan_pada'])->timezone(config('app.timezone'))->format('H.i') }}</dd></div>
             </dl>
 
-            <a href="{{ route('akun.masuk') }}" class="btn-primary mt-6 w-full justify-center py-2.5" data-testid="ke-masuk">Ke halaman masuk</a>
+            <a href="{{ route('akun.masuk', ['surel' => $terkirim['surel']]) }}" class="btn-primary mt-6 w-full justify-center py-2.5" data-testid="ke-masuk">Ke halaman masuk</a>
         </section>
     @else
         <div wire:key="formulir">

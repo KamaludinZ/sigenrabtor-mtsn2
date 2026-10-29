@@ -6,6 +6,7 @@ use App\Contracts\PenggunaRepository;
 use App\Livewire\Akun\Masuk;
 use App\Livewire\Akun\Profil;
 use App\Support\Akun\DataAkun;
+use App\Support\Akun\PeriksaMasuk;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -29,9 +30,9 @@ class MasukAkunTest extends TestCase
     {
         Livewire::test(Masuk::class)
             ->call('masuk')
-            ->assertHasErrors(['surel' => 'required', 'sandi' => 'required'])
+            ->assertHasErrors(['surel', 'sandi'])->assertSee('Isi surel akun Anda.')->assertSee('Isi sandi akun Anda.')
             ->set('surel', 'bukan-surel')->set('sandi', 'x')->call('masuk')
-            ->assertHasErrors(['surel' => 'email'])
+            ->assertHasErrors('surel')->assertSee('Surel tidak sah')
             ->set('surel', 'tidak@ada.id')->set('sandi', 'rahasia')->call('masuk')
             ->assertHasErrors('surel')->assertSee('belum terdaftar')->assertSet('sandi', '')
             ->set('surel', 'dewi.kartika@example.com')->set('sandi', 'rahasia')->call('masuk')
@@ -50,6 +51,41 @@ class MasukAkunTest extends TestCase
         Livewire::test(Masuk::class)->call('masukSebagai', 1)->assertRedirect(route('dashboard'));
         $this->assertSame('leading', session('stub_role'));
         Livewire::test(Masuk::class)->call('masukSebagai', 3)->assertNoRedirect();
+    }
+
+    public function test_surel_diperiksa_saat_blur_dan_diisi_dari_url(): void
+    {
+        Livewire::test(Masuk::class)
+            ->set('surel', 'bukan-surel')->assertHasErrors('surel')->assertSee('Surel tidak sah')
+            // Keberadaan akun tidak dibocorkan sebelum dikirim.
+            ->set('surel', 'tidak@ada.id')->assertHasNoErrors('surel')->assertDontSee('belum terdaftar')
+            ->set('surel', '')->assertHasNoErrors('surel');
+
+        Livewire::withQueryParams(['surel' => '  Nur.Laili@Example.com '])->test(Masuk::class)
+            ->assertSet('surel', 'nur.laili@example.com');
+        // Surel terisi → fokus awal pindah ke isian sandi.
+        $html = $this->get(route('akun.masuk', ['surel' => 'puskom@example.com']))->assertOk()
+            ->assertSee('&quot;surel&quot;:&quot;puskom@example.com&quot;', false)->getContent();
+        $this->assertMatchesRegularExpression('/id="sandi"[^>]*\\sautofocus\\s/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="surel"[^>]*\\sautofocus\\s/', $html);
+    }
+
+    public function test_percobaan_gagal_dibatasi_lalu_dijeda(): void
+    {
+        $uji = Livewire::test(Masuk::class)->set('surel', 'tidak@ada.id');
+        for ($i = 1; $i <= PeriksaMasuk::MAKS_PERCOBAAN - PeriksaMasuk::PERINGATAN_SISA - 1; $i++) {
+            $uji->set('sandi', 'salah')->call('masuk')->assertSet('peringatan', null);
+        }
+        $uji->set('sandi', 'salah')->call('masuk')->assertSet('peringatan', 'Sisa 2 percobaan sebelum masuk dijeda 60 detik.')
+            ->set('sandi', 'salah')->call('masuk')->assertSee('Sisa 1 percobaan')
+            ->set('sandi', 'salah')->call('masuk')->assertDispatched('masuk-dijeda')
+            ->set('sandi', 'salah')->call('masuk')->assertSee('Terlalu banyak percobaan masuk')->assertDispatched('masuk-dijeda');
+        $this->assertGreaterThan(0, PeriksaMasuk::tunggu(' TIDAK@ada.id', '127.0.0.1'));
+        // Jeda per surel: surel lain tetap bisa dicoba, dan berhasil masuk mengosongkan hitungan.
+        $this->assertSame(0, PeriksaMasuk::tunggu('puskom@example.com', '127.0.0.1'));
+        PeriksaMasuk::gagal('puskom@example.com', '127.0.0.1');
+        Livewire::test(Masuk::class)->set('surel', 'puskom@example.com')->set('sandi', 'apa-saja')->call('masuk')->assertRedirect(route('dashboard'));
+        $this->assertSame(PeriksaMasuk::MAKS_PERCOBAAN - 1, PeriksaMasuk::gagal('puskom@example.com', '127.0.0.1'));
     }
 
     public function test_keluar_dan_menu_pengguna(): void

@@ -4,18 +4,20 @@ namespace App\Livewire\Akun;
 
 use App\Contracts\PenggunaRepository;
 use App\Support\Akun\DataAkun;
-use App\Support\Akun\PendaftaranAkun;
+use App\Support\Akun\PeriksaMasuk;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use RuntimeException;
 
 /**
- * Halaman Masuk (PRD §8 "Daftar & Masuk"; `/masuk`, rute `akun.masuk`, layout tamu): surel + sandi + ingat saya. Selama
- * autentikasi Laravel belum dipasang (mode demo), surel dicocokkan dengan akun PenggunaRepository: tidak terdaftar /
- * nonaktif / bukan akun contoh (DataAkun::PERSONA) ditolak dengan pesannya; akun contoh masuk sebagai peran demonya
- * (session `stub_role`, waktu masuk dicatat `catatMasuk`) — sandi belum diperiksa. `masukSebagai($id)` = pintasan akun
- * contoh. Surel yang permohonan akunnya (halaman Daftar, PendaftaranAkun) masih menunggu diberi tahu bahwa admin belum
- * mengaktifkannya.
+ * Halaman Masuk (PRD §8 "Daftar & Masuk"; `/masuk`, rute `akun.masuk`, layout tamu): surel + sandi + ingat saya; aturan
+ * hanya lewat PeriksaMasuk. Surel diperiksa formatnya saat blur (`updatedSurel`), `?surel=` mengisinya saat dibuka
+ * (mis. dari halaman Daftar). Selama autentikasi Laravel belum dipasang (mode demo), surel dicocokkan dengan akun
+ * PenggunaRepository (`PeriksaMasuk::periksa`: tidak terdaftar / permohonan menunggu / nonaktif / bukan akun contoh
+ * ditolak); akun contoh masuk sebagai peran demonya (session `stub_role`, waktu masuk dicatat `catatMasuk`) — sandi belum
+ * diperiksa. Percobaan gagal dibatasi per surel × IP (`$peringatan` sisa percobaan, jeda → event `masuk-dijeda` {detik}).
+ * `masukSebagai($id)` = pintasan akun contoh.
  */
 #[Layout('layouts.tamu')]
 class Masuk extends Component
@@ -26,42 +28,61 @@ class Masuk extends Component
 
     public bool $ingat = false;
 
-    /** @return array<string, list<string>> */
-    protected function rules(): array
+    #[Locked]
+    public ?string $peringatan = null;
+
+    public function mount(): void
     {
-        return ['surel' => ['required', 'email', 'max:255'], 'sandi' => ['required', 'string', 'max:255']];
+        $surel = request()->query('surel');
+        if (is_string($surel)) {
+            $this->surel = mb_substr(PeriksaMasuk::rapikanSurel($surel), 0, 255);
+        }
     }
 
-    /** @return array<string, string> */
-    protected function messages(): array
+    public function updatedSurel(): void
     {
-        return [
-            'surel.required' => 'Isi surel akun Anda.',
-            'surel.email' => 'Surel tidak sah, mis. nama@madrasah.sch.id.',
-            'sandi.required' => 'Isi sandi akun Anda.',
-        ];
+        $this->resetErrorBag('surel');
+        $surel = PeriksaMasuk::rapikanSurel($this->surel);
+        if ($surel !== '' && ($galat = PeriksaMasuk::galatSurel($surel)) !== null) {
+            $this->addError('surel', $galat);
+        }
     }
 
     public function masuk()
     {
-        $this->validate();
-        $akun = DataAkun::cariSurel($this->surel);
-        $peran = $akun !== null ? (DataAkun::PERSONA[(int) $akun['id']] ?? null) : null;
-        $galat = match (true) {
-            $akun === null && PendaftaranAkun::menunggu($this->surel) !== null => 'Permohonan akun untuk surel ini masih menunggu persetujuan admin.',
-            $akun === null => 'Surel ini belum terdaftar — ajukan pendaftaran atau hubungi admin madrasah.',
-            ! ($akun['is_active'] ?? true) => 'Akun ini nonaktif — hubungi admin untuk mengaktifkannya kembali.',
-            $peran === null => 'Mode demo: hanya akun contoh di bawah yang bisa masuk sampai autentikasi diaktifkan.',
-            default => null,
-        };
-        if ($galat !== null) {
-            $this->addError('surel', $galat);
-            $this->reset('sandi');
+        $this->resetErrorBag();
+        $this->peringatan = null;
+        $surel = PeriksaMasuk::rapikanSurel($this->surel);
+        $galat = array_filter([
+            'surel' => PeriksaMasuk::galatSurel($surel),
+            'sandi' => match (true) {
+                $this->sandi === '' => 'Isi sandi akun Anda.',
+                mb_strlen($this->sandi) > 255 => 'Sandi terlalu panjang.',
+                default => null,
+            },
+        ]);
+        if ($galat !== []) {
+            foreach ($galat as $kolom => $pesan) {
+                $this->addError($kolom, $pesan);
+            }
 
             return null;
         }
 
-        return $this->masukkan((int) $akun['id'], $peran);
+        $ip = request()->ip();
+        if (($detik = PeriksaMasuk::tunggu($surel, $ip)) > 0) {
+            return $this->tolak(PeriksaMasuk::pesanTunggu($detik), $detik);
+        }
+        $hasil = PeriksaMasuk::periksa($surel);
+        if ($hasil['galat'] !== null) {
+            $sisa = PeriksaMasuk::gagal($surel, $ip);
+            $this->peringatan = PeriksaMasuk::pesanSisa($sisa);
+
+            return $this->tolak($hasil['galat'], $sisa === 0 ? PeriksaMasuk::tunggu($surel, $ip) : 0);
+        }
+        PeriksaMasuk::berhasil($surel, $ip);
+
+        return $this->masukkan((int) $hasil['akun']['id'], (string) $hasil['peran']);
     }
 
     public function masukSebagai(int $id)
@@ -69,6 +90,17 @@ class Masuk extends Component
         $peran = DataAkun::PERSONA[$id] ?? null;
 
         return $peran === null ? null : $this->masukkan($id, $peran);
+    }
+
+    private function tolak(string $pesan, int $jeda): null
+    {
+        $this->addError('surel', $pesan);
+        $this->reset('sandi');
+        if ($jeda > 0) {
+            $this->dispatch('masuk-dijeda', detik: $jeda);
+        }
+
+        return null;
     }
 
     private function masukkan(int $id, string $peran)

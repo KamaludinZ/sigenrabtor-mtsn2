@@ -2,12 +2,17 @@
     <h1 class="text-2xl font-bold tracking-tight text-stone-900">Masuk</h1>
     <p class="mt-1 text-sm text-stone-500">Gunakan akun yang dibuatkan admin madrasah. Dokumen yang Anda susun tersimpan atas nama akun dan leading Anda.</p>
 
-    <form wire:submit="masuk" class="mt-8 space-y-5" data-testid="form-masuk" novalidate>
+    <form wire:submit="masuk" x-data="formMasuk" x-on:submit="ingatSurel()" x-on:masuk-dijeda.window="mulaiJeda($event.detail.detik)"
+          class="mt-8 space-y-5" data-testid="form-masuk" novalidate>
         <div>
             <label for="surel" class="form-label">Surel</label>
-            <input id="surel" type="email" wire:model="surel" autocomplete="username" inputmode="email" autofocus
-                   @class(['form-input mt-1', 'ring-red-400' => $errors->has('surel')]) aria-describedby="galat-surel" data-testid="isian-surel">
+            {{-- .blur: Enter di isian ini menyalin nilainya ke $wire dulu agar ikut terkirim. --}}
+            <input id="surel" type="email" wire:model.live.blur="surel" x-on:keydown.enter="$wire.surel = $el.value" autocomplete="username" inputmode="email" maxlength="255" @if ($surel === '') autofocus @endif
+                   @class(['form-input mt-1', 'ring-red-400' => $errors->has('surel')]) aria-describedby="galat-surel" @error('surel') aria-invalid="true" @enderror data-testid="isian-surel">
             @error('surel')<p id="galat-surel" class="mt-1 text-xs font-medium text-red-700" role="alert" data-testid="galat-surel">{{ $message }}</p>@enderror
+            @if ($peringatan)
+                <p class="mt-1 flex items-center gap-1 text-xs font-medium text-gold-700" data-testid="sisa-percobaan"><x-ui.icon name="alert" class="size-3.5" /> {{ $peringatan }}</p>
+            @endif
         </div>
         <div x-data="{ lihat: false }">
             <div class="flex items-center justify-between">
@@ -15,21 +20,27 @@
                 <span class="text-xs text-stone-500" title="Sandi diatur ulang oleh admin di Pengaturan › Leading & User">Lupa sandi? Hubungi admin.</span>
             </div>
             <div class="relative mt-1">
-                <input id="sandi" x-bind:type="lihat ? 'text' : 'password'" type="password" wire:model="sandi" autocomplete="current-password"
-                       @class(['form-input pr-10', 'ring-red-400' => $errors->has('sandi')]) aria-describedby="galat-sandi" data-testid="isian-sandi">
+                <input id="sandi" x-bind:type="lihat ? 'text' : 'password'" type="password" wire:model="sandi" autocomplete="current-password" maxlength="255" @if ($surel !== '') autofocus @endif
+                       x-on:keydown="periksaCapslock($event)" x-on:keyup="periksaCapslock($event)" x-on:blur="capslock = false"
+                       @class(['form-input pr-10', 'ring-red-400' => $errors->has('sandi')]) aria-describedby="galat-sandi capslock-sandi" @error('sandi') aria-invalid="true" @enderror data-testid="isian-sandi">
                 <button type="button" x-on:click="lihat = ! lihat" class="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-stone-400 hover:text-stone-700" x-bind:aria-label="lihat ? 'Sembunyikan sandi' : 'Tampilkan sandi'" data-testid="lihat-sandi">
                     <x-ui.icon name="eye" class="size-4" />
                 </button>
             </div>
+            <p id="capslock-sandi" class="mt-1 flex items-center gap-1 text-xs font-medium text-gold-700" x-show="capslock" x-cloak aria-live="polite" data-testid="capslock-aktif"><x-ui.icon name="alert" class="size-3.5" /> Caps Lock menyala.</p>
             @error('sandi')<p id="galat-sandi" class="mt-1 text-xs font-medium text-red-700" role="alert" data-testid="galat-sandi">{{ $message }}</p>@enderror
         </div>
         <label class="flex items-center gap-2 text-sm text-stone-600">
-            <input type="checkbox" wire:model="ingat" class="size-4 rounded border-stone-300 text-brand-700 focus:ring-brand-500" data-testid="ingat-saya">
-            Ingat saya di perangkat ini
+            <input id="ingat" type="checkbox" wire:model="ingat" class="size-4 rounded border-stone-300 text-brand-700 focus:ring-brand-500" data-testid="ingat-saya">
+            Ingat surel saya di perangkat ini
         </label>
-        <button type="submit" wire:loading.attr="disabled" wire:target="masuk" class="btn-primary w-full justify-center py-2.5" data-testid="tombol-masuk">
+        {{-- Selama jeda percobaan tombol kirim diganti tombol nonaktif (tanpa mencampur disabled Alpine & wire:loading). --}}
+        <button type="submit" x-show="detik === 0" wire:loading.attr="disabled" wire:target="masuk" class="btn-primary w-full justify-center py-2.5" data-testid="tombol-masuk">
             <span wire:loading.remove wire:target="masuk">Masuk</span>
             <span wire:loading wire:target="masuk">Memeriksa…</span>
+        </button>
+        <button type="button" x-show="detik > 0" x-cloak disabled class="btn-primary w-full justify-center py-2.5 opacity-60" data-testid="jeda-masuk">
+            Coba lagi dalam <span x-text="detik"></span> detik
         </button>
     </form>
 
