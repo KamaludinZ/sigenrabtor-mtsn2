@@ -32,6 +32,7 @@ export const E2E_DRAF_DOKUMEN_FILE = 'stub/draf-dokumen-e2e.json';
 export const E2E_HASIL_DOKUMEN_FILE = 'stub/hasil-dokumen-e2e.json';
 export const E2E_RIWAYAT_SUNTING_FILE = 'stub/riwayat-sunting-e2e.json';
 export const E2E_DRAF_SUNTING_FILE = 'stub/draf-sunting-e2e.json';
+export const E2E_RIWAYAT_DOKUMEN_FILE = 'stub/riwayat-dokumen-e2e.json';
 
 // Tes E2E memakai Google Chrome yang terpasang (channel: 'chrome') sehingga tidak perlu mengunduh browser.
 export default defineConfig({
@@ -97,6 +98,7 @@ export default defineConfig({
             STUB_HASIL_DOKUMEN_FILE: E2E_HASIL_DOKUMEN_FILE,
             STUB_RIWAYAT_SUNTING_FILE: E2E_RIWAYAT_SUNTING_FILE,
             STUB_DRAF_SUNTING_FILE: E2E_DRAF_SUNTING_FILE,
+            STUB_RIWAYAT_DOKUMEN_FILE: E2E_RIWAYAT_DOKUMEN_FILE,
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },
     },
