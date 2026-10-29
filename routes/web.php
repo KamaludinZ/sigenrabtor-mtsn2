@@ -134,6 +134,7 @@ use App\Livewire\Pagu\Daftar as DataPaguDaftar;
 use App\Livewire\Pemeriksaan\Daftar as PemeriksaanDaftar;
 use App\Livewire\Pemeriksaan\Periksa as PemeriksaanPeriksa;
 use App\Livewire\Pengaturan\DasarHukum as PengaturanDasarHukum;
+use App\Livewire\Pengaturan\FormatSeragam as PengaturanFormatSeragam;
 use App\Livewire\Pengaturan\Ikhtisar as PengaturanIkhtisar;
 use App\Livewire\Pengaturan\LeadingUser as PengaturanLeadingUser;
 use App\Livewire\Pengaturan\PengaturanAi;
@@ -285,6 +286,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/leading/data', DataLeading::class)->name('leading.data');
     Route::get('/akun/data', DataAkun::class)->name('akun.data');
     Route::get('/akun/{akun}/leading', DataTautanAkun::class)->whereNumber('akun')->name('akun.leading');
+    Route::get('/format', PengaturanFormatSeragam::class)->name('format.index');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
     Route::get('/riwayat/data', DataRiwayatPengaturan::class)->name('riwayat.data');
     Route::get('/ai', PengaturanAi::class)->name('ai.index');

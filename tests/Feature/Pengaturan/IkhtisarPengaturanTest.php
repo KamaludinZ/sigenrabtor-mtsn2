@@ -36,8 +36,8 @@ class IkhtisarPengaturanTest extends TestCase
 
     public function test_peta_bagian_dikelompokkan_dan_aktif_bila_rute_ada(): void
     {
-        $this->assertSame(['tahun', 'template', 'madrasah', 'leading', 'master', 'ai'], array_column(BagianPengaturan::semua(), 'kunci'));
-        $this->assertSame(['dokumen', 'dokumen', 'madrasah', 'madrasah', 'kode', 'kode'], array_column(BagianPengaturan::semua(), 'kelompok'));
+        $this->assertSame(['tahun', 'template', 'format', 'madrasah', 'leading', 'master', 'ai'], array_column(BagianPengaturan::semua(), 'kunci'));
+        $this->assertSame(['dokumen', 'dokumen', 'dokumen', 'madrasah', 'madrasah', 'kode', 'kode'], array_column(BagianPengaturan::semua(), 'kelompok'));
         $this->assertTrue(BagianPengaturan::cari('tahun')['tersedia']);
         $this->assertTrue(BagianPengaturan::cari('madrasah')['tersedia']);
         $this->assertTrue(BagianPengaturan::cari('leading')['tersedia']);
