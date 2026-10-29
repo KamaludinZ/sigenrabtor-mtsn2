@@ -88,6 +88,11 @@ test.describe('Cetak & Unduh', () => {
         expect(await kak.evaluate((el) => getComputedStyle(el).zoom)).toBe('1');
         await expect(page.locator('[data-tanda-air-cetak]')).toBeVisible();
         await expect(page.locator('[data-area-cetak] [data-testid="cap-draf"]').first()).toBeHidden();
+        // Tabel RAB: kepala berulang & berlatar, total sekali di akhir, wadah tabel bukan wadah gulir.
+        const tabelRab = page.locator('[data-lembar="rab"] [data-testid="tabel-rab-dipa"]');
+        expect(await tabelRab.locator('thead').evaluate((el) => [getComputedStyle(el).display, getComputedStyle(el).printColorAdjust])).toEqual(['table-header-group', 'exact']);
+        expect(await tabelRab.getByTestId('kaki-tabel-rab').evaluate((el) => getComputedStyle(el).display)).toBe('table-row-group');
+        expect(await page.locator('#cetak-rab-rincian').evaluate((el) => getComputedStyle(el).overflowX)).toBe('visible');
 
         if (testInfo.project.name === 'desktop') {
             const pdf = await page.pdf({ preferCSSPageSize: true, path: 'storage/playwright/shots/cetak-peramban-pratinjau.pdf' });

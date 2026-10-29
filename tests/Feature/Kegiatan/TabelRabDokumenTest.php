@@ -84,6 +84,23 @@ class TabelRabDokumenTest extends TestCase
         $this->assertStringContainsString('data-testid="tabel-rab-dipa" data-jumlah-baris=', Blade::render('<x-dokumen.rab :susunan="$s" />', ['s' => SusunanRab::dari(app(KegiatanRepository::class)->temukan(2), 'DIPA')]));
     }
 
+    public function test_tabel_rab_siap_cetak_berhalaman_banyak(): void
+    {
+        $rincian = array_map(fn (int $i) => ['kode' => '521211', 'kategori' => 'bahan', 'uraian' => "Belanja bahan rapat ke-{$i} dengan keterangan cukup panjang", 'volume' => 2, 'satuan' => 'paket', 'harga_satuan' => 1_250_000], range(1, 60));
+        $tabel = TabelRab::dari(new AnggaranSumber('DIPA', KalkulatorRab::hitung($rincian)));
+        $html = Blade::render('<x-dokumen.tabel-rab :tabel="$tabel" />', ['tabel' => $tabel]);
+
+        $this->assertSame(61, substr_count($html, 'class="break-inside-avoid scroll-mt-40'), 'Tiap baris (60 rincian + total) tidak terbelah antarhalaman.');
+        $this->assertStringContainsString('[display:table-header-group] [print-color-adjust:exact]', $html, 'Kepala tabel berulang & latarnya tercetak.');
+        $this->assertMatchesRegularExpression('#<tfoot class="break-inside-avoid font-bold \[display:table-row-group\]" data-testid="kaki-tabel-rab">#', $html, 'Total & terbilang sekali di akhir, bukan di kaki tiap halaman.');
+        $this->assertSame(1, substr_count($html, 'TOTAL KESELURUHAN'));
+        $this->assertMatchesRegularExpression('#whitespace-nowrap" data-kolom="jumlah">2.500.000<#', $html);
+
+        $rab = Blade::render('<x-dokumen.rab :susunan="$s" />', ['s' => SusunanRab::dari(app(KegiatanRepository::class)->temukan(2), 'DIPA')]);
+        $this->assertStringContainsString('cetak:overflow-visible', $rab, 'Wadah tabel bukan wadah gulir di lembar cetak.');
+        $this->assertStringContainsString('min-w-[34rem] font-sans cetak:min-w-0', $rab);
+    }
+
     public function test_ekspor_excel_memakai_struktur_yang_sama(): void
     {
         $kegiatan = app(KegiatanRepository::class)->temukan(2);

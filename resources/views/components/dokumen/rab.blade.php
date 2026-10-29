@@ -43,9 +43,10 @@
         </dl>
 
         @if ($susunan->anggaran)
-            {{-- Tabel lebih lebar dari kertas di layar sempit: digeser, bukan terpotong. --}}
-            <div id="cetak-rab-rincian" class="-mx-5 scroll-mt-40 overflow-x-auto px-5 sm:mx-0 sm:px-0 cetak:mx-0 cetak:px-0">
-                <x-dokumen.tabel-rab :tabel="$susunan->tabel()" class="min-w-[34rem] font-sans" />
+            {{-- Tabel lebih lebar dari kertas di layar sempit: digeser, bukan terpotong. Di lembar cetak bukan wadah gulir
+                 agar tabel panjang terpotong per halaman (wadah gulir tidak dipecah antarhalaman di sebagian peramban). --}}
+            <div id="cetak-rab-rincian" class="-mx-5 scroll-mt-40 overflow-x-auto px-5 sm:mx-0 sm:px-0 cetak:mx-0 cetak:overflow-visible cetak:px-0 print:overflow-visible">
+                <x-dokumen.tabel-rab :tabel="$susunan->tabel()" class="min-w-[34rem] font-sans cetak:min-w-0" />
             </div>
         @else
             <p class="flex items-start gap-1.5 rounded bg-gold-50 px-2 py-1 font-sans text-sm text-gold-700 ring-1 ring-gold-200" data-kosong>
@@ -54,7 +55,7 @@
         @endif
 
         @if ($susunan->mekanisme)
-            <dl class="grid max-w-md scroll-mt-40 grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-sm transition-colors target:bg-gold-100" data-testid="mekanisme-rab" id="cetak-rab-mekanisme" data-tempat-cetak="rab-mekanisme">
+            <dl class="grid max-w-md break-inside-avoid scroll-mt-40 grid-cols-[minmax(0,1fr)_auto] gap-x-3 text-sm transition-colors target:bg-gold-100" data-testid="mekanisme-rab" id="cetak-rab-mekanisme" data-tempat-cetak="rab-mekanisme">
                 @foreach ($susunan->mekanisme as $baris)
                     <dt>{{ $baris['label'] }} :</dt>
                     <dd class="text-right tabular-nums">{{ $baris['nilai'] }}</dd>
