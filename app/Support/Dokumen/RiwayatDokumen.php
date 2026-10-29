@@ -2,10 +2,12 @@
 
 namespace App\Support\Dokumen;
 
+use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatDokumenRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\TautanAkunLeading;
 
 /**
  * Struktur riwayat dokumen (PRD §7 Riwayat Dokumen, F28) lewat RiwayatDokumenRepository: `entri()` menyusun satu catatan
@@ -114,5 +116,67 @@ final class RiwayatDokumen
     public static function semua(): array
     {
         return app(RiwayatDokumenRepository::class)->semua();
+    }
+
+    /**
+     * Catatan dalam cakupan akun: admin semua; akun leading dokumen leading-nya (TautanAkunLeading) atau buatannya.
+     *
+     * @param  array<string, mixed>  $entri
+     * @param  array{id?: int|null, role: string, leadings?: list<string>}  $pengguna
+     */
+    public static function boleh(array $entri, array $pengguna): bool
+    {
+        return TautanAkunLeading::bolehAkses($pengguna, ($entri['kode_leading'] ?? '') ?: null)
+            || ($entri['user_id'] !== null && $entri['user_id'] === ($pengguna['id'] ?? null));
+    }
+
+    /**
+     * Catatan siap tampil dalam cakupan akun, terbaru dulu (+ `tautan_kegiatan` pratinjau bila kegiatannya tersimpan).
+     *
+     * @param  array{id?: int|null, role: string, leadings?: list<string>}  $pengguna
+     * @return list<array<string, mixed>>
+     */
+    public static function untuk(array $pengguna): array
+    {
+        $ada = array_map(fn (array $k) => (int) $k['id'], app(KegiatanRepository::class)->semua());
+
+        return array_values(array_map(function (array $c) use ($ada) {
+            $t = self::tampil($c, $ada);
+
+            return $t + ['tautan_kegiatan' => $t['tersedia'] ? route('kegiatan.pratinjau', array_filter(['kegiatan' => $c['kegiatan_id'], 'sumber' => $c['sumber']])) : null];
+        }, array_filter(self::semua(), fn (array $c) => self::boleh($c, $pengguna))));
+    }
+
+    /**
+     * Kelompok per tahun anggaran, tahun terbaru dulu (urutan catatan di dalamnya tetap).
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @return array<int, list<array<string, mixed>>>
+     */
+    public static function perTahun(array $baris): array
+    {
+        $kelompok = [];
+        foreach ($baris as $b) {
+            $kelompok[(int) $b['tahun_anggaran']][] = $b;
+        }
+        krsort($kelompok);
+
+        return $kelompok;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $baris
+     * @return array{jumlah: int, kegiatan: int, tahun: int, arsip: int, draf: int, format: array<string, int>}
+     */
+    public static function ringkasan(array $baris): array
+    {
+        return [
+            'jumlah' => count($baris),
+            'kegiatan' => count(array_unique(array_map(fn (array $b) => $b['kegiatan_id'] ?? 'x:'.mb_strtolower($b['nama_kegiatan']), $baris))),
+            'tahun' => count(array_unique(array_column($baris, 'tahun_anggaran'))),
+            'arsip' => count(array_filter($baris, fn (array $b) => $b['asal'] === 'arsip')),
+            'draf' => count(array_filter($baris, fn (array $b) => $b['bertanda_draf'])),
+            'format' => array_map(fn (string $f) => count(array_filter($baris, fn (array $b) => $b['format'] === $f)), array_combine(array_keys(self::FORMAT), array_keys(self::FORMAT))),
+        ];
     }
 }

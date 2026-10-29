@@ -12,7 +12,8 @@ use RuntimeException;
 /**
  * Riwayat dokumen tiruan: berkas JSON di disk "local" berisi daftar catatan. Selama berkas belum ada, isinya `contoh()`:
  * dokumen fiktif TA 2025 yang kegiatannya tidak tersimpan (final, bernomor, satu berupa arsip bertanda tangan) dan dokumen
- * contoh kegiatan 1–3 TA 2026 (PDF set, Word KAK/TOR, Excel/PDF RAB; bercap DRAF selama belum disetujui).
+ * contoh kegiatan 1–3 TA 2026 (PDF set, Word KAK/TOR, Excel/PDF RAB; bercap DRAF selama belum disetujui). Pembuatnya akun
+ * contoh StubPenggunaRepository: dokumen leading lain dibuat akun lain sehingga cakupan akun leading 1.6 terlihat.
  */
 class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
 {
@@ -53,12 +54,14 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
         $kegiatan = StubKegiatanRepository::contohSemua();
         $leading = ['id' => 1, 'name' => 'Muslimin, M.Pd.'];
         $admin = ['id' => 2, 'name' => 'Koordinator PUSKOM'];
+        $wakaKesiswaan = ['id' => 4, 'name' => 'Ahmad Fauzan, S.Pd.'];
+        $penjaminMutu = ['id' => 5, 'name' => 'Rina Kusumawati, M.Pd.'];
         $lalu = fn (string $nama, string $kode) => ['nama_kegiatan' => $nama, 'leading' => $kode, 'tahun_anggaran' => 2025, 'status' => 'final'];
         $baris = [
             // [id, kegiatan, jenis, sumber, format, asal, ukuran, status, draf, nomor, waktu, pengguna, ringkas]
-            ['rd-2025-1', $lalu('Studi Banding Madrasah Unggulan', '1.2') + ['status' => 'draf'], 'KAK+TOR', 'DIPA', 'docx', 'unduh', 48_210, 'draf', true, null, '2025-03-11 09:20', $leading, [null, 6, 9]],
-            ['rd-2025-2', $lalu('Pelatihan Penulisan Karya Ilmiah Guru', '1.3'), 'RAB', 'DIPA', 'xlsx', 'unduh', 12_480, 'disetujui', false, null, '2025-05-02 13:05', $leading, [14_250_000, null, null]],
-            ['rd-2025-3', $lalu('Pelatihan Penulisan Karya Ilmiah Guru', '1.3'), 'lengkap', 'DIPA', 'pdf', 'arsip', 1_842_000, 'final', false, 'KAK/012/2025', '2025-06-20 10:40', $leading, [14_250_000, 9, 9]],
+            ['rd-2025-1', $lalu('Studi Banding Madrasah Unggulan', '1.2') + ['status' => 'draf'], 'KAK+TOR', 'DIPA', 'docx', 'unduh', 48_210, 'draf', true, null, '2025-03-11 09:20', $wakaKesiswaan, [null, 6, 9]],
+            ['rd-2025-2', $lalu('Pelatihan Penulisan Karya Ilmiah Guru', '1.3'), 'RAB', 'DIPA', 'xlsx', 'unduh', 12_480, 'disetujui', false, null, '2025-05-02 13:05', $penjaminMutu, [14_250_000, null, null]],
+            ['rd-2025-3', $lalu('Pelatihan Penulisan Karya Ilmiah Guru', '1.3'), 'lengkap', 'DIPA', 'pdf', 'arsip', 1_842_000, 'final', false, 'KAK/012/2025', '2025-06-20 10:40', $penjaminMutu, [14_250_000, 9, 9]],
             ['rd-2025-4', $lalu('Lomba Kreativitas Siswa Akhir Tahun', '1.6'), 'lengkap', 'Komite', 'pdf', 'cetak', 486_300, 'diperiksa', true, null, '2025-09-01 08:15', $leading, [8_600_000, 8, 9]],
             ['rd-2025-5', $lalu('Lomba Kreativitas Siswa Akhir Tahun', '1.6'), 'lengkap', 'Komite', 'pdf', 'arsip', 2_105_600, 'final', false, 'KAK/031/2025', '2025-10-15 14:30', $leading, [8_600_000, 9, 9]],
             ['rd-2026-1', $kegiatan[2], 'RAB', 'DIPA', 'pdf', 'unduh', 64_900, 'draf', true, null, '2026-02-10 10:12', $leading, [5_400_000, null, null]],

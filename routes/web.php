@@ -109,6 +109,7 @@ use App\Http\Middleware\HanyaAdmin;
 use App\Livewire\Buku\Daftar as BukuDaftar;
 use App\Livewire\Cetak\Daftar as CetakDaftar;
 use App\Livewire\Dashboard;
+use App\Livewire\Dokumen\Riwayat as RiwayatDokumen;
 use App\Livewire\Kegiatan\Daftar as KegiatanDaftar;
 use App\Livewire\Kegiatan\Form as KegiatanForm;
 use App\Livewire\Kegiatan\KalimatAi as KegiatanKalimatAi;
@@ -160,6 +161,7 @@ Route::post('/kegiatan/impor-perkin/{impor}/proses', ProsesImporKegiatan::class)
 Route::post('/kegiatan/impor-perkin/{impor}/batal', BatalImporKegiatan::class)->whereUuid('impor')->name('kegiatan.impor_perkin.batal');
 Route::get('/data-pagu', DataPaguDaftar::class)->name('pagu.index');
 Route::get('/cetak', CetakDaftar::class)->name('cetak.index');
+Route::get('/dokumen', RiwayatDokumen::class)->name('dokumen.index');
 Route::get('/buku', BukuDaftar::class)->name('buku.index');
 Route::get('/buku/kegiatan', KegiatanBukuDokumen::class)->name('buku.kegiatan');
 Route::get('/buku/riwayat', RiwayatBukuDokumen::class)->name('buku.riwayat');
