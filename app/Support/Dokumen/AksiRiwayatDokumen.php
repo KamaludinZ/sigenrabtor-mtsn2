@@ -11,7 +11,6 @@ use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
 use App\Support\Kegiatan\Duplikat\LayananDuplikat;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
-use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use App\Support\Rab\AnggaranKegiatan;
@@ -21,7 +20,8 @@ use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
- * Aksi satu catatan Riwayat Dokumen (PRD §7 "Buka Ulang & Duplikat", F28) — dipakai modal Lihat & Duplikat halaman
+ * Aksi satu catatan Riwayat Dokumen (PRD §7 "Buka Ulang & Duplikat", F28; izin tiap aksi hanya lewat OtorisasiDokumen —
+ * `lihat()` membawa `izin`/`alasan`) — dipakai modal Lihat & Duplikat halaman
  * `Dokumen\Riwayat` (dan kelak endpoint-nya):
  *
  * - `lihat($id, $pengguna)` = rincian catatan (cakupan RiwayatDokumen::boleh), semua versi jenis × sumber × format yang
@@ -46,7 +46,7 @@ final class AksiRiwayatDokumen
 
     public const PESAN_TIDAK_ADA = 'Catatan dokumen tidak ditemukan.';
 
-    public const PESAN_TOLAK = 'Dokumen ini di luar cakupan akun Anda.';
+    public const PESAN_TOLAK = OtorisasiDokumen::PESAN_TOLAK;
 
     /** Jenis perbedaan dokumen susunan ulang dengan catatan riwayatnya. */
     public const PERBEDAAN = ['versi' => 'Versi', 'total' => 'Total RAB', 'status' => 'Status', 'draf' => 'Cap DRAF'];
@@ -68,9 +68,7 @@ final class AksiRiwayatDokumen
         if ($mentah === null) {
             throw new RuntimeException(self::PESAN_TIDAK_ADA);
         }
-        if (! RiwayatDokumen::boleh($mentah, $pengguna)) {
-            throw new AuthorizationException(self::PESAN_TOLAK);
-        }
+        OtorisasiDokumen::pastikan('lihat', $mentah, null, $pengguna);
 
         return collect(RiwayatDokumen::untuk($pengguna))->firstWhere('id', $id);
     }
@@ -87,18 +85,15 @@ final class AksiRiwayatDokumen
         $terbaru = ($versi[0]['id'] ?? null) === $c['id'];
 
         $kegiatan = $c['tersedia'] ? app(KegiatanRepository::class)->temukan((int) $c['kegiatan_id']) : null;
+        $otorisasi = OtorisasiDokumen::izin($c, $kegiatan, $pengguna, $terbaru);
         $buka = ['arsip' => null, 'pratinjau' => null, 'cetak' => null, 'pdf' => null, 'word' => false, 'excel' => false];
-        $alasan = null;
+        $alasan = $otorisasi['alasan']['buka_ulang'];
         $sekarang = null;
-        if ($kegiatan === null) {
-            $alasan = 'Data kegiatan TA '.$c['tahun_anggaran'].' tidak lagi tersimpan — hanya catatan dokumennya yang tersisa, sehingga dokumen tidak bisa disusun ulang.';
-        } elseif ($c['sumber'] !== null && ! in_array($c['sumber'], array_column($kegiatan['sumber_dana'] ?? [], 'sumber'), true)) {
-            $alasan = 'Sumber dana '.$c['sumber'].' tidak lagi dipilih di kegiatan ini, sehingga dokumen sumber dana itu tidak bisa disusun ulang.';
-        } else {
+        if ($alasan === null) {
             $lembar = FormatBerkas::lembar($c['jenis'], $c['sumber']);
             $cetak = StatusCetak::dari($kegiatan, $c['sumber']);
             $buka = [
-                'arsip' => $c['asal'] === 'arsip' && $terbaru && $c['sumber'] !== null ? route('kegiatan.arsip', ['kegiatan' => $c['kegiatan_id'], 'sumber' => $c['sumber']]) : null,
+                'arsip' => $otorisasi['izin']['unduh_arsip'] && $c['sumber'] !== null ? route('kegiatan.arsip', ['kegiatan' => $c['kegiatan_id'], 'sumber' => $c['sumber']]) : null,
                 'pratinjau' => $c['tautan_kegiatan'],
                 'cetak' => CetakDokumen::tautan((int) $c['kegiatan_id'], $c['sumber'], $lembar),
                 'pdf' => CetakDokumen::tautanPdf((int) $c['kegiatan_id'], $c['sumber'], $lembar),
@@ -130,10 +125,12 @@ final class AksiRiwayatDokumen
             'terbaru' => $terbaru,
             'perbedaan' => $sekarang === null ? [] : self::perbedaan($c, $versi[0], $terbaru, $sekarang, $totalTeks),
             'versi' => $versi,
-            'kegiatan' => $kegiatan === null ? null : ['id' => (int) $kegiatan['id'], 'tautan' => route('kegiatan.edit', ['kegiatan' => $kegiatan['id']])],
+            'kegiatan' => $kegiatan === null || ! AksesKegiatan::bolehLihat($kegiatan, $pengguna) ? null : ['id' => (int) $kegiatan['id'], 'tautan' => route('kegiatan.edit', ['kegiatan' => $kegiatan['id']])],
             'sekarang' => $sekarang,
             'buka' => $buka,
             'alasan_buka' => $alasan,
+            'izin' => $otorisasi['izin'],
+            'alasan' => $otorisasi['alasan'],
         ];
     }
 
@@ -177,21 +174,11 @@ final class AksiRiwayatDokumen
         ];
         $tolak = fn (string $alasan, ?array $tautan = null) => ['alasan' => $alasan, 'tautan' => $tautan] + $hasil;
 
-        if (($terkunci = KunciKegiatan::tahunTerkunci(['tahun_anggaran' => $tahun])) !== null) {
-            return $tolak(KunciKegiatan::pesanTahun($terkunci));
-        }
         $kegiatan = $c['tersedia'] ? app(KegiatanRepository::class)->temukan((int) $c['kegiatan_id']) : null;
-        if ($kegiatan === null) {
-            $bolehBuat = $pengguna['role'] === 'admin' || MasterKode::pilihanLeading($pengguna, null) !== [];
+        if (($alasan = OtorisasiDokumen::duplikat($c, $kegiatan, $pengguna)) !== null) {
+            $bolehBuat = $kegiatan === null && ($pengguna['role'] === 'admin' || MasterKode::pilihanLeading($pengguna, null) !== []);
 
-            return $tolak('Data kegiatan TA '.$c['tahun_anggaran'].' tidak lagi tersimpan — hanya catatan dokumennya yang tersisa, sehingga isinya tidak bisa disalin. Buat kegiatan baru dari awal.', $bolehBuat ? ['label' => 'Buat kegiatan baru', 'url' => route('kegiatan.create')] : null);
-        }
-        if (! AksesKegiatan::bolehLihat($kegiatan, $pengguna)) {
-            return $tolak(AksesKegiatan::PESAN_TOLAK);
-        }
-        $leading = MasterKode::leading($kegiatan['leading'] ?? null);
-        if ($leading !== null && ! $leading['is_active']) {
-            return $tolak('Leading '.$leading['kode'].' kini nonaktif — kegiatannya tidak bisa disalin.');
+            return $tolak($alasan, $bolehBuat ? ['label' => 'Buat kegiatan baru', 'url' => route('kegiatan.create')] : null);
         }
 
         $dataTahun = TahunKegiatan::dari($kegiatan);

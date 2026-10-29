@@ -41,3 +41,21 @@ Jawaban 200:
 - `tampilan=kegiatan` mengganti `dokumen` dengan `kegiatan`: per kegiatan `jumlah`/`jumlah_semua` dan `dokumen` per jenis ×
   sumber × format {`terbaru`, `lama`, `lebih_baru` — versi terbaru yang tidak cocok dengan saringan, null bila tidak ada}.
 - `saran_longgar` (hanya bila tanpa hasil) = kriteria yang bisa dilepas beserta jumlah dokumen yang akan tampil.
+- Tiap baris dokumen membawa `izin` {lihat, buka_ulang, unduh_arsip, duplikat} dari `OtorisasiDokumen`.
+
+## `GET /dokumen/{id}` — rincian satu dokumen (`dokumen.detail`)
+
+`AksiRiwayatDokumen::lihat` + rencana duplikat ringkas: `dokumen` (catatan + `total_teks`), `terbaru`, `versi` (semua versi
+jenis × sumber × format yang sama, terbaru dulu), `perbedaan`, `kegiatan` (null bila tidak tersimpan/di luar cakupan),
+`sekarang`, `buka` (tautan arsip/pratinjau/cetak/PDF + Word/Excel + nama berkas), `alasan_buka`, `izin` & `alasan` tiap aksi,
+`duplikat` {bisa, mode tahun_lalu|tahun_ini, alasan, tautan, nama, nama_terkunci, tahun}. 404 `{pesan}` tidak ada, 403
+`{pesan}` di luar cakupan atau akun nonaktif.
+
+## Otorisasi (`App\Support\Dokumen\OtorisasiDokumen`)
+
+| Aksi | Syarat |
+|---|---|
+| `lihat` | akun aktif; admin semua; akun leading: leading tertaut ke akunnya (termasuk leading nonaktif) atau dokumen buatannya |
+| `buka_ulang` | `lihat` + kegiatan masih tersimpan + kegiatan dalam cakupan akun (`AksesKegiatan`) + sumber dana masih dipilih |
+| `unduh_arsip` | `buka_ulang` + catatan arsip final versi terbaru |
+| `duplikat` | `lihat` + tahun aktif terbuka + kegiatan tersimpan & dalam cakupan + admin atau akun yang tertaut ke leading kegiatan + leading aktif |

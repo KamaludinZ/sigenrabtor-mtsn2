@@ -2,6 +2,7 @@
 
 namespace App\Support\Dokumen;
 
+use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Dokumen\Riwayat;
 use App\Support\MasterKode;
@@ -14,7 +15,8 @@ use App\Support\MasterKode;
  * kegiatan, versi terbaru + lama + `lebih_baru`), `urut` terbaru|terlama (kronologis), `hal` ≥ 1 (dijepit ke halaman
  * terakhir), `per` ∈ `PER_HALAMAN` (bawaan Riwayat::PER_HALAMAN). Jawaban: saringan rapi, label chip, keterangan, total &
  * jumlah cocok, ringkasan (+ seluruh catatan), pilihan saringan berhitungan {nilai, label, jumlah}, halaman, butir
- * (`dokumen` atau `kegiatan`, baris `baris()`), dan `saran_longgar` bila tanpa hasil.
+ * (`dokumen` atau `kegiatan`, baris `baris()` + `izin` OtorisasiDokumen per catatan — lihat/buka_ulang/unduh_arsip/
+ * duplikat), dan `saran_longgar` bila tanpa hasil.
  */
 final class DataRiwayatDokumen
 {
@@ -33,10 +35,12 @@ final class DataRiwayatDokumen
         $urut = isset(RiwayatDokumen::URUT[$nilai['urut'] ?? '']) ? (string) $nilai['urut'] : 'terbaru';
         $per = in_array((int) ($nilai['per'] ?? 0), self::PER_HALAMAN, true) ? (int) $nilai['per'] : Riwayat::PER_HALAMAN;
 
-        $telusur = PenelusuranRiwayat::dari(RiwayatDokumen::untuk($pengguna), $nilai);
+        $catatan = RiwayatDokumen::untuk($pengguna);
+        $telusur = PenelusuranRiwayat::dari($catatan, $nilai);
+        $izin = self::penilaiIzin($catatan, $pengguna);
         $butir = $tampilan === 'kegiatan'
-            ? array_map(self::kegiatan(...), $telusur->perKegiatan())
-            : array_map(self::baris(...), $urut === 'terlama' ? array_reverse($telusur->cocok) : $telusur->cocok);
+            ? array_map(fn (array $k) => self::kegiatan($k, $izin), $telusur->perKegiatan())
+            : array_map(fn (array $c) => self::baris($c) + ['izin' => $izin($c)], $urut === 'terlama' ? array_reverse($telusur->cocok) : $telusur->cocok);
         $jumlahButir = count($butir);
         $halamanAkhir = max(1, (int) ceil($jumlahButir / $per));
         $hal = min(max(1, (int) ($nilai['hal'] ?? 1)), $halamanAkhir);
@@ -73,16 +77,40 @@ final class DataRiwayatDokumen
     }
 
     /**
+     * Penilai izin per catatan (OtorisasiDokumen::izin): kegiatan & versi terbaru tiap kunci versi dibaca sekali.
+     *
+     * @param  list<array<string, mixed>>  $catatan
+     * @return \Closure(array<string, mixed>): array<string, bool>
+     */
+    private static function penilaiIzin(array $catatan, array $pengguna): \Closure
+    {
+        $kegiatan = array_column(app(KegiatanRepository::class)->semua(), null, 'id');
+        $terbaru = [];
+        foreach ($catatan as $c) {
+            $kunci = RiwayatDokumen::kunciVersi($c);
+            if (! isset($terbaru[$kunci]) || $c['dibuat_pada'] > $terbaru[$kunci]['dibuat_pada']) {
+                $terbaru[$kunci] = $c;
+            }
+        }
+        $aktif = OtorisasiDokumen::akunAktif($pengguna);
+
+        return fn (array $c) => OtorisasiDokumen::izin($c, $c['tersedia'] ? ($kegiatan[$c['kegiatan_id']] ?? null) : null, $pengguna, ($terbaru[RiwayatDokumen::kunciVersi($c)]['id'] ?? null) === $c['id'], $aktif)['izin'];
+    }
+
+    /**
      * @param  array<string, mixed>  $k  Kegiatan PenelusuranRiwayat::perKegiatan.
+     * @param  \Closure(array<string, mixed>): array<string, bool>  $izin
      * @return array<string, mixed>
      */
-    private static function kegiatan(array $k): array
+    private static function kegiatan(array $k, \Closure $izin): array
     {
+        $baris = fn (array $c) => self::baris($c) + ['izin' => $izin($c)];
+
         return array_diff_key($k, ['dokumen' => true]) + ['dokumen' => array_map(fn (array $d) => [
             'kunci' => $d['kunci'],
-            'terbaru' => self::baris($d['terbaru']),
-            'lama' => array_map(self::baris(...), $d['lama']),
-            'lebih_baru' => $d['lebih_baru'] !== null ? self::baris($d['lebih_baru']) : null,
+            'terbaru' => $baris($d['terbaru']),
+            'lama' => array_map($baris, $d['lama']),
+            'lebih_baru' => $d['lebih_baru'] !== null ? $baris($d['lebih_baru']) : null,
         ], $k['dokumen'])];
     }
 

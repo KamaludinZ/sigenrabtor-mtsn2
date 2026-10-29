@@ -123,6 +123,7 @@ final class RiwayatDokumen
 
     /**
      * Catatan dalam cakupan akun: admin semua; akun leading dokumen leading-nya (TautanAkunLeading) atau buatannya.
+     * Otorisasi lengkap per aksi (akun aktif, buka ulang, unduh arsip, duplikat) lewat OtorisasiDokumen.
      *
      * @param  array<string, mixed>  $entri
      * @param  array{id?: int|null, role: string, leadings?: list<string>}  $pengguna
@@ -134,13 +135,17 @@ final class RiwayatDokumen
     }
 
     /**
-     * Catatan siap tampil dalam cakupan akun, terbaru dulu (+ `tautan_kegiatan` pratinjau bila kegiatannya tersimpan).
+     * Catatan siap tampil dalam cakupan akun, terbaru dulu (+ `tautan_kegiatan` pratinjau bila kegiatannya tersimpan); akun
+     * nonaktif tidak melihat apa pun (OtorisasiDokumen::akunAktif).
      *
      * @param  array{id?: int|null, role: string, leadings?: list<string>}  $pengguna
      * @return list<array<string, mixed>>
      */
     public static function untuk(array $pengguna): array
     {
+        if (! OtorisasiDokumen::akunAktif($pengguna)) {
+            return [];
+        }
         $ada = array_map(fn (array $k) => (int) $k['id'], app(KegiatanRepository::class)->semua());
 
         return array_values(array_map(function (array $c) use ($ada) {

@@ -25,7 +25,7 @@ class DataRiwayatDokumenTest extends TestCase
             ->json();
         $this->assertSame(['rd-2026-7', 'rd-2026-6'], array_slice(array_column($data['dokumen'], 'id'), 0, 2));
         $this->assertArrayNotHasKey('user_id', $data['dokumen'][0], 'Baris tanpa rujukan akun internal.');
-        $this->assertSame(['id', 'kegiatan_id', 'tahun_anggaran', 'kode_leading', 'nama_kegiatan', 'jenis', 'sumber', 'format', 'asal', 'nama_berkas', 'ukuran', 'status', 'bertanda_draf', 'nomor_dokumen', 'versi', 'ringkas', 'dibuat_oleh', 'dibuat_pada', 'label_jenis', 'label_format', 'label_asal', 'label_status', 'nama_leading', 'ukuran_teks', 'tersedia', 'tautan_kegiatan'], array_keys($data['dokumen'][0]));
+        $this->assertSame(['id', 'kegiatan_id', 'tahun_anggaran', 'kode_leading', 'nama_kegiatan', 'jenis', 'sumber', 'format', 'asal', 'nama_berkas', 'ukuran', 'status', 'bertanda_draf', 'nomor_dokumen', 'versi', 'ringkas', 'dibuat_oleh', 'dibuat_pada', 'label_jenis', 'label_format', 'label_asal', 'label_status', 'nama_leading', 'ukuran_teks', 'tersedia', 'tautan_kegiatan', 'izin'], array_keys($data['dokumen'][0]));
         $this->assertSame(['jenis', 'format', 'leading', 'sumber', 'status'], array_keys($data['pilihan']));
         $this->assertContains(['nilai' => 'RAB', 'label' => 'RAB', 'jumlah' => 2], $data['pilihan']['jenis']);
         $this->assertSame([['nilai' => '1.6', 'label' => '1.6 · Tim Penjamin Mutu', 'jumlah' => 9]], $data['pilihan']['leading'], 'Akun leading 1.6 hanya melihat leading-nya.');
