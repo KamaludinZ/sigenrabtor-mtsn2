@@ -97,10 +97,8 @@ final class CatatRiwayatDokumen
     public static function dariArsip(array $kegiatan, string $sumber, array $arsip, array $pengguna): ?array
     {
         return self::aman(function () use ($kegiatan, $sumber, $arsip, $pengguna) {
-            $kunci = implode('|', [(int) $kegiatan['id'], 'lengkap', $sumber, 'pdf']);
-            $sebelumnya = collect(RiwayatDokumen::semua())
-                ->first(fn (array $c) => $c['asal'] === 'arsip' && RiwayatDokumen::kunciVersi($c) === $kunci && filled($c['nomor_dokumen'] ?? null));
-            $nomor = $sebelumnya['nomor_dokumen'] ?? PenomoranDokumen::terbitkan([
+            // Nomor dokumen lengkap yang sudah ada (hasil tersimpan, lalu arsip sebelumnya) dipakai lagi.
+            $nomor = SimpanDokumenLengkap::nomorTersimpan((int) $kegiatan['id'], $sumber) ?? PenomoranDokumen::terbitkan([
                 'jenis' => 'lengkap', 'leading' => ($kegiatan['leading'] ?? '') ?: null, 'sumber' => $sumber, 'tahun' => TahunKegiatan::dari($kegiatan),
             ])['nomor'] ?? null;
 

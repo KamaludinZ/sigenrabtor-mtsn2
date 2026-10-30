@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Contracts\HasilDokumenRepository;
+use App\Support\Dokumen\SimpanDokumenLengkap;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
@@ -12,7 +13,7 @@ use RuntimeException;
 /**
  * Hasil pembuatan dokumen di PostgreSQL, padanan StubHasilDokumenRepository: baris `documents` per kegiatan × jenis ×
  * sumber dana (dipakai bersama draf — `konten.draf` tidak disentuh) dengan `status`, `bertanda_draf`, `sidik_isi`,
- * `disusun_pada`, cuplikan `konten.hasil` {alasan_draf, rab, cover, user_id, oleh}, dan bagian KAK/TOR di `dokumen_bagian`
+ * `disusun_pada`, `nomor_dokumen` (= nomor), cuplikan `konten.hasil` {alasan_draf, rab, cover, user_id, oleh, format}, dan bagian KAK/TOR di `dokumen_bagian`
  * (diganti seluruhnya tiap disusun). Tahun = tahun kegiatan, sumber dana dipasangkan dengan baris anggaran_kegiatan-nya.
  * Penolakan database → RuntimeException berpesan ramah. Binding masih tiruan.
  */
@@ -51,8 +52,10 @@ class EloquentHasilDokumenRepository implements HasilDokumenRepository
                     'cover' => $hasil['cover'] ?? null,
                     'user_id' => $hasil['user_id'] ?? null,
                     'oleh' => $hasil['oleh'] ?? '',
+                    'format' => $hasil['format'] ?? null,
                 ];
                 $isi = [
+                    'nomor_dokumen' => $hasil['nomor'] ?? null,
                     'status' => $hasil['status'],
                     'bertanda_draf' => (bool) $hasil['bertanda_draf'],
                     'sidik_isi' => $hasil['sidik_isi'],
@@ -159,6 +162,8 @@ class EloquentHasilDokumenRepository implements HasilDokumenRepository
             'cover' => $hasil['cover'] ?? null,
             'user_id' => isset($hasil['user_id']) ? (int) $hasil['user_id'] : null,
             'oleh' => (string) ($hasil['oleh'] ?? ''),
+            'nomor' => $baris->nomor_dokumen,
+            'format' => is_array($hasil['format'] ?? null) ? SimpanDokumenLengkap::urutkanFormat($hasil['format']) : null,
             'disusun_pada' => CarbonImmutable::parse($baris->disusun_pada)->setTimezone(config('app.timezone'))->format('Y-m-d\TH:i:s.uP'),
         ];
     }

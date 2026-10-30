@@ -7,7 +7,8 @@ namespace App\Contracts;
  * DokumenKegiatan::JENIS × sumber dana, ditimpa setiap kali disusun ulang. Bentuk (disusun App\Support\Dokumen\PembuatDokumen):
  * {id (teks), kegiatan_id, jenis, sumber|null, status (StatusKegiatan saat disusun), bertanda_draf, alasan_draf,
  * sidik_isi (md5), bagian (baris HasilKakTor — kosong untuk RAB), rab (cuplikan RAB|null), cover (nilai kotak cover|null),
- * user_id, oleh, disusun_pada (ISO 8601 bermikrodetik zona aplikasi)}. `simpan()`/`perbaruiStatus()` melempar RuntimeException
+ * user_id, oleh, nomor (nomor dokumen|null — dokumen lengkap, SimpanDokumenLengkap), format (format seragam yang
+ * dipakai|null), disusun_pada (ISO 8601 bermikrodetik zona aplikasi)}. `simpan()`/`perbaruiStatus()` melempar RuntimeException
  * bila gagal ditulis.
  */
 interface HasilDokumenRepository

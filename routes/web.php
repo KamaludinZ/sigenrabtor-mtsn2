@@ -85,6 +85,7 @@ use App\Http\Controllers\SalinMasterKodeTahun;
 use App\Http\Controllers\SimpanBatasAi;
 use App\Http\Controllers\SimpanBatasKhususAi;
 use App\Http\Controllers\SimpanCatatanPemeriksaan;
+use App\Http\Controllers\SimpanDokumenLengkapKegiatan;
 use App\Http\Controllers\SimpanDrafDokumen;
 use App\Http\Controllers\SimpanDrafSunting;
 use App\Http\Controllers\SimpanGayaBahasaAi;
@@ -245,6 +246,7 @@ Route::get('/kegiatan/{kegiatan}/draf', DrafDokumenKegiatan::class)->whereNumber
 Route::put('/kegiatan/{kegiatan}/draf', SimpanDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.simpan');
 Route::delete('/kegiatan/{kegiatan}/draf', HapusDrafDokumen::class)->whereNumber('kegiatan')->name('kegiatan.draf.hapus');
 Route::post('/kegiatan/{kegiatan}/dokumen/susun', SusunDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.dokumen.susun');
+Route::post('/kegiatan/{kegiatan}/dokumen/lengkap', SimpanDokumenLengkapKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.dokumen.lengkap');
 Route::get('/kegiatan/{kegiatan}/dokumen/hasil', HasilDokumenKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.dokumen.hasil');
 Route::get('/kegiatan/{kegiatan}/matrik-jadwal', MatrikJadwalKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.matrik_jadwal');
 // Gambar desain cover untuk pratinjau dokumen semua pengguna (pengelolaannya tetap khusus admin).

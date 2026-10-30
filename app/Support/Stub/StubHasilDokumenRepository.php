@@ -74,7 +74,21 @@ class StubHasilDokumenRepository implements HasilDokumenRepository
         }
         $isi = json_decode((string) Storage::disk('local')->get($this->berkas()), true);
 
-        return is_array($isi) ? $isi : [];
+        return is_array($isi) ? array_map(self::lengkapi(...), $isi) : [];
+    }
+
+    /**
+     * Catatan lama tanpa `nomor`/`format` dilengkapi null, urutan kunci sama dengan EloquentHasilDokumenRepository.
+     *
+     * @param  array<string, mixed>  $h
+     * @return array<string, mixed>
+     */
+    private static function lengkapi(array $h): array
+    {
+        $waktu = $h['disusun_pada'] ?? null;
+        unset($h['disusun_pada']);
+
+        return $h + ['nomor' => null, 'format' => null, 'disusun_pada' => $waktu];
     }
 
     private function berkas(): string

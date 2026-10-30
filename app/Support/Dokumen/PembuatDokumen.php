@@ -35,13 +35,15 @@ final class PembuatDokumen
      * Susun (atau susun ulang) dokumen dan simpan hasilnya.
      *
      * @param  array{id?: int|null, name: string, role?: string, leadings?: list<string>}  $pengguna
+     * @param  array{nomor?: string|null, format?: array<string, mixed>|null}  $tambahan  Nomor dokumen & format seragam
+     *                                                                                    (SimpanDokumenLengkap); kunci yang tidak dikirim tetap.
      * @return array{dokumen: array<string, mixed>, baru: bool, berubah: bool, pesan: string}
      *
      * @throws RuntimeException Kegiatan tidak ada atau hasil gagal disimpan.
      * @throws AuthorizationException Di luar cakupan akun.
      * @throws ValidationException Jenis (`jenis`) atau sumber dana (`sumber`) tidak sah.
      */
-    public static function susun(int $id, string $jenis, ?string $sumber, array $pengguna): array
+    public static function susun(int $id, string $jenis, ?string $sumber, array $pengguna, array $tambahan = []): array
     {
         $kegiatan = self::kegiatan($id, $pengguna);
         self::periksa($kegiatan, $jenis, $sumber);
@@ -52,6 +54,9 @@ final class PembuatDokumen
 
         $repo = app(HasilDokumenRepository::class);
         $lama = $repo->temukan($id, $jenis, $rekaman['sumber']);
+        // Nomor dokumen & format seragam yang pernah dicatat (SimpanDokumenLengkap) tetap saat disusun ulang.
+        $rekaman['nomor'] = array_key_exists('nomor', $tambahan) ? $tambahan['nomor'] : ($lama['nomor'] ?? null);
+        $rekaman['format'] = array_key_exists('format', $tambahan) ? $tambahan['format'] : ($lama['format'] ?? null);
         $hasil = $repo->simpan($id, $rekaman);
         $berubah = $lama === null || $lama['sidik_isi'] !== $hasil['sidik_isi'];
         $nama = DrafDokumen::nama($jenis, $hasil['sumber']);
@@ -122,6 +127,8 @@ final class PembuatDokumen
             'cover' => in_array('cover', $isi, true) ? $cover : null,
             'user_id' => $pengguna['id'] ?? null,
             'oleh' => $pengguna['name'],
+            'nomor' => null,
+            'format' => null,
         ];
     }
 

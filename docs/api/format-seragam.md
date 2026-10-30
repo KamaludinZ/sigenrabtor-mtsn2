@@ -50,3 +50,32 @@ Jawaban 200:
 Rute `kegiatan.template_dokumen`; hak baca `AksesKegiatan` (di luar cakupan → 403, kegiatan tidak ada → 404). Isi dari
 `DaftarTemplate::untukKegiatan()`: `kegiatan_id`, `tahun` (tahun anggaran kegiatan) + bentuk `berlaku` di atas (jenis
 kegiatan ditebak dari nama kegiatan, tautan gambar cover lewat rute non-admin `dokumen.cover.gambar`).
+
+## `POST /kegiatan/{id}/dokumen/lengkap` — simpan dokumen lengkap dalam format seragam
+
+Rute `kegiatan.dokumen.lengkap`; hak `AksesKegiatan`. Isi dari `App\Support\Dokumen\SimpanDokumenLengkap::simpan()`:
+dokumen set lengkap (cover + KAK/TOR + RAB) satu sumber dana disusun dari data terbaru lewat `PembuatDokumen` (hasil
+kegiatan × sumber ditimpa) beserta format seragam yang dipakai dan nomor dokumennya.
+
+Isian (opsional): `sumber` (kosong = sumber dana pertama), `nomor_dokumen` (nomor ketikan sendiri; huruf/angka/spasi/
+`.`/`/`/`-`, ≤ 100, tidak dipakai dokumen lain tahun itu).
+
+Jawaban 201 (pertama kali) / 200 (disusun ulang):
+
+```json
+{
+  "dokumen": { "jenis": "lengkap", "sumber": "DIPA", "nomor": "DOK/008/1.6/2026",
+               "format": { "tahun": 2026, "sumber": "DIPA", "template": { "jenis": "workshop", "asal": "jenis", … },
+                           "kop_lengkap": true, "kop_kurang": [], "aturan_nomor": { "pola": "DOK/{urut}/{leading}/{tahun}", "digit": 3, "aktif": true } },
+               "bagian": [ … ], "rab": { … }, "cover": { … }, "keadaan": { … }, "tautan_cetak": "…" },
+  "baru": true,
+  "berubah": true,
+  "nomor": { "nomor": "DOK/008/1.6/2026", "keadaan": "terbit", "label": "Nomor diterbitkan otomatis" },
+  "pesan": "Dokumen … disusun dari data terbaru. Nomor dokumen DOK/008/1.6/2026."
+}
+```
+
+`nomor.keadaan`: `tetap` (nomor tersimpan; nomor lain → 422), `manual`, `arsip` (mengikuti nomor arsip final yang sudah
+tercatat), `terbit` (diterbitkan otomatis — hanya selama kegiatan Disetujui/Final), `tidak_dinomori` (aturan penomoran set
+lengkap tidak aktif), `menunggu` (draf: nomor terbit setelah disetujui). Arsip final yang diunggah kemudian memakai nomor
+yang sama. Galat: 422 `{pesan, galat: {sumber | nomor_dokumen}}`, 403, 404, 503 gagal disimpan.
