@@ -85,11 +85,15 @@ return [
     |
     | wajib_masuk: halaman aplikasi hanya bisa dibuka setelah masuk (middleware WajibMasuk, state SesiAkun). Tes PHPUnit
     | & E2E mematikannya agar halaman bisa dibuka langsung sebagai persona demo.
+    | mode_demo: sakelar peran /demo/peran/{role} & kartu akun contoh di halaman Masuk aktif, dan akun yang belum punya
+    | sandi (akun contoh tiruan) boleh masuk tanpa sandi. Matikan di server produksi (SIRABTOR_MODE_DEMO=false): setiap
+    | akun wajib bersandi dan sandinya diperiksa (Autentikasi).
     |
     */
 
     'akun' => [
         'wajib_masuk' => (bool) env('SIRABTOR_WAJIB_MASUK', true),
+        'mode_demo' => (bool) env('SIRABTOR_MODE_DEMO', true),
     ],
 
     'stub' => [

@@ -66,7 +66,7 @@
     @if ($persona !== [])
         <section class="mt-8 rounded-2xl bg-gold-50 p-4 ring-1 ring-gold-200" aria-labelledby="judul-demo" data-testid="akun-demo">
             <h2 id="judul-demo" class="flex items-center gap-1.5 text-sm font-semibold text-gold-900"><x-ui.icon name="info" class="size-4" /> Mode demo</h2>
-            <p class="mt-1 text-xs text-gold-900/80">Autentikasi belum diaktifkan; sandi belum diperiksa. Masuk dengan surel akun aktif mana pun, atau pakai akun contoh:</p>
+            <p class="mt-1 text-xs text-gold-900/80">Akun contoh yang belum punya sandi bisa masuk tanpa sandi; akun yang sudah bersandi tetap diperiksa. Pakai akun contoh:</p>
             <ul class="mt-3 space-y-2" role="list">
                 @foreach ($persona as $p)
                     <li>

@@ -2,6 +2,28 @@
 
 Semua jawaban bertajuk `Cache-Control: no-store, private`. Permintaan POST dari peramban memerlukan token CSRF Laravel.
 
+## `POST /masuk` — masuk
+
+Rute `akun.masuk.kirim` (terbuka). Isian `{surel, sandi, ingat?}`; pemeriksaan lewat `App\Support\Akun\Autentikasi`:
+surel terdaftar, aktif, bukan permohonan yang masih menunggu; sandi dicocokkan dengan hash tersimpan. Akun yang belum punya
+sandi (akun contoh tiruan) hanya bisa masuk selama `SIRABTOR_MODE_DEMO=true` — di produksi matikan agar setiap akun wajib
+bersandi.
+
+- 200 `{pesan, akun: {id, nama, surel, peran, label_peran, jabatan, leading, masuk_pada}, tujuan}` — sesi baru dibuat
+  (diregenerasi); `tujuan` = halaman yang diingat sebelum masuk atau Dashboard. `ingat: true` memasang cookie
+  `sirabtor_ingat` (30 hari; tidak berlaku lagi setelah sandi diganti) yang memulihkan sesi yang berakhir.
+- 422 `{pesan, galat: {surel | sandi}, peringatan}` — `peringatan` = sisa percobaan sebelum dijeda.
+- 429 `{pesan, galat, tunggu}` + `Retry-After` — 5 percobaan gagal untuk satu surel × IP dijeda 60 detik.
+
+## `POST /keluar` — keluar
+
+Rute `akun.keluar`: sesi diakhiri & cookie "ingat saya" dihapus. Permintaan JSON → 200 `{pesan, masuk}`; selain itu
+dialihkan ke halaman Masuk.
+
+## `GET /akun/sesi` — state sesi
+
+Rute `akun.sesi` (terbuka): `{masuk, akun | null, wajib_masuk, mode_demo, tautan: {masuk, keluar, daftar}}`.
+
 ## `POST /daftar` — kirim permohonan akun (tanpa masuk)
 
 Rute `akun.daftar.kirim`, dibatasi 6 permintaan per menit (`throttle:6,1` → 429). Isi lewat

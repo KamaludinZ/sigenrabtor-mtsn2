@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Akun\Autentikasi;
 use App\Support\Akun\SesiAkun;
 use Closure;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class WajibMasuk
 {
-    public const TERBUKA = ['akun.masuk', 'akun.daftar', 'akun.daftar.kirim', 'akun.keluar', 'demo.peran'];
+    public const TERBUKA = ['akun.masuk', 'akun.masuk.kirim', 'akun.daftar', 'akun.daftar.kirim', 'akun.keluar', 'akun.sesi', 'demo.peran'];
 
     public const PESAN_SESI = 'Sesi Anda sudah berakhir — masuk kembali untuk melanjutkan.';
 
@@ -35,7 +36,8 @@ class WajibMasuk
 
             return $this->tolak($request, self::PESAN_NONAKTIF);
         }
-        if (! SesiAkun::sudahMasuk()) {
+        // Sesi habis tetapi cookie "ingat saya" masih berlaku → sesi dipulihkan.
+        if (! SesiAkun::sudahMasuk() && ! Autentikasi::pulihkan($request)) {
             return $this->tolak($request, self::PESAN_SESI, beritahu: false);
         }
 

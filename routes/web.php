@@ -63,6 +63,7 @@ use App\Http\Controllers\KonfigurasiAiBerlaku;
 use App\Http\Controllers\KonteksKegiatan;
 use App\Http\Controllers\KuotaAiPengguna;
 use App\Http\Controllers\LogoMadrasah;
+use App\Http\Controllers\MasukAkun;
 use App\Http\Controllers\MatrikJadwalKegiatan;
 use App\Http\Controllers\MintaSaranAiKegiatan;
 use App\Http\Controllers\MulaiPdfBuku;
@@ -86,6 +87,7 @@ use App\Http\Controllers\RiwayatKunciKegiatan;
 use App\Http\Controllers\RiwayatKunciSemua;
 use App\Http\Controllers\RiwayatSaranAiKegiatan;
 use App\Http\Controllers\SalinMasterKodeTahun;
+use App\Http\Controllers\SesiAkunSaatIni;
 use App\Http\Controllers\SimpanBatasAi;
 use App\Http\Controllers\SimpanBatasKhususAi;
 use App\Http\Controllers\SimpanCatatanPemeriksaan;
@@ -154,10 +156,12 @@ use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use App\Livewire\SaranAi\Riwayat as SaranAiRiwayat;
+use App\Support\Akun\Autentikasi;
 use App\Support\Akun\SesiAkun;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Master\JenisKode;
 use App\Support\Pengaturan\PenyediaAi;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -331,22 +335,28 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
 Route::get('/masuk', AkunMasuk::class)->middleware(HanyaTamu::class)->name('akun.masuk');
 Route::get('/daftar', AkunDaftar::class)->middleware(HanyaTamu::class)->name('akun.daftar');
 Route::post('/daftar', KirimPendaftaranAkun::class)->middleware('throttle:6,1')->name('akun.daftar.kirim');
-Route::post('/keluar', function () {
-    SesiAkun::keluar();
+Route::post('/masuk', MasukAkun::class)->name('akun.masuk.kirim');
+Route::post('/keluar', function (Request $request) {
+    Autentikasi::keluar();
 
-    return redirect()->route('akun.masuk')->with('notify', ['message' => 'Anda sudah keluar.', 'type' => 'info']);
+    return $request->expectsJson()
+        ? response()->json(['pesan' => 'Anda sudah keluar.', 'masuk' => route('akun.masuk')], headers: ['Cache-Control' => 'no-store, private'])
+        : redirect()->route('akun.masuk')->with('notify', ['message' => 'Anda sudah keluar.', 'type' => 'info']);
 })->name('akun.keluar');
+Route::get('/akun/sesi', SesiAkunSaatIni::class)->name('akun.sesi');
 Route::get('/akun', AkunProfil::class)->name('akun.profil');
 
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.
-Route::get('/demo/peran/{role}', function (string $role) {
-    $id = SesiAkun::masukPersona($role);
-    // Padanan peristiwa masuk: waktu masuk terakhir akun persona tercatat di Pengaturan › Leading & User.
-    try {
-        app(PenggunaRepository::class)->catatMasuk($id, request()->ip(), request()->userAgent());
-    } catch (RuntimeException $e) {
-        report($e);
-    }
+if (config('sigenrabtor.akun.mode_demo', true)) {
+    Route::get('/demo/peran/{role}', function (string $role) {
+        $id = SesiAkun::masukPersona($role);
+        // Padanan peristiwa masuk: waktu masuk terakhir akun persona tercatat di Pengaturan › Leading & User.
+        try {
+            app(PenggunaRepository::class)->catatMasuk($id, request()->ip(), request()->userAgent());
+        } catch (RuntimeException $e) {
+            report($e);
+        }
 
-    return back();
-})->whereIn('role', ['admin', 'leading'])->name('demo.peran');
+        return back();
+    })->whereIn('role', ['admin', 'leading'])->name('demo.peran');
+}
