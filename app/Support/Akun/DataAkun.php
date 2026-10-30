@@ -21,7 +21,7 @@ final class DataAkun
     /** Akun contoh yang dipakai mode demo (StubData::currentUser) → peran. */
     public const PERSONA = [1 => 'leading', 2 => 'admin'];
 
-    public const LABEL_PERAN = ['admin' => 'Admin', 'leading' => 'Leading / penanggung jawab'];
+    public const LABEL_PERAN = PeranAkun::LABEL;
 
     /**
      * @param  array{id?: int|null}  $pengguna
