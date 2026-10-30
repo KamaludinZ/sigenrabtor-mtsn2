@@ -45,6 +45,21 @@ Jawaban 200:
   kegiatan), atau `bawaan` (susunan baku & cover default).
 - `jenis`/`leading` tak dikenal → 422 `{ "pesan": "…", "galat": { "jenis": "…", "leading": "…" } }`.
 
+## `GET /pengaturan/format/template/{id}` — detail satu template (admin)
+
+Rute `pengaturan.format.template.detail` (`{id}` uuid; bukan uuid/tidak ada → 404 `{pesan}`). Isi dari
+`App\Support\Dokumen\DetailTemplate::untuk()`. Parameter opsional `kegiatan` (id kegiatan contoh; tidak ada → 404) dan
+`sumber` (sumber dana kegiatan itu; tidak dipilih → 422 `{pesan, galat: {sumber}}`) untuk `pratinjau`.
+
+Master KAK/TOR/RAB (`jenis_template: "master"`): `id`, `tahun`, `nama`, `jenis`, `label_jenis`, `default`, `bisa_dipilih`
+(keluarga KAK/TOR), `berkas` {nama, ada, ukuran, tautan_unduh}, `galat_berkas` (berkas hilang/rusak), `variabel` (dibaca
+dari berkas: nama, jumlah, terdaftar, saran, keterangan, kelompok, jenis), `tidak_terdaftar`, `paragraf` (header/isi/
+footer), `dipakai`, `pratinjau` {kegiatan_id, paragraf bersegmen terisi, kosong} | null.
+
+Cover (`jenis_template: "cover"`): `id`, `tahun`, `nama`, `default`, `leading`, `sumber_dana`, `gambar` {lebar, tinggi,
+rasio_a4, ada, tautan}, `kotak` (kotak teks rapi + `label`), `dipakai`, `pratinjau` {kegiatan_id, kotak: [{field, nilai}]}
+| null.
+
 ## `GET /kegiatan/{id}/template` — template yang berlaku untuk satu kegiatan
 
 Rute `kegiatan.template_dokumen`; hak baca `AksesKegiatan` (di luar cakupan → 403, kegiatan tidak ada → 404). Isi dari

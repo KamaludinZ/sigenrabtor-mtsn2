@@ -38,6 +38,7 @@ use App\Http\Controllers\DataTahunAnggaran;
 use App\Http\Controllers\DataTautanAkun;
 use App\Http\Controllers\DetailRiwayatDokumen;
 use App\Http\Controllers\DetailSaranAi;
+use App\Http\Controllers\DetailTemplateFormat;
 use App\Http\Controllers\DrafDokumenKegiatan;
 use App\Http\Controllers\DrafSuntingKegiatan;
 use App\Http\Controllers\DuplikatDokumen;
@@ -297,6 +298,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/akun/{akun}/leading', DataTautanAkun::class)->whereNumber('akun')->name('akun.leading');
     Route::get('/format', PengaturanFormatSeragam::class)->name('format.index');
     Route::get('/format/template', DaftarTemplateTersedia::class)->name('format.template');
+    Route::get('/format/template/{template}', DetailTemplateFormat::class)->whereUuid('template')->name('format.template.detail');
     Route::get('/riwayat', PengaturanRiwayat::class)->name('riwayat.index');
     Route::get('/riwayat/data', DataRiwayatPengaturan::class)->name('riwayat.data');
     Route::get('/ai', PengaturanAi::class)->name('ai.index');

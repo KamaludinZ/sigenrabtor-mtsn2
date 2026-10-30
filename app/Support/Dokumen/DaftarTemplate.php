@@ -129,7 +129,7 @@ final class DaftarTemplate
      * @param  array<string, mixed>  $pilihan  PilihanTemplate::data
      * @return array{kak: array<string, list<array<string, string|null>>>, cover: array<string, list<array<string, string|null>>>}
      */
-    private static function pemakaian(array $pilihan): array
+    public static function pemakaian(array $pilihan): array
     {
         $hasil = ['kak' => [], 'cover' => []];
         foreach ($pilihan['jenis'] as $p) {
