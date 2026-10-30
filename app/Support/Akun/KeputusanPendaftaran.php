@@ -124,7 +124,7 @@ final class KeputusanPendaftaran
     /** @param  array{role: string}  $pengguna */
     private static function pastikanAdmin(array $pengguna): void
     {
-        if (($pengguna['role'] ?? null) !== 'admin') {
+        if (! HakAkses::boleh($pengguna, 'putuskan_permohonan')) {
             throw new AuthorizationException('Hanya admin yang bisa memeriksa permohonan akun.');
         }
     }

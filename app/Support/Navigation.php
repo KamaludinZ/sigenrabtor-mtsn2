@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Support\Akun\HakAkses;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -58,7 +59,7 @@ class Navigation
 
         $visible = array_values(array_filter(
             $groups,
-            fn (array $group) => ! $group['admin_only'] || $role === 'admin',
+            fn (array $group) => ! $group['admin_only'] || in_array($role, HakAkses::HAK['area_admin'][1], true),
         ));
 
         return array_map(function (array $group) {

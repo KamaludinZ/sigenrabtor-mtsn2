@@ -157,10 +157,12 @@ use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
 use App\Livewire\SaranAi\Riwayat as SaranAiRiwayat;
 use App\Support\Akun\Autentikasi;
+use App\Support\Akun\HakAkses;
 use App\Support\Akun\SesiAkun;
 use App\Support\Kegiatan\BagianAi;
 use App\Support\Master\JenisKode;
 use App\Support\Pengaturan\PenyediaAi;
+use App\Support\Stub\StubData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -344,6 +346,7 @@ Route::post('/keluar', function (Request $request) {
         : redirect()->route('akun.masuk')->with('notify', ['message' => 'Anda sudah keluar.', 'type' => 'info']);
 })->name('akun.keluar');
 Route::get('/akun/sesi', SesiAkunSaatIni::class)->name('akun.sesi');
+Route::get('/akun/hak', fn () => response()->json(['peran' => StubData::currentUser()['role'], 'hak' => HakAkses::daftar(StubData::currentUser())], headers: ['Cache-Control' => 'no-store, private']))->name('akun.hak');
 Route::get('/akun', AkunProfil::class)->name('akun.profil');
 
 // Tahap data tiruan: sakelar peran untuk mencoba tampilan Admin/Leading sebelum autentikasi nyata dibangun.

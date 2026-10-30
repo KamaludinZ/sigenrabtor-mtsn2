@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pengaturan;
 
+use App\Support\Akun\HakAkses;
 use App\Support\Akun\KeputusanPendaftaran;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Stub\StubData;
@@ -29,7 +30,10 @@ class PermohonanAkun extends Component
     #[Computed]
     public function daftar(): array
     {
-        return KeputusanPendaftaran::daftar(StubData::currentUser());
+        // Panel anak tidak boleh menggagalkan halaman induk: tanpa hak (mis. akun kini nonaktif) panel kosong.
+        return HakAkses::boleh(StubData::currentUser(), 'putuskan_permohonan')
+            ? KeputusanPendaftaran::daftar(StubData::currentUser())
+            : ['menunggu' => [], 'diputuskan' => [], 'jumlah_menunggu' => 0];
     }
 
     public function setujui(string $id): void

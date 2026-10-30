@@ -24,6 +24,13 @@ dialihkan ke halaman Masuk.
 
 Rute `akun.sesi` (terbuka): `{masuk, akun | null, wajib_masuk, mode_demo, tautan: {masuk, keluar, daftar}}`.
 
+## `GET /akun/hak` — hak akses akun yang masuk
+
+Rute `akun.hak`: `{peran, hak: {kunci: {label, boleh, alasan}}}` dari `App\Support\Akun\HakAkses::daftar()` — kunci
+`area_admin`, `kelola_pengaturan`, `kelola_master`, `kelola_akun`, `putuskan_permohonan`, `periksa_dokumen`, `monitoring`
+(admin), `buat_kegiatan` (admin; leading yang tertaut ke leading aktif), `susun_dokumen`, `pakai_ai` (admin & leading).
+`alasan` = pesan penolakan siap tampil (belum masuk, akun nonaktif, khusus admin, belum tertaut ke leading aktif).
+
 ## `POST /daftar` — kirim permohonan akun (tanpa masuk)
 
 Rute `akun.daftar.kirim`, dibatasi 6 permintaan per menit (`throttle:6,1` → 429). Isi lewat
