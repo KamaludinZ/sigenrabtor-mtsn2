@@ -3,6 +3,7 @@
 use App\Contracts\PenggunaRepository;
 use App\Http\Controllers\AlurStatusKegiatan;
 use App\Http\Controllers\AmbilMasterKode;
+use App\Http\Controllers\AturUlangSandiAkun;
 use App\Http\Controllers\BatalImporKegiatan;
 use App\Http\Controllers\BukaKunciFinal;
 use App\Http\Controllers\CatatanPemeriksaanKegiatan;
@@ -49,6 +50,7 @@ use App\Http\Controllers\EksporRabKegiatan;
 use App\Http\Controllers\EksporRabPdfKegiatan;
 use App\Http\Controllers\FormatRupiahTerbilang;
 use App\Http\Controllers\GambarCover;
+use App\Http\Controllers\GantiSandiAkun;
 use App\Http\Controllers\HapusArsipFinal;
 use App\Http\Controllers\HapusDrafDokumen;
 use App\Http\Controllers\HapusDrafSunting;
@@ -305,6 +307,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/leading/data', DataLeading::class)->name('leading.data');
     Route::get('/akun/data', DataAkun::class)->name('akun.data');
+    Route::post('/akun/{akun}/sandi', AturUlangSandiAkun::class)->whereNumber('akun')->name('akun.sandi');
     Route::get('/akun/permohonan', DaftarPermohonanAkun::class)->name('akun.permohonan');
     Route::post('/akun/permohonan/{permohonan}/{keputusan}', PutuskanPermohonanAkun::class)->whereIn('keputusan', ['setujui', 'tolak'])->name('akun.permohonan.putuskan');
     Route::get('/akun/{akun}/leading', DataTautanAkun::class)->whereNumber('akun')->name('akun.leading');
@@ -349,6 +352,7 @@ Route::post('/keluar', function (Request $request) {
 Route::get('/akun/sesi', SesiAkunSaatIni::class)->name('akun.sesi');
 Route::get('/akun/profil', [ProfilAkunSaya::class, 'tampil'])->name('akun.profil.data');
 Route::patch('/akun/profil', [ProfilAkunSaya::class, 'ubah'])->name('akun.profil.ubah');
+Route::put('/akun/sandi', GantiSandiAkun::class)->name('akun.sandi.ganti');
 Route::get('/akun/hak', fn () => response()->json(['peran' => StubData::currentUser()['role'], 'hak' => HakAkses::daftar(StubData::currentUser())], headers: ['Cache-Control' => 'no-store, private']))->name('akun.hak');
 Route::get('/akun', AkunProfil::class)->name('akun.profil');
 

@@ -80,6 +80,12 @@ final class Autentikasi
             : Cookie::forget(self::COOKIE_INGAT));
     }
 
+    /** Terbitkan ulang cookie "ingat saya" perangkat ini dengan sidik sandi terbaru (sesudah sandi diganti). */
+    public static function perbaruiIngat(int $akunId): void
+    {
+        Cookie::queue(Cookie::make(self::COOKIE_INGAT, json_encode(['id' => $akunId, 'sidik' => self::sidikSandi($akunId)]), self::HARI_INGAT * 24 * 60, httpOnly: true, sameSite: 'lax'));
+    }
+
     /** Pulihkan sesi dari cookie "ingat saya"; false bila tidak ada/tidak berlaku (cookie dihapus). */
     public static function pulihkan(Request $request): bool
     {

@@ -105,6 +105,14 @@ final class GantiSandi
         return ['diganti_pada' => $repo->sandi((int) $akun['id'])['diganti_pada'] ?? null];
     }
 
+    /** Detik sampai sandi saat ini boleh dicoba lagi (0 = boleh). */
+    public static function tunggu(int $id): int
+    {
+        $kunci = self::kunci($id);
+
+        return RateLimiter::tooManyAttempts($kunci, self::MAKS_SALAH) ? max(1, RateLimiter::availableIn($kunci)) : 0;
+    }
+
     private static function kunci(int $id): string
     {
         return 'ganti-sandi:'.$id;

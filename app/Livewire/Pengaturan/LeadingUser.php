@@ -5,6 +5,7 @@ namespace App\Livewire\Pengaturan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\LeadingRepository;
 use App\Contracts\PenggunaRepository;
+use App\Support\Akun\AturUlangSandi;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Pengaturan\AturanAkun;
 use App\Support\Pengaturan\AturanLeading;
@@ -111,6 +112,12 @@ class LeadingUser extends Component
     /** Akun yang disunting: 'baru' (tambah), id akun (ubah, sebagai teks), atau null. */
     public ?string $suntingAkun = null;
 
+    public bool $konfirmasiAturUlang = false;
+
+    /** Sandi sementara hasil atur ulang (tampil sekali di formulir). @var array{nama: string, surel: string, sandi: string}|null */
+    #[Locked]
+    public ?array $sandiSementara = null;
+
     /** @var array{name: string, email: string, role: string, jabatan: string, nip: string, leadings: list<string>} */
     public array $isianAkun = ['name' => '', 'email' => '', 'role' => 'leading', 'jabatan' => '', 'nip' => '', 'leadings' => []];
 
@@ -171,8 +178,38 @@ class LeadingUser extends Component
 
     public function batalAkun(): void
     {
-        $this->reset('suntingAkun', 'isianAkun', 'konfirmasiNonaktifAkun');
+        $this->reset('suntingAkun', 'isianAkun', 'konfirmasiNonaktifAkun', 'konfirmasiAturUlang', 'sandiSementara');
         $this->resetErrorBag(array_map(fn (string $k) => "isianAkun.{$k}", array_keys($this->isianAkun)));
+    }
+
+    /** Langkah konfirmasi di formulir sebelum sandi akun yang sedang diubah diatur ulang. */
+    public function mintaAturUlangSandi(): void
+    {
+        $this->konfirmasiAturUlang = $this->suntingAkun !== null && $this->suntingAkun !== 'baru';
+    }
+
+    public function batalAturUlangSandi(): void
+    {
+        $this->konfirmasiAturUlang = false;
+    }
+
+    /** Atur ulang sandi akun yang sedang diubah (AturUlangSandi): sandi sementara tampil sekali di formulir. */
+    public function aturUlangSandi(): void
+    {
+        $this->konfirmasiAturUlang = false;
+        if ($this->suntingAkun === null || $this->suntingAkun === 'baru') {
+            return;
+        }
+        try {
+            $hasil = AturUlangSandi::aturUlang((int) $this->suntingAkun, StubData::currentUser());
+        } catch (ValidationException|AuthorizationException|RuntimeException $e) {
+            $pesan = $e instanceof ValidationException ? collect($e->errors())->flatten()->first() : $e->getMessage();
+            $this->dispatch('notify', message: $pesan, type: 'error');
+
+            return;
+        }
+        $this->sandiSementara = ['nama' => $hasil['akun']['nama'], 'surel' => $hasil['akun']['surel'], 'sandi' => $hasil['sandi']];
+        $this->dispatch('notify', message: "Sandi sementara untuk {$hasil['akun']['nama']} dibuat.", type: 'success');
     }
 
     public function simpanAkun(): void

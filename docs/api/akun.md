@@ -35,6 +35,20 @@ Rute `akun.profil.data` / `akun.profil.ubah`.
   leading hanya diubah admin — kunci lain → 422 `galat.isian`. 200 `{pesan, ringkasan | null (tanpa perubahan), akun,
   versi}`; 422 `{pesan, galat}`; 409 `{pesan, versi, akun}` bila `versi` usang (profil diubah di tempat lain); 503 gagal.
 
+## `PUT /akun/sandi` — ganti sandi akun yang masuk
+
+Rute `akun.sandi.ganti`; isian `{sandi_lama, sandi_baru, sandi_ulang}` lewat `App\Support\Akun\GantiSandi` (sandi saat
+ini wajib & cocok bila akun sudah bersandi; sandi baru ≥ 8 karakter, huruf & angka, tidak memuat nama/surel, berbeda
+dari sandi saat ini). 200 `{pesan, diganti_pada}` — id sesi diganti, cookie "ingat saya" perangkat ini diterbitkan ulang
+(perangkat lain yang diingat harus masuk lagi). 422 `{pesan, galat}`; sandi saat ini salah 5× → 429 `{pesan, galat,
+tunggu}` + `Retry-After`; 503 gagal disimpan.
+
+## `POST /pengaturan/akun/{id}/sandi` — atur ulang sandi akun (admin)
+
+Rute `pengaturan.akun.sandi` (`App\Support\Akun\AturUlangSandi`): sandi sementara 12 karakter dibuat & disimpan
+terenkripsi. 200 `{pesan, sandi_sementara, akun: {id, nama, surel}}` — sandi sementara hanya dikirim sekali dan tidak
+pernah dicatat. Akun sendiri → 422 (pakai `PUT /akun/sandi`), bukan admin → 403, akun tidak ada → 404.
+
 ## `GET /akun/hak` — hak akses akun yang masuk
 
 Rute `akun.hak`: `{peran, hak: {kunci: {label, boleh, alasan}}}` dari `App\Support\Akun\HakAkses::daftar()` — kunci

@@ -71,6 +71,28 @@
                x-bind:class="{ 'text-gold-700': $wire.isianAkun.nip && $galatNip($wire.isianAkun.nip), 'text-stone-500': ! ($wire.isianAkun.nip && $galatNip($wire.isianAkun.nip)) }"></p>
         </x-ui.field>
     </div>
+    @if ($suntingAkun !== 'baru' && ! $diriSendiri)
+        <div class="border-t border-stone-100 px-5 py-4 sm:px-6" data-testid="sandi-akun-admin">
+            @if ($sandiSementara)
+                <div class="rounded-xl bg-brand-50 p-3 text-sm text-brand-900 ring-1 ring-brand-200" role="status" data-testid="sandi-sementara">
+                    <p>Sandi sementara untuk <span class="font-semibold">{{ $sandiSementara['nama'] }}</span> ({{ $sandiSementara['surel'] }}):</p>
+                    <p class="mt-1 font-mono text-base font-semibold tracking-wider select-all" data-testid="nilai-sandi-sementara">{{ $sandiSementara['sandi'] }}</p>
+                    <p class="mt-1 text-xs">Hanya tampil sekali — sampaikan langsung ke pemilik akun dan minta segera menggantinya di Akun saya › Sandi.</p>
+                </div>
+            @elseif ($konfirmasiAturUlang)
+                <div class="flex flex-wrap items-center gap-2 text-sm" data-testid="konfirmasi-atur-ulang">
+                    <span class="text-stone-700">Ganti sandi akun ini dengan sandi sementara? Sandi lama dan "ingat saya" di perangkatnya tidak berlaku lagi.</span>
+                    <button type="button" wire:click="batalAturUlangSandi" class="btn-ghost">Batal</button>
+                    <button type="button" wire:click="aturUlangSandi" class="btn-danger" data-testid="ya-atur-ulang">Ya, buat sandi sementara</button>
+                </div>
+            @else
+                <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span class="text-stone-500">Pemilik akun lupa sandi? Buat sandi sementara untuknya.</span>
+                    <button type="button" wire:click="mintaAturUlangSandi" class="btn-secondary" data-testid="atur-ulang-sandi"><x-ui.icon name="lock" class="size-4" /> Atur ulang sandi</button>
+                </div>
+            @endif
+        </div>
+    @endif
     <div class="flex justify-end gap-2 border-t border-stone-100 px-5 py-3 sm:px-6">
         <button type="button" wire:click="batalAkun" class="btn-ghost">Batal</button>
         <button type="submit" class="btn-primary" wire:loading.attr="disabled" wire:target="simpanAkun"><x-ui.icon name="save" class="size-4" /> <span wire:loading.remove wire:target="simpanAkun">Simpan</span><span wire:loading wire:target="simpanAkun">Menyimpan…</span></button>
