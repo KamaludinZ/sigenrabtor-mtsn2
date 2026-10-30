@@ -251,10 +251,20 @@ final class PilihanTemplate
      */
     public static function untukKegiatan(array $kegiatan, ?int $tahun = null, ?array $pilihan = null): array
     {
+        return self::berlakuUntuk(KonteksAi::tebakJenis((string) ($kegiatan['nama_kegiatan'] ?? '')), $kegiatan['leading'] ?? null, $tahun, $pilihan);
+    }
+
+    /**
+     * Template yang berlaku untuk jenis kegiatan $jenis milik leading $leading (aturan sama dengan untukKegiatan).
+     *
+     * @param  array<string, mixed>|null  $pilihan
+     * @return array{jenis: string, asal: string, kak: string|null, cover: string|null}
+     */
+    public static function berlakuUntuk(string $jenis, ?string $leading, ?int $tahun = null, ?array $pilihan = null): array
+    {
         $tahun ??= (int) StubData::tahunAktif()['tahun'];
         $pilihan = self::rapikan($pilihan ?? app(PilihanTemplateRepository::class)->untuk($tahun));
-        $jenis = KonteksAi::tebakJenis((string) ($kegiatan['nama_kegiatan'] ?? ''));
-        $khusus = collect($pilihan['leading'])->first(fn (array $p) => $p['leading'] === ($kegiatan['leading'] ?? null) && $p['jenis'] === $jenis);
+        $khusus = collect($pilihan['leading'])->first(fn (array $p) => $p['leading'] === $leading && $p['jenis'] === $jenis);
         $perJenis = $pilihan['jenis'][$jenis] ?? ['kak' => null, 'cover' => null];
 
         return match (true) {
