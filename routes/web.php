@@ -74,6 +74,7 @@ use App\Http\Controllers\PerbaruiDokumen;
 use App\Http\Controllers\PeriksaCetakKegiatan;
 use App\Http\Controllers\PeriksaUlangImporKegiatan;
 use App\Http\Controllers\PilihPenyediaAi;
+use App\Http\Controllers\ProfilAkunSaya;
 use App\Http\Controllers\ProsesDuplikatKegiatan;
 use App\Http\Controllers\ProsesImporKegiatan;
 use App\Http\Controllers\PutuskanPemeriksaan;
@@ -346,6 +347,8 @@ Route::post('/keluar', function (Request $request) {
         : redirect()->route('akun.masuk')->with('notify', ['message' => 'Anda sudah keluar.', 'type' => 'info']);
 })->name('akun.keluar');
 Route::get('/akun/sesi', SesiAkunSaatIni::class)->name('akun.sesi');
+Route::get('/akun/profil', [ProfilAkunSaya::class, 'tampil'])->name('akun.profil.data');
+Route::patch('/akun/profil', [ProfilAkunSaya::class, 'ubah'])->name('akun.profil.ubah');
 Route::get('/akun/hak', fn () => response()->json(['peran' => StubData::currentUser()['role'], 'hak' => HakAkses::daftar(StubData::currentUser())], headers: ['Cache-Control' => 'no-store, private']))->name('akun.hak');
 Route::get('/akun', AkunProfil::class)->name('akun.profil');
 

@@ -16,7 +16,8 @@ use RuntimeException;
  *   berhuruf, ≤ `AturanAkun::MAKS_NAMA`; jabatan ≤ `MAKS_JABATAN`);
  * - `versi($akun)` = sidik nama & jabatan tersimpan — `simpan()` menolak bila berubah di tempat lain (mis. admin
  *   mengubahnya) → `PengaturanBerubah` `PESAN_BENTROK`;
- * - `simpan($pengguna, $isian, $versi)` → {akun, ringkasan|null, versi}: tanpa perubahan tidak ditulis; selain itu
+ * - `simpan($pengguna, $isian, $versi)` → {akun, ringkasan|null, versi}: pembaruan sebagian (kunci yang tidak dikirim tetap;
+ *   kunci di luar `ISIAN` → galat `isian` `PESAN_TERLARANG`); tanpa perubahan tidak ditulis; selain itu
  *   `PenggunaRepository::simpan` (hanya name & jabatan) + riwayat `ubah_profil_akun` ("Nama: lama → baru").
  */
 final class UbahProfil
@@ -24,6 +25,8 @@ final class UbahProfil
     public const ISIAN = ['nama' => 'Nama', 'jabatan' => 'Jabatan'];
 
     public const PESAN_BENTROK = 'Profil Anda baru saja diubah di tempat lain (mis. oleh admin) — periksa data terbaru, lalu simpan lagi.';
+
+    public const PESAN_TERLARANG = 'Hanya nama & jabatan yang bisa diubah sendiri — surel, NIP, peran, dan leading diatur admin.';
 
     /** @param  array<string, mixed>  $isian
      * @return array{nama: string, jabatan: string} */
@@ -69,7 +72,11 @@ final class UbahProfil
     {
         $repo = app(PenggunaRepository::class);
         $akun = $repo->temukan((int) $pengguna['id']) ?? throw new RuntimeException('Akun Anda belum tercatat — hubungi admin.');
-        $isian = self::rapikan($isian);
+        if (($asing = array_diff(array_keys($isian), array_keys(self::ISIAN))) !== []) {
+            throw ValidationException::withMessages(['isian' => self::PESAN_TERLARANG.' ('.implode(', ', $asing).')']);
+        }
+        // Kunci yang tidak dikirim tetap (pembaruan sebagian).
+        $isian = self::rapikan($isian + ['nama' => (string) $akun['name'], 'jabatan' => (string) ($akun['jabatan'] ?? '')]);
         if (($galat = self::galat($isian)) !== []) {
             throw ValidationException::withMessages($galat);
         }

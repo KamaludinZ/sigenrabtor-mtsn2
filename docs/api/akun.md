@@ -24,6 +24,17 @@ dialihkan ke halaman Masuk.
 
 Rute `akun.sesi` (terbuka): `{masuk, akun | null, wajib_masuk, mode_demo, tautan: {masuk, keluar, daftar}}`.
 
+## `GET /akun/profil` & `PATCH /akun/profil` — profil akun yang masuk
+
+Rute `akun.profil.data` / `akun.profil.ubah`.
+
+- `GET` → `{id, nama, surel, jabatan, nip, nip_format, peran, label_peran, leading: [{kode, nama_unit, aktif}], aktif,
+  terakhir_masuk, dibuat_pada, riwayat_masuk, versi}`.
+- `PATCH` `{nama?, jabatan?, versi?}` — pembaruan sebagian lewat `App\Support\Akun\UbahProfil` (kunci yang tidak dikirim
+  tetap; nama wajib berhuruf ≤ 150, jabatan ≤ 150, spasi dirapikan; kosongkan jabatan dengan `""`). Surel, NIP, peran, dan
+  leading hanya diubah admin — kunci lain → 422 `galat.isian`. 200 `{pesan, ringkasan | null (tanpa perubahan), akun,
+  versi}`; 422 `{pesan, galat}`; 409 `{pesan, versi, akun}` bila `versi` usang (profil diubah di tempat lain); 503 gagal.
+
 ## `GET /akun/hak` — hak akses akun yang masuk
 
 Rute `akun.hak`: `{peran, hak: {kunci: {label, boleh, alasan}}}` dari `App\Support\Akun\HakAkses::daftar()` — kunci
