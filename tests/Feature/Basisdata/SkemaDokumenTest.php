@@ -29,6 +29,9 @@ class SkemaDokumenTest extends TestCase
 
     private const MIGRASI_NOMOR_RIWAYAT = 'database/migrations/2026_10_29_000045_allow_nomor_riwayat_dokumen.php';
 
+    /** Format Seragam (000047) merujuk tahun anggaran, leading, dan template (id, tahun): dibatalkan paling dulu. */
+    private const MIGRASI_FORMAT = 'database/migrations/2026_10_29_000047_create_format_seragam_tables.php';
+
     /** Status dokumen mengikuti kegiatan (000040): trigger di activities & documents. */
     private const MIGRASI_STATUS_DOKUMEN = 'database/migrations/2026_10_29_000040_sinkron_status_dokumen.php';
 
@@ -146,6 +149,7 @@ class SkemaDokumenTest extends TestCase
     {
         DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
         DB::statement('SET CONSTRAINTS ALL DEFERRED');
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_FORMAT])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_NOMOR_RIWAYAT])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_ISI_RIWAYAT])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_RIWAYAT_DOKUMEN])->assertSuccessful();
@@ -163,6 +167,7 @@ class SkemaDokumenTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI_RIWAYAT_DOKUMEN])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_ISI_RIWAYAT])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_NOMOR_RIWAYAT])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_FORMAT])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('documents'));
         $this->assertSame(2026, (int) DB::selectOne('SELECT tahun_aktif() AS t')->t);
     }
