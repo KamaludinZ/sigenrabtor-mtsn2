@@ -73,6 +73,25 @@ class EloquentPermohonanAkunRepository implements PermohonanAkunRepository
         return $this->temukan($id);
     }
 
+    public function putuskan(string $id, string $status, ?int $olehId, ?string $alasan = null, ?int $akunId = null): ?array
+    {
+        if (! Str::isUuid($id)) {
+            return null;
+        }
+        $waktu = now()->format('Y-m-d H:i:s.uP');
+        try {
+            $diubah = DB::table('permohonan_akun')->where('id', $id)->where('status', 'menunggu')->update([
+                'status' => $status, 'diputuskan_pada' => $waktu, 'diputuskan_oleh' => $olehId, 'alasan' => $alasan,
+                'akun_id' => $status === 'disetujui' ? $akunId : null, 'updated_at' => $waktu,
+            ]);
+        } catch (QueryException $e) {
+            report($e);
+            throw new RuntimeException('Keputusan permohonan akun gagal disimpan — coba lagi.', previous: $e);
+        }
+
+        return $diubah === 0 ? null : $this->temukan($id);
+    }
+
     /** @return array<string, list<string>> Id permohonan → kode leading (urut alami). */
     private function leading(?string $id = null): array
     {
@@ -105,6 +124,7 @@ class EloquentPermohonanAkunRepository implements PermohonanAkunRepository
             'diputuskan_pada' => $p->diputuskan_pada === null ? null : $this->iso($p->diputuskan_pada),
             'diputuskan_oleh' => $p->diputuskan_oleh === null ? null : (int) $p->diputuskan_oleh,
             'alasan' => $p->alasan,
+            'akun_id' => $p->akun_id === null ? null : (int) $p->akun_id,
         ];
     }
 

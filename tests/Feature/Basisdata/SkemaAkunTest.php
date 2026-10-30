@@ -111,7 +111,7 @@ class SkemaAkunTest extends TestCase
         $hasil = PendaftaranAkun::ajukan(self::ISIAN);
         $tersimpan = app(PermohonanAkunRepository::class)->temukan($hasil['id']);
 
-        $this->assertSame(['id', 'nama', 'surel', 'jabatan', 'nip', 'leadings', 'catatan', 'sandi_hash', 'status', 'diajukan_pada', 'diputuskan_pada', 'diputuskan_oleh', 'alasan'], array_keys($tersimpan));
+        $this->assertSame(['id', 'nama', 'surel', 'jabatan', 'nip', 'leadings', 'catatan', 'sandi_hash', 'status', 'diajukan_pada', 'diputuskan_pada', 'diputuskan_oleh', 'alasan', 'akun_id'], array_keys($tersimpan));
         $this->assertSame(['Hasan Basri, S.Pd.', 'hasan.basri@example.com', ['1.2', '1.4'], 'menunggu', null], [$tersimpan['nama'], $tersimpan['surel'], $tersimpan['leadings'], $tersimpan['status'], $tersimpan['diputuskan_oleh']]);
         $this->assertTrue(Hash::check('Madrasah#2026', $tersimpan['sandi_hash']));
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}\+07:00$/', $tersimpan['diajukan_pada']);

@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class WajibMasuk
 {
-    public const TERBUKA = ['akun.masuk', 'akun.daftar', 'akun.keluar', 'demo.peran'];
+    public const TERBUKA = ['akun.masuk', 'akun.daftar', 'akun.daftar.kirim', 'akun.keluar', 'demo.peran'];
 
     public const PESAN_SESI = 'Sesi Anda sudah berakhir — masuk kembali untuk melanjutkan.';
 

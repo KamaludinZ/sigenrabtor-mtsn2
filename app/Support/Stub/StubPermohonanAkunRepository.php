@@ -31,6 +31,7 @@ class StubPermohonanAkunRepository implements PermohonanAkunRepository
             'diputuskan_pada' => null,
             'diputuskan_oleh' => null,
             'alasan' => null,
+            'akun_id' => null,
         ]];
     }
 
@@ -52,6 +53,7 @@ class StubPermohonanAkunRepository implements PermohonanAkunRepository
             'diputuskan_pada' => null,
             'diputuskan_oleh' => null,
             'alasan' => null,
+            'akun_id' => null,
         ];
         $baru['status'] = 'menunggu';
         if (! $this->tulis([$baru, ...$this->baca()])) {
@@ -59,6 +61,27 @@ class StubPermohonanAkunRepository implements PermohonanAkunRepository
         }
 
         return $baru;
+    }
+
+    public function putuskan(string $id, string $status, ?int $olehId, ?string $alasan = null, ?int $akunId = null): ?array
+    {
+        $semua = $this->baca();
+        $i = collect($semua)->search(fn (array $p) => $p['id'] === $id && $p['status'] === 'menunggu');
+        if ($i === false) {
+            return null;
+        }
+        $semua[$i] = array_replace($semua[$i], [
+            'status' => $status,
+            'diputuskan_pada' => now()->format('Y-m-d\\TH:i:s.uP'),
+            'diputuskan_oleh' => $olehId,
+            'alasan' => $alasan,
+            'akun_id' => $status === 'disetujui' ? $akunId : null,
+        ]);
+        if (! $this->tulis($semua)) {
+            throw new RuntimeException('Keputusan permohonan akun gagal disimpan — coba lagi.');
+        }
+
+        return $semua[$i];
     }
 
     /** @return list<array<string, mixed>> */
@@ -69,7 +92,7 @@ class StubPermohonanAkunRepository implements PermohonanAkunRepository
         }
         $isi = json_decode((string) $this->disk()->get($this->berkas()), true);
 
-        return is_array($isi) ? array_values($isi) : [];
+        return is_array($isi) ? array_values(array_map(fn (array $p) => $p + ['akun_id' => null], $isi)) : [];
     }
 
     /** @param  list<array<string, mixed>>  $semua */

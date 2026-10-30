@@ -19,6 +19,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use RuntimeException;
@@ -743,6 +744,13 @@ class LeadingUser extends Component
     public function rendering(): void
     {
         $this->versi = self::sidik();
+    }
+
+    /** Permohonan akun diputuskan di panel anak PermohonanAkun: tabel akun dimuat ulang. */
+    #[On('permohonan-akun-diputuskan')]
+    public function permohonanDiputuskan(): void
+    {
+        unset($this->akun);
     }
 
     /** Sidik isi data leading & akun (KelolaLeading::sidik; waktu masuk tidak dihitung sebagai perubahan). */

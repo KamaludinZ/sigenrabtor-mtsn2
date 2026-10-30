@@ -7,6 +7,7 @@ use App\Http\Controllers\BatalImporKegiatan;
 use App\Http\Controllers\BukaKunciFinal;
 use App\Http\Controllers\CatatanPemeriksaanKegiatan;
 use App\Http\Controllers\CetakDokumenKegiatan;
+use App\Http\Controllers\DaftarPermohonanAkun;
 use App\Http\Controllers\DaftarRiwayatDokumen;
 use App\Http\Controllers\DaftarTemplateTersedia;
 use App\Http\Controllers\DataAgregasiMonitoring;
@@ -56,6 +57,7 @@ use App\Http\Controllers\IsiDokumenTercatat;
 use App\Http\Controllers\KatalogBerkasKegiatan;
 use App\Http\Controllers\KegiatanBukuDokumen;
 use App\Http\Controllers\KelengkapanDokumenKegiatan;
+use App\Http\Controllers\KirimPendaftaranAkun;
 use App\Http\Controllers\KodeMasterKegiatan;
 use App\Http\Controllers\KonfigurasiAiBerlaku;
 use App\Http\Controllers\KonteksKegiatan;
@@ -74,6 +76,7 @@ use App\Http\Controllers\PilihPenyediaAi;
 use App\Http\Controllers\ProsesDuplikatKegiatan;
 use App\Http\Controllers\ProsesImporKegiatan;
 use App\Http\Controllers\PutuskanPemeriksaan;
+use App\Http\Controllers\PutuskanPermohonanAkun;
 use App\Http\Controllers\PutuskanSaranAi;
 use App\Http\Controllers\RabLengkapKegiatan;
 use App\Http\Controllers\RencanaDuplikatDokumen;
@@ -295,6 +298,8 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/leading', PengaturanLeadingUser::class)->name('leading.index');
     Route::get('/leading/data', DataLeading::class)->name('leading.data');
     Route::get('/akun/data', DataAkun::class)->name('akun.data');
+    Route::get('/akun/permohonan', DaftarPermohonanAkun::class)->name('akun.permohonan');
+    Route::post('/akun/permohonan/{permohonan}/{keputusan}', PutuskanPermohonanAkun::class)->whereIn('keputusan', ['setujui', 'tolak'])->name('akun.permohonan.putuskan');
     Route::get('/akun/{akun}/leading', DataTautanAkun::class)->whereNumber('akun')->name('akun.leading');
     Route::get('/format', PengaturanFormatSeragam::class)->name('format.index');
     Route::get('/format/template', DaftarTemplateTersedia::class)->name('format.template');
@@ -325,6 +330,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
 // Masuk & Akun (PRD §8): halaman masuk & daftar (layout tamu), keluar, dan akun saya.
 Route::get('/masuk', AkunMasuk::class)->middleware(HanyaTamu::class)->name('akun.masuk');
 Route::get('/daftar', AkunDaftar::class)->middleware(HanyaTamu::class)->name('akun.daftar');
+Route::post('/daftar', KirimPendaftaranAkun::class)->middleware('throttle:6,1')->name('akun.daftar.kirim');
 Route::post('/keluar', function () {
     SesiAkun::keluar();
 

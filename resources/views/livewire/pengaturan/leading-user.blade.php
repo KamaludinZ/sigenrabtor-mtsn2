@@ -216,6 +216,8 @@
                     @endif
                 </section>
             @else
+                <livewire:pengaturan.permohonan-akun wire:key="permohonan-akun" />
+
                 @if ($suntingAkun !== null)
                     @include('livewire.pengaturan.partials.formulir-akun')
                 @endif

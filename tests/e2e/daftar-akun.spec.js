@@ -67,4 +67,32 @@ test.describe('Daftar akun', () => {
         await page.getByTestId('tombol-masuk').click();
         await expect(page.getByTestId('galat-surel')).toContainText('masih menunggu persetujuan admin');
     });
+    test('admin menolak permohonan dari panel Leading & User', async ({ page }, testInfo) => {
+        // Permohonan milik tes ini sendiri (surel unik); menyetujui tidak diuji di E2E karena membuat akun di data bersama.
+        const surel = `tolak-${testInfo.project.name}-${Date.now()}@example.com`;
+        await page.goto('/daftar');
+        await page.getByTestId('isian-daftar-nama').fill('Pemohon Uji Tolak');
+        await page.getByTestId('pilih-leading').filter({ has: page.locator('input[value="1.2"]') }).click();
+        await page.getByTestId('isian-daftar-surel').fill(surel);
+        await page.getByTestId('isian-daftar-sandi').fill('Madrasah#2026');
+        await page.getByTestId('isian-daftar-sandi-ulang').fill('Madrasah#2026');
+        await page.getByTestId('isian-daftar-setuju').check();
+        await page.getByTestId('kirim-pendaftaran').click();
+        await expect(page.getByTestId('pendaftaran-terkirim')).toBeVisible();
+
+        await page.goto('/demo/peran/admin');
+        await page.goto('/pengaturan/leading?tab=akun');
+        const panel = page.getByTestId('permohonan-akun');
+        await expect(panel).toBeVisible();
+        const baris = panel.getByTestId('permohonan').filter({ hasText: surel });
+        await expect(baris).toBeVisible();
+        await baris.getByTestId('tolak-permohonan').click();
+        await baris.getByTestId('kirim-tolak').click();
+        await expect(baris.locator('#alasan-tolak-error')).toBeVisible();
+        await baris.getByTestId('alasan-tolak').fill('Uji E2E — permohonan ditolak.');
+        await baris.getByTestId('kirim-tolak').click();
+        await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Permohonan Pemohon Uji Tolak ditolak.' })).toBeVisible();
+        await expect(panel.getByTestId('permohonan').filter({ hasText: surel })).toHaveCount(0);
+        await page.goto('/demo/peran/leading');
+    });
 });
