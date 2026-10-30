@@ -1,5 +1,8 @@
 <?php
 
+use App\Support\Akun\AturUlangSandi;
+use App\Support\Akun\DataAkun;
+use App\Support\Akun\SandiKonsol;
 use App\Support\Basisdata\PindahAkun;
 use App\Support\Basisdata\PindahLeading;
 use App\Support\Basisdata\PindahMasterKode;
@@ -7,6 +10,7 @@ use App\Support\Basisdata\PindahPengaturanAi;
 use App\Support\Basisdata\PindahStrukturAnggaran;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Validation\ValidationException;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -100,3 +104,41 @@ Artisan::command('sigenrabtor:pindah-pengaturan-ai {--uji : Jalankan & verifikas
 
     return 0;
 })->purpose('Sinkronkan pengaturan & penyedia AI dari penyimpanan tiruan ke database (lalu verifikasi)');
+
+Artisan::command('sigenrabtor:atur-sandi {surel : Surel akun} {--nama= : Nama admin baru (bersama --buat-admin)} {--buat-admin : Buat akun admin bila surel belum terdaftar} {--acak : Buat sandi acak (ditampilkan sekali) alih-alih diketik}', function () {
+    $surel = (string) $this->argument('surel');
+    if ($this->option('acak')) {
+        $sandi = AturUlangSandi::sandiSementara((string) (DataAkun::cariSurel($surel)['name'] ?? $this->option('nama')), $surel);
+    } else {
+        $sandi = (string) $this->secret('Sandi baru (min. 8 karakter, huruf & angka)');
+        if ($sandi !== (string) $this->secret('Ulangi sandi baru')) {
+            $this->error('Sandi ulang tidak sama.');
+
+            return 1;
+        }
+    }
+
+    try {
+        $hasil = SandiKonsol::atur($surel, $sandi, $this->option('nama'), (bool) $this->option('buat-admin'));
+    } catch (ValidationException $e) {
+        $this->error(collect($e->errors())->flatten()->first());
+
+        return 1;
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+
+    $akun = $hasil['akun'];
+    $this->info(($hasil['dibuat'] ? 'Akun admin dibuat dan sandinya diatur' : 'Sandi diatur').": {$akun['nama']} <{$akun['surel']}> ({$akun['peran']}).");
+    if ($this->option('acak')) {
+        $this->line("Sandi: {$sandi}");
+        $this->line('Sampaikan sekali saja; minta pemilik akun menggantinya di Akun saya › Sandi.');
+    }
+    if (! $akun['aktif']) {
+        $this->warn('Akun ini nonaktif — aktifkan dulu di Pengaturan › Leading & Akun agar bisa masuk.');
+    }
+
+    return 0;
+})->purpose('Atur sandi akun (atau buat admin pertama) dari konsol server — untuk instalasi tanpa mode demo');

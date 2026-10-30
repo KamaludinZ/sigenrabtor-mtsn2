@@ -94,6 +94,7 @@ use App\Support\Stub\StubTahunAnggaranRepository;
 use App\Support\Stub\StubTemplateCoverRepository;
 use App\Support\Stub\StubTemplateDokumenRepository;
 use App\View\Composers\AppLayoutComposer;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
@@ -168,6 +169,16 @@ class AppServiceProvider extends ServiceProvider
 
         if ($hot = config('sigenrabtor.vite_hot_file')) {
             Vite::useHotFile($hot);
+        }
+        self::pasangProksiTepercaya((string) config('sigenrabtor.proksi_tepercaya'));
+    }
+
+    /** Proksi yang header X-Forwarded-*-nya dipercaya (config `sigenrabtor.proksi_tepercaya`): `*` atau daftar dipisah koma; kosong = tidak ada. */
+    public static function pasangProksiTepercaya(string $nilai): void
+    {
+        $nilai = trim($nilai);
+        if ($nilai !== '') {
+            TrustProxies::at($nilai === '*' ? '*' : array_values(array_filter(array_map('trim', explode(',', $nilai)))));
         }
     }
 }

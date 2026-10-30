@@ -1,0 +1,7 @@
+# Tambahan untuk server biasa (tanpa Coolify): buka port aplikasi di host, hanya untuk localhost — pasang proksi TLS
+# (nginx/Caddy) di depannya. Pakai bersama: docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml up -d --build
+# Ganti APP_BIND ke 0.0.0.0 hanya bila TLS ditangani perangkat lain.
+services:
+  app:
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"

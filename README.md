@@ -24,6 +24,10 @@ php artisan test     # unit & feature (PHPUnit, database sigenrabtor_testing)
 npm run test:e2e     # end-to-end Playwright di Google Chrome terpasang (desktop & mobile)
 ```
 
+## Deploy produksi
+Docker/Coolify (image dengan Chromium, LibreOffice, poppler; PostgreSQL 18; AI cloud atau Ollama lokal): lihat
+[`docs/deploy.md`](docs/deploy.md). Admin pertama: `php artisan sigenrabtor:atur-sandi <surel> --buat-admin --nama="…"`.
+
 ## Status
 Pengembangan bertahap per fase (frontend di atas data tiruan lebih dulu, lalu backend).
 Selama tahap data tiruan, menu profil menyediakan sakelar **Mode demo** untuk melihat tampilan Admin/Leading.

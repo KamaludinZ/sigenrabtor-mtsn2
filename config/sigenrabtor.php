@@ -40,6 +40,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Proksi tepercaya
+    |--------------------------------------------------------------------------
+    |
+    | Alamat proksi (dipisah koma, boleh CIDR) atau `*` yang header X-Forwarded-*-nya
+    | dipercaya. Wajib diisi bila aplikasi berjalan di belakang proksi TLS (Coolify/
+    | Traefik, nginx, Caddy) agar URL & cookie memakai https dan alamat IP pembatas
+    | percobaan masuk benar. Kosong = tidak ada proksi yang dipercaya.
+    |
+    */
+
+    'proksi_tepercaya' => env('SIRABTOR_PROKSI_TEPERCAYA', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Admin awal (instalasi baru)
     |--------------------------------------------------------------------------
     |

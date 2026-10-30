@@ -1,0 +1,83 @@
+# Deploy produksi SIRABTOR — siap untuk Coolify (Build Pack: Docker Compose, lokasi berkas /docker-compose.prod.yml)
+# maupun server biasa (`docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml up -d --build`).
+# Variabel lingkungan: docker/env.produksi.contoh. Panduan lengkap: docs/deploy.md.
+#
+# Catatan Coolify: domain diarahkan ke layanan `app` port 8080 (isi kolom Domains dengan https://domain-anda:8080,
+# atau biarkan variabel SERVICE_FQDN_APP_8080 di bawah dibaca Coolify). Port tidak dipublikasikan ke host di berkas
+# ini — proksi Coolify menjangkaunya lewat jaringan Docker.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sirabtor:latest
+    restart: unless-stopped
+    environment:
+      SERVICE_FQDN_APP_8080:
+      APP_NAME: ${APP_NAME:-SIRABTOR}
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY:?APP_KEY wajib diisi (base64:… dari openssl rand -base64 32)}
+      APP_URL: ${APP_URL:?APP_URL wajib diisi (alamat https publik)}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Jakarta}
+      SIRABTOR_PROKSI_TEPERCAYA: ${SIRABTOR_PROKSI_TEPERCAYA:-*}
+      DB_CONNECTION: pgsql
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-sigenrabtor}
+      DB_USERNAME: ${DB_USERNAME:-sigenrabtor}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi}
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-480}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      SESSION_SAME_SITE: ${SESSION_SAME_SITE:-lax}
+      CACHE_STORE: ${CACHE_STORE:-database}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+      # Lebih lama dari --timeout pekerja antrean (360 detik) agar pekerjaan tidak dijalankan dua kali.
+      DB_QUEUE_RETRY_AFTER: ${DB_QUEUE_RETRY_AFTER:-420}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SIRABTOR_WAJIB_MASUK: ${SIRABTOR_WAJIB_MASUK:-true}
+      SIRABTOR_MODE_DEMO: ${SIRABTOR_MODE_DEMO:-false}
+      SIRABTOR_PDF_PERENDER: ${SIRABTOR_PDF_PERENDER:-chrome}
+      SIRABTOR_CHROME: ${SIRABTOR_CHROME:-/usr/bin/chromium}
+      SIRABTOR_SOFFICE: ${SIRABTOR_SOFFICE:-/usr/bin/soffice}
+      SIRABTOR_PDF_BATAS_DETIK: ${SIRABTOR_PDF_BATAS_DETIK:-90}
+      SIRABTOR_CATAT_UNDUHAN: ${SIRABTOR_CATAT_UNDUHAN:-true}
+      SIRABTOR_MIGRASI: ${SIRABTOR_MIGRASI:-1}
+      SIRABTOR_TUNGGU_DB_DETIK: ${SIRABTOR_TUNGGU_DB_DETIK:-60}
+      PHP_FPM_MAX_CHILDREN: ${PHP_FPM_MAX_CHILDREN:-10}
+    expose:
+      - "8080"
+    volumes:
+      # Data aplikasi: berkas data (JSON), unggahan (logo, cover, master, arsip PDF), buku PDF, log.
+      - sirabtor_storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-sigenrabtor}
+      POSTGRES_USER: ${DB_USERNAME:-sigenrabtor}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi}
+    volumes:
+      - sirabtor_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  sirabtor_storage:
+  sirabtor_pgdata:

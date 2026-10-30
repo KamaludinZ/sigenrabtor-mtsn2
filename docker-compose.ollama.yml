@@ -1,0 +1,25 @@
+# Opsional: AI lokal Ollama di server yang sama (data kegiatan tidak keluar dari server).
+#   docker compose -f docker-compose.prod.yml -f docker-compose.ollama.yml up -d --build
+#   docker compose -f docker-compose.prod.yml -f docker-compose.ollama.yml exec ollama ollama pull qwen2.5:7b
+# Lalu di SIRABTOR: Pengaturan › Pengaturan AI › Ollama → alamat server http://ollama:11434, model yang ditarik,
+# jadikan penyedia aktif. Butuh RAM ±8 GB untuk model 7B (CPU); GPU NVIDIA: aktifkan blok `deploy` di bawah.
+services:
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.13}
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-10m}
+    volumes:
+      - sirabtor_ollama:/root/.ollama
+    expose:
+      - "11434"
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  sirabtor_ollama:
