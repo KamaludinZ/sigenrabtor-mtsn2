@@ -87,3 +87,17 @@ Rute `pengaturan.akun.permohonan.putuskan`.
 - `tolak` `{alasan}` — alasan wajib ≤ 300. 200 `{permohonan (status ditolak, alasan), pesan}`.
 
 Galat: 422 `{pesan, galat}`, 403 bukan admin, 404 permohonan tidak ada, 409 sudah diputuskan, 503 gagal disimpan.
+
+## `GET /pengaturan/peran` — peran beserta hak & akunnya (admin)
+
+Rute `pengaturan.peran` (`App\Support\Akun\KelolaPeran::daftar`): `{peran: [{kode, label, keterangan, perlu_leading,
+hak: [{kunci, label}], jumlah_aktif, jumlah_nonaktif, akun: [{id, nama, surel, aktif, leading}]}], versi}`.
+
+## `PUT /pengaturan/akun/{id}/peran` — ubah peran akun (admin)
+
+Rute `pengaturan.akun.peran`; isian `{peran: "admin" | "leading", leadings?: [kode…], versi?}` lewat `KelolaPeran::ubah`:
+peran akun sendiri tidak bisa diubah, minimal satu admin aktif tetap ada, akun leading wajib tertaut ≥ 1 leading aktif
+(`leadings` kosong = tautan lama), admin tanpa tautan leading; tercatat di Riwayat Perubahan. 200 `{akun, ringkasan |
+null, versi, pesan}`; 422 `{pesan, galat: {role | leadings}}`; 403; 404; 409 `{pesan, versi}` bila `versi` (dari
+`GET /pengaturan/peran` atau `/pengaturan/akun/data`) usang; 503.
+

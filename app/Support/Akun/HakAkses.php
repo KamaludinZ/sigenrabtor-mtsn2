@@ -77,6 +77,17 @@ final class HakAkses
         }
     }
 
+    /** Hak tiap peran (tanpa syarat tambahan akun). @return array<string, list<string>> */
+    public static function perPeran(): array
+    {
+        $hasil = [];
+        foreach (array_keys(PeranAkun::DAFTAR) as $peran) {
+            $hasil[$peran] = array_keys(array_filter(self::HAK, fn (array $h) => in_array($peran, $h[1], true)));
+        }
+
+        return $hasil;
+    }
+
     /**
      * @param  array<string, mixed>|null  $pengguna
      * @return array<string, array{label: string, boleh: bool, alasan: string|null}>
