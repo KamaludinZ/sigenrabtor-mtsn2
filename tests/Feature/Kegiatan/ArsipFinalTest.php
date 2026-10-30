@@ -16,6 +16,13 @@ use Tests\TestCase;
 
 class ArsipFinalTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Pencatatan arsip ke Riwayat Dokumen (bernomor otomatis) diuji di PenomoranOtomatisTest.
+        config(['sigenrabtor.riwayat.catat_unduhan' => false]);
+    }
+
     /** Salinan contoh kegiatan 2 (DIPA + Komite) berstatus $status. */
     private function kegiatan(string $status = 'disetujui'): int
     {

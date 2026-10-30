@@ -5,6 +5,7 @@ namespace App\Support\Kegiatan;
 use App\Contracts\ArsipFinalRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Dokumen\CatatRiwayatDokumen;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
@@ -116,6 +117,9 @@ final class KelolaArsipFinal
         $arsip = $repo->simpan($id, $sumber, $berkas, $pengguna);
         RiwayatKunci::catat($id, $ganti ? 'ganti_final' : 'unggah_final', RiwayatKunci::keteranganArsip($sumber, $arsip), $pengguna, $arsip['diunggah_pada']);
         $final = FinalOtomatis::jalankan($id, $pengguna) !== null;
+        // Arsip final tercatat di Riwayat Dokumen dengan nomor dokumen otomatis (PRD §9 "Penomoran Dokumen Otomatis").
+        $catatan = CatatRiwayatDokumen::dariArsip(app(KegiatanRepository::class)->temukan($id) ?? $kegiatan, $sumber, $arsip, $pengguna);
+        $nomor = $catatan['nomor_dokumen'] ?? null;
 
         return [
             'arsip' => self::tampil($id, $arsip),
@@ -123,7 +127,9 @@ final class KelolaArsipFinal
             'kurang' => ArsipFinal::kurang($kegiatan, $repo->untukKegiatan($id)),
             'final' => $final,
             'status' => $final ? StatusKegiatan::Final->value : self::status($kegiatan)->value,
-            'pesan' => 'Arsip final RAB '.$sumber.($ganti ? ' diganti.' : ' tersimpan.').($final ? ' '.self::PESAN_FINAL : ''),
+            'nomor_dokumen' => $nomor,
+            'riwayat_dokumen' => $catatan['id'] ?? null,
+            'pesan' => 'Arsip final RAB '.$sumber.($ganti ? ' diganti' : ' tersimpan').($nomor !== null ? " dengan nomor {$nomor}." : '.').($final ? ' '.self::PESAN_FINAL : ''),
         ];
     }
 

@@ -77,6 +77,12 @@ Catatan riwayat hanya ditambah; "memperbarui" tidak mengubah isi catatan lama.
   (satu-satunya perubahan yang diizinkan database). Nomor: huruf/angka/spasi/`.`/`/`/`-`, ≤ 100, tidak dipakai dokumen
   lain di tahun anggaran yang sama. Admin atau akun yang tertaut ke leading dokumen. 200 `{dokumen, pesan}`; sudah
   bernomor → 409.
+  Bila nomor yang dikirim sama dengan usulan nomor otomatis (`aksi.nomor.usulan` di `GET /dokumen/{id}`), nomor itu
+  diterbitkan (penghitung nomor urut jenis × tahun maju atomik; bila didahului permintaan lain, nomor berikutnya yang
+  tersimpan — baca `dokumen.nomor_dokumen` di jawaban). Nomor ketikan sendiri tidak memajukan penghitung.
+- Arsip final bertanda tangan yang diunggah (`POST /kegiatan/{id}/arsip/{sumber}`) tercatat otomatis sebagai catatan set
+  lengkap PDF ber-asal `arsip` dengan nomor dokumen otomatis (unggah ulang memakai nomor yang sama); jawaban unggah membawa
+  `nomor_dokumen` & `riwayat_dokumen` (id catatan).
 
 Galat: 422 `{pesan, galat: {asal | nomor_dokumen}}`, 403 `{pesan}`, 404 `{pesan}`, 409 `{pesan}`.
 

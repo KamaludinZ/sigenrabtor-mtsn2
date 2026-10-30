@@ -25,6 +25,13 @@ class KelolaArsipFinalTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Pencatatan arsip ke Riwayat Dokumen (bernomor otomatis) diuji di PenomoranOtomatisTest.
+        config(['sigenrabtor.riwayat.catat_unduhan' => false]);
+    }
+
     private const LEADING = ['id' => 1, 'name' => 'Muslimin, M.Pd.', 'role' => 'leading', 'leadings' => ['1.6']];
 
     private const ADMIN = ['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin', 'leadings' => []];

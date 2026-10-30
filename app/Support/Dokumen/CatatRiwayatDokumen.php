@@ -7,6 +7,7 @@ use App\Support\Dokumen\Generasi\BerkasDokumen;
 use App\Support\Dokumen\Generasi\FormatBerkas;
 use App\Support\Dokumen\Generasi\GeneratorBerkasServer;
 use App\Support\Dokumen\Generasi\PermintaanBerkas;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Rab\AnggaranKegiatan;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -80,6 +81,31 @@ final class CatatRiwayatDokumen
         }
 
         return self::aman(fn () => self::catat($kegiatan, $jenis, $sumber, $format, 'unduh', $pengguna, $ukuran));
+    }
+
+    /**
+     * Catat arsip final bertanda tangan yang baru diunggah (KelolaArsipFinal::unggah) sebagai dokumen set lengkap PDF ber-asal
+     * `arsip` dengan nomor dokumen otomatis: nomor arsip sebelumnya kegiatan × sumber itu (unggah ulang = dokumen yang sama),
+     * selain itu `PenomoranDokumen::terbitkan` (null bila jenis set lengkap tidak dinomori). Null bila pencatatan dimatikan
+     * atau gagal.
+     *
+     * @param  array<string, mixed>  $kegiatan  Data tersimpan terbaru (status sesudah final otomatis).
+     * @param  array{ukuran?: int|null}  $arsip
+     * @param  array{id?: int|null, name: string}  $pengguna
+     * @return array<string, mixed>|null
+     */
+    public static function dariArsip(array $kegiatan, string $sumber, array $arsip, array $pengguna): ?array
+    {
+        return self::aman(function () use ($kegiatan, $sumber, $arsip, $pengguna) {
+            $kunci = implode('|', [(int) $kegiatan['id'], 'lengkap', $sumber, 'pdf']);
+            $sebelumnya = collect(RiwayatDokumen::semua())
+                ->first(fn (array $c) => $c['asal'] === 'arsip' && RiwayatDokumen::kunciVersi($c) === $kunci && filled($c['nomor_dokumen'] ?? null));
+            $nomor = $sebelumnya['nomor_dokumen'] ?? PenomoranDokumen::terbitkan([
+                'jenis' => 'lengkap', 'leading' => ($kegiatan['leading'] ?? '') ?: null, 'sumber' => $sumber, 'tahun' => TahunKegiatan::dari($kegiatan),
+            ])['nomor'] ?? null;
+
+            return self::catat($kegiatan, 'lengkap', $sumber, 'pdf', 'arsip', $pengguna, isset($arsip['ukuran']) ? (int) $arsip['ukuran'] : null, $nomor);
+        });
     }
 
     /** @return array<string, mixed>|null */

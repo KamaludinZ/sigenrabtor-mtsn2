@@ -27,4 +27,12 @@ interface PenomoranDokumenRepository
 
     /** Catat nomor urut terpakai (terakhir = maks(terakhir, $urut)). */
     public function catatPakai(int $tahun, string $jenis, int $urut): void;
+
+    /**
+     * Ambil nomor urut berikutnya jenis × tahun secara atomik (terakhir + 1, langsung tercatat) — dua permintaan bersamaan
+     * tidak pernah mendapat nomor yang sama.
+     *
+     * @throws \RuntimeException Gagal ditulis.
+     */
+    public function ambilBerikutnya(int $tahun, string $jenis): int;
 }

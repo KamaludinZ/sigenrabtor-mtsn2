@@ -4,6 +4,7 @@ namespace App\Support\Stub;
 
 use App\Contracts\PenomoranDokumenRepository;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -46,6 +47,19 @@ class StubPenomoranDokumenRepository implements PenomoranDokumenRepository
         $semua = $this->baca();
         $semua[$tahun]['terakhir'][$jenis] = max((int) ($semua[$tahun]['terakhir'][$jenis] ?? 0), $urut);
         $this->simpanSemua($semua);
+    }
+
+    public function ambilBerikutnya(int $tahun, string $jenis): int
+    {
+        // Baca-ubah-tulis berkas JSON dalam satu kunci agar dua permintaan bersamaan tidak mendapat nomor yang sama.
+        return Cache::lock('stub-penomoran-dokumen', 10)->block(5, function () use ($tahun, $jenis) {
+            $semua = $this->baca();
+            $urut = (int) ($semua[$tahun]['terakhir'][$jenis] ?? 0) + 1;
+            $semua[$tahun]['terakhir'][$jenis] = $urut;
+            $this->simpanSemua($semua);
+
+            return $urut;
+        });
     }
 
     /** @param  array<int|string, array<string, mixed>>  $semua */

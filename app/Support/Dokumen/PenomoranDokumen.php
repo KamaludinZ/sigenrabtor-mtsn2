@@ -8,6 +8,7 @@ use App\Support\Pengaturan\TahunDipilih;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 /**
  * Penomoran dokumen otomatis (PRD §9 "nomor dokumen mengikuti aturan dan tahun aktif"; kontrak PenomoranDokumenRepository):
@@ -16,13 +17,20 @@ use Illuminate\Validation\ValidationException;
  * - `galat($aturan)` berkunci `{jenis}.pola|digit` (FormatSeragam::galatPola, digit 2–6), `rapikan()`;
  * - `simpanAturan($tahun, $isian, $pengguna)` (admin; tahun terkunci → AuthorizationException; ValidationException;
  *   tanpa perubahan tidak ditulis) + riwayat `ubah_penomoran`;
- * - `usulan($catatan)` = nomor berikutnya untuk satu catatan Riwayat Dokumen (jenis, leading, sumber, bulan sekarang, tahun
- *   anggaran catatan) — null bila jenis itu tidak dinomori; `pakai($catatan, $nomor)` mencatat nomor urut usulan bila
- *   nomor yang diberikan sama dengan usulan (dipakai PerbaruiRiwayatDokumen::beriNomor).
+ * - `usulan($catatan)` = perkiraan nomor berikutnya untuk satu catatan Riwayat Dokumen (`nilaiCatatan`: jenis, leading,
+ *   sumber, tahun anggaran catatan; bulan sekarang) tanpa memajukan penghitung — null bila jenis itu tidak dinomori;
+ * - `terbitkan($nilai)` = penerbitan nomor sungguhan: nomor urut diambil atomik (`PenomoranDokumenRepository::
+ *   ambilBerikutnya`), nomor yang sudah dipakai dokumen lain tahun itu (`nomorTerpakai`, mis. diketik manual) dilewati
+ *   (maks. `MAKS_LEWATI`, selain itu RuntimeException) → {nomor, urut}; null bila jenis itu tidak dinomori otomatis.
+ *   Dipakai PerbaruiRiwayatDokumen::beriNomor (nomor usulan → diterbitkan; nomor ketikan sendiri tidak memajukan
+ *   penghitung) dan CatatRiwayatDokumen::dariArsip (arsip final bernomor otomatis).
  */
 final class PenomoranDokumen
 {
     public const DIGIT = [2, 3, 4, 5, 6];
+
+    /** Nomor terpakai yang dilewati berturut-turut sebelum penerbitan otomatis menyerah. */
+    public const MAKS_LEWATI = 20;
 
     /** Aturan bawaan per jenis dokumen. */
     public const BAWAAN = [
@@ -145,30 +153,62 @@ final class PenomoranDokumen
     }
 
     /**
-     * Usulan nomor untuk satu catatan Riwayat Dokumen (null = jenis itu tidak dinomori otomatis).
+     * Usulan nomor untuk satu catatan Riwayat Dokumen (null = jenis itu tidak dinomori otomatis); penghitung tidak maju.
      *
      * @param  array<string, mixed>  $catatan
      */
     public static function usulan(array $catatan): ?string
     {
-        return self::nomor(['jenis' => $catatan['jenis'], 'leading' => ($catatan['kode_leading'] ?? '') ?: null, 'sumber' => $catatan['sumber'] ?? null, 'tahun' => (int) $catatan['tahun_anggaran']]);
+        return self::nomor(self::nilaiCatatan($catatan));
     }
 
     /**
-     * Catat nomor urut usulan bila $nomor = usulan catatan itu (nomor ketikan sendiri tidak memajukan penghitung).
-     *
      * @param  array<string, mixed>  $catatan
+     * @return array{jenis: string, leading: string|null, sumber: string|null, tahun: int}
      */
-    public static function pakai(array $catatan, string $nomor): bool
+    public static function nilaiCatatan(array $catatan): array
     {
-        $tahun = (int) $catatan['tahun_anggaran'];
-        $a = self::aturan($tahun)[$catatan['jenis']] ?? null;
-        if ($a === null || self::usulan($catatan) !== $nomor) {
-            return false;
-        }
-        app(PenomoranDokumenRepository::class)->catatPakai($tahun, $catatan['jenis'], $a['berikutnya']);
+        return ['jenis' => (string) $catatan['jenis'], 'leading' => ($catatan['kode_leading'] ?? '') ?: null, 'sumber' => $catatan['sumber'] ?? null, 'tahun' => (int) $catatan['tahun_anggaran']];
+    }
 
-        return true;
+    /**
+     * Terbitkan nomor dokumen berikutnya (penghitung maju atomik; nomor yang sudah dipakai dilewati).
+     *
+     * @param  array{jenis: string, leading?: string|null, sumber?: string|null, tahun: int}  $nilai
+     * @return array{nomor: string, urut: int}|null
+     *
+     * @throws RuntimeException Penghitung gagal ditulis / terlalu banyak nomor terpakai berturut-turut.
+     */
+    public static function terbitkan(array $nilai): ?array
+    {
+        $a = self::aturan($nilai['tahun'])[$nilai['jenis']] ?? null;
+        if ($a === null || ! $a['aktif'] || FormatSeragam::galatPola($a['pola']) !== null) {
+            return null;
+        }
+        $terpakai = self::nomorTerpakai($nilai['tahun']);
+        $repo = app(PenomoranDokumenRepository::class);
+        for ($i = 0; $i < self::MAKS_LEWATI; $i++) {
+            $urut = $repo->ambilBerikutnya($nilai['tahun'], $nilai['jenis']);
+            $nomor = FormatSeragam::nomor($a['pola'], $urut, $nilai + ['bulan' => (int) now()->format('n')], $a['digit']);
+            if (! isset($terpakai[mb_strtolower($nomor)])) {
+                return ['nomor' => $nomor, 'urut' => $urut];
+            }
+        }
+
+        throw new RuntimeException('Nomor otomatis berikutnya sudah dipakai dokumen lain — beri nomor secara manual atau ubah aturan penomoran.');
+    }
+
+    /** Nomor dokumen yang sudah dipakai di tahun itu (huruf kecil → true). @return array<string, true> */
+    public static function nomorTerpakai(int $tahun): array
+    {
+        $hasil = [];
+        foreach (RiwayatDokumen::semua() as $c) {
+            if ((int) $c['tahun_anggaran'] === $tahun && filled($c['nomor_dokumen'] ?? null)) {
+                $hasil[mb_strtolower((string) $c['nomor_dokumen'])] = true;
+            }
+        }
+
+        return $hasil;
     }
 
     /** Tahun anggaran aktif. */
