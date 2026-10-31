@@ -60,7 +60,9 @@ class TemplateMasterTest extends TestCase
         app(PilihanTemplateRepository::class)->simpan(2026, PilihanTemplate::rapikan(['jenis' => ['workshop' => ['kak' => $id['umum']]], 'leading' => []]));
 
         $data = DaftarTemplateMaster::data(2026);
-        $this->assertSame(['jumlah' => 3, 'aktif' => 2, 'nonaktif' => 1, 'umum' => 2, 'khusus' => 1, 'leading' => 1, 'dipakai' => 1, 'tanpa_berkas' => 1], $data['ringkasan']);
+        // Template khusus 1.6 (default leading itu) otomatis dipakai kegiatan leading 1.6 (PilihanTemplate::untukKegiatan).
+        $this->assertSame(['jumlah' => 3, 'aktif' => 2, 'nonaktif' => 1, 'umum' => 2, 'khusus' => 1, 'leading' => 1, 'dipakai' => 2, 'tanpa_berkas' => 1], $data['ringkasan']);
+        $this->assertGreaterThan(0, $data['kelompok'][1]['template'][0]['kegiatan']);
         $this->assertSame(['umum', '1.6'], array_column($data['kelompok'], 'kunci'));
         $this->assertSame('Umum — semua leading', $data['kelompok'][0]['label']);
         $this->assertStringStartsWith('1.6 · ', $data['kelompok'][1]['label']);
@@ -72,7 +74,7 @@ class TemplateMasterTest extends TestCase
         $umum = $data['kelompok'][0]['template'][0];
         $this->assertSame([2, true, true, null], [$umum['variabel'], $umum['ada_berkas'], $umum['aktif'], $umum['catatan']]);
         $this->assertSame('workshop', $umum['dipakai'][0]['jenis']);
-        $this->assertGreaterThanOrEqual(1, $umum['kegiatan'], 'Contoh kegiatan workshop memakai master per jenis.');
+        $this->assertSame(0, $umum['kegiatan'], 'Contoh kegiatan workshop (leading 1.6) memakai default leading-nya, bukan pilihan per jenis.');
         $rab = $data['kelompok'][0]['template'][1];
         $this->assertSame([false, false], [$rab['aktif'], $rab['ada_berkas']]);
         $this->assertSame('Versi 2 — dengan narasumber eksternal', $data['kelompok'][1]['template'][0]['catatan']);

@@ -102,7 +102,7 @@ final class DaftarTemplate
     {
         $master = $berlaku['kak'] !== null ? app(TemplateDokumenRepository::class)->temukan($berlaku['kak']) : null;
         $cover = $berlaku['cover'] !== null ? app(TemplateCoverRepository::class)->temukan($berlaku['cover']) : null;
-        $label = ['leading' => 'Khusus leading', 'jenis' => 'Pilihan per jenis kegiatan', 'bawaan' => 'Bawaan (susunan baku & cover default)'];
+        $label = ['kegiatan' => 'Dipilih untuk kegiatan ini', 'leading' => 'Khusus leading', 'default_leading' => 'Default template leading', 'jenis' => 'Pilihan per jenis kegiatan', 'bawaan' => 'Bawaan (susunan baku & cover default)'];
 
         return [
             'jenis' => $berlaku['jenis'],

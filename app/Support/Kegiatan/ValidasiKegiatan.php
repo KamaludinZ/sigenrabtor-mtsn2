@@ -6,6 +6,7 @@ use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Rules\KalimatUtuh;
 use App\Support\Dokumen\FormatKakTor;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Format;
 use App\Support\Master\ValidasiKodeMaster;
 use App\Support\MasterKode;
@@ -75,6 +76,12 @@ final class ValidasiKegiatan
                 }
             }],
             'format_dokumen' => ['nullable', Rule::in(array_keys(FormatKakTor::FORMAT))],
+            // Template master pilihan kegiatan: hanya yang ada di dropdown (aktif, milik leading kegiatan atau umum, tahun kegiatan).
+            'template_kak' => ['nullable', 'string', function (string $attribute, mixed $value, Closure $fail) use ($data) {
+                if (filled($value) && ! in_array($value, array_column(PilihanTemplate::pilihanKegiatan($data, TahunKegiatan::dari($data)), 'id'), true)) {
+                    $fail('Pilih template KAK/TOR milik leading kegiatan ini atau template umum yang aktif.');
+                }
+            }],
             'konteks' => ['nullable', 'string', 'max:'.DataKonteks::BATAS],
             'sumber_dana' => ['array', 'max:'.count(SumberDana::cases())],
             'sumber_dana.*.sumber' => ['required', 'distinct', Rule::enum(SumberDana::class)],

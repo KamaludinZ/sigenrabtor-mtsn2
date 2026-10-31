@@ -26,8 +26,12 @@ use Illuminate\Validation\ValidationException;
  *   leading × jenis ganda, maks. MAKS_LEADING baris) berkunci `jenis.{k}.kak|cover`/`leading.{i}.leading|jenis|kak|cover`;
  * - `simpan($tahun, $isian, $pengguna)` (admin; tahun terkunci → AuthorizationException; ValidationException; tanpa
  *   perubahan tidak ditulis) + riwayat `ubah_pilihan_template` (`ringkasan()`);
- * - `untukKegiatan($kegiatan)` = template yang berlaku untuk satu kegiatan: khusus leading × jenis tebakan nama
- *   (KonteksAi::tebakJenis) → per jenis → bawaan (null = susunan baku / cover default).
+ * - `untukKegiatan($kegiatan)` = template yang berlaku untuk satu kegiatan: master pilihan kegiatan itu (`template_kak`,
+ *   sah menurut `pilihanKegiatan()`; asal `kegiatan`) → khusus leading × jenis tebakan nama (KonteksAi::tebakJenis) →
+ *   default master milik leading kegiatan (`defaultLeading()`, asal `default_leading`) → per jenis → bawaan (null =
+ *   susunan baku / cover default); cover tetap dari aturan Format Seragam;
+ * - `pilihanKegiatan($kegiatan)` = isi dropdown template kegiatan: master aktif keluarga KAK/TOR tahun itu milik leading
+ *   kegiatan (default dulu) lalu template umum.
  */
 final class PilihanTemplate
 {
@@ -251,7 +255,55 @@ final class PilihanTemplate
      */
     public static function untukKegiatan(array $kegiatan, ?int $tahun = null, ?array $pilihan = null): array
     {
-        return self::berlakuUntuk(KonteksAi::tebakJenis((string) ($kegiatan['nama_kegiatan'] ?? '')), $kegiatan['leading'] ?? null, $tahun, $pilihan);
+        $tahun ??= (int) StubData::tahunAktif()['tahun'];
+        $leading = filled($kegiatan['leading'] ?? null) ? (string) $kegiatan['leading'] : null;
+        $hasil = self::berlakuUntuk(KonteksAi::tebakJenis((string) ($kegiatan['nama_kegiatan'] ?? '')), $leading, $tahun, $pilihan);
+        $dipilih = filled($kegiatan['template_kak'] ?? null) && in_array($kegiatan['template_kak'], array_column(self::pilihanKegiatan($kegiatan, $tahun), 'id'), true)
+            ? (string) $kegiatan['template_kak'] : null;
+        $default = $dipilih === null && $hasil['asal'] !== 'leading' ? self::defaultLeading($leading, $tahun) : null;
+
+        return match (true) {
+            $dipilih !== null => ['jenis' => $hasil['jenis'], 'asal' => 'kegiatan', 'kak' => $dipilih, 'cover' => $hasil['cover']],
+            $default !== null => ['jenis' => $hasil['jenis'], 'asal' => 'default_leading', 'kak' => $default, 'cover' => $hasil['cover']],
+            default => $hasil,
+        };
+    }
+
+    /**
+     * Pilihan template untuk satu kegiatan: master aktif keluarga KAK/TOR tahun itu milik leading kegiatan (default dulu,
+     * lalu nama) diikuti template umum (pemilik kosong) — dropdown "Template KAK/TOR" & aturan `template_kak`.
+     *
+     * @param  array<string, mixed>  $kegiatan
+     * @return list<array{id: string, nama: string, jenis: string, leading: string|null, catatan: string|null, default: bool}>
+     */
+    public static function pilihanKegiatan(array $kegiatan, ?int $tahun = null): array
+    {
+        $tahun ??= (int) StubData::tahunAktif()['tahun'];
+        $leading = filled($kegiatan['leading'] ?? null) ? (string) $kegiatan['leading'] : null;
+        $daftar = array_values(array_filter(app(TemplateDokumenRepository::class)->semua($tahun), fn (array $t) => in_array($t['jenis'], self::JENIS_KAK, true)
+            && ($t['aktif'] ?? true) && (($t['leading'] ?? null) === null || ($leading !== null && $t['leading'] === $leading))));
+        usort($daftar, fn (array $a, array $b) => [($a['leading'] ?? null) === null, ! $a['is_default'], mb_strtolower($a['nama'])] <=> [($b['leading'] ?? null) === null, ! $b['is_default'], mb_strtolower($b['nama'])]);
+
+        return array_map(fn (array $t) => [
+            'id' => (string) $t['id'], 'nama' => (string) $t['nama'], 'jenis' => (string) $t['jenis'], 'leading' => $t['leading'] ?? null,
+            'catatan' => $t['catatan'] ?? null, 'default' => (bool) $t['is_default'],
+        ], $daftar);
+    }
+
+    /** Master default aktif milik leading itu (keluarga KAK/TOR, urutan JENIS_KAK); null bila tidak ada. */
+    public static function defaultLeading(?string $leading, int $tahun): ?string
+    {
+        if ($leading === null) {
+            return null;
+        }
+        $default = collect(app(TemplateDokumenRepository::class)->semua($tahun))->filter(fn (array $t) => ($t['leading'] ?? null) === $leading && $t['is_default'] && ($t['aktif'] ?? true));
+        foreach (self::JENIS_KAK as $jenis) {
+            if (($t = $default->firstWhere('jenis', $jenis)) !== null) {
+                return (string) $t['id'];
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -148,6 +148,36 @@
         <span class="min-w-0 flex-1 text-xs text-stone-500" data-testid="keterangan-format-kak">{{ FormatKakTor::FORMAT[$kak->format][1] }}</span>
     </div>
 
+    {{-- Template master Word KAK/TOR kegiatan ini (PilihanTemplate::pilihanKegiatan): milik leading-nya + umum; '' = otomatis. --}}
+    @php
+        $berlakuTemplate = $this->templateBerlaku;
+        $pilihanTemplate = collect($this->pilihanTemplate);
+        $dipilihTemplate = $this->dataKegiatan['template_kak'] ?? '';
+        $pilihanSah = $pilihanTemplate->contains('id', $dipilihTemplate);
+    @endphp
+    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-white px-3 py-2.5 text-sm ring-1 ring-stone-200" data-testid="template-kak-kegiatan" data-asal="{{ $berlakuTemplate['asal'] }}">
+        <label for="pilih-template-kak" class="font-medium text-stone-700">Template Word KAK/TOR</label>
+        <select id="pilih-template-kak" class="form-select w-auto max-w-full py-1 text-sm" wire:change="ubahTemplateKak($event.target.value)" wire:loading.attr="disabled" wire:target="ubahTemplateKak" @disabled(! $bisaUbah) data-testid="pilih-template-kak">
+            <option value="" @selected(! $pilihanSah)>Otomatis — {{ $berlakuTemplate['otomatis'] ?? 'susunan baku aplikasi' }}</option>
+            @foreach ($pilihanTemplate->groupBy(fn ($t) => $t['leading'] === null ? 'umum' : 'leading') as $kelompokTemplate => $daftarTemplate)
+                <optgroup label="{{ $kelompokTemplate === 'umum' ? 'Umum — semua leading' : 'Milik leading '.($this->dataKegiatan['leading'] ?? '') }}">
+                    @foreach ($daftarTemplate as $t)
+                        <option value="{{ $t['id'] }}" @selected($pilihanSah && $t['id'] === $dipilihTemplate)>{{ $t['nama'] }} · {{ $t['jenis'] }}{{ $t['default'] ? ' (default)' : '' }}</option>
+                    @endforeach
+                </optgroup>
+            @endforeach
+        </select>
+        <span class="min-w-0 flex-1 text-xs text-stone-500" data-testid="keterangan-template-kak">
+            {{ $berlakuTemplate['label_asal'] }}@if ($berlakuTemplate['kak']) · dipakai unduhan Word @else · Word disusun dari susunan baku @endif
+            @if (($catatanTemplate = $pilihanTemplate->firstWhere('id', $berlakuTemplate['kak']['id'] ?? null)['catatan'] ?? null))
+                · <span class="text-stone-600">{{ $catatanTemplate }}</span>
+            @endif
+        </span>
+        @if ($dipilihTemplate !== '' && ! $pilihanSah)
+            <p class="w-full text-xs text-gold-700" data-testid="template-kak-tidak-berlaku">Template yang dipilih sebelumnya tidak tersedia lagi untuk leading ini (dinonaktifkan, dihapus, atau milik leading lain) — kini memakai pilihan otomatis.</p>
+        @endif
+    </div>
+
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="min-w-0 space-y-4">
             {{-- Daftar bagian di layar sempit (di layar lebar ada di panel samping). --}}

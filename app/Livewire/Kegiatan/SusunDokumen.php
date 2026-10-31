@@ -6,11 +6,13 @@ use App\Contracts\DrafDokumenRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\CoverDokumen;
+use App\Support\Dokumen\DaftarTemplate;
 use App\Support\Dokumen\DrafDokumen;
 use App\Support\Dokumen\FormatKakTor;
 use App\Support\Dokumen\IsianSusun;
 use App\Support\Dokumen\JenisDokumen;
 use App\Support\Dokumen\PemeriksaanCetak;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Dokumen\StatusCetak;
 use App\Support\Dokumen\StatusDraf;
 use App\Support\Dokumen\SusunanKak;
@@ -20,6 +22,7 @@ use App\Support\Dokumen\TeksCover;
 use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Kegiatan\TeksKhusus;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\Pengaturan\PengaturanBerubah;
@@ -284,6 +287,52 @@ class SusunDokumen extends Component
         $this->dispatch('notify', message: $hasil['diubah'] === [] ? 'Format KAK/TOR tidak berubah.' : 'Format KAK/TOR kini '.FormatKakTor::label($this->kak->format).' — susunan dokumen menyesuaikan.', type: $hasil['diubah'] === [] ? 'info' : 'success');
     }
 
+    /**
+     * Pilih template master KAK/TOR kegiatan ini (PilihanTemplate::pilihanKegiatan; '' = otomatis) lewat UbahDataKegiatan.
+     */
+    public function ubahTemplateKak(string $id): void
+    {
+        abort_unless($id === '' || in_array($id, array_column($this->pilihanTemplate, 'id'), true), 404);
+        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — templatenya hanya bisa dilihat.');
+
+        try {
+            $hasil = UbahDataKegiatan::ubah($this->kegiatanId, ['template_kak' => $id === '' ? null : $id], StubData::currentUser(), UbahDataKegiatan::versi($this->dataKegiatan));
+        } catch (ValidationException|PengaturanBerubah|AuthorizationException $e) {
+            $this->muatUlang();
+            $this->dispatch('notify', message: $e instanceof ValidationException ? collect($e->errors())->flatten()->first() : $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $berlaku = $this->templateBerlaku;
+        $this->dispatch('notify', message: $hasil['diubah'] === [] ? 'Template KAK/TOR tidak berubah.' : 'Template KAK/TOR kini '.($berlaku['kak']['nama'] ?? 'susunan baku aplikasi').($id === '' ? ' (otomatis).' : '.'), type: $hasil['diubah'] === [] ? 'info' : 'success');
+    }
+
+    /**
+     * Isi dropdown template kegiatan: master aktif milik leading kegiatan lalu template umum.
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function pilihanTemplate(): array
+    {
+        return PilihanTemplate::pilihanKegiatan($this->dataKegiatan, TahunKegiatan::dari($this->dataKegiatan));
+    }
+
+    /**
+     * Template yang berlaku sekarang (DaftarTemplate::untukKegiatan: asal & master) dan yang berlaku bila otomatis.
+     *
+     * @return array<string, mixed>
+     */
+    #[Computed]
+    public function templateBerlaku(): array
+    {
+        $otomatis = DaftarTemplate::untukKegiatan(['template_kak' => null] + $this->dataKegiatan);
+
+        return DaftarTemplate::untukKegiatan($this->dataKegiatan) + ['otomatis' => $otomatis['kak']['nama'] ?? null, 'label_otomatis' => $otomatis['label_asal']];
+    }
+
     /** Tambah satu rincian ke RAB sumber dana yang ditampilkan (RincianRab: dirapikan & diperiksa seperti halaman RAB). */
     public function tambahRincian(): void
     {
@@ -390,7 +439,7 @@ class SusunDokumen extends Component
 
     private function lupakan(): void
     {
-        unset($this->kak, $this->rab, $this->susunan, $this->statusCetak, $this->pemeriksaan, $this->pilihanJenis, $this->cover, $this->drafSemua, $this->keadaanDraf);
+        unset($this->kak, $this->rab, $this->susunan, $this->statusCetak, $this->pemeriksaan, $this->pilihanJenis, $this->cover, $this->drafSemua, $this->keadaanDraf, $this->pilihanTemplate, $this->templateBerlaku);
     }
 
     /** @return array<string, mixed> */
