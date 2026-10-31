@@ -9,7 +9,7 @@ use App\Support\Pengaturan\ValidasiPejabat;
  * Susun KAK/TOR: tiap bagian SusunanKak beserta status (`kurang` bila ada isian yang belum lengkap
  * (SusunanKak::$kurangPerBagian), `periksa` bila lengkap tetapi ada temuan — penanda tangan ValidasiPejabat::pengesahan
  * di blok pengesahan, RAB melebihi pagu/pagu belum diisi (PeringatanPagu) di Pembiayaan — selain itu `lengkap`), dan
- * asal isinya (`ASAL` nomor bagian → `TEMPAT`: tempat mengisi + tautan; tempat yang
+ * asal isinya (FormatKakTor::asal nomor bagian → `TEMPAT`: tempat mengisi + tautan; tempat yang
  * diatur admin hanya bertautan untuk admin), kemajuan, dan kepala RAB (SusunanRab::$kepala) beserta kekurangannya.
  * Master template per jenis dokumen lewat JenisDokumen::template().
  */
@@ -30,19 +30,6 @@ final readonly class SusunanOtomatis
         'dasar_hukum' => ['Pengaturan › Dasar hukum', 'pengaturan.madrasah.dasar_hukum', [], '', true],
         'profil' => ['Pengaturan › Profil madrasah', 'pengaturan.madrasah.index', [], '', true],
         'pejabat' => ['Pengaturan › Pejabat penanda tangan', 'pengaturan.madrasah.index', ['tab' => 'pejabat'], '', true],
-    ];
-
-    /** Nomor bagian KAK/TOR → tempat asal isinya, urut yang paling menentukan. */
-    public const ASAL = [
-        1 => ['latar_baku', 'identitas', 'kalimat'],
-        2 => ['dasar_hukum'],
-        3 => ['identitas', 'kalimat'],
-        4 => ['pelaksanaan', 'matrik'],
-        5 => ['pelaksanaan'],
-        6 => ['kode', 'profil'],
-        7 => ['jadwal'],
-        8 => ['rab'],
-        9 => ['pejabat', 'identitas'],
     ];
 
     /**
@@ -76,7 +63,7 @@ final readonly class SusunanOtomatis
                 'status' => $kurang !== [] ? 'kurang' : ($periksa !== [] ? 'periksa' : 'lengkap'),
                 'kurang' => $kurang,
                 'periksa' => $periksa,
-                'asal' => array_map(fn (string $kunci) => self::tempat($kunci, $id, $admin), self::ASAL[$b['nomor']] ?? []),
+                'asal' => array_map(fn (string $kunci) => self::tempat($kunci, $id, $admin), FormatKakTor::asal($kak->format, $b['nomor'])),
             ];
         }
 

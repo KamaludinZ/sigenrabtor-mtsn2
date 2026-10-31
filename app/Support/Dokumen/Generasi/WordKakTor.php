@@ -3,11 +3,12 @@
 namespace App\Support\Dokumen\Generasi;
 
 use App\Support\Dokumen\Generasi\DocxSederhana as D;
+use App\Support\Dokumen\SusunanKak;
 
 /**
  * Penyusun Word (.docx) KAK/TOR di server — kembaran `resources/js/word-kak.js` (penyusun di peramban) dengan masukan yang
  * sama, data pratinjau DataPratinjau::untuk (`dokumen.cover|kak|rab`, `cetak.nama_berkas`): cover (kotak teks urut posisi,
- * jarak dari persen tinggi A4), sembilan bagian KAK/TOR (paragraf rata kanan-kiri berinden, subjudul, daftar bernomor,
+ * jarak dari persen tinggi A4), bagian KAK/TOR menurut formatnya (9 bagian / 5 bab, judul ber-`label`; paragraf rata kanan-kiri berinden, subjudul, daftar bernomor,
  * penanda isian kosong merah miring, tabel matrik tahapan "v" per bulan, tabel jadwal, lembar pengesahan), dan RAB bila
  * lembarnya ada (kepala, tabel rincian, total & terbilang, mekanisme pembayaran, pengesahan). A4, margin 2 cm, Times New
  * Roman 12 pt, kepala "DRAF" & kaki "DRAF — alasan … Halaman x dari y" selama dokumen belum siap. Lewat DocxSederhana.
@@ -73,7 +74,7 @@ final class WordKakTor
     {
         $isi = [D::paragraf([D::run(self::JUDUL, ['tebal' => true, 'ukuran' => 26])], ['rata' => 'center', 'sesudah' => 240])];
         foreach ($data['bagian'] ?? [] as $bagian) {
-            $isi[] = D::paragraf([D::run($bagian['nomor'].'. '.mb_strtoupper((string) $bagian['judul']), ['tebal' => true])], ['sebelum' => 240, 'sesudah' => 120, 'tetap_bersama' => true]);
+            $isi[] = D::paragraf([D::run(($bagian['label'] ?? $bagian['nomor']).'. '.mb_strtoupper((string) $bagian['judul']), ['tebal' => true])], ['sebelum' => 240, 'sesudah' => 120, 'tetap_bersama' => true]);
             foreach ($bagian['isi'] ?? [] as $blok) {
                 array_push($isi, ...self::blok($blok));
             }
@@ -90,7 +91,7 @@ final class WordKakTor
     {
         return match ($blok['jenis'] ?? null) {
             'paragraf' => [D::paragraf((string) ($blok['teks'] ?? ''), ['rata' => 'both', 'pertama' => 709])],
-            'subjudul' => [D::paragraf([D::run((string) ($blok['teks'] ?? ''), ['tebal' => true])], ['sebelum' => 120, 'sesudah' => 80, 'tetap_bersama' => true])],
+            'subjudul' => [D::paragraf([D::run((string) ($blok['teks'] ?? ''), ['tebal' => true])], ['sebelum' => 120, 'sesudah' => 80, 'tetap_bersama' => true] + (($blok['tingkat'] ?? 1) > 1 ? ['kiri' => 360] : []))],
             'daftar' => self::daftar($blok['butir'] ?? [], ($blok['bernomor'] ?? true) !== false),
             'kosong', 'menunggu' => [D::paragraf([D::run('['.($blok['pesan'] ?? '').']', ['miring' => true, 'warna' => self::MERAH])])],
             'matrik' => self::matrik($blok),
@@ -183,16 +184,27 @@ final class WordKakTor
             return [];
         }
         $tengah = fn (string $teks, array $opsi = [], int $sesudah = 0) => D::paragraf([D::run($teks, $opsi)], ['rata' => 'center', 'sesudah' => $sesudah, 'baris' => 240]);
-        $sel = array_map(fn (array $t) => D::sel([
+        $isiSel = fn (array $t) => array_values(array_filter([
             $tengah((string) ($t['tempat_tanggal'] ?? '')),
             $tengah((string) ($t['peran'] ?? '')),
             $tengah((string) ($t['jabatan'] ?? ''), ['tebal' => true], 1200),
             filled($t['nama'] ?? null) ? $tengah((string) $t['nama'], ['tebal' => true, 'garis_bawah' => true]) : $tengah('( …………………………… )', ['warna' => '78716C']),
-            $tengah('NIP. '.($t['nip'] ?? '……………………')),
-        ], ['tanpa_garis' => true]), $kolom);
-        $lebar = (int) round(self::LEBAR_ISI / count($kolom));
+            ($t['tanpa_nip'] ?? false) ? null : $tengah('NIP. '.($t['nip'] ?? '……………………')),
+        ]));
+        // Format 9 bagian: satu baris sejajar. Format 5 bab: baris 1 dua kolom, baris 2 satu kolom di tengah (SusunanKak::barisPengesahan).
+        $daftarBaris = SusunanKak::barisPengesahan($kolom);
+        $jumlahKolom = max(array_map('count', $daftarBaris));
+        $lebar = (int) round(self::LEBAR_ISI / $jumlahKolom);
+        $baris = [];
+        foreach ($daftarBaris as $i => $isiBaris) {
+            if ($i > 0) {
+                $baris[] = D::baris([D::sel([D::paragraf('')], ['tanpa_garis' => true, 'span' => $jumlahKolom])], ['utuh' => true]);
+            }
+            $sel = array_map(fn (array $t) => D::sel($isiSel($t), ['tanpa_garis' => true] + (count($isiBaris) === 1 && $jumlahKolom > 1 ? ['span' => $jumlahKolom] : [])), $isiBaris);
+            $baris[] = D::baris($sel, ['utuh' => true]);
+        }
 
-        return [D::paragraf(''), D::tabel([D::baris($sel, ['utuh' => true])], array_fill(0, count($kolom), $lebar), ['tanpa_garis' => true])];
+        return [D::paragraf(''), D::tabel($baris, array_fill(0, $jumlahKolom, $lebar), ['tanpa_garis' => true])];
     }
 
     /**

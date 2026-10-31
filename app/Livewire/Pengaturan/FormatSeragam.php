@@ -9,6 +9,7 @@ use App\Contracts\TemplateDokumenRepository;
 use App\Enums\SumberDana;
 use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\DokumenKegiatan;
+use App\Support\Dokumen\FormatKakTor;
 use App\Support\Dokumen\FormatSeragam as AturanFormat;
 use App\Support\Dokumen\NilaiVariabel;
 use App\Support\Dokumen\PembacaTemplateDocx;
@@ -34,7 +35,8 @@ use RuntimeException;
 /**
  * Halaman admin Format Seragam (PRD §9; `/pengaturan/format`, rute `pengaturan.format.index`, HanyaAdmin): semua dokumen
  * mengikuti format resmi madrasah yang sama. Tab `?tab=` (TAB): ringkasan (kesiapan empat unsur + pratinjau kop), susunan
- * baku (sembilan bagian KAK/TOR, kepala & kolom RAB — AturanFormat::susunan), penomoran (aturan per jenis dokumen + contoh
+ * baku (format KAK/TOR tahun aktif `$formatTahun` — FormatKakTor 9 bagian / 5 bab, tersimpan langsung lewat
+ * `updatedFormatTahun()` — beserta bagian KAK/TOR, kepala & kolom RAB — AturanFormat::susunan), penomoran (aturan per jenis dokumen + contoh
  * nomor berikutnya AturanFormat::nomor), pilihan template (template KAK/TOR & cover per jenis kegiatan dan khusus leading —
  * PilihanTemplate; disunting di `$pilihan` lalu `simpanTemplate()`/`batalTemplate()`, baris khusus leading `tambahLeading()`/
  * `hapusLeading($i)`, galat ke `pilihan.*`; `pratinjau` = contoh kegiatan `?contoh=` × sumber `contohSumber` dengan template yang
@@ -53,6 +55,9 @@ class FormatSeragam extends Component
     #[Url(except: 'ringkasan')]
     public string $tab = 'ringkasan';
 
+    /** Format KAK/TOR tahun aktif pilihan admin (FormatKakTor; '' = bawaan tahun); tersimpan langsung saat diganti. */
+    public string $formatTahun = '';
+
     /** @var array{jenis: array<string, array{kak: string|null, cover: string|null}>, leading: list<array<string, mixed>>} Pilihan template yang disunting. */
     public array $pilihan = ['jenis' => [], 'leading' => []];
 
@@ -61,6 +66,30 @@ class FormatSeragam extends Component
         $this->rapikan();
         $this->muatPilihan();
         $this->muatAturanNomor();
+        $this->formatTahun = FormatKakTor::pilihanTahun($this->tahun()) ?? '';
+    }
+
+    /** Simpan format KAK/TOR tahun aktif (FormatKakTor::simpanTahun); gagal → kembali ke pilihan tersimpan + notify. */
+    public function updatedFormatTahun(): void
+    {
+        try {
+            $hasil = FormatKakTor::simpanTahun($this->tahun(), $this->formatTahun === '' ? null : $this->formatTahun, StubData::currentUser());
+        } catch (AuthorizationException|ValidationException $e) {
+            $this->formatTahun = FormatKakTor::pilihanTahun($this->tahun()) ?? '';
+            $this->dispatch('notify', message: $e instanceof ValidationException ? collect($e->errors())->flatten()->first() : $e->getMessage(), type: 'error');
+
+            return;
+        } catch (RuntimeException $e) {
+            $this->formatTahun = FormatKakTor::pilihanTahun($this->tahun()) ?? '';
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        unset($this->susunan);
+        if ($hasil['berubah']) {
+            $this->dispatch('notify', message: 'Format KAK/TOR TA '.$this->tahun().' kini '.FormatKakTor::label($hasil['format']).' — berlaku untuk kegiatan yang tidak memilih format sendiri.', type: 'success');
+        }
     }
 
     private function muatPilihan(): void
@@ -207,7 +236,7 @@ class FormatSeragam extends Component
     #[Computed]
     public function susunan(): array
     {
-        return AturanFormat::susunan();
+        return AturanFormat::susunan(FormatKakTor::tahun($this->tahun()));
     }
 
     /** @var array<string, array{pola: string, digit: int|string, aktif: bool}> Aturan penomoran yang disunting per jenis. */
@@ -309,7 +338,7 @@ class FormatSeragam extends Component
 
         return [
             'kop' => ['status' => $kurang === [] ? 'siap' : 'perlu', 'teks' => $kurang === [] ? 'Kop lengkap: nama, alamat, telepon, kota, dan logo.' : 'Belum diisi: '.implode(', ', $kurang).'.'],
-            'susunan' => ['status' => 'siap', 'teks' => count($this->susunan['kak']).' bagian KAK/TOR · '.count($this->susunan['rab_kolom']).' kolom RAB, urutan terkunci.'],
+            'susunan' => ['status' => 'siap', 'teks' => $this->susunan['label'].' · '.count($this->susunan['kak']).' bagian KAK/TOR · '.count($this->susunan['rab_kolom']).' kolom RAB, urutan terkunci.'],
             'penomoran' => ['status' => $nomor !== [] ? 'siap' : 'perlu', 'teks' => count($nomor).' dari '.count($this->penomoran).' jenis dokumen bernomor otomatis.'],
             'template' => ['status' => $hilang === 0 ? 'siap' : 'perlu', 'teks' => $hilang > 0
                 ? $hilang.' pilihan memakai template yang sudah dihapus — pilih pengganti.'

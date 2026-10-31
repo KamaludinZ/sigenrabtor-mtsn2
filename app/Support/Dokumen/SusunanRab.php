@@ -27,7 +27,7 @@ final readonly class SusunanRab
     /**
      * @param  list<array{label: string, nilai: string|null, uraian: string|null, asal: string|null, tempat?: string}>  $kepala  nilai null = belum diisi; tempat = kunci AngkaDokumen::tempatCetak().
      * @param  list<array{label: string, nilai: string}>  $mekanisme  Kosong bila dibayar sekaligus.
-     * @param  list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null}>  $pengesahan
+     * @param  list<array{peran: string, jabatan: string, nama: string|null, nip: string|null, tempat_tanggal: string|null, baris?: int, sebutan?: string, tanpa_nip?: bool}>  $pengesahan  Tata letak menurut $format (SusunanKak::pengesahan).
      * @param  list<string>  $kurang
      * @param  list<string>  $daftarSumber
      */
@@ -45,6 +45,7 @@ final readonly class SusunanRab
         public ?PeringatanPagu $peringatanPagu = null,
         public ?KunciDokumen $kunci = null,
         public ?StatusDraf $statusDraf = null,
+        public string $format = FormatKakTor::SEMBILAN_BAGIAN,
     ) {}
 
     /**
@@ -98,9 +99,10 @@ final readonly class SusunanRab
             $kurang[] = 'termin pembayaran (jumlahnya belum sama dengan total RAB)';
         }
 
+        $format = FormatKakTor::untuk($kegiatan, $tahun);
         $pengesahan = SusunanKak::pengesahan($kegiatan, $sumber, $madrasah['kota'], function (string $apa) use (&$kurang): void {
             $kurang[] = $apa;
-        });
+        }, $tahun, $format, 'rab');
 
         $peringatanPagu = $anggaran ? PeringatanPagu::untuk($sumber, $anggaran->hasil) : null;
         $status = StatusKegiatan::tryFrom($kegiatan['status'] ?? '') ?? StatusKegiatan::Draf;
@@ -121,6 +123,7 @@ final readonly class SusunanRab
             $peringatanPagu,
             KunciDokumen::dari($kegiatan),
             $statusDraf,
+            $format,
         );
     }
 

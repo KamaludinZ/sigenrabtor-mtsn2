@@ -41,7 +41,7 @@ final readonly class KelengkapanDokumen
         ]];
         foreach (SusunanOtomatis::dari($kak, $rab, $kegiatan, $pengguna)->bagian as $b) {
             $bagian[] = [
-                'kunci' => "kak-{$b['nomor']}", 'dokumen' => 'kak', 'label' => "{$b['nomor']}. {$b['judul']}",
+                'kunci' => "kak-{$b['nomor']}", 'dokumen' => 'kak', 'label' => SusunanKak::labelBagian($b).". {$b['judul']}",
                 'status' => $b['status'], 'kurang' => $b['kurang'], 'periksa' => $b['periksa'], 'jangkar' => "cetak-kak-bagian-{$b['nomor']}",
             ];
         }

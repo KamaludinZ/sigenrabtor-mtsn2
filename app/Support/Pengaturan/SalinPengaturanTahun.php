@@ -13,6 +13,7 @@ use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Enums\SumberDana;
 use App\Support\Dokumen\DaftarIsi;
+use App\Support\Dokumen\FormatKakTor;
 use App\Support\Dokumen\NomorHalaman;
 use App\Support\Master\JenisKode;
 use App\Support\Master\SalinMasterKode;
@@ -33,7 +34,8 @@ use RuntimeException;
  *   per tahun) selama tujuan belum diatur;
  * - `cover` & `master_kak` (berkas disalin, default tetap default) selama tujuan belum punya template;
  * - `daftar_isi` & `nomor_halaman` selama tujuan masih bawaan;
- * - `pilihan_template` selama tujuan kosong — id template dicocokkan ke template bernama (dan berjenis) sama di tujuan;
+ * - `pilihan_template` selama tujuan kosong — format KAK/TOR pilihan admin (FormatKakTor) dan id template yang dicocokkan
+ *   ke template bernama (dan berjenis) sama di tujuan;
  * - `penomoran` (aturan pola/digit; nomor urut tidak ikut) selama tujuan belum mengubah aturan.
  * `rencana()` = keadaan tiap bagian (`STATUS`), `salin()` = khusus admin, tujuan terdaftar & tidak terkunci; bagian yang
  * gagal dilaporkan tanpa membatalkan bagian lain; riwayat `salin_pengaturan_tahun`.
@@ -49,7 +51,7 @@ final class SalinPengaturanTahun
         'master_kak' => ['Master KAK/TOR', 'Berkas .docx ber-variabel per jenis; default tiap jenis tetap default.'],
         'daftar_isi' => ['Daftar isi buku', 'Konfigurasi bawaan dan khusus per leading × sumber dana.'],
         'nomor_halaman' => ['Nomor halaman', 'Format, posisi, nomor awal, dan halaman tanpa nomor.'],
-        'pilihan_template' => ['Pilihan template', 'Template per jenis kegiatan & khusus leading, dicocokkan dengan template bernama sama di tahun tujuan.'],
+        'pilihan_template' => ['Pilihan template & format KAK/TOR', 'Format KAK/TOR tahun itu serta template per jenis kegiatan & khusus leading (dicocokkan dengan template bernama sama di tahun tujuan).'],
         'penomoran' => ['Aturan penomoran dokumen', 'Pola & digit nomor per jenis dokumen; nomor urut tahun tujuan mulai dari awal.'],
     ];
 
@@ -185,7 +187,7 @@ final class SalinPengaturanTahun
             'master_kak' => $jumlah(count(app(TemplateDokumenRepository::class)->semua($tahun)), 'master'),
             'daftar_isi' => self::isiDaftarIsi($tahun),
             'nomor_halaman' => ($aturan = app(NomorHalamanRepository::class)->untuk($tahun)) === NomorHalaman::rapikan(NomorHalaman::BAWAAN) ? null : $aturan['format'],
-            'pilihan_template' => $jumlah(self::jumlahPilihan(app(PilihanTemplateRepository::class)->untuk($tahun)), 'pilihan'),
+            'pilihan_template' => self::isiPilihan($tahun),
             'penomoran' => $jumlah(count(app(PenomoranDokumenRepository::class)->aturan($tahun)), 'aturan jenis dokumen'),
             default => null,
         };
@@ -290,14 +292,23 @@ final class SalinPengaturanTahun
                 return [1, $aturan['format']];
 
             case 'pilihan_template':
-                $pilihan = self::cocokkanPilihan(app(PilihanTemplateRepository::class)->untuk($dari), $ke);
-                $jumlah = self::jumlahPilihan($pilihan);
-                if ($jumlah === 0) {
-                    return [0, "Template bernama sama belum ada di TA {$ke} — salin template cover/master KAK/TOR dulu."];
+                $repo = app(PilihanTemplateRepository::class);
+                $format = FormatKakTor::pilihanTahun($dari);
+                $salinFormat = $format !== null && FormatKakTor::pilihanTahun($ke) === null;
+                if ($salinFormat) {
+                    $repo->simpanFormat($ke, $format);
                 }
-                app(PilihanTemplateRepository::class)->simpan($ke, $pilihan);
+                $pilihan = self::cocokkanPilihan($repo->untuk($dari), $ke);
+                $jumlah = self::jumlahPilihan($pilihan);
+                if ($jumlah > 0) {
+                    $repo->simpan($ke, $pilihan);
+                }
+                $teksFormat = $salinFormat ? FormatKakTor::label($format) : null;
+                if ($jumlah === 0 && self::jumlahPilihan($repo->untuk($dari)) > 0) {
+                    return [(int) $salinFormat, ucfirst(($teksFormat ? "{$teksFormat}; " : '')."template bernama sama belum ada di TA {$ke} — salin template cover/master KAK/TOR dulu.")];
+                }
 
-                return [$jumlah, "{$jumlah} pilihan"];
+                return [$jumlah + (int) $salinFormat, implode(' + ', array_filter([$teksFormat, $jumlah > 0 ? "{$jumlah} pilihan" : null]))];
 
             case 'penomoran':
                 $aturan = app(PenomoranDokumenRepository::class)->aturan($dari);
@@ -343,6 +354,16 @@ final class SalinPengaturanTahun
         }
 
         return ['jenis' => $jenis, 'leading' => $leading];
+    }
+
+    /** Ringkasan pilihan template & format KAK/TOR pilihan admin tahun itu; null = semua bawaan. */
+    private static function isiPilihan(int $tahun): ?string
+    {
+        $jumlah = self::jumlahPilihan(app(PilihanTemplateRepository::class)->untuk($tahun));
+        $format = FormatKakTor::pilihanTahun($tahun);
+        $bagian = array_filter([$format ? FormatKakTor::label($format) : null, $jumlah > 0 ? "{$jumlah} pilihan" : null]);
+
+        return $bagian === [] ? null : implode(' + ', $bagian);
     }
 
     /** @param  array{jenis?: array<string, array<string, mixed>>, leading?: list<array<string, mixed>>}  $pilihan */

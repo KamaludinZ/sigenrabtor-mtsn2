@@ -87,24 +87,25 @@ final class DataPratinjau
     }
 
     /**
-     * Sembilan bagian KAK/TOR: blok isi SusunanKak (penunjuk `sunting`/`sunting_butir` & `asal`/`wajib` penanda kosong
+     * Bagian KAK/TOR menurut format (FormatKakTor; `label` nomor tercetak 1–9 / I–V): blok isi SusunanKak (penunjuk `sunting`/`sunting_butir` & `asal`/`wajib` penanda kosong
      * ikut), status kelengkapan SusunanOtomatis, dan bidang yang bisa disunting di bagian itu.
      *
      * @param  array<string, mixed>  $kegiatan
      * @param  array<string, mixed>  $pengguna
-     * @return array{bagian: list<array<string, mixed>>, kurang: list<string>, peringatan_pagu: string|null}
+     * @return array{bagian: list<array<string, mixed>>, kurang: list<string>, peringatan_pagu: string|null, format: array{kunci: string, label: string}}
      */
     private static function kak(array $kegiatan, SusunanKak $kak, SusunanRab $rab, array $pengguna): array
     {
         $status = array_column(SusunanOtomatis::dari($kak, $rab, $kegiatan, $pengguna)->bagian, null, 'nomor');
 
         return [
-            'bagian' => array_map(function (array $b) use ($kegiatan, $status) {
+            'bagian' => array_map(function (array $b) use ($kegiatan, $status, $kak) {
                 $s = $status[$b['nomor']] ?? ['status' => 'lengkap', 'kurang' => [], 'periksa' => []];
-                $tambahan = SuntingDokumen::tambahan($b);
+                $tambahan = SuntingDokumen::tambahan($b, $kak->format);
 
                 return [
                     'nomor' => $b['nomor'],
+                    'label' => SusunanKak::labelBagian($b),
                     'judul' => $b['judul'],
                     'jangkar' => "cetak-kak-bagian-{$b['nomor']}",
                     'isi' => array_values($b['isi']),
@@ -114,17 +115,18 @@ final class DataPratinjau
                     'kosong' => PenandaKosong::jumlahBagian($b),
                     'sunting' => array_map(fn (string $kunci) => [
                         'kunci' => $kunci,
-                        'label' => SuntingDokumen::label($kunci),
+                        'label' => SuntingDokumen::label($kunci, $kak->format),
                         'jenis' => SuntingDokumen::jenis($kunci),
                         'maks' => SuntingDokumen::maks($kunci),
                         'petunjuk' => SuntingDokumen::petunjuk($kunci),
                         'teks' => SuntingDokumen::teks($kegiatan, $kunci),
                         'tampil' => ! in_array($kunci, $tambahan, true),
-                    ], SuntingDokumen::untukBagian($b['nomor'])),
+                    ], SuntingDokumen::untukBagian($b['nomor'], $kak->format)),
                 ];
             }, $kak->bagian),
             'kurang' => array_values(array_unique($kak->kurang)),
             'peringatan_pagu' => $kak->peringatanPagu?->judul(),
+            'format' => ['kunci' => $kak->format, 'label' => FormatKakTor::label($kak->format)],
         ];
     }
 }

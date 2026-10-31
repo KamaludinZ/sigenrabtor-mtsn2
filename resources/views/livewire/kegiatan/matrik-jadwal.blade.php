@@ -1,4 +1,5 @@
 @use('App\Livewire\Kegiatan\MatrikJadwal')
+@use('App\Support\Dokumen\FormatKakTor')
 @use('App\Support\Format')
 @use('App\Support\Kegiatan\JadwalKegiatan')
 @use('App\Support\Kegiatan\JadwalPelaksanaan')
@@ -15,6 +16,8 @@
     $bulanPelaksanaan = $pelaksanaan->bulan;
     $selesai = $pelaksanaan->selesai();
     $batasLaporan = Format::tanggal($dataKegiatan['tanggal_laporan'] ?? null);
+    // Format 5 bab (TOR 2027) mencetak matrik di bab III dan tidak memuat tabel jadwal.
+    $limaBab = FormatKakTor::untuk($dataKegiatan) === FormatKakTor::LIMA_BAB;
     $namaBulan = JadwalPelaksanaan::NAMA_BULAN;
     $kolomPelaksanaan = fn (int $b) => in_array($b, $bulanPelaksanaan, true);
 @endphp
@@ -93,7 +96,7 @@
                     <div class="min-w-0">
                         <h2 id="judul-matrik" class="text-base font-semibold text-stone-900">Matrik tahapan</h2>
                         <p class="mt-0.5 text-sm text-stone-500">
-                            Bulan pelaksanaan tiap butir tahapan — tercetak di KAK bagian 4. Tahapan Kegiatan.
+                            Bulan pelaksanaan tiap butir tahapan — tercetak di KAK {{ $limaBab ? 'bab III. Tahapan Kegiatan' : 'bagian 4. Tahapan Kegiatan' }}.
                             @if ($bisaUbah)
                                 <span class="hidden sm:inline">Klik sel, atau tekan lalu seret untuk menandai beberapa bulan sekaligus.</span>
                                 <span class="sm:hidden">Ketuk sel untuk menandai bulan.</span>
@@ -189,7 +192,7 @@
                 <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4 sm:px-6">
                     <div class="min-w-0">
                         <h2 id="judul-jadwal" class="text-base font-semibold text-stone-900">Jadwal kegiatan</h2>
-                        <p class="mt-0.5 text-sm text-stone-500">Urutan kegiatan dan waktu pelaksanaannya — tercetak di KAK bagian 7. Jadwal Kegiatan. Cukup pilih bulan; tahunnya Tahun Anggaran {{ $tahun }}.</p>
+                        <p class="mt-0.5 text-sm text-stone-500">Urutan kegiatan dan waktu pelaksanaannya — {{ $limaBab ? 'tidak dicetak di format 5 bab (tetap dipakai pemeriksaan konsistensi bulan)' : 'tercetak di KAK bagian 7. Jadwal Kegiatan' }}. Cukup pilih bulan; tahunnya Tahun Anggaran {{ $tahun }}.</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <p class="text-xs font-medium text-stone-500" data-testid="ringkasan-jadwal">{{ $jadwal === [] ? 'Belum ada baris' : $susunanJadwal->jumlahTerisi().' dari '.count($susunanJadwal->baris).' baris terisi' }}</p>
@@ -429,7 +432,7 @@
                 <header class="flex flex-wrap items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6">
                     <div class="min-w-0 flex-1">
                         <h2 id="judul-pratinjau-matrik" class="text-sm font-semibold text-stone-900">Pratinjau KAK/TOR — Tahapan &amp; Jadwal</h2>
-                        <p class="text-xs text-stone-500">Bagian 4 dan 7 seperti tercetak, dari isian saat ini{{ $adaPerubahan ? ' (termasuk yang belum disimpan)' : '' }}.</p>
+                        <p class="text-xs text-stone-500">{{ $limaBab ? 'Bab III' : 'Bagian 4 dan 7' }} seperti tercetak, dari isian saat ini{{ $adaPerubahan ? ' (termasuk yang belum disimpan)' : '' }}.</p>
                     </div>
                     <button type="button" class="btn-ghost" wire:click="$set('pratinjauTerbuka', false)">
                         <x-ui.icon name="x" class="size-4" />
@@ -446,9 +449,9 @@
                 @endif
 
                 <div class="flex-1 overflow-y-auto p-3 sm:p-6">
-                    <x-dokumen.kak-tor :susunan="$kak" :bagian="[4, 7]" />
+                    <x-dokumen.kak-tor :susunan="$kak" :bagian="$kak->nomorUntuk('matrik', 'jadwal')" />
                     <p class="mx-auto mt-3 max-w-[210mm] text-center text-xs text-stone-500">
-                        Seluruh dokumen (cover, sembilan bagian, pengesahan) bisa dipratinjau dari tombol <em>Pratinjau</em> di
+                        Seluruh dokumen (cover, {{ $limaBab ? 'lima bab' : 'sembilan bagian' }}, pengesahan) bisa dipratinjau dari tombol <em>Pratinjau</em> di
                         <a href="{{ route('kegiatan.edit', ['kegiatan' => $kegiatanId]) }}" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800">Data Kegiatan</a>.
                     </p>
                 </div>

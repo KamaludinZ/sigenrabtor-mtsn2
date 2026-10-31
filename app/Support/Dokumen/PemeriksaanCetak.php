@@ -28,6 +28,9 @@ final class PemeriksaanCetak
         'jadwal' => ['Jadwal kegiatan', self::KAK, 'matrik', 'jadwal'],
     ];
 
+    /** Butir CEK yang hanya dicetak format 9 bagian (dilewati selama format kegiatan tidak memuatnya). */
+    private const HANYA_SEMBILAN_BAGIAN = ['sasaran', 'jadwal'];
+
     /** Jenis dokumen → awalan nama berkas StatusCetak::namaBerkas. */
     private const NAMA = ['KAK+TOR' => 'KAK-TOR', 'KAK' => 'KAK', 'TOR' => 'TOR', 'RAB' => 'RAB', 'lengkap' => 'KAK-TOR_RAB'];
 
@@ -61,7 +64,8 @@ final class PemeriksaanCetak
         $checklist = collect(ChecklistIsian::untuk($kegiatan))->keyBy('kunci');
         $cek = [];
         foreach (self::CEK as $kunci => [$label, $untuk, $grup, $butir]) {
-            if (! in_array($jenis, $untuk, true)) {
+            // Format 5 bab tidak mencetak sasaran & tabel jadwal (FormatKakTor) — tidak menjadi syarat cetak.
+            if (! in_array($jenis, $untuk, true) || ($kak->nomorUntuk($kunci) === [] && in_array($kunci, self::HANYA_SEMBILAN_BAGIAN, true))) {
                 continue;
             }
             $temu = $sumber === null && str_contains($butir, '{sumber}') ? null

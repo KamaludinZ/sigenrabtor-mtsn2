@@ -6,6 +6,8 @@
 // (import dinamis) hanya saat tombol Excel ditekan — pustaka exceljs besar.
 import ExcelJS from 'exceljs';
 
+import { barisPengesahan } from './pengesahan.js';
+
 const FORMAT_UANG = '#,##0';
 const FORMAT_VOLUME = '#,##0.##';
 const GARIS = { style: 'thin', color: { argb: 'FF57534E' } };
@@ -163,28 +165,43 @@ export function susunBuku(dokumen, rabLengkap, sumber) {
     lembar.addRow([]);
     const rentang = bagiTiga(kolom.map((k) => KOLOM[k][0]));
     const ttd = rab.pengesahan ?? [];
-    const baris = (isi, gaya = {}) => {
-        const b = lembar.addRow([]);
-        rentang.forEach(([dari, sampai], i) => {
-            if (sampai > dari) {
-                lembar.mergeCells(b.number, dari, b.number, sampai);
-            }
-            const sel = b.getCell(dari);
-            sel.value = isi(ttd[i] ?? {});
-            sel.alignment = { horizontal: 'center', wrapText: true };
-            Object.assign(sel, gaya);
-        });
+    // Satu blok tanda tangan: tiga slot rentang (kiri, tengah, kanan); slot tanpa penanda tangan dibiarkan kosong.
+    const blok = (slot) => {
+        const baris = (isi, gaya = {}) => {
+            const b = lembar.addRow([]);
+            rentang.forEach(([dari, sampai], i) => {
+                if (sampai > dari) {
+                    lembar.mergeCells(b.number, dari, b.number, sampai);
+                }
+                const sel = b.getCell(dari);
+                sel.value = slot[i] ? isi(slot[i]) : '';
+                sel.alignment = { horizontal: 'center', wrapText: true };
+                Object.assign(sel, gaya);
+            });
 
-        return b;
+            return b;
+        };
+        baris((t) => t.tempat_tanggal ?? '');
+        baris((t) => t.peran ?? '');
+        baris((t) => t.jabatan ?? '', { font: { bold: true } }).height = 30;
+        for (let i = 0; i < 3; i++) {
+            lembar.addRow([]);
+        }
+        baris((t) => t.nama ?? '( …………………………… )', { font: { bold: true } });
+        baris((t) => (t.tanpa_nip ? '' : `NIP. ${t.nip ?? '……………………'}`));
     };
-    baris((t) => t.tempat_tanggal ?? '');
-    baris((t) => t.peran ?? '');
-    baris((t) => t.jabatan ?? '', { font: { bold: true } }).height = 30;
-    for (let i = 0; i < 3; i++) {
-        lembar.addRow([]);
+    // Format 9 bagian: tiga penanda tangan sejajar. Format 5 bab (Form RAB 2027): Menyetujui kiri & Penanggungjawab kanan,
+    // lalu Mengetahui di tengah (kembaran EksporRabExcel; baris dari barisPengesahan pengesahan.js).
+    if (ttd.some((t) => t.baris !== undefined)) {
+        const [atas = [], bawah = []] = barisPengesahan(ttd);
+        blok([atas[0], undefined, atas[1]]);
+        if (bawah.length) {
+            lembar.addRow([]);
+            blok([undefined, bawah[0], undefined]);
+        }
+    } else {
+        blok([ttd[0], ttd[1], ttd[2]]);
     }
-    baris((t) => t.nama ?? '( …………………………… )', { font: { bold: true } });
-    baris((t) => `NIP. ${t.nip ?? '……………………'}`);
 
     return buku;
 }

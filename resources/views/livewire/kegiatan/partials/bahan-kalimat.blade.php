@@ -26,13 +26,21 @@
         <span>AI menyarankan 2–3 versi: {{ mb_lcfirst($b['hasil']) }}</span>
     </p>
 
-    @if ($b['kak'] !== null)
+    @php
+        // Bagian KAK/TOR tempat teks ini tercetak menurut format dokumen kegiatan (FormatKakTor); [] = tidak dicetak format itu.
+        $nomorKak = $b['kak'] === null ? [] : $susunan->nomorUntuk($b['kolom'] ?? $kunci);
+    @endphp
+    @if ($nomorKak !== [])
         <details class="rounded-lg bg-stone-50 ring-1 ring-stone-200" data-testid="pratinjau-{{ $kunci }}">
             <summary class="cursor-pointer px-3 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900">Lihat tercetak di KAK/TOR</summary>
             <div class="max-h-96 overflow-auto border-t border-stone-200 p-3">
-                <x-dokumen.kak-tor :susunan="$susunan" :bagian="[$b['kak']]" />
+                <x-dokumen.kak-tor :susunan="$susunan" :bagian="$nomorKak" />
             </div>
         </details>
+    @elseif ($b['kak'] !== null)
+        <p class="rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-600 ring-1 ring-stone-200" data-testid="pratinjau-{{ $kunci }}">
+            Tidak tercetak di {{ mb_strtolower(\App\Support\Dokumen\FormatKakTor::label($susunan->format)) }} — tetap tersimpan di data kegiatan.
+        </p>
     @else
         <p class="rounded-lg bg-stone-50 px-3 py-2 text-xs text-stone-600 ring-1 ring-stone-200" data-testid="pratinjau-{{ $kunci }}">
             Tercetak di cover: <span class="font-semibold tracking-wide text-stone-900">{{ $susunan->cover['kegiatan'] ?? '' }}</span>

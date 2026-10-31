@@ -67,11 +67,11 @@ final class ValidasiKelengkapan
                     'tingkat' => $p['tingkat'],
                     'label_tingkat' => PenandaKosong::TINGKAT[$p['tingkat']][0],
                     'tempat' => PenandaKosong::tempat($p['asal'], $id, $pengguna),
-                    'sunting' => $p['sunting'] === null ? null : ['kunci' => $p['sunting'], 'label' => SuntingDokumen::label($p['sunting'])],
+                    'sunting' => $p['sunting'] === null ? null : ['kunci' => $p['sunting'], 'label' => SuntingDokumen::label($p['sunting'], $kak->format)],
                 ], $milik),
                 'wajib' => count(array_filter($milik, fn (array $p) => $p['tingkat'] === 'wajib')),
                 'asal' => $nomor !== null ? ($asal[$nomor] ?? []) : [PenandaKosong::tempat($b['dokumen'] === 'rab' ? 'rab' : 'identitas', $id, $pengguna)],
-                'sunting' => $nomor !== null ? array_map(fn (string $k) => ['kunci' => $k, 'label' => SuntingDokumen::label($k)], SuntingDokumen::untukBagian($nomor)) : [],
+                'sunting' => $nomor !== null ? array_map(fn (string $k) => ['kunci' => $k, 'label' => SuntingDokumen::label($k, $kak->format)], SuntingDokumen::untukBagian($nomor, $kak->format)) : [],
             ];
         }
 

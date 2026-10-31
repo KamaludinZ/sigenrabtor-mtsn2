@@ -4,7 +4,8 @@ namespace App\Support\Dokumen;
 
 /**
  * Isian data kegiatan yang bisa dilengkapi langsung dari kartu bagian tab Susun KAK/TOR (PRD F4 "Susun Otomatis"):
- * `BAGIAN` nomor bagian KAK/TOR → kolom (bentuk UbahDataKegiatan::ISIAN), `KOLOM` kolom → [label, jenis input
+ * isian per nomor bagian KAK/TOR dari FormatKakTor::isian (format 9 bagian / 5 bab; bentuk UbahDataKegiatan::ISIAN),
+ * `KOLOM` kolom → [label, jenis input
  * teks|uraian|tanggal|angka, panjang/nilai maksimal (= ValidasiKegiatan), contoh isian]. Disimpan lewat
  * UbahDataKegiatan::ubah (aturan & bentrok sama dengan Data Kegiatan); isian lain tetap di halamannya masing-masing.
  */
@@ -23,19 +24,10 @@ final class IsianSusun
         'tanggal_dokumen' => ['Tanggal dokumen (lembar pengesahan)', 'tanggal', null, null],
     ];
 
-    /** Nomor bagian KAK/TOR → kolom yang bisa dilengkapi di tempat, urut tampil. */
-    public const BAGIAN = [
-        1 => ['latar_belakang'],
-        3 => ['tujuan', 'sasaran'],
-        4 => ['tanggal_mulai', 'lama_hari', 'peserta_jumlah', 'peserta_jenis', 'uraian_pelaksanaan'],
-        5 => ['tempat'],
-        9 => ['tanggal_dokumen'],
-    ];
-
-    /** @return list<string> */
-    public static function untuk(int $nomor): array
+    /** @return list<string> Kolom bagian itu yang bisa dilengkapi di tempat, urut tampil. */
+    public static function untuk(int $nomor, string $format = FormatKakTor::SEMBILAN_BAGIAN): array
     {
-        return self::BAGIAN[$nomor] ?? [];
+        return FormatKakTor::isian($format, $nomor);
     }
 
     /**
@@ -44,10 +36,10 @@ final class IsianSusun
      * @param  array<string, mixed>  $kegiatan
      * @return array<string, string>
      */
-    public static function isian(array $kegiatan, int $nomor): array
+    public static function isian(array $kegiatan, int $nomor, string $format = FormatKakTor::SEMBILAN_BAGIAN): array
     {
         $hasil = [];
-        foreach (self::untuk($nomor) as $kolom) {
+        foreach (self::untuk($nomor, $format) as $kolom) {
             $nilai = $kegiatan[$kolom] ?? null;
             $hasil[$kolom] = is_scalar($nilai) ? (string) $nilai : '';
         }
@@ -62,10 +54,10 @@ final class IsianSusun
      * @param  array<string, mixed>  $isian
      * @return array<string, mixed>
      */
-    public static function kiriman(int $nomor, array $isian): array
+    public static function kiriman(int $nomor, array $isian, string $format = FormatKakTor::SEMBILAN_BAGIAN): array
     {
         $hasil = [];
-        foreach (self::untuk($nomor) as $kolom) {
+        foreach (self::untuk($nomor, $format) as $kolom) {
             $nilai = is_string($isian[$kolom] ?? null) ? trim($isian[$kolom]) : ($isian[$kolom] ?? null);
             $hasil[$kolom] = match (true) {
                 $nilai === '' || $nilai === null => null,

@@ -51,10 +51,12 @@ final class ChecklistIsian
 
         $grup = [];
 
+        // Format 5 bab (TOR 2027) tidak mencetak sasaran & tabel jadwal — butirnya tidak ditagih.
+        $limaBab = FormatKakTor::untuk($kegiatan) === FormatKakTor::LIMA_BAB;
         $grup[] = ['kunci' => 'identitas', 'judul' => 'Identitas kegiatan', 'tautan' => $tautan('kegiatan.edit', [], '#identitas'), 'butir' => [
             $butir('nama_kegiatan', 'Nama kegiatan', $isi('nama_kegiatan'), true),
             $butir('tujuan', 'Tujuan', $isi('tujuan')),
-            $butir('sasaran', 'Sasaran', $isi('sasaran')),
+            ...($limaBab ? [] : [$butir('sasaran', 'Sasaran', $isi('sasaran'))]),
             $butir('tanggal_dokumen', 'Tanggal dokumen (lembar pengesahan)', $isi('tanggal_dokumen')),
             $butir('tanggal_laporan', 'Tanggal pelaporan', $isi('tanggal_laporan')),
         ]];
@@ -98,7 +100,7 @@ final class ChecklistIsian
         $jadwal = $id ? app(MatrikJadwalRepository::class)->jadwal($id) : JadwalKegiatan::dari($kegiatan);
         $grup[] = ['kunci' => 'matrik', 'judul' => 'Matrik & jadwal', 'tautan' => $tautan('kegiatan.matrik'), 'butir' => [
             $butir('matrik', 'Matrik tahapan (tiap tahapan punya bulan)', $matrik->lengkap()),
-            $butir('jadwal', 'Jadwal kegiatan', $jadwal->lengkap()),
+            ...($limaBab ? [] : [$butir('jadwal', 'Jadwal kegiatan', $jadwal->lengkap())]),
         ]];
 
         $berlaku = PejabatBerlaku::tahun();

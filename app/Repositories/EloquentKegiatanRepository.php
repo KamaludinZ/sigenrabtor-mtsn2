@@ -51,6 +51,7 @@ class EloquentKegiatanRepository implements KegiatanRepository
         'uraian_pelaksanaan' => 'uraian_pelaksanaan',
         'konteks' => 'konteks',
         'teks_khusus' => 'teks_khusus',
+        'format_dokumen' => 'format_dokumen',
         'kode_hilang' => 'kode_hilang',
         'riwayat_kode' => 'riwayat_kode',
         'asal' => 'asal',
@@ -180,7 +181,7 @@ class EloquentKegiatanRepository implements KegiatanRepository
             'cover_manual', 'hari_kerja' => (bool) $nilai,
             'laporan_otomatis' => $nilai === null || (bool) $nilai,
             'lama_hari', 'peserta_jumlah', 'budaya_mutu' => filled($nilai) ? (int) $nilai : null,
-            'tanggal_dokumen', 'tanggal_laporan', 'tanggal_mulai', 'data_pagu_id' => filled($nilai) ? (string) $nilai : null,
+            'tanggal_dokumen', 'tanggal_laporan', 'tanggal_mulai', 'data_pagu_id', 'format_dokumen' => filled($nilai) ? (string) $nilai : null,
             'bulan_pelaksanaan' => array_values(array_map('intval', (array) $nilai)),
             // Tanpa teks yang disesuaikan = NULL (CHECK teks_khusus_sah: objek tidak kosong atau NULL).
             'teks_khusus' => filled($nilai) ? TeksKhusus::urutkan((array) $nilai) : null,
@@ -295,6 +296,10 @@ class EloquentKegiatanRepository implements KegiatanRepository
             : null;
         if ($kegiatan->impor_id !== null) {
             $data['impor_id'] = $kegiatan->impor_id;
+        }
+        // Format dokumen hanya ada bila dipilih untuk kegiatan itu (tanpa pilihan = ikut tahun, seperti tiruan).
+        if ($data['format_dokumen'] === null) {
+            unset($data['format_dokumen']);
         }
 
         return $data;

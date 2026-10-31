@@ -75,15 +75,22 @@ final class FormatSeragam
     }
 
     /**
-     * @return array{kak: list<array{nomor: int, judul: string}>, rab_kepala: list<string>, rab_kolom: list<string>}
+     * Susunan baku satu format KAK/TOR (FormatKakTor; null = format tahun aktif) — dibaca dari susunan contoh kegiatan,
+     * bukan disalin; `kak` membawa label nomor tercetak (1–9 / I–V).
+     *
+     * @return array{format: string, label: string, keterangan: string, kak: list<array{nomor: int, label: string, judul: string}>, rab_kepala: list<string>, rab_kolom: list<string>}
      */
-    public static function susunan(): array
+    public static function susunan(?string $format = null): array
     {
         $contoh = app(KegiatanRepository::class)->semua()[0] ?? ['id' => 0, 'nama_kegiatan' => 'Contoh kegiatan', 'sumber_dana' => []];
         $sumber = $contoh['sumber_dana'][0]['sumber'] ?? null;
+        $format = FormatKakTor::sah($format) ? $format : FormatKakTor::tahun((int) StubData::tahunAktif()['tahun']);
 
         return [
-            'kak' => array_map(fn (array $b) => ['nomor' => (int) $b['nomor'], 'judul' => (string) $b['judul']], SusunanKak::dari($contoh, $sumber)->bagian),
+            'format' => $format,
+            'label' => FormatKakTor::FORMAT[$format][0],
+            'keterangan' => FormatKakTor::FORMAT[$format][1],
+            'kak' => array_map(fn (array $b) => ['nomor' => (int) $b['nomor'], 'label' => SusunanKak::labelBagian($b), 'judul' => (string) $b['judul']], SusunanKak::dari($contoh, $sumber, format: $format)->bagian),
             'rab_kepala' => array_column(SusunanRab::dari($contoh, $sumber)->kepala, 'label'),
             'rab_kolom' => array_column(TabelRab::KOLOM, 0),
         ];

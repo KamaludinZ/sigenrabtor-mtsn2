@@ -9,6 +9,7 @@
 
 # Dokumen contoh asli (PDF/DOCX/XLSX) — bukan kode aplikasi.
 REFERENSI/
+Contoh baru/
 
 # Keluaran runtime Laravel (view Blade terkompilasi, cache, sesi, data tiruan) — bukan kode sumber.
 # .gitignore bersarang milik Laravel di storage/ tidak dibaca CLI, jadi dicantumkan di sini.

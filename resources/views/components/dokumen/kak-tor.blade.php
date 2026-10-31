@@ -2,13 +2,15 @@
 
 @use('App\Support\Dokumen\PenandaKosong')
 @use('App\Support\Dokumen\SuntingDokumen')
+@use('App\Support\Dokumen\SusunanKak')
 
 {{--
-    Pratinjau KAK/TOR bergaya kertas A4: cover lalu sembilan bagian baku dari App\Support\Dokumen\SusunanKak.
+    Pratinjau KAK/TOR bergaya kertas A4: cover lalu bagian baku dari App\Support\Dokumen\SusunanKak (format 9 bagian
+    bernomor 1–9 atau format 5 bab I–V, FormatKakTor; judul memakai SusunanKak::labelBagian).
     Isian yang belum lengkap tampil sebagai penanda kuning (bukan teks palsu); bagian dari fitur yang belum tersedia
     tampil abu-abu. Cap "DRAF" muncul selama kegiatan belum disetujui, belum lengkap, atau RAB-nya melebihi pagu.
     Penanda pagu di bagian Pembiayaan hanya ada di pratinjau (bukan teks dokumen).
-    $bagian (daftar nomor, mis. [4, 7]) menampilkan bagian itu saja tanpa cover — dipakai pratinjau Matrik & Jadwal.
+    $bagian (daftar nomor, mis. $susunan->nomorUntuk('matrik', 'jadwal')) menampilkan bagian itu saja tanpa cover — dipakai pratinjau Matrik & Jadwal.
     :cap="false" tanpa cap DRAF/Final (cuplikan per bagian di tab Susun KAK/TOR; capnya tampil sekali di kepala halaman).
     :sunting="['terbuka' => kunci|null, 'kegiatan_id' => id]" = mode sunting teks pratinjau: blok ber-`sunting`/`sunting_butir` (SuntingDokumen)
     berbingkai dengan tombol Sunting (`bukaSunting`), yang terbuka diganti <x-dokumen.penyunting-teks>, dan bidang yang belum
@@ -47,9 +49,9 @@
 
     <div class="space-y-6 px-5 py-8 sm:px-14 sm:py-10 cetak:px-14 cetak:py-10">
         @foreach ($daftarBagian as $isiBagian)
-            <section data-bagian="{{ $isiBagian['nomor'] }}" id="cetak-kak-bagian-{{ $isiBagian['nomor'] }}" class="scroll-mt-40">
+            <section data-bagian="{{ $isiBagian['nomor'] }}" data-format="{{ $susunan->format }}" id="cetak-kak-bagian-{{ $isiBagian['nomor'] }}" class="scroll-mt-40">
                 <h3 class="break-after-avoid font-bold uppercase">
-                    {{ $isiBagian['nomor'] }}. {{ $isiBagian['judul'] }}
+                    {{ SusunanKak::labelBagian($isiBagian) }}. {{ $isiBagian['judul'] }}
                     @if ($penanda !== null && ($jumlahKosong = PenandaKosong::jumlahBagian($isiBagian)) > 0)
                         <span class="ml-1.5 inline-block rounded-full bg-gold-100 px-1.5 align-middle font-sans text-[10px] font-semibold tracking-normal text-gold-800 normal-case ring-1 ring-gold-200 print:hidden" data-testid="penanda-bagian">{{ $jumlahKosong }} belum lengkap</span>
                     @endif
@@ -66,7 +68,7 @@
                         @if ($kunciSunting !== null)
                             <div class="relative -mx-1.5 rounded-sm px-1.5 pt-5 pb-1 outline-1 outline-sky-300 outline-dashed hover:bg-sky-50/60" data-sunting="{{ $kunciSunting }}">
                                 <button type="button" wire:click="bukaSunting('{{ $kunciSunting }}')" x-jaga-sunting x-data="{ draf: window.SIRABTOR.adaDrafSunting({{ (int) $sunting['kegiatan_id'] }}, '{{ $kunciSunting }}') }" x-on:sunting-tersimpan.window="if ($event.detail.kunci === '{{ $kunciSunting }}') draf = false" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciSunting }}">
-                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciSunting) }}</span><span class="size-1.5 rounded-full bg-gold-300" x-cloak x-show="draf" title="Ada ketikan yang belum disimpan" data-draf-lokal></span>
+                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciSunting, $susunan->format) }}</span><span class="size-1.5 rounded-full bg-gold-300" x-cloak x-show="draf" title="Ada ketikan yang belum disimpan" data-draf-lokal></span>
                                 </button>
                         @endif
                         @switch($blok['jenis'])
@@ -78,7 +80,7 @@
                                 @endif
                                 @break
                             @case('subjudul')
-                                <p class="font-semibold">{{ $blok['teks'] }}</p>
+                                <p @class(['font-semibold', 'pl-5' => ($blok['tingkat'] ?? 1) > 1])>{{ $blok['teks'] }}</p>
                                 @break
                             @case('daftar')
                                 <ol @class(['space-y-1 pl-6', 'list-decimal' => $blok['bernomor'], 'list-disc' => ! $blok['bernomor'], 'scroll-mt-40 transition-colors target:bg-gold-100 target:outline-2 target:outline-offset-2 target:outline-gold-400' => isset($blok['tempat'])])
@@ -93,7 +95,7 @@
                                             <li class="relative rounded-sm pt-5 outline-1 outline-sky-300 outline-dashed sm:text-justify cetak:text-justify" data-sunting="{{ $kunciButir }}">
                                                 {{ $butir }}
                                                 <button type="button" wire:click="bukaSunting('{{ $kunciButir }}')" x-jaga-sunting x-data="{ draf: window.SIRABTOR.adaDrafSunting({{ (int) $sunting['kegiatan_id'] }}, '{{ $kunciButir }}') }" x-on:sunting-tersimpan.window="if ($event.detail.kunci === '{{ $kunciButir }}') draf = false" class="absolute top-0.5 right-1 z-10 inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 font-sans text-[10px] leading-4 font-semibold text-white shadow-sm hover:bg-sky-700 print:hidden" data-testid="sunting-{{ $kunciButir }}">
-                                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciButir) }}</span><span class="size-1.5 rounded-full bg-gold-300" x-cloak x-show="draf" title="Ada ketikan yang belum disimpan" data-draf-lokal></span>
+                                                    <x-ui.icon name="pencil" class="size-3" /> Sunting<span class="sr-only"> {{ SuntingDokumen::label($kunciButir, $susunan->format) }}</span><span class="size-1.5 rounded-full bg-gold-300" x-cloak x-show="draf" title="Ada ketikan yang belum disimpan" data-draf-lokal></span>
                                                 </button>
                                             </li>
                                         @else
@@ -223,12 +225,12 @@
                     @endforeach
                     @if ($sunting !== null)
                         {{-- Bidang yang belum tampil di dokumen (mis. latar belakang khusus kosong). --}}
-                        @foreach (SuntingDokumen::tambahan($isiBagian) as $kunciTambah)
+                        @foreach (SuntingDokumen::tambahan($isiBagian, $susunan->format) as $kunciTambah)
                             @if ($sunting['terbuka'] === $kunciTambah)
                                 <x-dokumen.penyunting-teks :kunci="$kunciTambah" :kegiatan="$sunting['kegiatan_id']" />
                             @else
                                 <button type="button" wire:click="bukaSunting('{{ $kunciTambah }}')" x-jaga-sunting class="flex w-full items-center gap-1.5 rounded-sm border border-dashed border-sky-300 px-2 py-1.5 font-sans text-xs font-semibold text-sky-700 hover:bg-sky-50 print:hidden" data-testid="tambah-{{ $kunciTambah }}">
-                                    <x-ui.icon name="plus" class="size-3.5" /> Tambah {{ mb_strtolower(SuntingDokumen::label($kunciTambah)) }}
+                                    <x-ui.icon name="plus" class="size-3.5" /> Tambah {{ mb_strtolower(SuntingDokumen::label($kunciTambah, $susunan->format)) }}
                                 </button>
                             @endif
                         @endforeach

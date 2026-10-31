@@ -1,7 +1,9 @@
 @use('App\Support\Dokumen\DokumenKegiatan')
 @use('App\Support\Dokumen\DrafDokumen')
+@use('App\Support\Dokumen\FormatKakTor')
 @use('App\Support\Dokumen\StatusCetak')
 @use('App\Support\Dokumen\IsianSusun')
+@use('App\Support\Kegiatan\TahunKegiatan')
 @use('App\Support\Kegiatan\TeksKhusus')
 @use('App\Livewire\Forms\ItemBelanjaForm')
 @use('Illuminate\Support\Carbon')
@@ -29,6 +31,8 @@
     $dokumen = $tampilan === 'dokumen';
     $ke = ['cover' => $dokumen ? '#hasil-cover' : '#susun-cover', 'rab' => $dokumen ? '#hasil-rab' : '#susun-rab'];
     $keBagian = fn (int $n) => ($dokumen ? '#cetak-kak-bagian-' : '#susun-bagian-').$n;
+    // Label nomor bagian menurut format (format 5 bab: I–V).
+    $labelBagian = fn (int $n) => FormatKakTor::BAGIAN[$kak->format][$n][1] ?? (string) $n;
     // Jangkar bagian yang berubah sejak draf (kunci DrafDokumen::keadaan): cover, kak-{n}, rab.
     $keBerubah = fn (string $kunci) => str_starts_with($kunci, 'kak-') ? $keBagian((int) substr($kunci, 4)) : $ke[$kunci];
     // Cara menghilangkan cap DRAF (StatusCetak::SARAN) per alasan StatusDraf.
@@ -74,7 +78,7 @@
                 <h1 class="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">Susun KAK/TOR</h1>
                 <x-ui.status-badge :status="$this->status()->value" />
             </div>
-            <p class="mt-1 text-sm text-stone-500">Sembilan bagian KAK/TOR dan RAB disusun otomatis dari data kegiatan, pengaturan TA {{ $tahun }}, dan RAB — lengkapi isian yang ditandai, hasilnya langsung ikut.</p>
+            <p class="mt-1 text-sm text-stone-500">{{ $kak->format === FormatKakTor::LIMA_BAB ? 'Lima bab' : 'Sembilan bagian' }} KAK/TOR dan RAB disusun otomatis dari data kegiatan, pengaturan TA {{ $tahun }}, dan RAB — lengkapi isian yang ditandai, hasilnya langsung ikut.</p>
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
             <a href="{{ route('kegiatan.pratinjau', ['kegiatan' => $kegiatanId] + ($sumberAktif ? ['sumber' => $sumberAktif] : [])).$jangkarPratinjau }}" wire:navigate class="btn-secondary" data-testid="buka-pratinjau">
@@ -133,6 +137,17 @@
 
     <x-dokumen.pilih-jenis class="mt-4" :pilihan="$this->pilihanJenis" :terpilih="$jenis" />
 
+    {{-- Format susunan KAK/TOR kegiatan ini (FormatKakTor): ikut tahun anggaran, atau dipilih khusus. --}}
+    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-white px-3 py-2.5 text-sm ring-1 ring-stone-200" data-testid="format-kak" data-format="{{ $kak->format }}">
+        <label for="pilih-format-kak" class="font-medium text-stone-700">Format KAK/TOR</label>
+        <select id="pilih-format-kak" class="form-select w-auto py-1 text-sm" wire:change="ubahFormat($event.target.value)" wire:loading.attr="disabled" wire:target="ubahFormat" @disabled(! $bisaUbah) data-testid="pilih-format-kak">
+            @foreach (FormatKakTor::pilihan(TahunKegiatan::dari($this->dataKegiatan)) as $pilihanFormat)
+                <option value="{{ $pilihanFormat['nilai'] }}" @selected($pilihanFormat['nilai'] === ($this->dataKegiatan['format_dokumen'] ?? ''))>{{ $pilihanFormat['label'] }}</option>
+            @endforeach
+        </select>
+        <span class="min-w-0 flex-1 text-xs text-stone-500" data-testid="keterangan-format-kak">{{ FormatKakTor::FORMAT[$kak->format][1] }}</span>
+    </div>
+
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="min-w-0 space-y-4">
             {{-- Daftar bagian di layar sempit (di layar lebar ada di panel samping). --}}
@@ -142,7 +157,7 @@
                 @endif
                 @foreach ($adaKak ? $susunan->bagian : [] as $b)
                     <a href="{{ $keBagian($b['nomor']) }}" class="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
-                        <span class="size-1.5 rounded-full {{ $nadaStatus[$b['status']]['titik'] }}" aria-hidden="true"></span>{{ $b['nomor'] }}. {{ $b['judul'] }}
+                        <span class="size-1.5 rounded-full {{ $nadaStatus[$b['status']]['titik'] }}" aria-hidden="true"></span>{{ $labelBagian($b['nomor']) }}. {{ $b['judul'] }}
                     </a>
                 @endforeach
                 @if ($adaRab)
@@ -207,11 +222,11 @@
                          data-testid="bagian-susun" data-bagian="{{ $b['nomor'] }}" data-status="{{ $b['status'] }}" aria-labelledby="judul-susun-{{ $b['nomor'] }}"
                          wire:key="susun-{{ $b['nomor'] }}-{{ $sumberAktif }}">
                     <header class="flex items-start gap-3 px-4 py-3 sm:px-5">
-                        <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-stone-100 text-sm font-bold text-stone-700" aria-hidden="true">{{ $b['nomor'] }}</span>
+                        <span class="grid size-7 shrink-0 place-items-center rounded-lg bg-stone-100 text-sm font-bold text-stone-700" aria-hidden="true">{{ $labelBagian($b['nomor']) }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <h2 id="judul-susun-{{ $b['nomor'] }}" class="text-sm font-semibold text-stone-900">{{ $b['judul'] }}</h2>
-                                @if (collect(TeksKhusus::untukBagian($b['nomor']))->contains(fn ($k) => TeksKhusus::disesuaikan($k, $this->dataKegiatan)))
+                                @if (collect(TeksKhusus::untukBagian($b['nomor'], $kak->format))->contains(fn ($k) => TeksKhusus::disesuaikan($k, $this->dataKegiatan)))
                                     <span class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 ring-inset" data-testid="bagian-disesuaikan"><x-ui.icon name="pencil" class="size-3" /> Teks disesuaikan</span>
                                 @endif
                                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset {{ $nada['kelas'] }}" data-testid="status-bagian">
@@ -231,14 +246,14 @@
                                 @endforeach
                             </p>
                         </div>
-                        @if ($bisaUbah && IsianSusun::untuk($b['nomor']) !== [] && $isianTerbuka !== $b['nomor'])
+                        @if ($bisaUbah && IsianSusun::untuk($b['nomor'], $kak->format) !== [] && $isianTerbuka !== $b['nomor'])
                             <button type="button" class="btn-secondary shrink-0 px-2.5 py-1 text-xs" wire:click="bukaIsian({{ $b['nomor'] }})" x-on:click="buka = true" data-testid="lengkapi-{{ $b['nomor'] }}">
                                 <x-ui.icon name="pencil" class="size-3.5" /> <span class="hidden sm:inline">Lengkapi di sini</span><span class="sm:hidden">Isi</span>
                             </button>
                         @endif
                         <button type="button" class="btn-ghost -mr-2 shrink-0 px-2" x-on:click="buka = ! buka" x-bind:aria-expanded="buka" aria-controls="isi-susun-{{ $b['nomor'] }}">
                             <x-ui.icon name="chevron-down" class="size-4 transition" x-bind:class="{ 'rotate-180': buka }" />
-                            <span class="sr-only">Tampilkan atau sembunyikan bagian {{ $b['nomor'] }}</span>
+                            <span class="sr-only">Tampilkan atau sembunyikan {{ mb_strtolower(FormatKakTor::sebutan($kak->format, $b['nomor'])) }}</span>
                         </button>
                     </header>
                     <div id="isi-susun-{{ $b['nomor'] }}" x-show="buka">
@@ -246,7 +261,7 @@
                             {{-- Isian bagian ini, disimpan lewat UbahDataKegiatan (aturan sama dengan Data Kegiatan). --}}
                             <form wire:submit="simpanIsian" x-on:keydown.escape.prevent="$wire.tutupIsian()" class="mx-4 mb-3 space-y-3 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 sm:mx-5 sm:p-4" data-testid="isian-bagian-{{ $b['nomor'] }}">
                                 <div class="grid gap-3 sm:grid-cols-2">
-                                    @foreach (IsianSusun::untuk($b['nomor']) as $kolom)
+                                    @foreach (IsianSusun::untuk($b['nomor'], $kak->format) as $kolom)
                                         @php [$label, $jenisInput, $maks, $contoh] = IsianSusun::KOLOM[$kolom]; @endphp
                                         <x-ui.field :label="$label" for="isian-{{ $kolom }}" :error="'isian.'.$kolom" :class="$jenisInput === 'uraian' ? 'sm:col-span-2' : ''">
                                             @if ($jenisInput === 'uraian')
@@ -291,12 +306,13 @@
                                 </ul>
                             </div>
                         @endif
-                        @if (TeksKhusus::untukBagian($b['nomor']) !== [])
+                        @if (TeksKhusus::untukBagian($b['nomor'], $kak->format) !== [])
                             {{-- Teks baku yang bisa disesuaikan untuk kegiatan ini (TeksKhusus); angka, tanggal & jabatan tetap dari isian. --}}
                             <div class="mx-4 mb-3 divide-y divide-stone-100 rounded-xl ring-1 ring-stone-200 sm:mx-5" data-testid="teks-khusus-{{ $b['nomor'] }}">
-                                @foreach (TeksKhusus::untukBagian($b['nomor']) as $kunciTeks)
+                                @foreach (TeksKhusus::untukBagian($b['nomor'], $kak->format) as $kunciTeks)
                                     @php
-                                        [, $labelTeks, $jenisTeks] = TeksKhusus::BIDANG[$kunciTeks];
+                                        [, , $jenisTeks] = TeksKhusus::BIDANG[$kunciTeks];
+                                        $labelTeks = TeksKhusus::label($kunciTeks, $kak->format);
                                         $sesuai = TeksKhusus::disesuaikan($kunciTeks, $this->dataKegiatan);
                                         $baku = TeksKhusus::bakuMentah($kunciTeks);
                                     @endphp
@@ -460,7 +476,7 @@
                         <li>
                             <a href="{{ $keBagian($b['nomor']) }}" class="flex items-center gap-2 rounded-md px-2 py-1 text-stone-600 hover:bg-stone-50 hover:text-stone-900">
                                 <span class="size-1.5 shrink-0 rounded-full {{ $nadaStatus[$b['status']]['titik'] }}" aria-hidden="true"></span>
-                                <span class="min-w-0 flex-1 truncate">{{ $b['nomor'] }}. {{ $b['judul'] }}</span>
+                                <span class="min-w-0 flex-1 truncate">{{ $labelBagian($b['nomor']) }}. {{ $b['judul'] }}</span>
                                 @if ($b['kurang'] !== [])
                                     <span class="text-[11px] font-semibold text-gold-700">{{ count($b['kurang']) }}</span>
                                 @elseif ($b['periksa'] !== [])

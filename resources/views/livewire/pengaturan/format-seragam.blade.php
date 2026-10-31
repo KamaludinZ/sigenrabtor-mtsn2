@@ -1,5 +1,6 @@
 @use('App\Livewire\Pengaturan\FormatSeragam')
 @use('App\Support\Dokumen\FormatSeragam as AturanFormat')
+@use('App\Support\Dokumen\FormatKakTor')
 
 @php
     $profil = $this->profil;
@@ -91,15 +92,35 @@
     @elseif ($tab === 'susunan')
         @php
             $susunan = $this->susunan;
+            $tahunFormat = (int) \App\Support\Stub\StubData::tahunAktif()['tahun'];
+            $terkunciFormat = \App\Support\Stub\StubData::tahunAktif()['is_locked'];
+            $bawaanFormat = FormatKakTor::bawaan($tahunFormat);
         @endphp
+        {{-- Format KAK/TOR tahun aktif (FormatKakTor): dua format tetap bisa dipakai; kegiatan boleh memilih sendiri di Susun KAK/TOR. --}}
+        <section class="mt-6 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-format-kak" data-testid="format-kak-tahun" data-format="{{ $susunan['format'] }}">
+            <h2 id="judul-format-kak" class="text-sm font-semibold text-stone-900">Format KAK/TOR TA {{ $tahunFormat }}</h2>
+            <p class="mt-0.5 text-xs text-stone-500">Berlaku untuk kegiatan yang tidak memilih format sendiri (pilihan per kegiatan ada di tab Susun KAK/TOR). Tata letak tanda tangan KAK & RAB ikut format ini.</p>
+            <fieldset class="mt-3 grid gap-2 sm:grid-cols-3" @disabled($terkunciFormat)>
+                <legend class="sr-only">Format KAK/TOR</legend>
+                @foreach (['' => ['Bawaan tahun ini', 'Mengikuti tahun: '.FormatKakTor::label($bawaanFormat).' (mulai TA '.FormatKakTor::MULAI_LIMA_BAB.' format 5 bab).'], ...FormatKakTor::FORMAT] as $nilai => [$labelFormat, $keteranganFormat])
+                    <label @class(['flex cursor-pointer gap-2.5 rounded-xl p-3 text-sm ring-1 transition', 'bg-brand-50 ring-brand-300' => $formatTahun === $nilai, 'ring-stone-200 hover:bg-stone-50' => $formatTahun !== $nilai]) data-testid="pilih-format-tahun-{{ $nilai === '' ? 'bawaan' : $nilai }}">
+                        <input type="radio" name="format-tahun" value="{{ $nilai }}" wire:model.live="formatTahun" class="mt-0.5 size-4 accent-brand-700">
+                        <span class="min-w-0"><span class="block font-semibold text-stone-900">{{ $labelFormat }}</span><span class="mt-0.5 block text-xs text-stone-500">{{ $keteranganFormat }}</span></span>
+                    </label>
+                @endforeach
+            </fieldset>
+            @if ($terkunciFormat)
+                <p class="mt-2 flex items-center gap-1.5 text-xs text-stone-500"><x-ui.icon name="lock" class="size-3.5" /> Tahun anggaran terkunci — formatnya hanya bisa dilihat.</p>
+            @endif
+        </section>
         <div class="mt-6 grid gap-6 lg:grid-cols-2" data-testid="susunan-format">
             <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-susunan-kak">
-                <h2 id="judul-susunan-kak" class="text-sm font-semibold text-stone-900">KAK/TOR — {{ count($susunan['kak']) }} bagian</h2>
+                <h2 id="judul-susunan-kak" class="text-sm font-semibold text-stone-900">KAK/TOR — {{ $susunan['label'] }}, {{ count($susunan['kak']) }} bagian</h2>
                 <p class="mt-0.5 text-xs text-stone-500">Urutan baku; isi tiap bagian disusun otomatis dari data kegiatan.</p>
                 <ol class="mt-4 divide-y divide-stone-100 rounded-xl ring-1 ring-stone-200" role="list" data-testid="susunan-kak">
                     @foreach ($susunan['kak'] as $bagian)
                         <li class="flex items-center gap-3 px-3 py-2.5 text-sm" data-bagian="{{ $bagian['nomor'] }}">
-                            <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700 tabular-nums">{{ $bagian['nomor'] }}</span>
+                            <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-700 tabular-nums">{{ $bagian['label'] }}</span>
                             <span class="font-medium text-stone-800">{{ $bagian['judul'] }}</span>
                         </li>
                     @endforeach
@@ -352,7 +373,7 @@
                                 @if ($pratinjau['isi_master'])
                                     @include('livewire.pengaturan.partials.isi-master', ['isiMaster' => $pratinjau['isi_master'], 'modeMaster' => 'isi'])
                                 @else
-                                    <x-dokumen.kak-tor :susunan="$pratinjau['susunan']" :bagian="[1, 2, 3]" :cap="false" />
+                                    <x-dokumen.kak-tor :susunan="$pratinjau['susunan']" :bagian="$pratinjau['susunan']->nomorUntuk('latar_belakang', 'dasar_hukum', 'tujuan')" :cap="false" />
                                 @endif
                             </div>
                         </div>

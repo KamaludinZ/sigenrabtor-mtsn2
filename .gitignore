@@ -28,6 +28,7 @@ Thumbs.db
 
 # Dokumen contoh asli madrasah (berisi nama/NIP pejabat, berukuran besar) — tidak di-commit.
 /REFERENSI/
+/Contoh baru/
 # Berkas kerja sementara NgodingPakeAI & pengaturan lokal agent.
 /.ngodingpakeai/pending.json
 /.ngodingpakeai/summaries.json

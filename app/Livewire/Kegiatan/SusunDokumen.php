@@ -7,6 +7,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Support\Dokumen\CoverDokumen;
 use App\Support\Dokumen\DrafDokumen;
+use App\Support\Dokumen\FormatKakTor;
 use App\Support\Dokumen\IsianSusun;
 use App\Support\Dokumen\JenisDokumen;
 use App\Support\Dokumen\PemeriksaanCetak;
@@ -133,9 +134,9 @@ class SusunDokumen extends Component
 
     public function bukaIsian(int $nomor): void
     {
-        abort_unless(IsianSusun::untuk($nomor) !== [], 404);
+        abort_unless(IsianSusun::untuk($nomor, $this->kak->format) !== [], 404);
         abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — isiannya hanya bisa dilihat.');
-        $this->isian = IsianSusun::isian($this->dataKegiatan, $nomor);
+        $this->isian = IsianSusun::isian($this->dataKegiatan, $nomor, $this->kak->format);
         $this->versiIsian = UbahDataKegiatan::versi($this->dataKegiatan);
         $this->resetErrorBag();
         $this->teksTerbuka = null;
@@ -156,7 +157,7 @@ class SusunDokumen extends Component
         $this->resetErrorBag();
 
         try {
-            $hasil = UbahDataKegiatan::ubah($this->kegiatanId, IsianSusun::kiriman($nomor, $this->isian), StubData::currentUser(), $this->versiIsian);
+            $hasil = UbahDataKegiatan::ubah($this->kegiatanId, IsianSusun::kiriman($nomor, $this->isian, $this->kak->format), StubData::currentUser(), $this->versiIsian);
         } catch (ValidationException $e) {
             foreach ($e->errors() as $kolom => $pesan) {
                 $this->addError("isian.{$kolom}", $pesan[0]);
@@ -179,7 +180,7 @@ class SusunDokumen extends Component
 
         $this->muatUlang();
         $this->isianTerbuka = null;
-        $this->dispatch('notify', message: $hasil['diubah'] === [] ? $hasil['pesan'] : 'Bagian '.$nomor.' diperbarui — susunan KAK/TOR mengikuti isian baru.', type: $hasil['diubah'] === [] ? 'info' : 'success');
+        $this->dispatch('notify', message: $hasil['diubah'] === [] ? $hasil['pesan'] : FormatKakTor::sebutan($this->kak->format, $nomor).' diperbarui — susunan KAK/TOR mengikuti isian baru.', type: $hasil['diubah'] === [] ? 'info' : 'success');
     }
 
     /** Buka penyunting satu teks baku: teks tersimpan atau teks baku berpenanda {nama_kegiatan}. */
@@ -251,12 +252,36 @@ class SusunDokumen extends Component
 
         $this->muatUlang();
         $this->teksTerbuka = null;
-        $label = TeksKhusus::BIDANG[$kunci][1];
+        $label = TeksKhusus::label($kunci, $this->kak->format);
         $this->dispatch('notify', ...match (true) {
             $hasil['diubah'] === [] => ['message' => "{$label} tidak berubah.", 'type' => 'info'],
             TeksKhusus::disesuaikan($kunci, $this->dataKegiatan) => ['message' => "{$label} disesuaikan untuk kegiatan ini.", 'type' => 'success'],
             default => ['message' => "{$label} kembali memakai teks baku.", 'type' => 'success'],
         });
+    }
+
+    /**
+     * Pilih format susunan KAK/TOR kegiatan ini (FormatKakTor; '' = ikut format tahun anggaran) lewat UbahDataKegiatan —
+     * data kegiatan lain tidak berubah, bagian yang tampil langsung menyesuaikan.
+     */
+    public function ubahFormat(string $format): void
+    {
+        abort_unless($format === '' || FormatKakTor::sah($format), 404);
+        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — formatnya hanya bisa dilihat.');
+        $this->isianTerbuka = null;
+        $this->teksTerbuka = null;
+
+        try {
+            $hasil = UbahDataKegiatan::ubah($this->kegiatanId, ['format_dokumen' => $format === '' ? null : $format], StubData::currentUser(), UbahDataKegiatan::versi($this->dataKegiatan));
+        } catch (ValidationException|PengaturanBerubah|AuthorizationException $e) {
+            $this->muatUlang();
+            $this->dispatch('notify', message: $e instanceof ValidationException ? collect($e->errors())->flatten()->first() : $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $this->muatUlang();
+        $this->dispatch('notify', message: $hasil['diubah'] === [] ? 'Format KAK/TOR tidak berubah.' : 'Format KAK/TOR kini '.FormatKakTor::label($this->kak->format).' — susunan dokumen menyesuaikan.', type: $hasil['diubah'] === [] ? 'info' : 'success');
     }
 
     /** Tambah satu rincian ke RAB sumber dana yang ditampilkan (RincianRab: dirapikan & diperiksa seperti halaman RAB). */

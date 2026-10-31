@@ -34,7 +34,7 @@ final class PenampilDokumen
             $isi[] = [
                 'kunci' => "kak-{$b['nomor']}",
                 'lembar' => 'kak',
-                'label' => "{$b['nomor']}. {$b['judul']}",
+                'label' => SusunanKak::labelBagian($b).". {$b['judul']}",
                 'jangkar' => "cetak-kak-bagian-{$b['nomor']}",
                 'kurang' => count($kak->kurangPerBagian[$b['nomor']] ?? []),
             ];

@@ -3,6 +3,7 @@
 namespace App\Support\Rab;
 
 use App\Support\Dokumen\StatusCetak;
+use App\Support\Dokumen\SusunanKak;
 use App\Support\Dokumen\SusunanRab;
 use App\Support\Dokumen\TabelRab;
 use App\Support\Pengaturan\Nip;
@@ -145,13 +146,30 @@ final class EksporRabExcel
         }
 
         $baris++;
+        // Format 9 bagian: dua kolom (A, D) bergantian. Format 5 bab (Form RAB 2027): Menyetujui di A, Penanggungjawab di D,
+        // Mengetahui di tengah (kolom uraian) tujuh baris di bawahnya (SusunanKak::barisPengesahan).
         $kolomTtd = ['A', 'D'];
-        foreach (array_values($susunan->pengesahan) as $i => $p) {
-            $c = $kolomTtd[$i % 2];
-            $r = $baris + intdiv($i, 2) * 7;
+        $tengah = $denganKode ? 'C' : 'B';
+        $letak = [];
+        if (isset($susunan->pengesahan[0]['baris'])) {
+            foreach (SusunanKak::barisPengesahan($susunan->pengesahan) as $ke => $isiBaris) {
+                foreach ($isiBaris as $i => $p) {
+                    $letak[] = [$p, count($isiBaris) === 1 ? $tengah : $kolomTtd[$i % 2], $ke];
+                }
+            }
+        } else {
+            foreach (array_values($susunan->pengesahan) as $i => $p) {
+                $letak[] = [$p, $kolomTtd[$i % 2], intdiv($i, 2)];
+            }
+        }
+        foreach ($letak as [$p, $c, $ke]) {
+            $r = $baris + $ke * 7;
             $isi = [$p['tempat_tanggal'] ?? '', $p['peran'], $p['jabatan'], '', '', $p['nama'] ?? '…', $p['nip'] ? 'NIP. '.Nip::format($p['nip']) : ''];
             foreach ($isi as $j => $teks) {
                 $lembar->setCellValueExplicit($c.($r + $j), $teks, DataType::TYPE_STRING);
+                if ($c === $tengah) {
+                    $lembar->getStyle($c.($r + $j))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                }
             }
             $lembar->getStyle($c.($r + 5))->getFont()->setBold(true)->setUnderline(true);
         }

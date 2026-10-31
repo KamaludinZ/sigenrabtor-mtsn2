@@ -259,7 +259,7 @@
                     </div>
                 @endif
                 <div class="rounded-b-2xl bg-stone-50 p-3 sm:p-6" wire:loading.class="opacity-60" wire:target="contoh">
-                    <x-dokumen.kak-tor :susunan="$susunan" :bagian="[1, 2]" />
+                    <x-dokumen.kak-tor :susunan="$susunan" :bagian="$susunan->nomorUntuk('latar_belakang', 'dasar_hukum')" />
                     <p class="mx-auto mt-3 max-w-[210mm] text-center text-xs text-stone-500">
                         Paragraf khusus di antara paragraf baku dan kalimat penutup diisi leading di Data Kegiatan; pratinjau lengkap ada di tombol <em>Pratinjau</em> tiap kegiatan.
                     </p>

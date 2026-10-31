@@ -24,6 +24,15 @@ final class TahunDokumen
         'tempat' => [['kak'], 'KAK', '5. Tempat Pelaksanaan', 'kak-bagian-5'],
     ];
 
+    /** Letak isian di format 5 bab (FormatKakTor; null = tidak dicetak format itu). */
+    private const ISIAN_LIMA_BAB = [
+        'latar_belakang' => [['kak'], 'KAK', 'I.A Latar Belakang', 'kak-bagian-1'],
+        'tujuan' => [['kak'], 'KAK', 'I.C Maksud dan Tujuan', 'kak-bagian-1'],
+        'sasaran' => null,
+        'uraian_pelaksanaan' => [['kak'], 'KAK', 'III.2 Pelaksanaan', 'kak-bagian-3'],
+        'tempat' => [['kak'], 'KAK', 'II.3 Waktu dan Tempat', 'kak-pelaksanaan'],
+    ];
+
     private const POLA_TAHUN = '/\b(?:19|20)\d{2}\b/u';
 
     /**
@@ -54,19 +63,24 @@ final class TahunDokumen
         if ($sebutan) {
             $tambah('kak-pembiayaan', ['kak', 'rab'], 'KAK & RAB', 'Sebutan sumber dana', $sebutan, 'baku');
         }
-        $jadwal = collect($kak->bagian)->firstWhere('nomor', 7)['isi'] ?? [];
+        // Tabel jadwal hanya ada di format 9 bagian (bagian 7).
+        $nomorJadwal = $kak->nomorUntuk('jadwal')[0] ?? null;
+        $jadwal = $nomorJadwal === null ? [] : (collect($kak->bagian)->firstWhere('nomor', $nomorJadwal)['isi'] ?? []);
         $waktu = collect($jadwal)->where('jenis', 'jadwal')->flatMap(fn (array $b) => array_column($b['baris'], 'waktu'))->filter()->unique()->values()->all();
         if ($waktu !== []) {
-            $tambah('kak-bagian-7', ['kak'], 'KAK', '7. Jadwal Kegiatan', implode('; ', $waktu), 'baku');
+            $tambah("kak-bagian-{$nomorJadwal}", ['kak'], 'KAK', "{$nomorJadwal}. Jadwal Kegiatan", implode('; ', $waktu), 'baku');
         }
 
-        // Isian bebas yang menyebut tahun.
-        foreach (self::ISIAN as $kolom => [$di, $dokumen, $bagian, $jangkar]) {
+        // Isian bebas yang menyebut tahun (letaknya menurut format KAK/TOR).
+        $isian = $kak->format === FormatKakTor::LIMA_BAB ? array_filter(array_merge(self::ISIAN, self::ISIAN_LIMA_BAB)) : self::ISIAN;
+        foreach ($isian as $kolom => [$di, $dokumen, $bagian, $jangkar]) {
             $tambah($jangkar, $di, $dokumen, $bagian, trim((string) ($kegiatan[$kolom] ?? '')), 'isian');
         }
         foreach (TeksKhusus::dari($kegiatan) as $kunci => $teks) {
-            [$nomor, $label] = TeksKhusus::BIDANG[$kunci];
-            $tambah("kak-bagian-{$nomor}", ['kak'], 'KAK', $label, implode(' ', (array) $teks), 'isian');
+            if (($nomor = FormatKakTor::nomor($kak->format, $kunci)) === null) {
+                continue;
+            }
+            $tambah("kak-bagian-{$nomor}", ['kak'], 'KAK', TeksKhusus::label($kunci, $kak->format), implode(' ', (array) $teks), 'isian');
         }
         foreach ($rab->anggaran?->hasil->rincian ?? [] as $item) {
             $tambah('rab-rincian', ['rab'], 'RAB', 'Rincian: '.mb_strimwidth((string) $item['uraian'], 0, 60, '…'), (string) $item['uraian'], 'isian');

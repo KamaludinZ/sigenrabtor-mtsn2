@@ -1,5 +1,6 @@
 // Penyusun berkas Word (.docx) KAK/TOR di peramban dari data pratinjau (`kegiatan.pratinjau.data`, DataPratinjau): cover
-// (kotak teks cover urut posisi), sembilan bagian KAK/TOR (paragraf rata kanan-kiri, subjudul, daftar bernomor, tabel
+// (kotak teks cover urut posisi), bagian KAK/TOR menurut formatnya (9 bagian / 5 bab, judul ber-`label`; paragraf rata
+// kanan-kiri, subjudul, daftar bernomor, tabel
 // matrik tahapan "v" per bulan, tabel jadwal, lembar pengesahan), dan RAB bila lembarnya diminta (kepala, tabel rincian,
 // total & terbilang, mekanisme pembayaran, pengesahan). A4, Times New Roman 12 pt, kaki "Halaman x dari y" + tanda DRAF
 // selama dokumen belum siap. Dimuat terpisah (import dinamis) hanya saat tombol Word ditekan — pustaka `docx` besar.
@@ -21,6 +22,8 @@ import {
     VerticalAlign,
     WidthType,
 } from 'docx';
+
+import { barisPengesahan } from './pengesahan.js';
 
 const FONT = 'Times New Roman';
 const UKURAN = 24; // setengah poin: 12 pt
@@ -114,19 +117,32 @@ function jadwal(blok) {
 }
 
 function pengesahan(kolom) {
+    if (!kolom.length) {
+        return [];
+    }
     const isi = (ttd) => [
         paragraf(ttd.tempat_tanggal ?? '', { alignment: AlignmentType.CENTER, spacing: { after: 0 } }),
         paragraf(ttd.peran ?? '', { alignment: AlignmentType.CENTER, spacing: { after: 0 } }),
         paragraf([run(ttd.jabatan ?? '', { bold: true })], { alignment: AlignmentType.CENTER, spacing: { after: 1200 } }),
         paragraf([run(ttd.nama ?? '( …………………………… )', ttd.nama ? { bold: true, underline: {} } : { color: '78716C' })], { alignment: AlignmentType.CENTER, spacing: { after: 0 } }),
-        paragraf(`NIP. ${ttd.nip ?? '……………………'}`, { alignment: AlignmentType.CENTER, spacing: { after: 0 } }),
+        ...(ttd.tanpa_nip ? [] : [paragraf(`NIP. ${ttd.nip ?? '……………………'}`, { alignment: AlignmentType.CENTER, spacing: { after: 0 } })]),
     ];
-    const lebar = Math.round(LEBAR_ISI / Math.max(1, kolom.length));
+    const daftarBaris = barisPengesahan(kolom);
+    const jumlahKolom = Math.max(...daftarBaris.map((b) => b.length));
+    const lebar = Math.round(LEBAR_ISI / jumlahKolom);
+    const rows = [];
+    daftarBaris.forEach((isiBaris, i) => {
+        if (i > 0) {
+            rows.push(new TableRow({ cantSplit: true, children: [new TableCell({ children: [paragraf('')], columnSpan: jumlahKolom, borders: garisTabel(TANPA_GARIS) })] }));
+        }
+        const span = isiBaris.length === 1 && jumlahKolom > 1 ? { columnSpan: jumlahKolom } : {};
+        rows.push(new TableRow({ cantSplit: true, children: isiBaris.map((ttd) => new TableCell({ children: isi(ttd), borders: garisTabel(TANPA_GARIS), ...span })) }));
+    });
 
     return [paragraf(''), new Table({
-        rows: [new TableRow({ cantSplit: true, children: kolom.map((ttd) => new TableCell({ children: isi(ttd), borders: garisTabel(TANPA_GARIS) })) })],
+        rows,
         width: { size: LEBAR_ISI, type: WidthType.DXA },
-        columnWidths: kolom.map(() => lebar),
+        columnWidths: Array(jumlahKolom).fill(lebar),
         layout: TableLayoutType.FIXED,
         borders: garisTabel(TANPA_GARIS),
     })];
@@ -137,7 +153,7 @@ function blokKak(blok) {
         case 'paragraf':
             return [paragraf(blok.teks, { alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 709 } })];
         case 'subjudul':
-            return [paragraf([run(blok.teks, { bold: true })], { spacing: { before: 120, after: 80 } })];
+            return [paragraf([run(blok.teks, { bold: true })], { spacing: { before: 120, after: 80 }, ...((blok.tingkat ?? 1) > 1 ? { indent: { left: 360 } } : {}) })];
         case 'daftar':
             return daftar(blok.butir ?? [], blok.bernomor !== false);
         case 'kosong':
@@ -194,7 +210,7 @@ function cover(data) {
 function kak(data, judul) {
     const anak = [];
     data.bagian.forEach((bagian) => {
-        anak.push(paragraf([run(`${bagian.nomor}. ${String(bagian.judul).toUpperCase()}`, { bold: true })], { spacing: { before: 240, after: 120 }, keepNext: true }));
+        anak.push(paragraf([run(`${bagian.label ?? bagian.nomor}. ${String(bagian.judul).toUpperCase()}`, { bold: true })], { spacing: { before: 240, after: 120 }, keepNext: true }));
         bagian.isi.forEach((blok) => anak.push(...blokKak(blok)));
     });
 

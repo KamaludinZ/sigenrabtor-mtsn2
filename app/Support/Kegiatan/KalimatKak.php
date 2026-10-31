@@ -81,6 +81,85 @@ class KalimatKak
         return 'Pengarah kegiatan '.self::tanpaAwalanKegiatan($nama).' adalah Kepala '.$madrasah.'.';
     }
 
+    /** Format 5 bab I.C "Maksud dan Tujuan": "Maksud dan tujuan dilaksanakannya kegiatan {nama} adalah untuk {tujuan}". */
+    public static function maksudTujuan(string $nama, string $tujuan): string
+    {
+        $tujuan = self::kalimat($tujuan);
+        $tujuan = preg_match('/^untuk\s/iu', $tujuan) ? $tujuan : 'untuk '.mb_strtolower(mb_substr($tujuan, 0, 1)).mb_substr($tujuan, 1);
+
+        return 'Maksud dan tujuan dilaksanakannya kegiatan '.self::tanpaAwalanKegiatan($nama).' adalah '.$tujuan;
+    }
+
+    /** Format 5 bab II.2 "Peserta": "{jenis peserta} sebanyak {n} orang." (salah satu saja bila yang lain kosong). */
+    public static function peserta(?int $jumlah, ?string $jenis): ?string
+    {
+        $jenis = trim((string) $jenis);
+
+        return match (true) {
+            $jumlah > 0 && $jenis !== '' => mb_strtoupper(mb_substr($jenis, 0, 1)).mb_substr(rtrim($jenis, '. '), 1)." sebanyak {$jumlah} orang.",
+            $jumlah > 0 => "{$jumlah} orang peserta.",
+            $jenis !== '' => mb_strtoupper(mb_substr($jenis, 0, 1)).mb_substr(rtrim($jenis, '. '), 1).'.',
+            default => null,
+        };
+    }
+
+    /**
+     * Format 5 bab II.3 "Waktu dan Tempat": "Pelaksanaan kegiatan {nama} dilaksanakan pada {rentang tanggal} bertempat di
+     * {tempat}." — bagian yang belum diisi tidak disebut (null bila keduanya kosong).
+     */
+    public static function waktuTempat(string $nama, ?CarbonImmutable $mulai, ?CarbonImmutable $selesai, string $tempat): ?string
+    {
+        $waktu = $mulai && $selesai ? ' dilaksanakan pada '.JadwalPelaksanaan::teksRentang($mulai, $selesai) : '';
+        $tempat = trim($tempat) !== '' ? ' bertempat di '.rtrim(trim($tempat), '.') : '';
+
+        return $waktu === '' && $tempat === '' ? null : 'Pelaksanaan kegiatan '.self::tanpaAwalanKegiatan($nama).$waktu.$tempat.'.';
+    }
+
+    /**
+     * Format 5 bab III.2 "Pelaksanaan": "Kegiatan {nama} akan dilaksanakan selama {n} hari sesuai dengan jadwal yang sudah
+     * ditetapkan." disusul uraian bentuk pelaksanaan bila ada.
+     */
+    public static function pelaksanaanLama(string $nama, int $lamaHari, ?string $uraian = null): string
+    {
+        $kalimat = 'Kegiatan '.self::tanpaAwalanKegiatan($nama)." akan dilaksanakan selama {$lamaHari} hari sesuai dengan jadwal yang sudah ditetapkan.";
+        if (filled($uraian = trim((string) $uraian))) {
+            $kalimat .= ' '.mb_strtoupper(mb_substr($uraian, 0, 1)).mb_substr(rtrim($uraian, '. '), 1).'.';
+        }
+
+        return $kalimat;
+    }
+
+    /** Format 5 bab II.5a "Penanggung jawab": kepala madrasah. */
+    public static function penanggungJawab(string $nama, string $madrasah): string
+    {
+        return 'Penanggung jawab kegiatan '.self::tanpaAwalanKegiatan($nama).' adalah Kepala '.$madrasah.'.';
+    }
+
+    /** Format 5 bab II.6 "Narasumber / Fasilitator dan Materi" (teks baku; disesuaikan per kegiatan). */
+    public static function narasumber(string $nama, string $madrasah): string
+    {
+        return 'Narasumber/fasilitator kegiatan '.self::tanpaAwalanKegiatan($nama).' adalah tim internal '.$madrasah.' sesuai materi kegiatan.';
+    }
+
+    /** Format 5 bab IV.1 "Output" (teks baku; disesuaikan per kegiatan). */
+    public static function output(string $nama): string
+    {
+        return 'Terlaksananya kegiatan '.self::tanpaAwalanKegiatan($nama).' bagi peserta.';
+    }
+
+    /** Format 5 bab IV.2 "Outcome" (teks baku; disesuaikan per kegiatan). */
+    public static function outcome(string $nama): string
+    {
+        return 'Terwujudnya peningkatan pengetahuan dan keterampilan peserta melalui kegiatan '.self::tanpaAwalanKegiatan($nama).' secara maksimal.';
+    }
+
+    /** Format 5 bab V "Penutup". */
+    public static function penutup(string $nama, string $madrasahSingkat): string
+    {
+        return 'Demikianlah, Kerangka Acuan Kerja (KAK) atau Term of Reference (TOR) pelaksanaan kegiatan '.self::tanpaAwalanKegiatan($nama)
+            .' di lingkungan '.$madrasahSingkat.' telah kami susun sebagai pengajuan anggaran kegiatan dimaksud.';
+    }
+
     /** Isian bebas sebagai lanjutan kalimat: spasi dirapikan dan diakhiri titik. */
     private static function kalimat(string $teks): string
     {

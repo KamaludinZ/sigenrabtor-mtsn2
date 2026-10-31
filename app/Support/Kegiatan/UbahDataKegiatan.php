@@ -35,11 +35,11 @@ final class UbahDataKegiatan
         'nama_kegiatan', 'nama_kegiatan_cover', 'cover_manual', 'latar_belakang', 'tujuan', 'sasaran', 'tanggal_dokumen',
         ...SimpanPelaksanaan::ISIAN,
         'leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'budaya_mutu',
-        'konteks', 'sumber_dana', 'data_pagu_id', 'panitia', 'teks_khusus',
+        'konteks', 'sumber_dana', 'data_pagu_id', 'panitia', 'teks_khusus', 'format_dokumen',
     ];
 
     /** Bagian di luar PerbaikanKegiatan::BAGIAN untuk ringkasan bagian yang berubah. */
-    private const BAGIAN_LAIN = ['konteks' => 'Catatan konteks', 'data_pagu_id' => 'Sumber dana & pagu', 'teks_khusus' => 'Teks KAK/TOR yang disesuaikan'];
+    private const BAGIAN_LAIN = ['konteks' => 'Catatan konteks', 'data_pagu_id' => 'Sumber dana & pagu', 'teks_khusus' => 'Teks KAK/TOR yang disesuaikan', 'format_dokumen' => 'Format KAK/TOR'];
 
     /**
      * Sidik data kegiatan tersimpan — berubah bila kegiatan diubah di tempat lain.
@@ -129,7 +129,7 @@ final class UbahDataKegiatan
         if (array_intersect(array_keys($isian), SimpanPelaksanaan::ISIAN) !== []) {
             $hasil += SimpanPelaksanaan::rapikan($isian, $tersimpan);
         }
-        foreach (['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'data_pagu_id'] as $k) {
+        foreach (['leading', 'kode_rktm', 'kode_sk', 'kode_iksk', 'kode_edm', 'data_pagu_id', 'format_dokumen'] as $k) {
             if ($ada($k)) {
                 $hasil[$k] = $kosongNull($isian[$k]);
             }

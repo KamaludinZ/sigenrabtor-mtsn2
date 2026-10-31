@@ -98,7 +98,7 @@ final class ValidasiPejabat
         $peringatan = [];
         $kosong = [];
         foreach ($kolom as $i => $k) {
-            $peran = rtrim($k['peran'], ',');
+            $peran = $k['sebutan'] ?? rtrim($k['peran'], ',');
             if (blank($k['nama'])) {
                 $kosong[] = $peran;
 
@@ -114,7 +114,7 @@ final class ValidasiPejabat
                 if (blank($l['nama'])) {
                     continue;
                 }
-                $lain = rtrim($l['peran'], ',');
+                $lain = $l['sebutan'] ?? rtrim($l['peran'], ',');
                 if (filled($k['nip']) && Nip::bersihkan($k['nip']) === Nip::bersihkan($l['nip']) && self::kunciNama($k['nama']) !== self::kunciNama($l['nama'])) {
                     $gagal[] = "{$peran} dan {$lain} memakai NIP yang sama untuk nama berbeda";
                 } elseif (self::kunciNama($k['nama']) === self::kunciNama($l['nama'])) {

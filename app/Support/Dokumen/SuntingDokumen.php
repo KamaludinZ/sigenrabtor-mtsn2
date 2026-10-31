@@ -21,7 +21,10 @@ use RuntimeException;
  */
 final class SuntingDokumen
 {
-    /** Kunci → [nomor bagian KAK/TOR, asal isian|teks_khusus, petunjuk di penyunting]. */
+    /**
+     * Kunci → [nomor bagian KAK/TOR di format asalnya (format 9 bagian; bidang khusus format 5 bab: nomor bab), asal
+     * isian|teks_khusus, petunjuk di penyunting]. Bagian tempatnya per format lewat FormatKakTor.
+     */
     public const BIDANG = [
         'latar_belakang' => [1, 'isian', 'Paragraf khusus kegiatan ini — tercetak di antara paragraf baku dan kalimat penutup. Kosongkan untuk menghapusnya.'],
         'tujuan' => [3, 'isian', 'Tercetak "Kegiatan … bertujuan …" — tulis lanjutan kalimatnya.'],
@@ -31,11 +34,15 @@ final class SuntingDokumen
         'analisis_hasil' => [4, 'teks_khusus', 'Butir pertama pelaporan (4c). Tulis {nama_kegiatan} agar diisi nama kegiatan. Kosongkan untuk kembali ke teks baku.'],
         'tempat' => [5, 'isian', 'Tercetak "Kegiatan … bertempat di …".'],
         'pengarah' => [6, 'teks_khusus', 'Kalimat 6b. Tulis {nama_kegiatan} agar diisi nama kegiatan. Kosongkan untuk kembali ke teks baku.'],
+        'penanggung_jawab' => [2, 'teks_khusus', 'Kalimat II.5a. Tulis {nama_kegiatan} agar diisi nama kegiatan. Kosongkan untuk kembali ke teks baku.'],
+        'narasumber' => [2, 'teks_khusus', 'Narasumber/fasilitator beserta materinya. Tulis {nama_kegiatan} agar diisi nama kegiatan. Kosongkan untuk kembali ke teks baku.'],
+        'output' => [4, 'teks_khusus', 'Hasil langsung kegiatan (IV.1). Tulis {nama_kegiatan} agar diisi nama kegiatan. Kosongkan untuk kembali ke teks baku.'],
+        'outcome' => [4, 'teks_khusus', 'Dampak yang diharapkan (IV.2). Tulis {nama_kegiatan} agar diisi nama kegiatan. Kosongkan untuk kembali ke teks baku.'],
     ];
 
-    public static function label(string $kunci): string
+    public static function label(string $kunci, string $format = FormatKakTor::SEMBILAN_BAGIAN): string
     {
-        return self::BIDANG[$kunci][1] === 'teks_khusus' ? TeksKhusus::BIDANG[$kunci][1] : IsianSusun::KOLOM[$kunci][0];
+        return self::BIDANG[$kunci][1] === 'teks_khusus' ? TeksKhusus::label($kunci, $format) : IsianSusun::KOLOM[$kunci][0];
     }
 
     /** Jenis isian penyunting: teks (satu baris), uraian (paragraf), daftar (satu butir per baris). */
@@ -69,23 +76,23 @@ final class SuntingDokumen
         return self::BIDANG[$kunci][2];
     }
 
-    /** @return list<string> Kunci bidang satu bagian KAK/TOR. */
-    public static function untukBagian(int $nomor): array
+    /** @return list<string> Kunci bidang satu bagian KAK/TOR format itu (urut BIDANG). */
+    public static function untukBagian(int $nomor, string $format = FormatKakTor::SEMBILAN_BAGIAN): array
     {
-        return array_keys(array_filter(self::BIDANG, fn (array $b) => $b[0] === $nomor));
+        return array_values(array_intersect(array_keys(self::BIDANG), FormatKakTor::isi($format, $nomor)));
     }
 
     /**
      * Bidang bagian ini yang belum tampil di dokumen (tidak ada blok bersunting itu) — ditawarkan "Tambah …".
      *
-     * @param  array{isi: list<array<string, mixed>>}  $bagian  Satu bagian SusunanKak.
+     * @param  array{nomor: int, isi: list<array<string, mixed>>}  $bagian  Satu bagian SusunanKak.
      * @return list<string>
      */
-    public static function tambahan(array $bagian): array
+    public static function tambahan(array $bagian, string $format = FormatKakTor::SEMBILAN_BAGIAN): array
     {
         $tampil = collect($bagian['isi'])->flatMap(fn (array $b) => [...(isset($b['sunting']) ? [$b['sunting']] : []), ...($b['sunting_butir'] ?? [])])->all();
 
-        return array_values(array_diff(self::untukBagian($bagian['nomor']), $tampil));
+        return array_values(array_diff(self::untukBagian($bagian['nomor'], $format), $tampil));
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Support\Kegiatan;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Rules\KalimatUtuh;
+use App\Support\Dokumen\FormatKakTor;
 use App\Support\Format;
 use App\Support\Master\ValidasiKodeMaster;
 use App\Support\MasterKode;
@@ -73,6 +74,7 @@ final class ValidasiKegiatan
                     $fail($pesan);
                 }
             }],
+            'format_dokumen' => ['nullable', Rule::in(array_keys(FormatKakTor::FORMAT))],
             'konteks' => ['nullable', 'string', 'max:'.DataKonteks::BATAS],
             'sumber_dana' => ['array', 'max:'.count(SumberDana::cases())],
             'sumber_dana.*.sumber' => ['required', 'distinct', Rule::enum(SumberDana::class)],
