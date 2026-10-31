@@ -77,6 +77,13 @@
                     </a>
                     <div class="px-2.5 py-2" data-testid="unduh-word-kak">
                         <p class="text-xs text-stone-500">KAK/TOR (cover & isi) sebagai Word (.docx) untuk disunting lebih lanjut:</p>
+                        <p class="mt-1 text-xs text-stone-600" data-testid="template-word-pratinjau">
+                            @if ($this->templateDipakai['kak'])
+                                Memakai template <span class="font-semibold text-stone-900">{{ $this->templateDipakai['kak']['nama'] }}</span>{{ $this->templateDipakai['kak']['catatan'] ? ' ('.$this->templateDipakai['kak']['catatan'].')' : '' }} — {{ $this->templateDipakai['kak']['label_asal'] }}.
+                            @else
+                                Disusun dari susunan baku ({{ mb_strtolower($this->templateDipakai['format']['label']) }}).
+                            @endif
+                        </p>
                         <x-dokumen.tombol-unduh-word class="mt-1.5" :kegiatan-id="$kegiatanId" :sumber="$sumberAktif" :nama="\App\Support\Dokumen\CetakDokumen::namaBerkas($this->statusCetak, ['cover', 'kak'])" label="Unduh Word KAK/TOR" testid="unduh-word" wire:key="unduh-word-{{ $sumberAktif }}" />
                     </div>
                 </div>
@@ -313,6 +320,9 @@
                         <p class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase print:hidden">
                             {{ $dokumen[$lembar] }}{{ $lembar === 'rab' && $sumberAktif ? ' '.$sumberAktif : '' }}
                             <x-dokumen.kepala-draf :status="$drafLembar" /> <x-dokumen.kepala-tahun :ringkasan="$kepalaTahun($lembar)" :tahun="$tahunDokumen" />
+                            @if ($lembar !== 'rab')
+                                <x-dokumen.kepala-template :template="$this->templateDipakai" :lembar="$lembar" />
+                            @endif
                             <span class="font-normal tracking-normal text-stone-400 normal-case" x-cloak x-show="cetak" x-text="(halaman['{{ $lembar }}'] ?? 1) + ' halaman A4' + ((halaman['{{ $lembar }}'] ?? 1) > 1 ? ' · garis putus-putus = perkiraan batas halaman' : '')"></span>
                         </p>
                         @if ($lembar === 'kak' && $kak->peringatanPagu)

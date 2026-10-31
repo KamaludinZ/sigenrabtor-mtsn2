@@ -57,6 +57,7 @@ final class DataPratinjau
             'sumber' => $kak->sumber,
             'daftar_sumber' => array_keys(AnggaranKegiatan::perSumber($kegiatan)),
             'lembar' => $lembar,
+            'template_dipakai' => TemplateDipakai::untuk($kegiatan, $kak->sumber, $kak->format),
             'template' => ($master = PilihanTemplate::masterKak($kegiatan)) !== null ? ['kak' => $master['id'], 'nama' => $master['nama']] : ['kak' => null, 'nama' => null],
             'dapat_diubah' => $alasanTerkunci === null,
             'alasan_terkunci' => $alasanTerkunci,

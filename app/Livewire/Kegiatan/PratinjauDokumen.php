@@ -19,6 +19,7 @@ use App\Support\Dokumen\SusunanRab;
 use App\Support\Dokumen\TahunDokumen;
 use App\Support\Dokumen\TanggalDokumen;
 use App\Support\Dokumen\TeksCover;
+use App\Support\Dokumen\TemplateDipakai;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\UbahDataKegiatan;
@@ -290,6 +291,13 @@ class PratinjauDokumen extends Component
     public function cover(): array
     {
         return CoverDokumen::untukKegiatan($this->dataKegiatan, $this->kak->sumber) + ['nilai' => TeksCover::nilai($this->dataKegiatan, $this->kak->sumber)];
+    }
+
+    /** Format & template yang dipakai dokumen kegiatan ini (TemplateDipakai) — penanda kepala lembar & panel Unduh. */
+    #[Computed]
+    public function templateDipakai(): array
+    {
+        return TemplateDipakai::untuk($this->dataKegiatan, $this->kak->sumber, $this->kak->format);
     }
 
     public function render()

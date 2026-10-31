@@ -5,9 +5,12 @@ namespace Tests\Feature\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PilihanTemplateRepository;
 use App\Contracts\TemplateDokumenRepository;
+use App\Livewire\Kegiatan\PratinjauDokumen;
 use App\Livewire\Kegiatan\SusunDokumen;
 use App\Support\Dokumen\DaftarTemplate;
+use App\Support\Dokumen\DataPratinjau;
 use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Dokumen\TemplateDipakai;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -108,5 +111,33 @@ class TemplateKegiatanTest extends TestCase
             ->assertSeeHtml('data-testid="pilih-template-kak"')
             ->call('ubahTemplateKak', $id['narasumber'])
             ->assertForbidden();
+    }
+
+    public function test_nama_template_tampil_di_pratinjau(): void
+    {
+        $this->withSession(['stub_role' => 'admin']);
+        $kosong = $this->kegiatanBaru();
+        Livewire::test(PratinjauDokumen::class, ['kegiatan' => $kosong])
+            ->assertSeeHtml('data-testid="kepala-template" data-kepala-lembar="kak" data-format="sembilan_bagian" data-template=""')
+            ->assertSee('Format 9 bagian · Word: susunan baku')
+            ->assertSee('Disusun dari susunan baku (format 9 bagian).')
+            ->assertSee('Cover bawaan');
+
+        $id = $this->siapkan();
+        $kegiatanId = $this->kegiatanBaru(['nama_kegiatan' => 'Workshop Mutu Pembelajaran']);
+        $kegiatan = app(KegiatanRepository::class)->temukan($kegiatanId);
+        $dipakai = TemplateDipakai::untuk($kegiatan);
+        $this->assertSame(['kunci' => 'sembilan_bagian', 'label' => 'Format 9 bagian'], $dipakai['format']);
+        $this->assertSame(['id' => $id['tpm'], 'nama' => 'TPM reguler', 'jenis' => 'KAK+TOR', 'catatan' => 'Versi 1', 'leading' => '1.6', 'asal' => 'default_leading', 'label_asal' => 'default template leading', 'ada_berkas' => true], $dipakai['kak']);
+        $this->assertNull($dipakai['cover']);
+        $this->assertSame($dipakai, DataPratinjau::untuk($kegiatan, null, self::LEADING, ['kak'])['template_dipakai']);
+
+        UbahDataKegiatan::ubah($kegiatanId, ['template_kak' => $id['narasumber'], 'format_dokumen' => 'lima_bab'], self::LEADING);
+        Livewire::test(PratinjauDokumen::class, ['kegiatan' => $kegiatanId])
+            ->assertSeeHtml('data-format="lima_bab" data-template="'.$id['narasumber'].'"')
+            ->assertSee('Format 5 bab · Word: TPM narasumber')
+            ->assertSee('Versi 2 — narasumber eksternal')
+            ->assertSeeHtml('data-testid="template-word-pratinjau"')
+            ->assertSee('dipilih untuk kegiatan ini');
     }
 }
