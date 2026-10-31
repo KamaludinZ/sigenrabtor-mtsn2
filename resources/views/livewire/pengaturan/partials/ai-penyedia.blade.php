@@ -39,15 +39,14 @@
                             <div class="flex justify-between gap-3"><dt class="text-stone-500">Model</dt><dd class="text-right font-mono text-xs text-stone-800">{{ $ai['model'] ?? '—' }}</dd></div>
                             <div class="flex justify-between gap-3"><dt class="text-stone-500">Alamat server</dt><dd class="min-w-0 truncate text-right font-mono text-xs text-stone-800">{{ $ai['base_url'] ?? '—' }}</dd></div>
                             <div class="flex justify-between gap-3"><dt class="text-stone-500">Kunci API</dt><dd class="text-right text-stone-800">{{ ($ai['ada_kunci'] ?? false) ? '•••• tersimpan (terenkripsi)' : 'Belum diisi' }}</dd></div>
-                            <div class="flex justify-between gap-3"><dt class="text-stone-500">Koneksi</dt><dd class="text-right text-stone-500">Belum diuji</dd></div>
                         @endif
                     </dl>
-                    <div class="mt-4 flex flex-wrap gap-2">
+                    <div class="mt-4 flex flex-wrap items-start gap-2">
                         @unless ($pilihTerbuka)
                             <button type="button" wire:click="bukaPilihan" class="btn-secondary px-2.5 py-1.5 text-xs" data-testid="pilih-{{ $kunci }}"><x-ui.icon name="pencil" class="size-3.5" /> {{ $penyedia ? 'Ganti' : 'Pilih penyedia' }}</button>
                         @endunless
-                        @if ($kunci === 'aktif')
-                            <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" disabled title="Sedang disiapkan">Uji koneksi <x-ui.segera /></button>
+                        @if ($penyedia)
+                            @include('livewire.pengaturan.partials.ai-uji-koneksi', ['penyedia' => $penyedia, 'testid' => $kunci])
                         @endif
                     </div>
                 </section>

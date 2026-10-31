@@ -8,7 +8,7 @@
 {{--
     Penyedia API cloud (Claude, OpenAI, Gemini): ringkasan tiap penyedia (model, kunci tersimpan — hanya 4 karakter
     terakhir, peran) dan formulir model, kunci API (terenkripsi, tidak pernah ditampilkan lagi; kosong = tetap), alamat
-    API opsional, dan peran. Uji koneksi menyusul.
+    API opsional, dan peran; Uji koneksi (pengaturan tersimpan) di baris penyedia yang sudah berkunci.
 --}}
 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-penyedia-cloud" data-testid="penyedia-cloud">
     <header class="flex items-start gap-3 border-b border-stone-100 px-5 py-4">
@@ -47,6 +47,12 @@
                         @endunless
                     </div>
                 </div>
+
+                @if (! $terbuka && $adaKunci)
+                    <div class="mt-2 -ml-2.5">
+                        @include('livewire.pengaturan.partials.ai-uji-koneksi', ['penyedia' => $kunci, 'testid' => $kunci])
+                    </div>
+                @endif
 
                 @if ($terbuka)
                     <form wire:submit="simpanCloud" class="mt-4 space-y-4 rounded-xl bg-stone-50/70 p-4 ring-1 ring-stone-200" data-testid="formulir-{{ $kunci }}" x-data="formAi('isianCloud', 'cloud')" x-on:keydown.escape="$wire.batalCloud()">
@@ -104,7 +110,7 @@
                         @endif
 
                         <div class="flex flex-col-reverse gap-2 border-t border-stone-200 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                            <button type="button" class="btn-ghost text-xs" disabled title="Sedang disiapkan">Uji koneksi <x-ui.segera /></button>
+                            <p class="text-xs text-stone-500">Uji koneksi tersedia setelah disimpan.</p>
                             <div class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                 @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'cloud'])
                                 <button type="button" wire:click="batalCloud" class="btn-ghost">Batal</button>

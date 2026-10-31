@@ -106,6 +106,7 @@ export default defineConfig({
             STUB_DRAF_SUNTING_FILE: E2E_DRAF_SUNTING_FILE,
             STUB_RIWAYAT_DOKUMEN_FILE: E2E_RIWAYAT_DOKUMEN_FILE,
             SIRABTOR_CATAT_UNDUHAN: 'false',
+            SIRABTOR_AI_DAFTAR_MODEL: 'tiruan',
             SIRABTOR_WAJIB_MASUK: 'false',
             VITE_HOT_FILE: path.resolve('storage/framework/e2e-tanpa-vite-dev.hot'),
         },

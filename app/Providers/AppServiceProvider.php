@@ -52,6 +52,7 @@ use App\Support\Dokumen\Generasi\GeneratorBerkasServer;
 use App\Support\Dokumen\PembuatPdfChrome;
 use App\Support\Dokumen\PenggabungPdfPoppler;
 use App\Support\Dokumen\PengubahPdfLibreOffice;
+use App\Support\Kegiatan\DaftarModelAiHttp;
 use App\Support\Kegiatan\KlienLlmHttp;
 use App\Support\Kegiatan\PenyusunSaranKalimatLlm;
 use App\Support\Kegiatan\PenyusunUsulanJadwalLlm;
@@ -142,7 +143,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(LeadingRepository::class, StubLeadingRepository::class);
         $this->app->singleton(PenggunaRepository::class, StubPenggunaRepository::class);
         $this->app->singleton(PermohonanAkunRepository::class, StubPermohonanAkunRepository::class);
-        // Usulan AI tiruan; backend mengganti dengan driver Ollama/API cloud sesuai Pengaturan AI.
         // Penyusun AI: tanpa penyedia aktif dijawab tiruan, selain itu lewat layanan LLM (KlienLlm).
         $this->app->singleton(KlienLlm::class, KlienLlmHttp::class);
         $this->app->singleton(PenyusunUsulanJadwal::class, PenyusunUsulanJadwalLlm::class);
@@ -150,7 +150,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PemakaianAiRepository::class, StubPemakaianAiRepository::class);
         $this->app->singleton(RiwayatSaranAiRepository::class, StubRiwayatSaranAiRepository::class);
         $this->app->singleton(PengaturanAiRepository::class, StubPengaturanAiRepository::class);
-        $this->app->singleton(DaftarModelAi::class, StubDaftarModelAi::class);
+        $this->app->singleton(DaftarModelAi::class, fn () => config('sigenrabtor.ai.daftar_model') === 'tiruan' ? new StubDaftarModelAi : new DaftarModelAiHttp);
         $this->app->singleton(PromptAiRepository::class, StubPromptAiRepository::class);
 
         // Konversi PDF (ekspor Monitoring; kelak cetak KAK/RAB & buku) lewat LibreOffice headless.

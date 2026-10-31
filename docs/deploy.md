@@ -344,6 +344,39 @@ butuh HTTPS keluar.
 
 - **Cloud** (Claude, OpenAI, Gemini): tab *Penyedia* → kartu penyedia → model & kunci API → jadikan aktif (opsional
   cadangan). Izinkan HTTPS keluar ke `api.anthropic.com`, `api.openai.com`, atau `generativelanguage.googleapis.com`.
+
+### Menyambungkan Claude (Anthropic)
+
+1. Di [Claude Console](https://platform.claude.com) buat **API key** khusus SIRABTOR (satu kunci per aplikasi, mudah
+   dicabut) dan pasang **batas belanja bulanan** di Billing agar tagihan tidak melebihi anggaran madrasah.
+2. Pengaturan AI → tab *Penyedia* → **API cloud › Claude (Anthropic) › Atur**: tempel kunci (`sk-ant-…`), isi model
+   sementara (mis. `claude-sonnet-5-5`), *Pakai sebagai* = Penyedia aktif, lalu **Simpan**. Kunci disimpan terenkripsi
+   dan hanya 4 karakter terakhirnya yang tampil lagi.
+3. Tab *Model & parameter* → **Muat daftar model**: daftar diambil langsung dari akun Anthropic Anda (hanya model yang
+   boleh dipakai akun itu) beserta nama, ciri kecepatan/biaya, dan panjang konteksnya. Pilih **Pakai** pada model yang
+   diinginkan — pilihan model dan biayanya keputusan madrasah: Haiku paling hemat, Sonnet seimbang, Opus paling cermat.
+4. Kembali ke tab *Penyedia* → **Uji koneksi**. Aplikasi mengirim satu permintaan kecil tanpa data kegiatan; hasilnya
+   (*Terhubung* + lama jawaban, atau jenis galat + sarannya) tampil di kartu penyedia sampai pengaturan diubah lagi.
+   Uji koneksi tidak memakai kuota harian pengguna dan dibatasi 6 kali per menit per admin.
+5. Coba **Buat dengan AI** di tab Kalimat KAK satu kegiatan, lalu periksa Riwayat Saran AI.
+
+Yang sudah ditangani aplikasi sehingga tidak perlu diatur:
+
+- **Parameter per model.** Claude generasi 4.7 ke atas (termasuk Opus/Sonnet/Haiku 5.5) menolak parameter
+  `temperature`, jadi pengaturan *Kreativitas* hanya dikirim ke model yang menerimanya. Model yang selalu berpikir
+  sebelum menjawab (Claude 5.x) diberi upaya berpikir rendah (`effort: low`) dan cadangan token agar jawaban tidak
+  terpotong. Bila penyedia tetap menolak parameter opsional, aplikasi membuangnya lalu mengirim ulang.
+- **Gangguan sementara.** Galat 429 (batas laju), 5xx, 529 (*overloaded*), dan koneksi putus dicoba ulang otomatis
+  paling banyak 2 kali dengan jeda (menghormati `Retry-After`), selama masih dalam batas waktu penyedia. Saldo habis,
+  kunci ditolak, dan model tidak ada tidak dicoba ulang.
+- **Batas waktu.** Seluruh permintaan AI (penyedia aktif + cadangan + percobaan ulang) dibatasi
+  `SIRABTOR_AI_BATAS_PERMINTAAN_DETIK` (bawaan 330, di bawah batas PHP/nginx 360) agar pengguna menerima pesan galat,
+  bukan halaman 504. Batas waktu Claude 60–120 detik sudah cukup.
+- **Pesan galat.** Kunci ditolak (401/403), saldo habis (*credit balance*), model tidak ada (404), penyedia sibuk
+  (5xx/529), dan permintaan ditolak (400 atau model menolak menjawab) masing-masing punya pesan untuk pengguna dan saran
+  untuk admin. Log aplikasi mencatat jenis galat dan *request-id* Anthropic — tidak pernah kunci API maupun isi prompt.
+- **Penyedia cadangan.** Pasang Ollama atau penyedia cloud lain sebagai *Penyedia cadangan*: bila Claude gagal, permintaan
+  langsung dialihkan, dan Claude yang sedang bermasalah dicoba terakhir selama jedanya berjalan.
 - **Ollama lokal** (data kegiatan tidak keluar dari server):
 
   ```bash
@@ -364,7 +397,8 @@ butuh HTTPS keluar.
 3. Data lama masih ada (kegiatan, akun, pengaturan) — bukan data contoh.
 4. `php artisan sigenrabtor:cadangan --daftar` menampilkan set cadangan (sesudah redeploy dengan migrasi: `pra-migrasi`).
 5. Kegiatan → Pratinjau → **Unduh PDF** (Chromium); RAB → **Unduh PDF** (LibreOffice); Buku Dokumen → **Gabung PDF**.
-6. Pengaturan AI → Kalimat KAK → *Buat dengan AI*.
+6. Pengaturan AI → tab *Penyedia* → **Uji koneksi** pada penyedia aktif (dan cadangan) → *Terhubung*; lalu Kalimat KAK →
+   *Buat dengan AI*.
 
 ## 11. Pemecahan masalah
 
@@ -377,7 +411,11 @@ butuh HTTPS keluar.
 | Tautan/aset memakai `http://`, formulir gagal 419 | `APP_URL` harus https & sama dengan domain; `SIRABTOR_PROKSI_TEPERCAYA` terisi; jam server benar. |
 | Unduh PDF gagal "Chrome/Chromium tidak ditemukan" | Image bukan dari `Dockerfile` ini atau `SIRABTOR_CHROME` salah. |
 | Angka PDF RAB memakai koma Inggris | Locale `id_ID.UTF-8` belum dibuat (`locale -a`). |
-| Saran AI "tidak terhubung"/"waktu habis" | Alamat Ollama harus nama host jaringan Docker (`http://ollama:11434`), bukan `localhost`; model besar di CPU butuh batas waktu lebih lama. |
+| Saran AI "tidak terhubung"/"waktu habis" | Alamat Ollama harus nama host jaringan Docker (`http://ollama:11434`), bukan `localhost`; model besar di CPU butuh batas waktu lebih lama. Server tanpa akses internet keluar tidak bisa memakai API cloud. |
+| Uji koneksi Claude "Kunci API ditolak" | Kunci salah/dicabut, atau `APP_KEY` berganti sejak kunci disimpan (kunci terenkripsi tidak bisa dibuka) — tempel ulang kunci di tab Penyedia. |
+| Uji koneksi "Kuota penyedia habis" | Saldo kredit Anthropic habis atau batas belanja tercapai (Console › Billing), atau batas laju akun terlampaui — coba lagi nanti. |
+| Uji koneksi "Model tidak ditemukan" | Nama model salah atau tidak tersedia untuk akun itu — pilih dari **Muat daftar model**. |
+| Uji koneksi "Permintaan ditolak penyedia" | Lihat log aplikasi (`Permintaan ke penyedia AI gagal.` + `rincian` & `permintaan` = request-id) untuk kode galatnya. |
 | Disk penuh | Kurangi `SIRABTOR_CADANGAN_SIMPAN`, pindahkan set lama ke luar server, `docker image prune` (bukan `volume prune`). |
 
 ## Catatan pengujian konfigurasi

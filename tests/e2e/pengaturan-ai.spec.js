@@ -48,6 +48,7 @@ test.describe('Pengaturan AI', () => {
         await expect(lokal.getByTestId('peran-lokal')).toHaveText('Penyedia aktif');
         await expect(page.getByTestId('penyedia-aktif')).toContainText('Ollama (server sekolah)');
         await expect(page.getByTestId('penyedia-aktif')).toContainText('qwen2.5:7b');
+        await expect(page.getByTestId('uji-koneksi-aktif')).toBeVisible();
         await expect(page.getByTestId('ai-belum-dipilih')).toHaveCount(0);
 
         // Pulihkan: data dipakai bersama proyek lain.
@@ -58,6 +59,10 @@ test.describe('Pengaturan AI', () => {
         await formulir.getByTestId('simpan-lokal').click();
         await expect(lokal.getByTestId('peran-lokal')).toHaveText('Tidak dipakai');
         await expect(page.getByTestId('ai-belum-dipilih')).toBeVisible();
+
+        // Uji koneksi tanpa model: kekurangannya dilaporkan tanpa menghubungi server.
+        await lokal.getByTestId('uji-koneksi-ollama').click();
+        await expect(page.getByText('Uji koneksi Ollama (server sekolah) gagal: Konfigurasi belum lengkap.')).toBeVisible();
     });
 
     test('pemilihan penyedia: hanya yang siap bisa dipilih, alur cadangan, lalu pulihkan', async ({ page }) => {

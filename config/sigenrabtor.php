@@ -40,6 +40,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Bantuan AI
+    |--------------------------------------------------------------------------
+    |
+    | `daftar_model`: `penyedia` = daftar model dimuat dari server penyedia (Ollama
+    | /api/tags, API cloud /models); `tiruan` = daftar contoh tanpa koneksi (tes).
+    | `batas_permintaan_detik`: batas waktu seluruh permintaan web yang memanggil AI
+    | (penyedia aktif + cadangan + percobaan ulang) — wajib di bawah batas PHP/nginx
+    | (360 detik di image Docker) agar pengguna menerima pesan galat, bukan 504.
+    |
+    */
+
+    'ai' => [
+        'daftar_model' => env('SIRABTOR_AI_DAFTAR_MODEL', 'penyedia'),
+        'batas_permintaan_detik' => (int) env('SIRABTOR_AI_BATAS_PERMINTAAN_DETIK', 330),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Proksi tepercaya
     |--------------------------------------------------------------------------
     |

@@ -6,8 +6,8 @@ use RuntimeException;
 
 /**
  * Daftar model yang tersedia di satu penyedia AI (PRD F24 "Model"): Ollama — model yang sudah diunduh di server sekolah
- * (/api/tags); API cloud — model yang disarankan untuk menyusun kalimat. Tahap frontend memakai daftar tiruan; backend
- * menggantinya dengan permintaan ke penyedia.
+ * (/api/tags); API cloud — model yang boleh dipakai akun penyedia (/models). Implementasi: DaftarModelAiHttp (server
+ * penyedia) atau StubDaftarModelAi (tiruan untuk tes; config `sigenrabtor.ai.daftar_model`).
  */
 interface DaftarModelAi
 {

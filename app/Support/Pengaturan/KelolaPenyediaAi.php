@@ -4,7 +4,7 @@ namespace App\Support\Pengaturan;
 
 use App\Contracts\PengaturanAiRepository;
 use App\Support\Kegiatan\KesehatanPenyediaAi;
-use App\Support\Kegiatan\KlienLlmHttp;
+use App\Support\Kegiatan\SambunganPenyediaAi;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Crypt;
@@ -60,7 +60,7 @@ final class KelolaPenyediaAi
                     'jenis' => $info['jenis'],
                     'butuh_kunci' => $info['butuh_kunci'],
                     'base_url' => filled($p['base_url'] ?? null) ? (string) $p['base_url'] : null,
-                    'alamat_bawaan' => $info['base_url'] ?? KlienLlmHttp::ALAMAT_RESMI[$kunci] ?? null,
+                    'alamat_bawaan' => $info['base_url'] ?? SambunganPenyediaAi::ALAMAT_RESMI[$kunci] ?? null,
                     'model' => filled($p['model'] ?? null) ? (string) $p['model'] : null,
                     'batas_waktu' => isset($p['batas_waktu']) ? (int) $p['batas_waktu'] : null,
                     'ada_kunci' => (bool) ($p['ada_kunci'] ?? false),
@@ -70,6 +70,8 @@ final class KelolaPenyediaAi
                     'kurang' => $siap['kurang'],
                     // Kegagalan nyata terakhir & jeda failover (KesehatanPenyediaAi); null = sehat.
                     'kesehatan' => KesehatanPenyediaAi::status($kunci),
+                    // Hasil Uji koneksi terakhir untuk pengaturan yang berlaku (UjiKoneksiAi); null = belum diuji.
+                    'uji' => UjiKoneksiAi::terakhir($kunci),
                 ];
             }, array_keys(PenyediaAi::DAFTAR)),
         ];

@@ -20,6 +20,7 @@ use App\Support\Pengaturan\ParameterAi;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\PenyediaAi;
 use App\Support\Pengaturan\PromptAi;
+use App\Support\Pengaturan\UjiKoneksiAi;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
 use Illuminate\Validation\ValidationException;
@@ -381,6 +382,23 @@ class PengaturanAi extends Component
     {
         $this->isianSimulasi['jenis'] = '';
         $this->simpanSimulasi();
+    }
+
+    /** Uji koneksi satu penyedia dengan pengaturan tersimpan (UjiKoneksiAi); hasilnya tampil di kartu penyedia. */
+    public function ujiKoneksi(string $penyedia): void
+    {
+        abort_unless(isset(PenyediaAi::DAFTAR[$penyedia]), 404);
+        try {
+            $hasil = UjiKoneksiAi::uji($penyedia, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+
+            return;
+        }
+
+        $this->dispatch('notify', type: $hasil['berhasil'] ? 'success' : 'error', message: $hasil['berhasil']
+            ? "Koneksi {$hasil['nama']} berhasil — {$hasil['pesan']}"
+            : "Uji koneksi {$hasil['nama']} gagal: {$hasil['judul']}.");
     }
 
     /** Muat daftar model penyedia (DaftarModelAi); kegagalan tampil di kartu modelnya. */

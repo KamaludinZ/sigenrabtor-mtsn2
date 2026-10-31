@@ -15,7 +15,9 @@ final class KegagalanAi
         'waktu_habis' => ['Waktu tunggu habis', 'AI terlalu lama menjawab. Coba lagi, atau persingkat instruksi.', 'Naikkan batas waktu server sekolah atau pakai model yang lebih kecil.', true],
         'kunci_ditolak' => ['Kunci API ditolak', 'Penyedia AI menolak permintaan ini. Hubungi admin madrasah.', 'Kunci API tidak sah atau kedaluwarsa — ganti kunci di tab Penyedia.', false],
         'kuota_penyedia' => ['Kuota penyedia habis', 'Penyedia AI sedang membatasi permintaan. Coba lagi nanti.', 'Saldo/kuota akun penyedia cloud habis atau permintaan terlalu rapat.', true],
+        'penyedia_sibuk' => ['Penyedia AI sedang sibuk', 'Layanan AI sedang sibuk atau terganggu. Coba lagi beberapa saat lagi.', 'Gangguan di server penyedia (beban tinggi atau galat internal; di server sekolah bisa karena memori tidak cukup untuk model). Biasanya pulih sendiri — pasang penyedia cadangan agar permintaan tetap terlayani.', true],
         'model_tidak_ada' => ['Model tidak ditemukan', 'Model AI yang diatur tidak tersedia. Hubungi admin madrasah.', 'Model belum diunduh di server (ollama pull) atau namanya salah — periksa tab Model & parameter.', false],
+        'permintaan_ditolak' => ['Permintaan ditolak penyedia', 'Penyedia AI menolak permintaan ini. Coba ubah instruksi, atau hubungi admin madrasah.', 'Penyedia menolak isi atau parameter permintaan (mis. filter konten, parameter yang tidak didukung model, atau pengaturan akun penyedia). Lihat kode galat di log aplikasi, lalu coba model lain.', false],
         'jawaban_rusak' => ['Jawaban tidak terbaca', 'AI memberi jawaban yang tidak bisa dibaca. Coba lagi.', 'Model mungkin terlalu kecil untuk format jawaban; coba model lain.', true],
     ];
 

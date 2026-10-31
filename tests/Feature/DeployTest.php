@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Providers\AppServiceProvider;
+use App\Support\Pengaturan\AturanPenyediaAi;
 use Illuminate\Http\Middleware\TrustProxies;
 use Tests\TestCase;
 
@@ -67,13 +68,17 @@ class DeployTest extends TestCase
         $ini = parse_ini_file("{$akar}/docker/php/php.ini");
         $this->assertGreaterThanOrEqual(10, (int) $ini['upload_max_filesize']);
         $this->assertGreaterThan(300, (int) $ini['max_execution_time']);
+        // Seluruh permintaan AI (aktif + cadangan + coba ulang) selesai sebelum PHP/nginx memutus, dan tetap memberi
+        // penyedia batas waktu terpanjangnya.
+        $this->assertLessThan((int) $ini['max_execution_time'], config('sigenrabtor.ai.batas_permintaan_detik'));
+        $this->assertGreaterThan(AturanPenyediaAi::BATAS_WAKTU[1], config('sigenrabtor.ai.batas_permintaan_detik'));
         $nginx = (string) file_get_contents("{$akar}/docker/nginx/default.conf");
         $this->assertMatchesRegularExpression('/fastcgi_read_timeout (3[1-9]\d|[4-9]\d\d)s;/', $nginx);
         $this->assertStringContainsString('client_max_body_size 25m;', $nginx);
 
         // Contoh variabel lingkungan memuat semua kunci yang dibaca konfigurasi deploy.
         $contoh = (string) file_get_contents("{$akar}/docker/env.produksi.contoh");
-        foreach (['APP_KEY=', 'APP_URL=', 'DB_CONNECTION=pgsql', 'SIRABTOR_PROKSI_TEPERCAYA=', 'SIRABTOR_MODE_DEMO=', 'SIRABTOR_WAJIB_MASUK=', 'SIRABTOR_PDF_PERENDER=chrome', 'SESSION_SECURE_COOKIE=true'] as $kunci) {
+        foreach (['APP_KEY=', 'APP_URL=', 'DB_CONNECTION=pgsql', 'SIRABTOR_AI_BATAS_PERMINTAAN_DETIK=', 'SIRABTOR_PROKSI_TEPERCAYA=', 'SIRABTOR_MODE_DEMO=', 'SIRABTOR_WAJIB_MASUK=', 'SIRABTOR_PDF_PERENDER=chrome', 'SESSION_SECURE_COOKIE=true'] as $kunci) {
             $this->assertStringContainsString($kunci, $contoh);
         }
     }
@@ -145,4 +150,3 @@ class DeployTest extends TestCase
         $this->assertArrayNotHasKey('DB_PASSWORD', $image);
     }
 }
-

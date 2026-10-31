@@ -8,7 +8,7 @@
 
 {{--
     Konfigurasi penyedia lokal (Ollama di server sekolah): ringkasan tersimpan + formulir alamat server, model, batas waktu,
-    dan peran (aktif/cadangan/tidak dipakai). Uji koneksi menyusul.
+    dan peran (aktif/cadangan/tidak dipakai); Uji koneksi memakai pengaturan tersimpan (tampil di ringkasan).
 --}}
 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-penyedia-lokal" data-testid="penyedia-lokal" wire:key="penyedia-lokal-{{ $lokalTerbuka ? 'ubah' : 'lihat' }}">
     <header class="flex flex-wrap items-start justify-between gap-3 border-b border-stone-100 px-5 py-4">
@@ -71,7 +71,7 @@
             </fieldset>
 
             <div class="flex flex-col-reverse gap-2 border-t border-stone-100 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <button type="button" class="btn-ghost text-xs" disabled title="Sedang disiapkan">Uji koneksi <x-ui.segera /></button>
+                <p class="text-xs text-stone-500">Uji koneksi tersedia setelah disimpan.</p>
                 <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
                     @include('livewire.pengaturan.partials.ai-status-simpan', ['bagian' => 'lokal'])
                     <button type="button" wire:click="batalLokal" class="btn-ghost">Batal</button>
@@ -88,5 +88,10 @@
             <div><dt class="text-xs text-stone-500">Model</dt><dd class="mt-0.5 font-mono text-xs text-stone-800">{{ ($lokal['model'] ?? '') ?: 'Belum diisi' }}</dd></div>
             <div><dt class="text-xs text-stone-500">Batas waktu</dt><dd class="mt-0.5 text-stone-800 tabular-nums">{{ $lokal['batas_waktu'] ?? 60 }} detik</dd></div>
         </dl>
+        @if (filled($lokal['base_url'] ?? null))
+            <div class="border-t border-stone-100 px-2.5 py-2">
+                @include('livewire.pengaturan.partials.ai-uji-koneksi', ['penyedia' => 'ollama', 'testid' => 'ollama'])
+            </div>
+        @endif
     @endif
 </section>

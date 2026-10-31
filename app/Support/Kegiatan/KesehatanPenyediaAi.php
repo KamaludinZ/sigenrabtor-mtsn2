@@ -16,11 +16,12 @@ use Illuminate\Support\Facades\Log;
  */
 final class KesehatanPenyediaAi
 {
-    /** Lama jeda (detik) per jenis kegagalan; jenis tanpa jeda (jawaban rusak) tidak menunda penyedia. */
+    /** Lama jeda (detik) per jenis kegagalan; jenis tanpa jeda (jawaban rusak, permintaan ditolak — bergantung isi permintaan) tidak menunda penyedia. */
     public const JEDA = [
         'tidak_terhubung' => 120,
         'waktu_habis' => 120,
         'kuota_penyedia' => 300,
+        'penyedia_sibuk' => 60,
         'kunci_ditolak' => 600,
         'model_tidak_ada' => 600,
     ];

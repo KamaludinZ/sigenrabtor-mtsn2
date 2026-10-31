@@ -55,6 +55,8 @@ services:
       SIRABTOR_CATAT_UNDUHAN: ${SIRABTOR_CATAT_UNDUHAN:-true}
       SIRABTOR_MIGRASI: ${SIRABTOR_MIGRASI:-1}
       SIRABTOR_TUNGGU_DB_DETIK: ${SIRABTOR_TUNGGU_DB_DETIK:-60}
+      # Batas seluruh permintaan AI satu klik (aktif + cadangan + coba ulang); wajib < batas PHP/nginx 360 detik.
+      SIRABTOR_AI_BATAS_PERMINTAAN_DETIK: ${SIRABTOR_AI_BATAS_PERMINTAAN_DETIK:-330}
       # Pengaman redeploy & cadangan (storage/app/private/cadangan): sebelum migrasi/rilis baru, dan harian.
       SIRABTOR_CADANGAN_PRA_MIGRASI: ${SIRABTOR_CADANGAN_PRA_MIGRASI:-true}
       SIRABTOR_CADANGAN_HARIAN: ${SIRABTOR_CADANGAN_HARIAN:-true}

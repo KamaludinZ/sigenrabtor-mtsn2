@@ -126,6 +126,7 @@ use App\Http\Controllers\UbahKegiatan;
 use App\Http\Controllers\UbahPeranAkun;
 use App\Http\Controllers\UbahStatusKegiatan;
 use App\Http\Controllers\UbahTemplateMaster;
+use App\Http\Controllers\UjiKoneksiPenyediaAi;
 use App\Http\Controllers\UnduhArsipFinal;
 use App\Http\Controllers\UnduhBerkasKegiatan;
 use App\Http\Controllers\UnduhBuku;
@@ -339,6 +340,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/ai/data', DataPengaturanAiAdmin::class)->name('ai.data');
     Route::get('/ai/penyedia', DataPenyediaAi::class)->name('ai.penyedia');
     Route::put('/ai/penyedia/{penyedia}', SimpanPenyediaAi::class)->whereIn('penyedia', array_keys(PenyediaAi::DAFTAR))->name('ai.penyedia.simpan');
+    Route::post('/ai/penyedia/{penyedia}/uji', UjiKoneksiPenyediaAi::class)->whereIn('penyedia', array_keys(PenyediaAi::DAFTAR))->name('ai.uji');
     Route::put('/ai/pilihan', PilihPenyediaAi::class)->name('ai.pilihan');
     Route::get('/ai/model/{penyedia}', DataModelAi::class)->whereIn('penyedia', array_keys(PenyediaAi::DAFTAR))->name('ai.model');
     Route::put('/ai/model/{penyedia}', PakaiModelAi::class)->whereIn('penyedia', array_keys(PenyediaAi::DAFTAR))->name('ai.model.simpan');
