@@ -309,7 +309,7 @@
 
             @php
                 $pratinjau = $this->pratinjau;
-                $asalPratinjau = ['leading' => 'template khusus leading', 'jenis' => 'template jenis kegiatan', 'bawaan' => 'susunan baku & cover default'];
+                $asalPratinjau = ['kegiatan' => 'template pilihan kegiatan ini', 'leading' => 'template khusus leading', 'default_leading' => 'template default leading', 'jenis' => 'template jenis kegiatan', 'bawaan' => 'susunan baku & cover default'];
             @endphp
             <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pratinjau-template" data-testid="pratinjau-template">
                 <header class="flex flex-wrap items-end justify-between gap-3 border-b border-stone-100 px-5 py-4">
@@ -344,7 +344,7 @@
                     <p class="border-b border-stone-100 bg-stone-50 px-5 py-2.5 text-xs text-stone-600" data-testid="asal-pratinjau-template" data-asal="{{ $pratinjau['asal'] }}" data-jenis="{{ $pratinjau['kegiatan']['jenis'] }}">
                         Jenis kegiatan: <span class="font-semibold text-stone-800">{{ $pratinjau['kegiatan']['label_jenis'] }}</span>
                         @if ($pratinjau['kegiatan']['leading'] !== '') · Leading {{ $pratinjau['kegiatan']['leading'] }} @endif
-                        · memakai <span class="font-semibold text-stone-800">{{ $asalPratinjau[$pratinjau['asal']] }}</span>
+                        · memakai <span class="font-semibold text-stone-800">{{ $asalPratinjau[$pratinjau['asal']] ?? $pratinjau['asal'] }}</span>
                     </p>
                     @php
                         $idContoh = $pratinjau['kegiatan']['id'];

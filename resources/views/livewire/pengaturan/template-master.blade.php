@@ -209,7 +209,7 @@
                                                     <li data-testid="dampak-beralih">{{ count($dampak['beralih']) }} kegiatan memakainya sebagai default leading dan <span class="font-semibold">akan beralih</span>: {{ collect($dampak['beralih'])->take(5)->pluck('nama')->implode(', ') }}{{ count($dampak['beralih']) > 5 ? ', …' : '' }}.</li>
                                                 @endif
                                                 @if ($dampak['pilihan'] !== [])
-                                                    <li data-testid="dampak-pilihan">Masih ditunjuk aturan Format Seragam ({{ implode(', ', $dampak['pilihan']) }}) — tetap berlaku sampai aturannya diganti{{ $dampak['aturan'] !== [] ? ' ('.count($dampak['aturan']).' kegiatan)' : '' }}.</li>
+                                                    <li data-testid="dampak-pilihan">Ditunjuk aturan Format Seragam ({{ implode(', ', $dampak['pilihan']) }}) — aturan itu <span class="font-semibold">dilewati</span> selama template nonaktif{{ $dampak['aturan'] !== [] ? ' dan '.count($dampak['aturan']).' kegiatan beralih ke aturan berikutnya' : '' }}; ganti aturannya di Format Seragam bila perlu.</li>
                                                 @endif
                                                 <li>Dokumen lama yang memakainya tetap utuh; template bisa diaktifkan kembali kapan saja.</li>
                                             </ul>

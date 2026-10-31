@@ -34,7 +34,8 @@ Jawaban 200:
         { "id": "…", "nama": "TPM reguler", "jenis": "KAK+TOR", "label_jenis": "KAK/TOR (gabungan)", "leading": "1.6",
           "label_leading": "1.6 · Tim Penjamin Mutu", "catatan": "Versi 2 — narasumber eksternal", "aktif": true, "default": true,
           "variabel": 14, "nama_berkas": "tpm.docx", "ada_berkas": true, "diperbarui_pada": "…", "pengunggah": "Koordinator PUSKOM",
-          "dipakai": [], "kegiatan": 2, "tautan_unduh": "…/pengaturan/template/master/…/unduh" }
+          "dipakai": [], "kegiatan": 2, "dokumen": 1, "boleh_dihapus": false, "tautan_unduh": "…/pengaturan/template/master/…/unduh",
+          "siklus": { "status": "aktif", "label": "Aktif", "keterangan": "Muncul di pilihan baru: …", "aksi": ["ubah", "nonaktifkan"] } }
       ]
     }
   ],
@@ -43,7 +44,10 @@ Jawaban 200:
 ```
 
 `default` template = default pemilik × jenis dan aktif. `kegiatan` = kegiatan tahun itu yang memakainya
-(`PilihanTemplate::untukKegiatan`).
+(`PilihanTemplate::untukKegiatan`). `siklus` = status siklus hidup (`KelolaTemplateMaster::siklus`): `aksi` ⊂ `ubah`,
+`jadikan_default` (aktif & belum default), `nonaktifkan`/`aktifkan`, `hapus` (hanya bila `boleh_dihapus`). Template nonaktif
+tidak muncul di pilihan baru dan dilewati aturan otomatis (default leading, aturan Format Seragam); kegiatan yang sudah
+memilihnya dan dokumen final tetap memakainya.
 
 ## `GET /pengaturan/template/master/{template}` — detail
 

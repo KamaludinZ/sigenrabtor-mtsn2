@@ -44,6 +44,16 @@ final class PilihanTemplate
     public const MAKS_LEADING = 50;
 
     /** @return list<array{id: string, nama: string, jenis: string, label: string, default: bool, variabel: int}> */
+    /**
+     * Id master KAK/TOR nonaktif tahun itu (dilewati aturan otomatis, tidak bisa dipilih baru).
+     *
+     * @return list<string>
+     */
+    public static function nonaktif(int $tahun): array
+    {
+        return array_values(array_map(fn (array $t) => (string) $t['id'], array_filter(app(TemplateDokumenRepository::class)->semua($tahun), fn (array $t) => ! ($t['aktif'] ?? true))));
+    }
+
     public static function pilihanKak(int $tahun): array
     {
         $daftar = array_filter(app(TemplateDokumenRepository::class)->semua($tahun), fn (array $t) => in_array($t['jenis'], self::JENIS_KAK, true));
@@ -51,6 +61,7 @@ final class PilihanTemplate
         return array_values(array_map(fn (array $t) => [
             'id' => (string) $t['id'], 'nama' => (string) $t['nama'], 'jenis' => (string) $t['jenis'],
             'label' => $t['nama'].' · '.$t['jenis'].($t['is_default'] ? (filled($t['leading'] ?? null) ? " (default {$t['leading']})" : ' (default)') : '').(($t['aktif'] ?? true) ? '' : ' (nonaktif)'), 'default' => (bool) $t['is_default'], 'variabel' => count($t['variabel'] ?? []),
+            'aktif' => (bool) ($t['aktif'] ?? true),
         ], $daftar));
     }
 
@@ -74,10 +85,13 @@ final class PilihanTemplate
         $tersimpan = app(PilihanTemplateRepository::class)->untuk($tahun);
         $kak = array_column(self::pilihanKak($tahun), 'nama', 'id');
         $cover = array_column(self::pilihanCover($tahun), 'nama', 'id');
+        $nonaktif = self::nonaktif($tahun);
         $urai = fn (array $p) => [
             'kak' => $p['kak'] ?? null, 'cover' => $p['cover'] ?? null,
             'nama_kak' => isset($p['kak']) ? ($kak[$p['kak']] ?? null) : null, 'nama_cover' => isset($p['cover']) ? ($cover[$p['cover']] ?? null) : null,
             'kak_hilang' => isset($p['kak']) && ! isset($kak[$p['kak']]), 'cover_hilang' => isset($p['cover']) && ! isset($cover[$p['cover']]),
+            // Master nonaktif: aturan ini dilewati (berlakuUntuk) sampai template diaktifkan kembali atau diganti.
+            'kak_nonaktif' => isset($p['kak']) && in_array($p['kak'], $nonaktif, true),
         ];
         $jenis = KonteksAi::jenisKegiatan();
 
@@ -118,23 +132,28 @@ final class PilihanTemplate
      * @param  array{jenis: array<string, array{kak: string|null, cover: string|null}>, leading: list<array<string, mixed>>}  $pilihan  Sudah dirapikan.
      * @return array<string, string>
      */
-    public static function galat(array $pilihan, int $tahun): array
+    public static function galat(array $pilihan, int $tahun, ?array $tersimpan = null): array
     {
         $kak = array_column(self::pilihanKak($tahun), 'id');
+        $nonaktif = self::nonaktif($tahun);
+        $tersimpan ??= self::rapikan(app(PilihanTemplateRepository::class)->untuk($tahun));
         $cover = array_column(self::pilihanCover($tahun), 'id');
         $jenisKegiatan = KonteksAi::jenisKegiatan();
         $aktif = array_column(MasterKode::leadings(), 'kode');
         $galat = [];
-        $periksaTemplate = function (string $awalan, array $p) use (&$galat, $kak, $cover) {
+        $periksaTemplate = function (string $awalan, array $p, ?string $kakLama = null) use (&$galat, $kak, $cover, $nonaktif) {
             if ($p['kak'] !== null && ! in_array($p['kak'], $kak, true)) {
                 $galat["{$awalan}.kak"] = 'Master KAK/TOR ini tidak ada di tahun anggaran ini — pilih yang lain.';
+            } elseif ($p['kak'] !== null && $p['kak'] !== $kakLama && in_array($p['kak'], $nonaktif, true)) {
+                // Siklus hidup: template nonaktif tidak bisa dipilih baru (aturan lama yang menunjuknya boleh tetap tersimpan).
+                $galat["{$awalan}.kak"] = 'Master KAK/TOR ini nonaktif — aktifkan dulu di Template Master atau pilih yang lain.';
             }
             if ($p['cover'] !== null && ! in_array($p['cover'], $cover, true)) {
                 $galat["{$awalan}.cover"] = 'Cover ini tidak ada di tahun anggaran ini — pilih yang lain.';
             }
         };
         foreach ($pilihan['jenis'] as $kunci => $p) {
-            $periksaTemplate("jenis.{$kunci}", $p);
+            $periksaTemplate("jenis.{$kunci}", $p, $tersimpan['jenis'][$kunci]['kak'] ?? null);
         }
         if (count($pilihan['leading']) > self::MAKS_LEADING) {
             $galat['leading'] = 'Paling banyak '.self::MAKS_LEADING.' template khusus leading.';
@@ -150,7 +169,7 @@ final class PilihanTemplate
             if ($p['kak'] === null && $p['cover'] === null) {
                 $galat["leading.{$i}.kak"] = 'Pilih master KAK/TOR atau cover untuk leading ini.';
             }
-            $periksaTemplate("leading.{$i}", $p);
+            $periksaTemplate("leading.{$i}", $p, collect($tersimpan['leading'])->first(fn (array $l) => $l['leading'] === $p['leading'] && $l['jenis'] === $p['jenis'])['kak'] ?? null);
             $kunciPasangan = $p['leading'].'|'.$p['jenis'];
             if (isset($pasangan[$kunciPasangan]) && $p['leading'] !== '' && $p['jenis'] !== '') {
                 $galat["leading.{$i}.jenis"] = 'Leading & jenis kegiatan ini sudah diatur di baris '.($pasangan[$kunciPasangan] + 1).'.';
@@ -352,8 +371,12 @@ final class PilihanTemplate
     {
         $tahun ??= (int) StubData::tahunAktif()['tahun'];
         $pilihan = self::rapikan($pilihan ?? app(PilihanTemplateRepository::class)->untuk($tahun));
+        // Siklus hidup: master nonaktif dilewati aturan otomatis (tidak dipakai untuk pilihan baru) — aturan berikutnya berlaku.
+        $nonaktif = self::nonaktif($tahun);
+        $sah = fn (array $p) => ['kak' => in_array($p['kak'] ?? null, $nonaktif, true) ? null : ($p['kak'] ?? null), 'cover' => $p['cover'] ?? null];
         $khusus = collect($pilihan['leading'])->first(fn (array $p) => $p['leading'] === $leading && $p['jenis'] === $jenis);
-        $perJenis = $pilihan['jenis'][$jenis] ?? ['kak' => null, 'cover' => null];
+        $khusus = $khusus !== null && ($sah($khusus)['kak'] !== null || $sah($khusus)['cover'] !== null) ? $sah($khusus) : null;
+        $perJenis = $sah($pilihan['jenis'][$jenis] ?? ['kak' => null, 'cover' => null]);
 
         return match (true) {
             $khusus !== null => ['jenis' => $jenis, 'asal' => 'leading', 'kak' => $khusus['kak'] ?? $perJenis['kak'], 'cover' => $khusus['cover'] ?? $perJenis['cover']],

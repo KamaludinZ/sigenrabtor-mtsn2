@@ -6,6 +6,7 @@ use App\Contracts\KegiatanRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\KelolaTemplateMaster;
 use App\Support\Pengaturan\TahunDipilih;
 use Illuminate\Support\Facades\Storage;
 
@@ -35,7 +36,7 @@ final class DaftarTemplateMaster
     public const MAKS_CARI = 100;
 
     /**
-     * @return list<array{id: string, nama: string, jenis: string, label_jenis: string, leading: string|null, label_leading: string, catatan: string|null, aktif: bool, default: bool, variabel: int, nama_berkas: string|null, ada_berkas: bool, diperbarui_pada: string|null, pengunggah: string|null, dipakai: list<array<string, string|null>>, kegiatan: int, dokumen: int, boleh_dihapus: bool, tautan_unduh: string}>
+     * @return list<array{id: string, nama: string, jenis: string, label_jenis: string, leading: string|null, label_leading: string, catatan: string|null, aktif: bool, default: bool, variabel: int, nama_berkas: string|null, ada_berkas: bool, diperbarui_pada: string|null, pengunggah: string|null, dipakai: list<array<string, string|null>>, kegiatan: int, dokumen: int, boleh_dihapus: bool, tautan_unduh: string, siklus: array{status: string, label: string, keterangan: string, aksi: list<string>}}>
      */
     public static function semua(int $tahun): array
     {
@@ -47,7 +48,7 @@ final class DaftarTemplateMaster
         return array_map(function (array $t) use ($pakai, $kegiatan, $pemakaian) {
             $leading = filled($t['leading'] ?? null) ? (string) $t['leading'] : null;
 
-            return [
+            $baris = [
                 'id' => (string) $t['id'],
                 'nama' => (string) $t['nama'],
                 'jenis' => (string) $t['jenis'],
@@ -70,6 +71,8 @@ final class DaftarTemplateMaster
                 'boleh_dihapus' => $pemakaian[$t['id']] === ['kegiatan' => 0, 'dokumen' => 0],
                 'tautan_unduh' => route('pengaturan.template.master.unduh', (string) $t['id']),
             ];
+
+            return $baris + ['siklus' => KelolaTemplateMaster::siklus($baris)];
         }, $semua);
     }
 

@@ -82,7 +82,9 @@ final class DetailTemplate
             'jenis' => (string) $m['jenis'],
             'label_jenis' => DokumenKegiatan::JENIS[$m['jenis']] ?? (string) $m['jenis'],
             'default' => (bool) $m['is_default'],
-            'bisa_dipilih' => in_array($m['jenis'], PilihanTemplate::JENIS_KAK, true),
+            'aktif' => (bool) ($m['aktif'] ?? true),
+            // Siklus hidup: hanya master aktif berjenis KAK/TOR yang bisa dipilih baru (kegiatan, default, Format Seragam).
+            'bisa_dipilih' => in_array($m['jenis'], PilihanTemplate::JENIS_KAK, true) && ($m['aktif'] ?? true),
             'berkas' => [
                 'nama' => $m['nama_berkas'] ?? null,
                 'ada' => $ada,

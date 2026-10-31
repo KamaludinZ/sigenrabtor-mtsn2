@@ -22,16 +22,40 @@ use RuntimeException;
  *   `ubah_default_master`;
  * - `dampak($id)` — peringatan sebelum menonaktifkan: default yang berpindah (`pengganti`), kegiatan yang memilihnya
  *   (`dipilih`, tetap memakainya — dokumen lama utuh), yang memakainya sebagai default leading (`beralih` ke default
- *   pengganti/aturan berikutnya), yang memakainya lewat aturan Format Seragam (`aturan`, tetap sampai aturannya diganti),
- *   dan aturan pilihan template yang menunjuknya (`pilihan`);
+ *   pengganti/aturan berikutnya), yang memakainya lewat aturan Format Seragam (`aturan`, juga beralih: aturan yang
+ *   menunjuk template nonaktif dilewati — PilihanTemplate::berlakuUntuk), dan aturan pilihan template yang menunjuknya
+ *   (`pilihan`);
  * - `ubahStatus($id, $aktif, $pengguna)` — nonaktif: tidak muncul di pilihan baru & tidak lagi default (pindah ke template
  *   aktif terbaru pemilik × jenis); aktif kembali: default bila pemilik × jenis belum punya; riwayat `ubah_status_master`.
+ * `SIKLUS`/`siklus($baris)` = status siklus hidup (aktif|nonaktif) & aksi yang boleh untuk satu baris daftar.
  * Template tidak ada → RuntimeException `PESAN_TIDAK_ADA`; galat isian → ValidationException berkunci `nama`/`catatan`/
  * `default`.
  */
 final class KelolaTemplateMaster
 {
     public const PESAN_TIDAK_ADA = 'Template tidak ditemukan — mungkin sudah dihapus.';
+
+    /** Siklus hidup template master: status → [label, keterangan]. */
+    public const SIKLUS = [
+        'aktif' => ['Aktif', 'Muncul di pilihan baru: dropdown kegiatan, default leading/jenis, dan aturan Format Seragam.'],
+        'nonaktif' => ['Nonaktif', 'Tersimpan tetapi tidak muncul di pilihan baru dan dilewati aturan otomatis; kegiatan yang memilihnya dan dokumen final tetap memakainya.'],
+    ];
+
+    /**
+     * Status siklus hidup & aksi yang boleh untuk satu baris DaftarTemplateMaster (aktif, default, boleh_dihapus):
+     * `ubah` selalu; aktif → `jadikan_default` (bila belum default) & `nonaktifkan`; nonaktif → `aktifkan`; `hapus` hanya
+     * bila tidak dipilih kegiatan & tidak dipakai dokumen (PemakaianTemplate).
+     *
+     * @param  array{aktif: bool, default: bool, boleh_dihapus: bool}  $baris
+     * @return array{status: string, label: string, keterangan: string, aksi: list<string>}
+     */
+    public static function siklus(array $baris): array
+    {
+        $status = $baris['aktif'] ? 'aktif' : 'nonaktif';
+        $aksi = ['ubah', ...($baris['aktif'] ? [...($baris['default'] ? [] : ['jadikan_default']), 'nonaktifkan'] : ['aktifkan']), ...($baris['boleh_dihapus'] ? ['hapus'] : [])];
+
+        return ['status' => $status, 'label' => self::SIKLUS[$status][0], 'keterangan' => self::SIKLUS[$status][1], 'aksi' => $aksi];
+    }
 
     /**
      * @param  array{nama?: mixed, catatan?: mixed}  $isian
