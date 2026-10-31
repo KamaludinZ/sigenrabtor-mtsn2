@@ -2,6 +2,7 @@
 
 namespace App\Support\Pengaturan;
 
+use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\AnalisisTemplate;
@@ -136,6 +137,8 @@ final class UnggahMasterTemplate
     /**
      * @param  array{role: string}  $pengguna
      * @return array<string, mixed>|null Master yang dihapus; null bila tidak ada.
+     *
+     * @throws TemplateMasihDipakai Masih dipilih kegiatan (nonaktifkan saja).
      */
     public static function hapus(string $id, array $pengguna): ?array
     {
@@ -145,6 +148,11 @@ final class UnggahMasterTemplate
             return null;
         }
         self::pastikanBoleh($master['tahun'], $pengguna);
+        $memilih = array_values(array_map(fn (array $k) => ['id' => (int) $k['id'], 'nama' => (string) ($k['nama_kegiatan'] ?? '')],
+            array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['template_kak'] ?? null) === $id)));
+        if ($memilih !== []) {
+            throw new TemplateMasihDipakai($memilih);
+        }
 
         $repo->hapus($id);
         RiwayatPengaturan::catat('hapus_master', "Master “{$master['nama']}” ({$master['jenis']}) dihapus.");

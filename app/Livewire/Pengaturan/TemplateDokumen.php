@@ -11,6 +11,7 @@ use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\TeksCover;
 use App\Support\Pengaturan\SimpanTemplateCover;
+use App\Support\Pengaturan\TemplateMasihDipakai;
 use App\Support\Pengaturan\UnggahMasterTemplate;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
@@ -355,7 +356,8 @@ class TemplateDokumen extends Component
 
         try {
             UnggahMasterTemplate::hapus($template['id'], StubData::currentUser());
-        } catch (AuthorizationException $e) {
+        } catch (AuthorizationException|TemplateMasihDipakai $e) {
+            $this->masterAkanDihapus = null;
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
 
             return;

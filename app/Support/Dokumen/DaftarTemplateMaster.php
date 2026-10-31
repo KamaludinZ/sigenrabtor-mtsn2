@@ -68,6 +68,18 @@ final class DaftarTemplateMaster
         }, app(TemplateDokumenRepository::class)->semua($tahun));
     }
 
+    /**
+     * Satu baris semua() untuk template $id (tahun template itu); null bila tidak ada / bukan master.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function baris(string $id): ?array
+    {
+        $master = app(TemplateDokumenRepository::class)->temukan($id);
+
+        return $master === null ? null : collect(self::semua((int) $master['tahun']))->firstWhere('id', $id);
+    }
+
     /** Label pemilik: "Umum — semua leading" atau "{kode} · {nama unit}" (leading nonaktif ditandai). */
     public static function labelPemilik(?string $leading): string
     {
