@@ -8,6 +8,7 @@ use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Pengaturan\TemplateMaster;
 use App\Support\Dokumen\DaftarTemplateMaster;
 use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Pengaturan\UnggahMasterTemplate;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -117,6 +118,63 @@ class TemplateMasterTest extends TestCase
             ->assertDontSeeHtml('data-id="'.$id['khusus'].'"');
 
         $this->withSession(['stub_role' => 'leading'])->get(route('pengaturan.template.master.index'))->assertForbidden();
+    }
+
+    public function test_form_unggah_template_berpenanda(): void
+    {
+        $this->withSession(['stub_role' => 'admin']);
+        $docx = fn (string $nama, array $paragraf) => UploadedFile::fake()->createWithContent($nama, Docx::isi($paragraf));
+
+        $halaman = Livewire::withQueryParams(['leading' => '1.6'])->test(TemplateMaster::class)
+            ->call('bukaUnggah')
+            ->assertSet('unggahTerbuka', true)
+            ->assertSet('pemilik', '1.6', 'Pemilik bawaan = leading yang sedang disaring.')
+            ->assertSeeHtml('data-testid="form-unggah-master"')
+            ->assertSeeHtml('data-testid="simpan-template-belum"')
+            ->set('berkas', $docx('kak-tpm.docx', ['Kegiatan ${nama_kegiatan}', 'Jumlah ${totl}']))
+            ->assertSet('nama', 'kak-tpm')
+            ->assertSeeHtml('data-penanda-nama="totl" data-terdaftar="tidak"')
+            ->assertSeeHtml('data-penanda-nama="nama_kegiatan" data-terdaftar="ya"')
+            ->assertSee('maksud Anda')
+            ->assertSeeHtml('data-testid="penanda-tidak-terdaftar"')
+            ->assertSeeHtml('data-testid="simpan-template-belum"')
+            ->set('berkas', $docx('kak-tpm.docx', ['Kegiatan ${nama_kegiatan}', 'Jumlah ${total} (${terbilang})']))
+            ->assertSeeHtml('data-testid="ringkasan-penanda" data-jumlah="3" data-tidak-terdaftar="0"')
+            ->assertSeeHtml('data-testid="isi-berpenanda"')
+            ->assertSeeHtml('data-penanda="terdaftar"')
+            ->assertSeeHtml('data-testid="simpan-template"')
+            ->assertSeeHtml('data-ada-default="tidak"')
+            ->set('nama', 'KAK/TOR TPM reguler')
+            ->set('catatan', '  Versi 1   untuk kegiatan reguler ')
+            ->call('simpanUnggah')
+            ->assertHasNoErrors()
+            ->assertSet('unggahTerbuka', false)
+            ->assertDispatched('notify', message: 'Template “KAK/TOR TPM reguler” tersimpan untuk '.mb_lcfirst(DaftarTemplateMaster::labelPemilik('1.6')).' dan menjadi default KAK+TOR.', type: 'success');
+
+        $tersimpan = collect(app(TemplateDokumenRepository::class)->semua(2026))->firstWhere('nama', 'KAK/TOR TPM reguler');
+        $this->assertSame(['1.6', 'Versi 1 untuk kegiatan reguler', true, ['nama_kegiatan', 'total', 'terbilang']], [$tersimpan['leading'], $tersimpan['catatan'], $tersimpan['is_default'], $tersimpan['variabel']]);
+        $halaman->assertSeeHtml('data-id="'.$tersimpan['id'].'"')->assertSee('Versi 1 untuk kegiatan reguler');
+
+        // Template kedua pemilik yang sama: pilihan "jadikan default" muncul; galat aturan tampil di isiannya.
+        $halaman->call('bukaUnggah', '1.6')
+            ->assertSeeHtml('data-ada-default="ya"')
+            ->set('berkas', $docx('kak-tpm-2.docx', ['Kegiatan ${nama_kegiatan}']))
+            ->set('catatan', str_repeat('a', UnggahMasterTemplate::MAKS_CATATAN + 1))
+            ->call('simpanUnggah')
+            ->assertHasErrors(['catatan'])
+            ->set('catatan', 'Versi 2')
+            ->set('jadikanDefault', true)
+            ->call('simpanUnggah')
+            ->assertHasNoErrors();
+        $this->assertEquals(['KAK/TOR TPM reguler' => false, 'kak-tpm-2' => true], array_column(app(TemplateDokumenRepository::class)->semua(2026), 'is_default', 'nama'));
+
+        $halaman->call('bukaUnggah')
+            ->set('berkas', UploadedFile::fake()->create('kak.pdf', 10, 'application/pdf'))
+            ->assertHasErrors(['berkas'])
+            ->assertSeeHtml('data-testid="galat-berkas-template"')
+            ->call('tutupUnggah')
+            ->assertSet('unggahTerbuka', false)
+            ->assertSet('berkas', null);
     }
 
     public function test_tautan_dari_template_dokumen(): void

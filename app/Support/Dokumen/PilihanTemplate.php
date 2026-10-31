@@ -43,7 +43,7 @@ final class PilihanTemplate
 
         return array_values(array_map(fn (array $t) => [
             'id' => (string) $t['id'], 'nama' => (string) $t['nama'], 'jenis' => (string) $t['jenis'],
-            'label' => $t['nama'].' · '.$t['jenis'].($t['is_default'] ? ' (default)' : ''), 'default' => (bool) $t['is_default'], 'variabel' => count($t['variabel'] ?? []),
+            'label' => $t['nama'].' · '.$t['jenis'].($t['is_default'] ? (filled($t['leading'] ?? null) ? " (default {$t['leading']})" : ' (default)') : ''), 'default' => (bool) $t['is_default'], 'variabel' => count($t['variabel'] ?? []),
         ], $daftar));
     }
 

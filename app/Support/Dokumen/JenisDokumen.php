@@ -71,7 +71,8 @@ final class JenisDokumen
         $semua = app(TemplateDokumenRepository::class)->semua($tahun);
         $cari = function (array $urutan) use ($semua): ?array {
             foreach ($urutan as $j) {
-                $t = collect($semua)->first(fn (array $t) => $t['jenis'] === $j && $t['is_default']);
+                // Default umum (bukan khusus leading) & aktif.
+                $t = collect($semua)->first(fn (array $t) => $t['jenis'] === $j && $t['is_default'] && ($t['leading'] ?? null) === null && ($t['aktif'] ?? true));
                 if ($t !== null) {
                     return array_intersect_key($t, array_flip(['id', 'nama', 'jenis', 'variabel', 'diperbarui_pada']));
                 }

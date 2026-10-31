@@ -19,6 +19,6 @@ class TemplateDokumen extends Model
 
     protected function casts(): array
     {
-        return ['tahun_anggaran' => 'integer', 'variabel' => 'array', 'is_default' => 'boolean'];
+        return ['tahun_anggaran' => 'integer', 'variabel' => 'array', 'is_default' => 'boolean', 'aktif' => 'boolean'];
     }
 }

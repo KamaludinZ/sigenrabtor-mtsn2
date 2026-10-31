@@ -14,7 +14,7 @@
     $r = $data['ringkasan'];
     $adaSaringan = $cari !== '' || $leading !== '' || $jenis !== '' || $status !== '';
     // Pilihan pemilik: leading aktif, ditambah leading nonaktif yang sedang dipilih.
-    $pemilik = array_values(array_filter(MasterKode::semuaLeading(), fn (array $l) => $l['is_active'] || $l['kode'] === $leading));
+    $pilihanPemilik = array_values(array_filter(MasterKode::semuaLeading(), fn (array $l) => $l['is_active'] || $l['kode'] === $leading));
 @endphp
 
 <div class="mx-auto max-w-7xl">
@@ -25,9 +25,9 @@
                 <x-ui.icon name="layers" class="size-4" /> Pilihan template
             </a>
             @unless ($data['terkunci'])
-                <a href="{{ route('pengaturan.template.index', ['tab' => 'kak']) }}" wire:navigate class="btn-primary" data-testid="unggah-template-master">
-                    <x-ui.icon name="upload" class="size-4" /> Unggah master
-                </a>
+                <button type="button" class="btn-primary" wire:click="bukaUnggah" data-testid="unggah-template-master">
+                    <x-ui.icon name="upload" class="size-4" /> Unggah template
+                </button>
             @endunless
         </x-slot:aksi>
     </x-pengaturan.kepala>
@@ -59,7 +59,7 @@
                     <select id="saring-pemilik" wire:model.live="leading" class="form-input w-auto py-1.5 text-sm" data-testid="saring-pemilik">
                         <option value="">Semua pemilik</option>
                         <option value="{{ DaftarTemplateMaster::UMUM }}">Umum — semua leading</option>
-                        @foreach ($pemilik as $l)
+                        @foreach ($pilihanPemilik as $l)
                             <option value="{{ $l['kode'] }}">{{ $l['kode'] }} · {{ $l['nama_unit'] }}{{ $l['is_active'] ? '' : ' (nonaktif)' }}</option>
                         @endforeach
                     </select>
@@ -93,7 +93,7 @@
                         <li class="flex gap-2"><span class="font-semibold text-stone-400">3.</span> Pilih template untuk jenis kegiatan atau leading di Format Seragam.</li>
                     </ol>
                     @unless ($data['terkunci'])
-                        <a href="{{ route('pengaturan.template.index', ['tab' => 'kak']) }}" wire:navigate class="btn-primary mt-5"><x-ui.icon name="upload" class="size-4" /> Unggah master pertama</a>
+                        <button type="button" class="btn-primary mt-5" wire:click="bukaUnggah" data-testid="unggah-template-pertama"><x-ui.icon name="upload" class="size-4" /> Unggah template pertama</button>
                     @endunless
                 </section>
             @elseif ($data['tersaring'] === 0)
@@ -112,6 +112,10 @@
                                     <span class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-stone-600">{{ count($kelompok['template']) }}</span>
                                 </h2>
                             </div>
+                            <span class="flex flex-wrap items-center gap-3">
+                            @unless ($data['terkunci'] || ($kelompok['leading'] !== null && ! collect(MasterKode::leadings())->contains('kode', $kelompok['leading'])))
+                                <button type="button" class="btn-ghost px-2 py-1 text-xs" wire:click="bukaUnggah('{{ $kelompok['leading'] ?? '' }}')" data-testid="unggah-untuk-pemilik"><x-ui.icon name="plus" class="size-3.5" /> Tambah template</button>
+                            @endunless
                             @if ($kelompok['default'] !== [])
                                 <p class="flex flex-wrap items-center gap-1.5 text-xs text-stone-500" data-testid="default-kelompok">
                                     <span>Default:</span>
@@ -120,10 +124,11 @@
                                     @endforeach
                                 </p>
                             @endif
+                            </span>
                         </header>
                         <ul class="divide-y divide-stone-100">
                             @foreach ($kelompok['template'] as $t)
-                                <li class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:px-6" data-testid="template-master" data-id="{{ $t['id'] }}" data-status="{{ $t['aktif'] ? 'aktif' : 'nonaktif' }}" data-default="{{ $t['default'] ? 'ya' : 'tidak' }}" wire:key="template-{{ $t['id'] }}">
+                                <li @class(['flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:px-6', 'bg-brand-50/50' => $this->baru === $t['id']]) data-testid="template-master" data-id="{{ $t['id'] }}" data-status="{{ $t['aktif'] ? 'aktif' : 'nonaktif' }}" data-default="{{ $t['default'] ? 'ya' : 'tidak' }}" wire:key="template-{{ $t['id'] }}">
                                     <div class="min-w-0 flex-1">
                                         <p class="flex flex-wrap items-center gap-2">
                                             <span @class(['text-sm font-semibold', 'text-stone-900' => $t['aktif'], 'text-stone-500' => ! $t['aktif']])>{{ $t['nama'] }}</span>
@@ -201,4 +206,8 @@
             </section>
         </aside>
     </div>
+
+    @if ($unggahTerbuka)
+        @include('livewire.pengaturan.partials.unggah-template-master')
+    @endif
 </div>

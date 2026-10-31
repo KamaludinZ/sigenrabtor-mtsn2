@@ -27,11 +27,17 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
         return collect($this->baca())->firstWhere('id', $id);
     }
 
-    public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel): string
+    public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel, array $atribut = []): string
     {
         $id = (string) Str::uuid();
         $path = $berkas->storeAs(Str::beforeLast($this->berkas(), '.json'), "{$id}.docx", 'local');
+        $leading = filled($atribut['leading'] ?? null) ? (string) $atribut['leading'] : null;
         $semua = $this->baca();
+        $sama = fn (array $t) => $t['tahun'] === $tahun && $t['jenis'] === $jenis && ($t['leading'] ?? null) === $leading;
+        $default = ($atribut['default'] ?? false) === true || ! collect($semua)->contains(fn (array $t) => $sama($t) && $t['is_default']);
+        if ($default) {
+            $semua = array_map(fn (array $t) => $sama($t) ? ['is_default' => false] + $t : $t, $semua);
+        }
         $semua[] = [
             'id' => $id,
             'tahun' => $tahun,
@@ -40,8 +46,10 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
             'file_path' => $path,
             'nama_berkas' => $berkas->getClientOriginalName(),
             'variabel' => array_values($variabel),
-            'is_default' => ! collect($semua)->contains(fn (array $t) => $t['tahun'] === $tahun && $t['jenis'] === $jenis),
-            'leading' => null,
+            'is_default' => $default,
+            'leading' => $leading,
+            'catatan' => filled($atribut['catatan'] ?? null) ? (string) $atribut['catatan'] : null,
+            'aktif' => true,
             'diperbarui_pada' => now()->toIso8601String(),
         ];
         $this->tulis($semua);
@@ -59,7 +67,8 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
 
         $this->disk()->delete($template['file_path']);
         $sisa = array_values(array_filter($this->baca(), fn (array $t) => $t['id'] !== $id));
-        $pengganti = collect($sisa)->where('tahun', $template['tahun'])->where('jenis', $template['jenis'])->sortByDesc('diperbarui_pada')->first()['id'] ?? null;
+        $pengganti = collect($sisa)->where('tahun', $template['tahun'])->where('jenis', $template['jenis'])
+            ->filter(fn (array $t) => $t['leading'] === $template['leading'])->sortByDesc('diperbarui_pada')->first()['id'] ?? null;
 
         if ($template['is_default'] && $pengganti !== null) {
             $sisa = array_map(fn (array $t) => $t['id'] === $pengganti ? ['is_default' => true] + $t : $t, $sisa);
@@ -79,7 +88,8 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
 
         $isi = json_decode((string) $this->disk()->get($this->berkas()), true);
 
-        return is_array($isi) ? array_values($isi) : [];
+        // Catatan lama tanpa pemilik/catatan/status = umum, tanpa catatan, aktif.
+        return is_array($isi) ? array_map(fn (array $t) => $t + ['leading' => null, 'catatan' => null, 'aktif' => true], array_values($isi)) : [];
     }
 
     /**

@@ -12,8 +12,9 @@ use Illuminate\Support\Str;
 /**
  * Master .docx di PostgreSQL (tabel document_templates) + berkas di disk "local" (folder FOLDER, privat; diunduh lewat
  * rute pengaturan.template.master.unduh), padanan StubTemplateDokumenRepository: default lebih dulu lalu terbaru,
- * template pertama suatu jenis pada tahun itu menjadi default, menghapus default memindahkan default ke template
- * terbaru berikutnya jenis itu (indeks unik document_templates_satu_default tidak pernah dilanggar). Variabel hanya
+ * template pertama pemilik (`kode_leading`, null = umum) × jenis pada tahun itu — atau yang diminta `default` — menjadi
+ * default, catatan versi & `aktif` (migrasi 000050), menghapus default memindahkan default ke template terbaru berikutnya
+ * pemilik × jenis itu (indeks unik document_templates_satu_default tidak pernah dilanggar). Variabel hanya
  * yang terdaftar — dijaga juga trigger periksa_variabel_template.
  */
 class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
@@ -34,16 +35,24 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
         return $template ? $this->bentuk($template) : null;
     }
 
-    public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel): string
+    public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel, array $atribut = []): string
     {
         $id = (string) Str::uuid();
         $path = $berkas->storeAs(self::FOLDER, "{$id}.docx", 'local');
+        $leading = filled($atribut['leading'] ?? null) ? (string) $atribut['leading'] : null;
 
-        DB::transaction(function () use ($id, $tahun, $nama, $jenis, $berkas, $variabel, $path) {
-            $adaDefault = TemplateDokumen::query()->where('tahun_anggaran', $tahun)->where('jenis', $jenis)->whereNull('kode_leading')->lockForUpdate()->exists();
+        DB::transaction(function () use ($id, $tahun, $nama, $jenis, $berkas, $variabel, $path, $leading, $atribut) {
+            $pemilik = fn () => TemplateDokumen::query()->where('tahun_anggaran', $tahun)->where('jenis', $jenis)
+                ->when($leading === null, fn ($q) => $q->whereNull('kode_leading'), fn ($q) => $q->where('kode_leading', $leading));
+            $adaDefault = $pemilik()->where('is_default', true)->lockForUpdate()->exists();
+            $default = ($atribut['default'] ?? false) === true || ! $adaDefault;
+            if ($default && $adaDefault) {
+                $pemilik()->where('is_default', true)->update(['is_default' => false]);
+            }
             TemplateDokumen::query()->create([
-                'id' => $id, 'tahun_anggaran' => $tahun, 'nama' => $nama, 'jenis' => $jenis, 'file_path' => $path,
-                'nama_berkas' => $berkas->getClientOriginalName(), 'variabel' => array_values($variabel), 'is_default' => ! $adaDefault,
+                'id' => $id, 'tahun_anggaran' => $tahun, 'kode_leading' => $leading, 'nama' => $nama, 'jenis' => $jenis, 'file_path' => $path,
+                'nama_berkas' => $berkas->getClientOriginalName(), 'variabel' => array_values($variabel), 'is_default' => $default,
+                'catatan' => filled($atribut['catatan'] ?? null) ? (string) $atribut['catatan'] : null,
             ]);
         });
 
@@ -81,6 +90,8 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
             'variabel' => $t->variabel,
             'is_default' => $t->is_default,
             'leading' => $t->kode_leading,
+            'catatan' => $t->catatan,
+            'aktif' => (bool) ($t->aktif ?? true),
             'diperbarui_pada' => $t->updated_at->setTimezone(config('app.timezone'))->toIso8601String(),
         ];
     }
