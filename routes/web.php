@@ -81,6 +81,7 @@ use App\Http\Controllers\PerbaruiDokumen;
 use App\Http\Controllers\PeriksaCetakKegiatan;
 use App\Http\Controllers\PeriksaTemplateMaster;
 use App\Http\Controllers\PeriksaUlangImporKegiatan;
+use App\Http\Controllers\PilihanTemplateKegiatanApi;
 use App\Http\Controllers\PilihPenyediaAi;
 use App\Http\Controllers\ProfilAkunSaya;
 use App\Http\Controllers\ProsesDuplikatKegiatan;
@@ -256,6 +257,8 @@ Route::get('/kegiatan/{kegiatan}/total-anggaran', TotalAnggaranKegiatan::class)-
 Route::get('/kegiatan/{kegiatan}/rab-lengkap', RabLengkapKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.rab_lengkap');
 Route::get('/kegiatan/{kegiatan}/konteks', KonteksKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.konteks');
 Route::get('/kegiatan/{kegiatan}/template', TemplateKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.template_dokumen');
+Route::get('/kegiatan/{kegiatan}/template/pilihan', PilihanTemplateKegiatanApi::class)->whereNumber('kegiatan')->name('kegiatan.template.pilihan');
+Route::put('/kegiatan/{kegiatan}/template/pilihan', PilihanTemplateKegiatanApi::class)->whereNumber('kegiatan')->name('kegiatan.template.pilih');
 Route::get('/kegiatan/{kegiatan}/termin', TerminKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.termin');
 Route::get('/kegiatan/{kegiatan}/sumber-dana', SumberDanaKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.sumber_dana');
 Route::get('/kegiatan/{kegiatan}/status', AlurStatusKegiatan::class)->whereNumber('kegiatan')->name('kegiatan.status');

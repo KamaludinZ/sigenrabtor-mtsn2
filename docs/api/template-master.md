@@ -129,3 +129,50 @@ Jawaban 200:
 
 `berdiri_sendiri` = jenis daftar/tabel/blok/gambar (sebaiknya sendirian di paragrafnya); `contoh` teks, daftar/blok = list
 baris, tabel = ringkasan, null = belum ada datanya (atau tanpa kegiatan contoh).
+
+## `GET /kegiatan/{kegiatan}/template/pilihan` — pilihan template & format satu kegiatan
+
+Rute `kegiatan.template.pilihan`, semua pengguna yang berhak atas kegiatan itu (`AksesKegiatan`; selain itu 403, kegiatan
+tidak ada 404). Isi dari `App\Support\Dokumen\PilihanTemplateKegiatan::data()`, tanpa cache.
+
+```json
+{
+  "kegiatan_id": 4, "tahun": 2026,
+  "berlaku": {
+    "format": { "kunci": "lima_bab", "label": "Format 5 bab" },
+    "kak": { "id": "…", "nama": "TPM narasumber", "jenis": "KAK+TOR", "catatan": "Versi 2", "leading": "1.6",
+             "asal": "kegiatan", "label_asal": "dipilih untuk kegiatan ini", "ada_berkas": true },
+    "cover": null
+  },
+  "template": {
+    "dipilih": "…",
+    "otomatis": { "id": "…", "nama": "TPM reguler", "asal": "default_leading", "label_asal": "Default template leading" },
+    "pilihan": [ { "id": "…", "nama": "TPM reguler", "jenis": "KAK+TOR", "leading": "1.6", "catatan": "Versi 1", "default": true, "aktif": true } ]
+  },
+  "format": {
+    "dipilih": "lima_bab", "tahun": "sembilan_bagian",
+    "pilihan": [ { "nilai": "", "label": "Ikuti tahun anggaran (Format 9 bagian)", "keterangan": "…" }, { "nilai": "sembilan_bagian", … }, { "nilai": "lima_bab", … } ]
+  },
+  "dapat_diubah": true, "alasan_terkunci": null, "versi": "318c…"
+}
+```
+
+`berlaku.kak` null = susunan baku (tanpa master Word). `template.otomatis` = template yang dipakai bila `dipilih` kosong
+(aturan khusus leading Format Seragam → default template leading → pilihan per jenis kegiatan → bawaan). `pilihan` memuat
+template aktif milik leading kegiatan (default lebih dulu) lalu template umum; template nonaktif hanya muncul bila sedang
+dipilih kegiatan ini (`aktif: false`).
+
+## `PUT /kegiatan/{kegiatan}/template/pilihan` — ubah pilihan
+
+Rute `kegiatan.template.pilih`. Badan `{ "template"?: id|""|null, "format"?: "sembilan_bagian"|"lima_bab"|""|null,
+"versi"?: string }` — hanya kunci yang dikirim yang berubah; kosong/null = otomatis (template) atau mengikuti tahun
+anggaran (format). Disimpan lewat `UbahDataKegiatan` (kolom `template_kak`, `format_dokumen`).
+
+| Status | Isi |
+| --- | --- |
+| 200 | `{ pesan, diubah: ["format_dokumen", "template_kak"], …data GET }` (`diubah` kosong = tidak ada perubahan) |
+| 422 | `{ pesan, galat: { template | format } }` — template di luar pilihan/nonaktif, format tak dikenal, atau tanpa kiriman |
+| 403 | `{ pesan }` — bukan cakupan akun, status bukan Draf/Dikembalikan, atau tahun anggaran terkunci |
+| 409 | `{ pesan, versi }` — `versi` usang (kegiatan diubah di tempat lain); `versi` = versi terbaru |
+| 404 | kegiatan tidak ada |
+

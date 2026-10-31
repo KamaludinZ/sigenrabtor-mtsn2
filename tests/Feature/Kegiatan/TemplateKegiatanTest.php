@@ -140,4 +140,61 @@ class TemplateKegiatanTest extends TestCase
             ->assertSeeHtml('data-testid="template-word-pratinjau"')
             ->assertSee('dipilih untuk kegiatan ini');
     }
+
+    public function test_endpoint_pilihan_template_kegiatan(): void
+    {
+        $id = $this->siapkan();
+        $kegiatan = $this->kegiatanBaru();
+        $alamat = route('kegiatan.template.pilihan', ['kegiatan' => $kegiatan]);
+
+        $data = $this->getJson($alamat)->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJson(['kegiatan_id' => $kegiatan, 'tahun' => 2026, 'dapat_diubah' => true, 'alasan_terkunci' => null])
+            ->assertJsonPath('template.dipilih', null)
+            ->assertJsonPath('template.otomatis', ['id' => $id['tpm'], 'nama' => 'TPM reguler', 'asal' => 'default_leading', 'label_asal' => 'Default template leading'])
+            ->assertJsonPath('berlaku.kak.id', $id['tpm'])
+            ->assertJsonPath('format.dipilih', null)
+            ->assertJsonPath('format.tahun', 'sembilan_bagian')
+            ->json();
+        $this->assertSame([$id['tpm'], $id['narasumber'], $id['umum']], array_column($data['template']['pilihan'], 'id'));
+        $this->assertSame(['', 'sembilan_bagian', 'lima_bab'], array_column($data['format']['pilihan'], 'nilai'));
+
+        // Ubah template & format sekaligus; versi dicek.
+        $baru = $this->putJson($alamat, ['template' => $id['narasumber'], 'format' => 'lima_bab', 'versi' => $data['versi']])->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJson(['diubah' => ['format_dokumen', 'template_kak'], 'pesan' => 'Pilihan template tersimpan — TPM narasumber, format 5 bab.'])
+            ->assertJsonPath('template.dipilih', $id['narasumber'])
+            ->assertJsonPath('berlaku.kak.asal', 'kegiatan')
+            ->assertJsonPath('berlaku.format.kunci', 'lima_bab')
+            ->json();
+        $this->assertNotSame($data['versi'], $baru['versi']);
+        $this->putJson($alamat, ['template' => $id['umum'], 'versi' => $data['versi']])->assertStatus(409)->assertJsonPath('versi', $baru['versi']);
+        $this->putJson($alamat, ['template' => $id['narasumber']])->assertOk()->assertJson(['diubah' => [], 'pesan' => 'Pilihan template tidak berubah.']);
+
+        // Kosong = kembali otomatis / mengikuti tahun anggaran; kunci yang tidak dikirim tetap.
+        $this->putJson($alamat, ['template' => ''])->assertOk()
+            ->assertJson(['diubah' => ['template_kak']])
+            ->assertJsonPath('berlaku.kak.asal', 'default_leading')
+            ->assertJsonPath('format.dipilih', 'lima_bab');
+        $this->putJson($alamat, ['format' => null])->assertOk()->assertJsonPath('format.dipilih', null);
+
+        // Galat berkunci API: template di luar pilihan (leading lain / nonaktif), format tak dikenal, tanpa kiriman.
+        $this->putJson($alamat, ['template' => $id['kurikulum']])->assertStatus(422)
+            ->assertJsonPath('galat.template', 'Pilih template KAK/TOR milik leading kegiatan ini atau template umum yang aktif.');
+        $this->putJson($alamat, ['template' => $id['lama']])->assertStatus(422)->assertJsonStructure(['pesan', 'galat' => ['template']]);
+        $this->putJson($alamat, ['format' => 'tujuh_bab'])->assertStatus(422)->assertJsonStructure(['galat' => ['format']]);
+        $this->putJson($alamat, ['versi' => 'x'])->assertStatus(422)->assertJsonStructure(['galat' => ['template']]);
+
+        // Hak akses & keadaan kegiatan.
+        $this->getJson(route('kegiatan.template.pilihan', ['kegiatan' => 999]))->assertNotFound();
+        $this->putJson(route('kegiatan.template.pilihan', ['kegiatan' => 999]), ['template' => ''])->assertNotFound();
+        $lain = $this->kegiatanBaru(['leading' => '1.2', 'user_id' => 4]);
+        $this->getJson(route('kegiatan.template.pilihan', ['kegiatan' => $lain]))->assertForbidden();
+        $this->putJson(route('kegiatan.template.pilihan', ['kegiatan' => $lain]), ['template' => ''])->assertForbidden();
+        $diperiksa = $this->kegiatanBaru(['status' => 'diperiksa']);
+        $this->getJson(route('kegiatan.template.pilihan', ['kegiatan' => $diperiksa]))
+            ->assertJson(['dapat_diubah' => false, 'alasan_terkunci' => 'Kegiatan berstatus Diperiksa sehingga isiannya terkunci.']);
+        $this->putJson(route('kegiatan.template.pilihan', ['kegiatan' => $diperiksa]), ['template' => $id['umum']])->assertForbidden()
+            ->assertJsonPath('pesan', 'Kegiatan berstatus Diperiksa sehingga isiannya terkunci.');
+    }
 }
