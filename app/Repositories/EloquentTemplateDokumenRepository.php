@@ -14,7 +14,8 @@ use RuntimeException;
  * Master .docx di PostgreSQL (tabel document_templates) + berkas di disk "local" (folder FOLDER, privat; diunduh lewat
  * rute pengaturan.template.master.unduh), padanan StubTemplateDokumenRepository: default lebih dulu lalu terbaru,
  * template pertama pemilik (`kode_leading`, null = umum) × jenis pada tahun itu — atau yang diminta `default` — menjadi
- * default, catatan versi & `aktif` (migrasi 000050), menghapus default memindahkan default ke template terbaru berikutnya
+ * default, catatan versi & `aktif` (migrasi 000050), pengunggah & kemunculan tiap variabel di document_template_variabel
+ * (migrasi 000052; satu transaksi bersama barisnya), menghapus default memindahkan default ke template terbaru berikutnya
  * pemilik × jenis itu (indeks unik document_templates_satu_default tidak pernah dilanggar). Variabel hanya
  * yang terdaftar — dijaga juga trigger periksa_variabel_template.
  */
@@ -24,16 +25,34 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
 
     public function semua(int $tahun): array
     {
-        return TemplateDokumen::query()->where('tahun_anggaran', $tahun)
-            ->orderByDesc('is_default')->orderByDesc('updated_at')->orderBy('id')
-            ->get()->map($this->bentuk(...))->all();
+        $daftar = TemplateDokumen::query()->where('tahun_anggaran', $tahun)
+            ->orderByDesc('is_default')->orderByDesc('updated_at')->orderBy('id')->get();
+        $jumlah = $this->jumlahVariabel($daftar->modelKeys());
+
+        return $daftar->map(fn (TemplateDokumen $t) => $this->bentuk($t, $jumlah[$t->id] ?? []))->all();
     }
 
     public function temukan(string $id): ?array
     {
         $template = Str::isUuid($id) ? TemplateDokumen::query()->find($id) : null;
 
-        return $template ? $this->bentuk($template) : null;
+        return $template ? $this->bentuk($template, $this->jumlahVariabel([$template->id])[$template->id] ?? []) : null;
+    }
+
+    /**
+     * Jumlah kemunculan tiap variabel (document_template_variabel) per template, urut kemunculan.
+     *
+     * @param  list<string>  $id
+     * @return array<string, array<string, int>>
+     */
+    private function jumlahVariabel(array $id): array
+    {
+        $hasil = [];
+        foreach (DB::table('document_template_variabel')->whereIn('template_id', $id)->orderBy('urutan')->get() as $baris) {
+            $hasil[$baris->template_id][$baris->variabel] = (int) $baris->jumlah;
+        }
+
+        return $hasil;
     }
 
     public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel, array $atribut = []): string
@@ -54,7 +73,11 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
                 'id' => $id, 'tahun_anggaran' => $tahun, 'kode_leading' => $leading, 'nama' => $nama, 'jenis' => $jenis, 'file_path' => $path,
                 'nama_berkas' => $berkas->getClientOriginalName(), 'variabel' => array_values($variabel), 'is_default' => $default,
                 'catatan' => filled($atribut['catatan'] ?? null) ? (string) $atribut['catatan'] : null,
+                'dibuat_oleh' => $atribut['oleh']['id'] ?? null, 'pengunggah' => $atribut['oleh']['nama'] ?? null,
             ]);
+            DB::table('document_template_variabel')->insert(array_map(fn (string $v, int $i) => [
+                'template_id' => $id, 'variabel' => $v, 'urutan' => $i + 1, 'jumlah' => max(1, (int) ($atribut['jumlah'][$v] ?? 1)),
+            ], array_values($variabel), array_keys(array_values($variabel))));
         });
 
         return $id;
@@ -109,8 +132,11 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
         Storage::disk('local')->delete($template->file_path);
     }
 
-    /** @return array<string, mixed> */
-    private function bentuk(TemplateDokumen $t): array
+    /**
+     * @param  array<string, int>  $jumlah  Kemunculan tiap variabel (kosong = 1 untuk tiap variabel).
+     * @return array<string, mixed>
+     */
+    private function bentuk(TemplateDokumen $t, array $jumlah = []): array
     {
         return [
             'id' => $t->id,
@@ -120,10 +146,13 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
             'file_path' => $t->file_path,
             'nama_berkas' => $t->nama_berkas,
             'variabel' => $t->variabel,
+            'jumlah' => $jumlah !== [] ? $jumlah : array_fill_keys((array) $t->variabel, 1),
             'is_default' => $t->is_default,
             'leading' => $t->kode_leading,
             'catatan' => $t->catatan,
             'aktif' => (bool) ($t->aktif ?? true),
+            'dibuat_oleh' => $t->dibuat_oleh,
+            'pengunggah' => $t->pengunggah,
             'diperbarui_pada' => $t->updated_at->setTimezone(config('app.timezone'))->toIso8601String(),
         ];
     }

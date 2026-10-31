@@ -19,6 +19,9 @@ class SkemaTemplateTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_28_000021_create_template_variabel_tables.php';
 
+    /** Variabel template master (000052) merujuk template_variabel: dibatalkan lebih dulu. */
+    private const MIGRASI_VARIABEL_MASTER = 'database/migrations/2026_10_31_000052_create_template_master_variabel.php';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -95,12 +98,14 @@ class SkemaTemplateTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_VARIABEL_MASTER])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI])->assertSuccessful();
         $this->assertFalse(Schema::hasTable('template_variabel'));
         $this->master(['bebas']);
 
         DB::table('document_templates')->delete();
         $this->artisan('migrate', ['--path' => self::MIGRASI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_VARIABEL_MASTER])->assertSuccessful();
         $this->ditolak(fn () => $this->master(['bebas']), 'aturan kembali berlaku');
     }
 }

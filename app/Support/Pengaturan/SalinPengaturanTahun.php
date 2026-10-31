@@ -268,7 +268,14 @@ final class SalinPengaturanTahun
 
                         continue;
                     }
-                    $repo->tambah($ke, $master['nama'], $master['jenis'], $berkas, $master['variabel'] ?? []);
+                    // Pemilik, catatan versi, default, kemunculan variabel, & status ikut tersalin.
+                    $baru = $repo->tambah($ke, $master['nama'], $master['jenis'], $berkas, $master['variabel'] ?? [], [
+                        'leading' => $master['leading'] ?? null, 'catatan' => $master['catatan'] ?? null, 'default' => (bool) $master['is_default'],
+                        'jumlah' => $master['jumlah'] ?? [], 'oleh' => ['id' => $pengguna['id'] ?? null, 'nama' => $pengguna['name'] ?? null],
+                    ]);
+                    if (! ($master['aktif'] ?? true)) {
+                        $repo->ubahStatus($baru, false);
+                    }
                     $jumlah++;
                 }
 

@@ -7,7 +7,8 @@ use Illuminate\Http\UploadedFile;
 /**
  * Master dokumen .docx ber-variabel per tahun anggaran (PRD tabel document_templates): jenis KAK, TOR, KAK+TOR, atau
  * RAB, dengan daftar variabel yang dipakainya. Pemilik `leading` (null = umum untuk semua leading; satu leading boleh punya
- * beberapa template per jenis), `catatan` versi, `aktif`; tepat satu default per tahun × jenis × pemilik.
+ * beberapa template per jenis), `catatan` versi, `aktif`, `jumlah` kemunculan tiap variabel, pengunggah (`dibuat_oleh`,
+ * `pengunggah`); tepat satu default per tahun × jenis × pemilik, hanya template aktif.
  * Tahap frontend memakai tiruan (berkas JSON + .docx di disk "local"); backend menggantinya dengan Eloquent + Storage.
  */
 interface TemplateDokumenRepository
@@ -17,12 +18,12 @@ interface TemplateDokumenRepository
     /**
      * Template satu tahun, default lebih dulu lalu terbaru.
      *
-     * @return list<array{id: string, tahun: int, nama: string, jenis: string, file_path: string, nama_berkas: string, variabel: list<string>, is_default: bool, leading: string|null, catatan: string|null, aktif: bool, diperbarui_pada: string}>
+     * @return list<array{id: string, tahun: int, nama: string, jenis: string, file_path: string, nama_berkas: string, variabel: list<string>, jumlah: array<string, int>, is_default: bool, leading: string|null, catatan: string|null, aktif: bool, dibuat_oleh: int|null, pengunggah: string|null, diperbarui_pada: string}>
      */
     public function semua(int $tahun): array;
 
     /**
-     * @return array{id: string, tahun: int, nama: string, jenis: string, file_path: string, nama_berkas: string, variabel: list<string>, is_default: bool, leading: string|null, catatan: string|null, aktif: bool, diperbarui_pada: string}|null
+     * @return array{id: string, tahun: int, nama: string, jenis: string, file_path: string, nama_berkas: string, variabel: list<string>, jumlah: array<string, int>, is_default: bool, leading: string|null, catatan: string|null, aktif: bool, dibuat_oleh: int|null, pengunggah: string|null, diperbarui_pada: string}|null
      */
     public function temukan(string $id): ?array;
 
@@ -30,8 +31,8 @@ interface TemplateDokumenRepository
      * Simpan master baru (berkasnya ikut disimpan). Default: `default` true = menjadi default pemilik × jenis (default
      * lama dilepas), selain itu hanya bila pemilik × jenis tahun itu belum punya default.
      *
-     * @param  list<string>  $variabel  Variabel terdaftar yang dipakai.
-     * @param  array{leading?: string|null, catatan?: string|null, default?: bool}  $atribut  Pemilik (null = umum) & catatan versi.
+     * @param  list<string>  $variabel  Variabel terdaftar yang dipakai (urut kemunculan pertama).
+     * @param  array{leading?: string|null, catatan?: string|null, default?: bool, jumlah?: array<string, int>, oleh?: array{id?: int|null, nama?: string|null}}  $atribut  Pemilik (null = umum), catatan versi, jumlah kemunculan tiap variabel (bawaan 1), pengunggah.
      */
     public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel, array $atribut = []): string;
 

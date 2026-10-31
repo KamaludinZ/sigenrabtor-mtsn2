@@ -35,7 +35,7 @@ final class DaftarTemplateMaster
     public const MAKS_CARI = 100;
 
     /**
-     * @return list<array{id: string, nama: string, jenis: string, label_jenis: string, leading: string|null, label_leading: string, catatan: string|null, aktif: bool, default: bool, variabel: int, nama_berkas: string|null, ada_berkas: bool, diperbarui_pada: string|null, dipakai: list<array<string, string|null>>, kegiatan: int, tautan_unduh: string}>
+     * @return list<array{id: string, nama: string, jenis: string, label_jenis: string, leading: string|null, label_leading: string, catatan: string|null, aktif: bool, default: bool, variabel: int, nama_berkas: string|null, ada_berkas: bool, diperbarui_pada: string|null, pengunggah: string|null, dipakai: list<array<string, string|null>>, kegiatan: int, tautan_unduh: string}>
      */
     public static function semua(int $tahun): array
     {
@@ -60,6 +60,7 @@ final class DaftarTemplateMaster
                 'nama_berkas' => $t['nama_berkas'] ?? null,
                 'ada_berkas' => filled($t['file_path'] ?? null) && Storage::disk('local')->exists((string) $t['file_path']),
                 'diperbarui_pada' => $t['diperbarui_pada'] ?? null,
+                'pengunggah' => $t['pengunggah'] ?? null,
                 'dipakai' => $pakai[$t['id']] ?? [],
                 'kegiatan' => $kegiatan[$t['id']] ?? 0,
                 'tautan_unduh' => route('pengaturan.template.master.unduh', (string) $t['id']),

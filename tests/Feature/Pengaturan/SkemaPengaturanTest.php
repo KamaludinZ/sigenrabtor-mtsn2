@@ -41,8 +41,12 @@ class SkemaPengaturanTest extends TestCase
     /** Format Seragam (000047) merujuk tahun anggaran, leading, dan template (id, tahun): dibatalkan paling dulu. */
     private const MIGRASI_FORMAT = 'database/migrations/2026_10_29_000047_create_format_seragam_tables.php';
 
-    /** Pilihan template kegiatan (000051) merujuk document_templates: dibatalkan paling dulu. */
+    /** Template master (000050 kolom, 000051 pilihan kegiatan, 000052 variabel) merujuk document_templates: dibatalkan paling dulu. */
     private const MIGRASI_TEMPLATE_KEGIATAN = 'database/migrations/2026_10_31_000051_add_kak_template_id_to_activities.php';
+
+    private const MIGRASI_TEMPLATE_CATATAN = 'database/migrations/2026_10_31_000050_add_catatan_aktif_to_document_templates.php';
+
+    private const MIGRASI_TEMPLATE_VARIABEL = 'database/migrations/2026_10_31_000052_create_template_master_variabel.php';
 
     /** Peran & permohonan akun (000048) merujuk users.role & leadings: dibatalkan lebih dulu lagi. */
     private const MIGRASI_PERAN = 'database/migrations/2026_10_30_000048_create_peran_dan_permohonan_akun_tables.php';
@@ -247,7 +251,9 @@ class SkemaPengaturanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TEMPLATE_VARIABEL])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TEMPLATE_KEGIATAN])->assertSuccessful();
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TEMPLATE_CATATAN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_PERAN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_FORMAT])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_NOMOR_RIWAYAT])->assertSuccessful();
@@ -284,7 +290,9 @@ class SkemaPengaturanTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI_NOMOR_RIWAYAT])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_FORMAT])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_PERAN])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_TEMPLATE_CATATAN])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_TEMPLATE_KEGIATAN])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_TEMPLATE_VARIABEL])->assertSuccessful();
         $this->assertTrue(Schema::hasTable('activity_logs'));
         $this->assertTrue(Schema::hasTable('master_kode_unggahan'));
     }

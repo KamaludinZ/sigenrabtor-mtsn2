@@ -27,6 +27,9 @@ final class UnggahMasterTemplate
     /** Batas ukuran master .docx (KB). */
     public const MAKS_KB = 10240;
 
+    /** Batas nama template (karakter, satu baris). */
+    public const MAKS_NAMA = 100;
+
     /** Batas catatan versi (karakter, satu baris). */
     public const MAKS_CATATAN = 300;
 
@@ -35,7 +38,7 @@ final class UnggahMasterTemplate
     {
         return [
             'berkas' => ['required', 'file', 'max:'.self::MAKS_KB, 'extensions:docx'],
-            'nama' => ['required', 'string', 'max:100'],
+            'nama' => ['required', 'string', 'max:'.self::MAKS_NAMA],
             'jenis' => ['required', Rule::in(array_keys(TemplateDokumenRepository::JENIS))],
             'leading' => ['nullable', Rule::in(array_column(MasterKode::leadings(), 'kode'))],
             'catatan' => ['nullable', 'string', 'max:'.self::MAKS_CATATAN],
@@ -51,7 +54,7 @@ final class UnggahMasterTemplate
             'berkas.extensions' => 'Pilih dokumen Word .docx (bukan .doc atau PDF).',
             'berkas.max' => 'Ukuran berkas maksimal '.(self::MAKS_KB / 1024).' MB.',
             'nama.required' => 'Beri nama template, mis. “Master KAK/TOR 2026”.',
-            'nama.max' => 'Nama template maksimal 100 karakter.',
+            'nama.max' => 'Nama template maksimal '.self::MAKS_NAMA.' karakter.',
             'jenis.in' => 'Pilih jenis template dari daftar.',
             'leading.in' => 'Pilih pemilik template: umum atau leading yang aktif.',
             'catatan.max' => 'Catatan versi maksimal '.self::MAKS_CATATAN.' karakter.',
@@ -111,14 +114,18 @@ final class UnggahMasterTemplate
     {
         self::pastikanBoleh($tahun, $pengguna);
         $atribut = self::rapikanAtribut($atribut);
-        Validator::make(['berkas' => $berkas, 'nama' => trim($nama), 'jenis' => $jenis] + $atribut, self::aturan(), self::pesan())->validate();
+        $nama = trim((string) preg_replace('/\s+/u', ' ', $nama));
+        Validator::make(['berkas' => $berkas, 'nama' => $nama, 'jenis' => $jenis] + $atribut, self::aturan(), self::pesan())->validate();
         $analisis = self::periksa($berkas);
         if ($pesan = self::pesanTidakBisaDisimpan($analisis)) {
             throw ValidationException::withMessages(['berkas' => $pesan]);
         }
 
         $repo = app(TemplateDokumenRepository::class);
-        $master = $repo->temukan($repo->tambah($tahun, trim($nama), $jenis, $berkas, $analisis->namaTerdaftar(), $atribut));
+        $master = $repo->temukan($repo->tambah($tahun, $nama, $jenis, $berkas, $analisis->namaTerdaftar(), $atribut + [
+            'jumlah' => array_column($analisis->variabel, 'jumlah', 'nama'),
+            'oleh' => ['id' => $pengguna['id'] ?? null, 'nama' => $pengguna['name'] ?? null],
+        ]));
         $pemilik = $master['leading'] === null ? '' : ' untuk leading '.$master['leading'];
         RiwayatPengaturan::catat('unggah_master', "Master “{$master['nama']}” ({$master['jenis']}){$pemilik} diunggah — ".count($master['variabel']).' variabel'
             .($master['is_default'] ? ', menjadi default '.($master['leading'] === null ? 'jenis ini' : 'leading itu untuk jenis ini') : '').'.');

@@ -47,10 +47,13 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
             'file_path' => $path,
             'nama_berkas' => $berkas->getClientOriginalName(),
             'variabel' => array_values($variabel),
+            'jumlah' => array_map(fn (string $v) => max(1, (int) ($atribut['jumlah'][$v] ?? 1)), array_combine(array_values($variabel), array_values($variabel))),
             'is_default' => $default,
             'leading' => $leading,
             'catatan' => filled($atribut['catatan'] ?? null) ? (string) $atribut['catatan'] : null,
             'aktif' => true,
+            'dibuat_oleh' => $atribut['oleh']['id'] ?? null,
+            'pengunggah' => $atribut['oleh']['nama'] ?? null,
             'diperbarui_pada' => now()->toIso8601String(),
         ];
         $this->tulis($semua);
@@ -124,7 +127,8 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
         $isi = json_decode((string) $this->disk()->get($this->berkas()), true);
 
         // Catatan lama tanpa pemilik/catatan/status = umum, tanpa catatan, aktif.
-        return is_array($isi) ? array_map(fn (array $t) => $t + ['leading' => null, 'catatan' => null, 'aktif' => true], array_values($isi)) : [];
+        return is_array($isi) ? array_map(fn (array $t) => $t + ['leading' => null, 'catatan' => null, 'aktif' => true, 'dibuat_oleh' => null, 'pengunggah' => null,
+            'jumlah' => array_fill_keys((array) ($t['variabel'] ?? []), 1)], array_values($isi)) : [];
     }
 
     /**

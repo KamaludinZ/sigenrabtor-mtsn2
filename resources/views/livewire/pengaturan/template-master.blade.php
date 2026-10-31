@@ -147,7 +147,7 @@
                                                 <span class="inline-flex items-center gap-1 text-gold-700" data-testid="berkas-hilang"><x-ui.icon name="alert" class="size-3.5" /> Berkas tidak ditemukan</span>
                                             @endif
                                             @if ($t['diperbarui_pada'])
-                                                <span>Diperbarui {{ Format::tanggal(Carbon::parse($t['diperbarui_pada'])->toDateString()) }}</span>
+                                                <span>Diperbarui {{ Format::tanggal(Carbon::parse($t['diperbarui_pada'])->toDateString()) }}{{ $t['pengunggah'] ? ' · diunggah '.$t['pengunggah'] : '' }}</span>
                                             @endif
                                         </p>
                                         <p class="mt-1.5 text-xs text-stone-500" data-testid="pemakaian-template" data-jumlah="{{ count($t['dipakai']) + $t['kegiatan'] }}">
