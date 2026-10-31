@@ -44,7 +44,7 @@ final class RiwayatDokumen
      * @param  array{sidik: string, cover: array<string, string|null>|null, bagian: list<array<string, mixed>>, rab: array<string, mixed>|null}|null  $isi  Cuplikan isi saat berkas dibuat (IsiRiwayatDokumen::cuplikan); null = tidak disimpan.
      * @return array<string, mixed>
      */
-    public static function entri(array $kegiatan, string $jenis, ?string $sumber, string $format, string $asal, string $namaBerkas, ?int $ukuran, bool $draf, array $pengguna, array $ringkas = [], ?string $nomor = null, ?array $isi = null): array
+    public static function entri(array $kegiatan, string $jenis, ?string $sumber, string $format, string $asal, string $namaBerkas, ?int $ukuran, bool $draf, array $pengguna, array $ringkas = [], ?string $nomor = null, ?array $isi = null, ?string $template = null): array
     {
         return [
             'kegiatan_id' => isset($kegiatan['id']) ? (int) $kegiatan['id'] : null,
@@ -68,6 +68,7 @@ final class RiwayatDokumen
             'user_id' => isset($pengguna['id']) ? (int) $pengguna['id'] : null,
             'dibuat_oleh' => $pengguna['name'],
             'isi' => $isi,
+            'template' => $jenis === 'RAB' ? null : $template,
         ];
     }
 

@@ -192,10 +192,21 @@
                                     <a href="{{ route('pengaturan.template.master.unduh', $master['id']) }}" class="btn-secondary px-2.5 py-1 text-xs">
                                         <x-ui.icon name="download" class="size-3.5" /> Unduh
                                     </a>
-                                    <button type="button" class="rounded-md p-1.5 text-stone-500 hover:bg-red-50 hover:text-red-600" wire:click="mintaHapusMaster('{{ $master['id'] }}')"
-                                            title="Hapus" aria-label="Hapus {{ $master['nama'] }}">
-                                        <x-ui.icon name="trash" class="size-4" />
-                                    </button>
+                                    @php
+                                        $pakai = $this->pemakaianMaster[$master['id']] ?? ['kegiatan' => 0, 'dokumen' => 0];
+                                    @endphp
+                                    @if ($pakai['kegiatan'] + $pakai['dokumen'] > 0)
+                                        <span class="rounded-md p-1.5 text-stone-300" data-testid="hapus-master-terkunci"
+                                              title="Tidak bisa dihapus — {{ implode(' & ', array_filter([$pakai['kegiatan'] ? $pakai['kegiatan'].' kegiatan memilihnya' : null, $pakai['dokumen'] ? $pakai['dokumen'].' dokumen memakainya' : null])) }}. Nonaktifkan di Template Master."
+                                              aria-label="{{ $master['nama'] }} dipakai — tidak bisa dihapus">
+                                            <x-ui.icon name="lock" class="size-4" />
+                                        </span>
+                                    @else
+                                        <button type="button" class="rounded-md p-1.5 text-stone-500 hover:bg-red-50 hover:text-red-600" wire:click="mintaHapusMaster('{{ $master['id'] }}')"
+                                                title="Hapus" aria-label="Hapus {{ $master['nama'] }}">
+                                            <x-ui.icon name="trash" class="size-4" />
+                                        </button>
+                                    @endif
                                 </div>
                             @endif
                         </li>

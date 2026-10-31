@@ -123,12 +123,12 @@ class SkemaDokumenTest extends TestCase
         $this->ditolak(fn () => $this->dokumen($lain, ['jenis' => 'RAB', 'anggaran_kegiatan_id' => $anggaranLain, 'sumber_dana' => 'DIPA', 'nomor_dokumen' => 'RAB/001/2026']), 'documents_tahun_anggaran_nomor_dokumen_unique');
         $this->dokumen($id, ['jenis' => 'KAK', 'file_pdf_path' => 'dokumen/1.pdf', 'dicetak_pada' => now()]);
 
-        // Template & cover harus dari tahun yang sama; dihapus → hanya rujukannya yang kosong.
+        // Template harus dari tahun yang sama; yang sudah dipakai dokumen tidak bisa dihapus (migrasi 000053).
         $this->ditolak(fn () => $this->dokumen($lain, ['template_id' => $this->template(2025)]), 'documents_template_foreign');
         $template = $this->template(2026);
         $tor = $this->dokumen($lain, ['template_id' => $template]);
-        DB::table('document_templates')->where('id', $template)->delete();
-        $this->assertSame([null, 2026], [DB::table('documents')->where('id', $tor)->value('template_id'), (int) DB::table('documents')->where('id', $tor)->value('tahun_anggaran')]);
+        $this->ditolak(fn () => DB::table('document_templates')->where('id', $template)->delete(), 'documents_template_foreign');
+        $this->assertSame([$template, 2026], [DB::table('documents')->where('id', $tor)->value('template_id'), (int) DB::table('documents')->where('id', $tor)->value('tahun_anggaran')]);
 
         DB::table('activities')->where('id', $id)->delete();
         $this->assertSame(0, DB::table('documents')->whereIn('id', [$kak, $rab])->count(), 'Ikut terhapus bersama kegiatan.');

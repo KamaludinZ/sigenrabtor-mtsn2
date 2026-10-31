@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 class StrukturRiwayatDokumenTest extends TestCase
 {
-    private const KUNCI = ['id', 'kegiatan_id', 'tahun_anggaran', 'kode_leading', 'nama_kegiatan', 'jenis', 'sumber', 'format', 'asal', 'nama_berkas', 'ukuran', 'status', 'bertanda_draf', 'nomor_dokumen', 'versi', 'ringkas', 'user_id', 'dibuat_oleh', 'dibuat_pada', 'isi'];
+    private const KUNCI = ['id', 'kegiatan_id', 'tahun_anggaran', 'kode_leading', 'nama_kegiatan', 'jenis', 'sumber', 'format', 'asal', 'nama_berkas', 'ukuran', 'status', 'bertanda_draf', 'nomor_dokumen', 'versi', 'ringkas', 'user_id', 'dibuat_oleh', 'dibuat_pada', 'isi', 'template'];
 
     private const LEADING = ['id' => 1, 'name' => 'Muslimin, M.Pd.'];
 

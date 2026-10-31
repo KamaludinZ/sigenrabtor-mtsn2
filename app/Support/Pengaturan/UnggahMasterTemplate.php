@@ -2,10 +2,10 @@
 
 namespace App\Support\Pengaturan;
 
-use App\Contracts\KegiatanRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\AnalisisTemplate;
+use App\Support\Dokumen\PemakaianTemplate;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\ValidasiVariabelTemplate;
 use App\Support\MasterKode;
@@ -146,7 +146,7 @@ final class UnggahMasterTemplate
      * @param  array{role: string}  $pengguna
      * @return array<string, mixed>|null Master yang dihapus; null bila tidak ada.
      *
-     * @throws TemplateMasihDipakai Masih dipilih kegiatan (nonaktifkan saja).
+     * @throws TemplateMasihDipakai Masih dipilih kegiatan atau tercatat dipakai dokumen (PemakaianTemplate; nonaktifkan saja).
      */
     public static function hapus(string $id, array $pengguna): ?array
     {
@@ -156,10 +156,9 @@ final class UnggahMasterTemplate
             return null;
         }
         self::pastikanBoleh($master['tahun'], $pengguna);
-        $memilih = array_values(array_map(fn (array $k) => ['id' => (int) $k['id'], 'nama' => (string) ($k['nama_kegiatan'] ?? '')],
-            array_filter(app(KegiatanRepository::class)->semua(), fn (array $k) => ($k['template_kak'] ?? null) === $id)));
-        if ($memilih !== []) {
-            throw new TemplateMasihDipakai($memilih);
+        $pemakaian = PemakaianTemplate::untuk($id);
+        if (! $pemakaian['boleh_dihapus']) {
+            throw new TemplateMasihDipakai($pemakaian['kegiatan'], $pemakaian['dokumen']);
         }
 
         $repo->hapus($id);

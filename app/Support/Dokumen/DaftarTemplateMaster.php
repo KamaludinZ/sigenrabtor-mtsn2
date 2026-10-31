@@ -35,14 +35,16 @@ final class DaftarTemplateMaster
     public const MAKS_CARI = 100;
 
     /**
-     * @return list<array{id: string, nama: string, jenis: string, label_jenis: string, leading: string|null, label_leading: string, catatan: string|null, aktif: bool, default: bool, variabel: int, nama_berkas: string|null, ada_berkas: bool, diperbarui_pada: string|null, pengunggah: string|null, dipakai: list<array<string, string|null>>, kegiatan: int, tautan_unduh: string}>
+     * @return list<array{id: string, nama: string, jenis: string, label_jenis: string, leading: string|null, label_leading: string, catatan: string|null, aktif: bool, default: bool, variabel: int, nama_berkas: string|null, ada_berkas: bool, diperbarui_pada: string|null, pengunggah: string|null, dipakai: list<array<string, string|null>>, kegiatan: int, dokumen: int, boleh_dihapus: bool, tautan_unduh: string}>
      */
     public static function semua(int $tahun): array
     {
         $pakai = DaftarTemplate::pemakaian(PilihanTemplate::data($tahun))['kak'];
         $kegiatan = self::kegiatanPerTemplate($tahun);
+        $semua = app(TemplateDokumenRepository::class)->semua($tahun);
+        $pemakaian = PemakaianTemplate::jumlah(array_map(fn (array $t) => (string) $t['id'], $semua));
 
-        return array_map(function (array $t) use ($pakai, $kegiatan) {
+        return array_map(function (array $t) use ($pakai, $kegiatan, $pemakaian) {
             $leading = filled($t['leading'] ?? null) ? (string) $t['leading'] : null;
 
             return [
@@ -63,9 +65,12 @@ final class DaftarTemplateMaster
                 'pengunggah' => $t['pengunggah'] ?? null,
                 'dipakai' => $pakai[$t['id']] ?? [],
                 'kegiatan' => $kegiatan[$t['id']] ?? 0,
+                // Dokumen tercatat (hasil susunan & Riwayat Dokumen) — template yang sudah dipakai dokumen/dipilih kegiatan tidak bisa dihapus.
+                'dokumen' => $pemakaian[$t['id']]['dokumen'],
+                'boleh_dihapus' => $pemakaian[$t['id']] === ['kegiatan' => 0, 'dokumen' => 0],
                 'tautan_unduh' => route('pengaturan.template.master.unduh', (string) $t['id']),
             ];
-        }, app(TemplateDokumenRepository::class)->semua($tahun));
+        }, $semua);
     }
 
     /**

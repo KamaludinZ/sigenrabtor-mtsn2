@@ -162,6 +162,11 @@
                                                     <span class="font-medium text-stone-700">{{ $t['kegiatan'] }} kegiatan TA {{ $data['tahun'] }}</span>
                                                 @endif
                                             @endif
+                                            @if ($t['dokumen'] > 0)
+                                                <span class="inline-flex items-center gap-1 text-stone-600" data-testid="dokumen-template" data-jumlah="{{ $t['dokumen'] }}" title="Template yang sudah dipakai dokumen tidak bisa dihapus — hanya dinonaktifkan.">
+                                                    <x-ui.icon name="lock" class="size-3" /> {{ $t['dokumen'] }} dokumen tercatat
+                                                </span>
+                                            @endif
                                         </p>
                                     </div>
                                     <div class="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">

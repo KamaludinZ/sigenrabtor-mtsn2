@@ -11,7 +11,8 @@ namespace App\Contracts;
  * sumber|null, format pdf|docx|xlsx, asal cetak|unduh|arsip, nama_berkas, ukuran|null, status (StatusKegiatan saat itu),
  * bertanda_draf, nomor_dokumen|null, versi, ringkas {total_rab|null, bagian_lengkap|null, jumlah_bagian|null},
  * user_id|null, dibuat_oleh, dibuat_pada (ISO 8601 bermikrodetik zona aplikasi), isi|null (cuplikan isi saat dibuat
- * IsiRiwayatDokumen::cuplikan: sidik, cover, bagian, rab)}. `catat()` melempar RuntimeException bila
+ * IsiRiwayatDokumen::cuplikan: sidik, cover, bagian, rab), template|null (id master KAK/TOR yang berlaku saat dibuat — RAB
+ * selalu null; dicatat agar template yang sudah dipakai dokumen tidak bisa dihapus)}. `catat()` melempar RuntimeException bila
  * gagal ditulis. Catatan hanya ditambah; satu-satunya perubahan = `beriNomor()` sekali pada catatan yang belum bernomor.
  */
 interface RiwayatDokumenRepository

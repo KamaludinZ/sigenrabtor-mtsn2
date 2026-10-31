@@ -7,6 +7,7 @@ use App\Contracts\TemplateCoverRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\AnalisisTemplate;
 use App\Support\Dokumen\NilaiVariabel;
+use App\Support\Dokumen\PemakaianTemplate;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\Dokumen\TeksCover;
@@ -376,6 +377,17 @@ class TemplateDokumen extends Component
     public function masters(): array
     {
         return app(TemplateDokumenRepository::class)->semua($this->tahun());
+    }
+
+    /**
+     * Pemakaian tiap master (PemakaianTemplate::jumlah) — yang dipilih kegiatan/dipakai dokumen tidak bisa dihapus.
+     *
+     * @return array<string, array{kegiatan: int, dokumen: int}>
+     */
+    #[Computed]
+    public function pemakaianMaster(): array
+    {
+        return PemakaianTemplate::jumlah(array_map(fn (array $m) => (string) $m['id'], $this->masters));
     }
 
     #[Computed]

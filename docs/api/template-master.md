@@ -94,8 +94,11 @@ Kunci yang tidak dikirim tetap. 200 `{pesan, perubahan: ["Nama: … → …", "D
 
 ## `DELETE /pengaturan/template/master/{template}` — hapus
 
-Rute `pengaturan.template.master.hapus`. 200 `{pesan}`; 409 `{pesan, kegiatan: [{id, nama}]}` bila masih dipilih kegiatan
-(template yang sudah dipakai hanya dinonaktifkan); 403 tahun terkunci; 404.
+Rute `pengaturan.template.master.hapus`. 200 `{pesan}`; 409 `{pesan, kegiatan: [{id, nama}], dokumen: [{asal, kegiatan_id,
+nama_kegiatan, jenis, label_jenis, sumber, keterangan}]}` bila masih dipilih kegiatan atau tercatat dipakai dokumen —
+`asal` `hasil` (hasil susunan tersimpan) atau `riwayat` (Riwayat Dokumen: dicetak/diunduh/arsip final). Template yang sudah
+dipakai hanya dinonaktifkan; 403 tahun terkunci; 404. Baris daftar (`GET …/data`) membawa `dokumen` (jumlah dokumen
+tercatat) dan `boleh_dihapus`.
 
 ## `GET /pengaturan/template/variabel` — daftar variabel terdaftar
 

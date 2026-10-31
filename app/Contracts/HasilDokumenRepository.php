@@ -8,7 +8,7 @@ namespace App\Contracts;
  * {id (teks), kegiatan_id, jenis, sumber|null, status (StatusKegiatan saat disusun), bertanda_draf, alasan_draf,
  * sidik_isi (md5), bagian (baris HasilKakTor — kosong untuk RAB), rab (cuplikan RAB|null), cover (nilai kotak cover|null),
  * user_id, oleh, nomor (nomor dokumen|null — dokumen lengkap, SimpanDokumenLengkap), format (format seragam yang
- * dipakai|null), disusun_pada (ISO 8601 bermikrodetik zona aplikasi)}. `simpan()`/`perbaruiStatus()` melempar RuntimeException
+ * dipakai|null), template (id master KAK/TOR yang berlaku saat disusun|null — RAB selalu null), disusun_pada (ISO 8601 bermikrodetik zona aplikasi)}. `simpan()`/`perbaruiStatus()` melempar RuntimeException
  * bila gagal ditulis.
  */
 interface HasilDokumenRepository
@@ -22,6 +22,15 @@ interface HasilDokumenRepository
      * @return list<array<string, mixed>>
      */
     public function untukKegiatan(int $kegiatanId): array;
+
+    /**
+     * Hasil yang tercatat memakai salah satu master $templateIds (PemakaianTemplate — template yang dipakai dokumen tidak
+     * boleh dihapus).
+     *
+     * @param  list<string>  $templateIds
+     * @return list<array<string, mixed>>
+     */
+    public function memakaiTemplate(array $templateIds): array;
 
     /**
      * Simpan (atau timpa) hasil kegiatan × jenis × sumber; `id` tetap bila menimpa.

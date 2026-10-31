@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -34,6 +35,14 @@ class EloquentHasilDokumenRepository implements HasilDokumenRepository
             ->orderByDesc('disusun_pada')->orderByDesc('id')->get()->map(fn (object $b) => $this->bentuk($b))->all();
     }
 
+    public function memakaiTemplate(array $templateIds): array
+    {
+        $uuid = array_values(array_filter($templateIds, fn (string $id) => Str::isUuid($id)));
+
+        return $uuid === [] ? [] : DB::table('documents')->whereIn('template_id', $uuid)->whereNotNull('disusun_pada')
+            ->orderBy('activity_id')->orderBy('id')->get()->map($this->bentuk(...))->all();
+    }
+
     public function simpan(int $kegiatanId, array $hasil): array
     {
         try {
@@ -56,6 +65,7 @@ class EloquentHasilDokumenRepository implements HasilDokumenRepository
                 ];
                 $isi = [
                     'nomor_dokumen' => $hasil['nomor'] ?? null,
+                    'template_id' => $hasil['template'] ?? null,
                     'status' => $hasil['status'],
                     'bertanda_draf' => (bool) $hasil['bertanda_draf'],
                     'sidik_isi' => $hasil['sidik_isi'],
@@ -164,6 +174,7 @@ class EloquentHasilDokumenRepository implements HasilDokumenRepository
             'oleh' => (string) ($hasil['oleh'] ?? ''),
             'nomor' => $baris->nomor_dokumen,
             'format' => is_array($hasil['format'] ?? null) ? SimpanDokumenLengkap::urutkanFormat($hasil['format']) : null,
+            'template' => $baris->template_id,
             'disusun_pada' => CarbonImmutable::parse($baris->disusun_pada)->setTimezone(config('app.timezone'))->format('Y-m-d\TH:i:s.uP'),
         ];
     }

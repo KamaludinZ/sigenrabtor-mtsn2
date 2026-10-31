@@ -23,6 +23,11 @@ class StubHasilDokumenRepository implements HasilDokumenRepository
         return $milik;
     }
 
+    public function memakaiTemplate(array $templateIds): array
+    {
+        return array_values(array_filter($this->baca(), fn (array $h) => $h['template'] !== null && in_array($h['template'], $templateIds, true)));
+    }
+
     public function simpan(int $kegiatanId, array $hasil): array
     {
         $semua = $this->baca();
@@ -78,7 +83,7 @@ class StubHasilDokumenRepository implements HasilDokumenRepository
     }
 
     /**
-     * Catatan lama tanpa `nomor`/`format` dilengkapi null, urutan kunci sama dengan EloquentHasilDokumenRepository.
+     * Catatan lama tanpa `nomor`/`format`/`template` dilengkapi null, urutan kunci sama dengan EloquentHasilDokumenRepository.
      *
      * @param  array<string, mixed>  $h
      * @return array<string, mixed>
@@ -88,7 +93,7 @@ class StubHasilDokumenRepository implements HasilDokumenRepository
         $waktu = $h['disusun_pada'] ?? null;
         unset($h['disusun_pada']);
 
-        return $h + ['nomor' => null, 'format' => null, 'disusun_pada' => $waktu];
+        return $h + ['nomor' => null, 'format' => null, 'template' => null, 'disusun_pada' => $waktu];
     }
 
     private function berkas(): string

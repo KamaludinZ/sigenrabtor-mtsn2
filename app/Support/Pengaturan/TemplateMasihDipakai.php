@@ -5,14 +5,22 @@ namespace App\Support\Pengaturan;
 use RuntimeException;
 
 /**
- * Template master tidak boleh dihapus karena masih dipilih kegiatan (PRD Fase 5: "template yang sudah dipakai tidak boleh
- * dihapus, hanya dinonaktifkan"); `$kegiatan` = kegiatan pemakainya {id, nama}.
+ * Template master tidak boleh dihapus karena masih dipakai (PRD §6 `document_templates`: "template yang sudah dipakai
+ * dokumen tidak boleh dihapus, hanya dinonaktifkan"; PemakaianTemplate): `$kegiatan` = kegiatan yang memilihnya {id, nama},
+ * `$dokumen` = dokumen yang tercatat memakainya (hasil susunan & Riwayat Dokumen).
  */
 final class TemplateMasihDipakai extends RuntimeException
 {
-    /** @param  list<array{id: int, nama: string}>  $kegiatan */
-    public function __construct(public readonly array $kegiatan)
+    /**
+     * @param  list<array{id: int, nama: string}>  $kegiatan
+     * @param  list<array<string, mixed>>  $dokumen
+     */
+    public function __construct(public readonly array $kegiatan, public readonly array $dokumen = [])
     {
-        parent::__construct(count($kegiatan).' kegiatan masih memilih template ini — nonaktifkan saja agar tidak muncul di pilihan baru; dokumen lama tetap utuh.');
+        $pemakai = array_filter([
+            $kegiatan !== [] ? count($kegiatan).' kegiatan masih memilihnya' : null,
+            $dokumen !== [] ? count($dokumen).' dokumen tercatat memakainya' : null,
+        ]);
+        parent::__construct('Template tidak bisa dihapus — '.implode(' dan ', $pemakai).'. Nonaktifkan saja agar tidak muncul di pilihan baru; dokumen lama tetap utuh.');
     }
 }

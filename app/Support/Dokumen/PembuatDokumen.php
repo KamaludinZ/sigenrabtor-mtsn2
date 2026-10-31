@@ -129,6 +129,7 @@ final class PembuatDokumen
             'oleh' => $pengguna['name'],
             'nomor' => null,
             'format' => null,
+            'template' => in_array('kak', $isi, true) ? (PilihanTemplate::masterKak($kegiatan)['id'] ?? null) : null,
         ];
     }
 

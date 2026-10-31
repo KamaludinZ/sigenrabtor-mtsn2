@@ -50,6 +50,7 @@ final class CatatRiwayatDokumen
             ],
             $nomor,
             $isi,
+            in_array('kak', $lembar, true) ? (PilihanTemplate::masterKak($kegiatan)['id'] ?? null) : null,
         ));
     }
 

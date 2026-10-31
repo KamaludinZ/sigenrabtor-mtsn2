@@ -121,7 +121,7 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
             $catatan[$kunci] = $entri[$kunci] ?? null;
         }
 
-        return $catatan + ['versi' => $versi, 'ringkas' => $entri['ringkas'] ?? ['total_rab' => null, 'bagian_lengkap' => null, 'jumlah_bagian' => null], 'user_id' => $entri['user_id'] ?? null, 'dibuat_oleh' => $entri['dibuat_oleh'] ?? '', 'dibuat_pada' => $waktu, 'isi' => $entri['isi'] ?? null];
+        return $catatan + ['versi' => $versi, 'ringkas' => $entri['ringkas'] ?? ['total_rab' => null, 'bagian_lengkap' => null, 'jumlah_bagian' => null], 'user_id' => $entri['user_id'] ?? null, 'dibuat_oleh' => $entri['dibuat_oleh'] ?? '', 'dibuat_pada' => $waktu, 'isi' => $entri['isi'] ?? null, 'template' => $entri['template'] ?? null];
     }
 
     /** @return list<array<string, mixed>> */
@@ -132,7 +132,8 @@ class StubRiwayatDokumenRepository implements RiwayatDokumenRepository
         }
         $isi = json_decode((string) Storage::disk('local')->get($this->berkas()), true);
 
-        return is_array($isi) ? array_values($isi) : [];
+        // Catatan lama tanpa `template` = tidak tercatat.
+        return is_array($isi) ? array_map(fn (array $e) => $e + ['template' => null], array_values($isi)) : [];
     }
 
     /** @param  list<array<string, mixed>>  $semua */
