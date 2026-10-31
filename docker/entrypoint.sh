@@ -18,6 +18,14 @@ fi
 
 export PHP_FPM_MAX_CHILDREN="${PHP_FPM_MAX_CHILDREN:-10}"
 
+# Variabel yang tidak punya nilai bawaan aman di image (build pack Dockerfile tidak membawa bawaan docker-compose.prod.yml).
+for wajib in APP_URL DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
+    if [[ -z "${!wajib:-}" ]]; then
+        catat "${wajib} belum diisi — isi di variabel lingkungan (lihat docker/env.produksi.contoh)."
+        exit 1
+    fi
+done
+
 if [[ -z "${APP_KEY:-}" ]]; then
     catat "APP_KEY belum diisi. Buat sekali dengan: echo \"base64:\$(openssl rand -base64 32)\""
     catat "lalu simpan nilainya di variabel lingkungan APP_KEY (jangan pernah diganti: kunci API AI tersimpan terenkripsi dengannya)."

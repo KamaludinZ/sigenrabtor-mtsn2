@@ -70,8 +70,9 @@ Contoh lengkap beserta penjelasan: `docker/env.produksi.contoh`. Yang wajib:
 | `APP_KEY` | `base64:…` — buat **sekali**: `echo "base64:$(openssl rand -base64 32)"` |
 | `APP_URL` | Alamat publik https persis seperti dibuka pengguna, mis. `https://sirabtor.mtsn2kotamalang.sch.id` |
 | `DB_PASSWORD` | Sandi PostgreSQL acak yang kuat (dipakai layanan `db` dan aplikasi) — **jangan diganti** setelah database dibuat (lihat bagian 11) |
+| `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` | Hanya jalur Dockerfile (4b): dari resource PostgreSQL. Di Docker Compose sudah terisi (`db`, `sigenrabtor`). |
 
-Nilai bawaan `docker-compose.prod.yml` sudah aman untuk produksi: `APP_ENV=production`, `APP_DEBUG=false`,
+Nilai bawaan image (`Dockerfile`) dan `docker-compose.prod.yml` sudah aman untuk produksi: `APP_ENV=production`, `APP_DEBUG=false`,
 `SIRABTOR_PROKSI_TEPERCAYA=*` (percaya header X-Forwarded-* dari proksi TLS — Coolify/Traefik/nginx/Caddy — agar URL &
 cookie https dan IP asli pengguna terbaca; isi daftar alamat/CIDR proksi bila kontainer bisa dijangkau langsung dari
 internet), `SESSION_SECURE_COOKIE=true`, sesi/cache/antrean di database, `LOG_CHANNEL=stderr`,
@@ -102,20 +103,66 @@ internet), `SESSION_SECURE_COOKIE=true`, sesi/cache/antrean di database, `LOG_CH
 Volume dibuat Coolify dengan awalan id resource dan tetap ada antar-deploy **selama resource tidak dihapus**. Bila suatu
 saat menghapus resource, **jangan centang opsi hapus volume** sebelum data dicadangkan ke luar server.
 
-### 4b. Dockerfile saja + database PostgreSQL Coolify
+### 4b. Dockerfile + database PostgreSQL Coolify
 
-1. Buat resource **PostgreSQL 18** di Coolify; catat host internal, nama database, pengguna, sandi. Aktifkan
-   **Backups** bawaan resource itu (cadangan tambahan di luar volume aplikasi).
-2. **New Resource → repositori ini → Build Pack: Dockerfile**. *Ports Exposes* `8080`.
-3. Environment: semua variabel di `docker/env.produksi.contoh`, dengan `DB_HOST`/`DB_DATABASE`/`DB_USERNAME`/
-   `DB_PASSWORD` dari resource PostgreSQL. Bila berbeda jaringan, aktifkan *Connect To Predefined Network* di keduanya.
-4. **Storages → Add Volume**: tujuan `/var/www/html/storage` — **wajib**; tanpa ini setiap deploy dimulai dari data contoh
-   (pengaman deploy menghentikannya sejak deploy kedua, lihat bagian 6).
-5. *Health check* path `/up`, port 8080. Deploy, lalu buat admin pertama.
+Pada jalur ini Coolify hanya membangun `Dockerfile`; nilai bawaan `docker-compose.prod.yml` tidak ikut. Image sudah
+membawa nilai aman produksi yang sama (mode demo mati, proksi tepercaya, sesi/cache/antrean di database, cadangan
+harian, log ke stderr), jadi yang wajib Anda isi tinggal `APP_KEY`, `APP_URL`, dan `DB_*` — kontainer menolak mulai
+bila `APP_URL`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, atau `DB_PASSWORD` kosong.
 
-Pada build pack Dockerfile, Coolify bisa menjalankan kontainer baru sebelum yang lama berhenti (*rolling update*).
-Migrasi tetap satu per satu (kunci berkas di volume), tetapi selama tumpang-tindih itu dua kontainer bisa menulis berkas
-data yang sama — lakukan redeploy di luar jam kerja, atau pakai jalur 4a.
+**Persiapan penyimpanan persisten — lakukan sebelum deploy pertama:**
+
+| Yang harus bertahan | Tempatnya | Cara di Coolify |
+| --- | --- | --- |
+| Data aplikasi (berkas data JSON, unggahan, arsip PDF, cadangan otomatis, penanda instalasi) | `/var/www/html/storage` di kontainer aplikasi | *Persistent Storage* → **Volume Mount** |
+| Database | Resource PostgreSQL 18 tersendiri | Volume dikelola resource itu; aktifkan *Backups*-nya |
+
+Hanya `/var/www/html/storage` yang dipasang volume. Folder lain (kode, `vendor`, `public/build`, `bootstrap/cache`)
+**jangan** dipersistenkan — harus selalu berasal dari image baru, kalau tidak redeploy memakai kode/aset lama.
+
+1. **Database**: *New Resource → Database → PostgreSQL*, pilih versi **18**, di proyek & environment yang sama dengan
+   aplikasi. Dari halaman resource catat host internal (nama layanan/UUID-nya), port `5432`, nama database, pengguna, dan
+   sandi. Buka tab *Backups* → aktifkan jadwal (mis. harian) dan tujuan S3 bila ada.
+2. **Aplikasi**: *New Resource → repositori ini → Build Pack: Dockerfile*. *Ports Exposes* `8080`; domain
+   `https://domain-anda` (atau `https://domain-anda:8080` bila Coolify memintanya).
+3. **Volume data — sebelum menekan Deploy**: tab *Persistent Storage* → *Add* → **Volume Mount**:
+   - *Name*: `sirabtor-storage`
+   - *Destination Path*: `/var/www/html/storage`
+
+   Pakai *Volume Mount* (volume Docker), bukan *Directory Mount* ke folder host: entrypoint mengatur pemilik folder
+   ke `www-data` di dalam volume, sedangkan folder host mudah salah hak akses atau ikut terhapus saat server dibersihkan.
+   Sediakan ruang disk untuk data + 7 set cadangan (`SIRABTOR_CADANGAN_SIMPAN`).
+4. **Environment Variables**:
+
+   ```
+   APP_KEY=base64:…            # buat sekali: echo "base64:$(openssl rand -base64 32)"
+   APP_URL=https://domain-anda
+   DB_HOST=<host internal resource PostgreSQL>
+   DB_PORT=5432
+   DB_DATABASE=<nama database>
+   DB_USERNAME=<pengguna>
+   DB_PASSWORD=<sandi>
+   ```
+
+   Variabel lain di `docker/env.produksi.contoh` boleh diisi untuk mengubah bawaan image (mis. `PHP_FPM_MAX_CHILDREN`).
+   Bila aplikasi tidak bisa menjangkau database (log "Menunggu database siap…" sampai habis waktu), aktifkan *Connect To
+   Predefined Network* di kedua resource.
+5. *Health check*: path `/up`, port `8080`. **Deploy** — tunggu log `Instalasi … siap.` dan `[sirabtor] Siap: …`.
+6. **Pastikan volume benar-benar dipakai** (sekali saja):
+   - *Terminal* aplikasi → `ls storage/app/private` menampilkan `stub`, `deploy`, `cadangan`.
+   - Ubah satu data kecil (mis. telepon di Profil Madrasah), lalu **Redeploy**. Data itu harus tetap ada dan log tidak
+     memuat pesan pengaman. Bila muncul `Volume storage kosong/baru…`, volume belum terpasang — kembali ke langkah 3.
+
+**Bila terlanjur deploy tanpa volume:** image mendeklarasikan `VOLUME`, sehingga tanpa *Volume Mount* Docker membuat
+volume anonim baru untuk setiap kontainer. Redeploy berikutnya berhenti dengan pesan `Volume storage kosong/baru…`
+(data tidak tertimpa). Pasang volume (langkah 3). Bila data dari deploy pertama tidak penting (masih data contoh), deploy
+sekali dengan `SIRABTOR_IZINKAN_DATA_BARU=true` lalu kembalikan ke `false`. Bila penting, salin dulu folder `storage/app`
+kontainer lama ke volume baru dari terminal server sebelum mengizinkan.
+
+**Redeploy** memakai volume yang sama; cadangan otomatis aplikasi tersimpan di volume itu (`pg_dump` dijalankan dari
+kontainer aplikasi ke resource database). Pada build pack Dockerfile Coolify bisa menjalankan kontainer baru sebelum
+yang lama berhenti (*rolling update*): migrasi tetap bergiliran lewat kunci berkas di volume, tetapi lakukan redeploy di
+luar jam kerja agar dua kontainer tidak menulis berkas data bersamaan.
 
 ## 5. Hosting VPS dengan Docker Compose
 

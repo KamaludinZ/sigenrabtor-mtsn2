@@ -119,4 +119,30 @@ class DeployTest extends TestCase
         $this->assertLessThan(strpos($pulihkan, 'www "php artisan down'), strpos($pulihkan, 'www "php artisan sigenrabtor:cadangan --alasan=pra-pemulihan'), 'Keadaan sekarang dicadangkan dulu.');
         $this->assertStringContainsString('sigenrabtor:cadangan --alasan=pra-redeploy', (string) file_get_contents("{$akar}/docker/redeploy.sh"));
     }
+
+    public function test_image_membawa_bawaan_aman_produksi_untuk_build_pack_dockerfile(): void
+    {
+        $akar = base_path();
+        $dockerfile = (string) file_get_contents("{$akar}/Dockerfile");
+        $compose = (string) file_get_contents("{$akar}/docker-compose.prod.yml");
+        preg_match_all('/^(?:ENV)?\s+([A-Z_]+)=(\S+?)(?: \\\\)?$/m', $dockerfile, $env);
+        $image = array_combine($env[1], $env[2]);
+        preg_match_all('/^\s+([A-Z_]+): \$\{\1:-([^}]*)\}$/m', $compose, $bawaan);
+        $composeBawaan = array_combine($bawaan[1], $bawaan[2]);
+
+        // Deploy lewat Dockerfile saja tidak membawa bawaan compose: nilai penting keamanan & keandalan ada di image juga.
+        foreach (['APP_ENV', 'APP_DEBUG', 'SESSION_DRIVER', 'SESSION_SECURE_COOKIE', 'CACHE_STORE', 'QUEUE_CONNECTION', 'DB_QUEUE_RETRY_AFTER', 'LOG_CHANNEL',
+            'SIRABTOR_PROKSI_TEPERCAYA', 'SIRABTOR_WAJIB_MASUK', 'SIRABTOR_MODE_DEMO', 'SIRABTOR_CADANGAN_PRA_MIGRASI', 'SIRABTOR_CADANGAN_HARIAN', 'SIRABTOR_CADANGAN_SIMPAN'] as $kunci) {
+            $this->assertArrayHasKey($kunci, $image, "{$kunci} tidak punya nilai bawaan di image");
+            $this->assertSame($composeBawaan[$kunci], $image[$kunci], "{$kunci} di image berbeda dengan bawaan compose");
+        }
+        $this->assertSame(['pgsql', 'false', 'false'], [$image['DB_CONNECTION'], $image['SIRABTOR_MODE_DEMO'], $image['APP_DEBUG']]);
+
+        // Yang tidak punya bawaan aman wajib diisi; entrypoint menolak berjalan tanpanya.
+        $entrypoint = (string) file_get_contents("{$akar}/docker/entrypoint.sh");
+        $this->assertStringContainsString('for wajib in APP_URL DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD', $entrypoint);
+        $this->assertArrayNotHasKey('APP_KEY', $image);
+        $this->assertArrayNotHasKey('DB_PASSWORD', $image);
+    }
 }
+

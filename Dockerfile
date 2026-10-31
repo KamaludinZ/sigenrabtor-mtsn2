@@ -79,6 +79,30 @@ ENV LANG=en_US.UTF-8 \
     SIRABTOR_SOFFICE=/usr/bin/soffice \
     SIRABTOR_PDF_PERENDER=chrome
 
+# Nilai aman produksi bawaan image — sama dengan bawaan docker-compose.prod.yml, sehingga deploy lewat Dockerfile saja
+# (Coolify build pack Dockerfile) tetap aman walau hanya APP_KEY, APP_URL, dan DB_* yang diisi. Variabel lingkungan yang
+# diisi di Coolify/`docker run -e` selalu menimpa nilai ini. DB_HOST/DB_DATABASE/DB_USERNAME/DB_PASSWORD wajib diisi sendiri.
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    APP_TIMEZONE=Asia/Jakarta \
+    DB_CONNECTION=pgsql \
+    DB_PORT=5432 \
+    SESSION_DRIVER=database \
+    SESSION_LIFETIME=480 \
+    SESSION_SECURE_COOKIE=true \
+    SESSION_SAME_SITE=lax \
+    CACHE_STORE=database \
+    QUEUE_CONNECTION=database \
+    DB_QUEUE_RETRY_AFTER=420 \
+    LOG_CHANNEL=stderr \
+    LOG_LEVEL=info \
+    SIRABTOR_PROKSI_TEPERCAYA=* \
+    SIRABTOR_WAJIB_MASUK=true \
+    SIRABTOR_MODE_DEMO=false \
+    SIRABTOR_CADANGAN_PRA_MIGRASI=true \
+    SIRABTOR_CADANGAN_HARIAN=true \
+    SIRABTOR_CADANGAN_SIMPAN=7
+
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-sirabtor.ini
 COPY docker/php/www.conf /usr/local/etc/php-fpm.d/zz-sirabtor.conf
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
