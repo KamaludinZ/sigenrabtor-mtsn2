@@ -58,4 +58,44 @@ test.describe('Dashboard', () => {
         expect(overflow).toBeLessThanOrEqual(0);
         await page.goto('/demo/peran/leading');
     });
+
+    test('panduan langkah: persiapan admin & tahapan kegiatan leading', async ({ page }, testInfo) => {
+        // Leading: delapan tahap, tepat satu tahap aktif terbuka beserta tombolnya; tahap lain bisa dibuka.
+        await page.goto('/demo/peran/leading');
+        await page.goto('/dashboard');
+        const panduan = page.getByTestId('panduan-leading');
+        await expect(panduan.getByTestId('tahap-panduan')).toHaveCount(8);
+        const aktif = panduan.locator('[data-testid="tahap-panduan"][aria-current="step"]');
+        await expect(aktif).toHaveCount(1);
+        await expect(aktif.getByTestId('isi-tahap')).toBeVisible();
+        await expect(aktif.getByTestId('buka-tahap')).toBeVisible();
+        const pertama = panduan.getByTestId('tahap-panduan').first();
+        if ((await pertama.getAttribute('aria-current')) === null) {
+            await expect(pertama.getByTestId('isi-tahap')).toBeHidden();
+            await pertama.getByTestId('judul-tahap').click();
+            await expect(pertama.getByTestId('isi-tahap')).toBeVisible();
+        }
+
+        // Ganti kegiatan yang dipandu.
+        const pilih = panduan.getByTestId('pilih-kegiatan-panduan');
+        const nilai = await pilih.locator('option').evaluateAll((opsi) => opsi.map((o) => o.value));
+        await pilih.selectOption(nilai[nilai.length - 1]);
+        await expect(panduan).toHaveAttribute('data-fokus', nilai[nilai.length - 1]);
+        await panduan.screenshot({ path: `storage/playwright/shots/panduan-leading-${testInfo.project.name}.png` });
+
+        // Admin: langkah persiapan, langkah berikutnya bertautan ke tempat mengaturnya.
+        await page.goto('/demo/peran/admin');
+        await page.goto('/dashboard');
+        const persiapan = page.getByTestId('panduan-admin');
+        await expect(persiapan.getByTestId('langkah-admin')).toHaveCount(11);
+        const berikutnya = persiapan.locator('[data-testid="langkah-admin"][data-status="sekarang"]');
+        if ((await persiapan.getAttribute('data-lengkap')) === '0') {
+            await expect(berikutnya).toHaveCount(1);
+            await expect(berikutnya.getByTestId('buka-langkah')).toBeVisible();
+        }
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBeLessThanOrEqual(0);
+        await persiapan.screenshot({ path: `storage/playwright/shots/panduan-admin-${testInfo.project.name}.png` });
+    });
 });
+

@@ -26,6 +26,12 @@
         </div>
     </div>
 
+    @if ($pengguna['role'] === 'admin')
+        @include('livewire.partials.panduan-admin', ['panduan' => $this->panduan])
+    @else
+        @include('livewire.partials.panduan-leading', ['panduan' => $this->panduan])
+    @endif
+
     @include('livewire.partials.beranda-akun', ['beranda' => $this->beranda])
 
     <x-monitoring.ringkasan :ringkasan="$ringkasan" class="mt-6" />
