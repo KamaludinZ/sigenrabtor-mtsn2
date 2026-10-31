@@ -35,6 +35,20 @@ interface TemplateDokumenRepository
      */
     public function tambah(int $tahun, string $nama, string $jenis, UploadedFile $berkas, array $variabel, array $atribut = []): string;
 
+    /**
+     * Ubah nama & catatan versi (null = tanpa catatan); berkas, jenis, pemilik tetap.
+     *
+     * @throws \RuntimeException Template tidak ada.
+     */
+    public function ubah(string $id, string $nama, ?string $catatan): void;
+
+    /**
+     * Jadikan default pemilik × jenis tahun itu; default lama pemilik × jenis itu dilepas.
+     *
+     * @throws \RuntimeException Template tidak ada.
+     */
+    public function jadikanDefault(string $id): void;
+
     /** Hapus template beserta berkasnya; default pemilik × jenis itu pindah ke template terbaru berikutnya. */
     public function hapus(string $id): void;
 }

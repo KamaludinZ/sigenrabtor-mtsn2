@@ -8,6 +8,7 @@ use App\Support\Dokumen\DaftarTemplateMaster;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
 use App\Support\MasterKode;
+use App\Support\Pengaturan\KelolaTemplateMaster;
 use App\Support\Pengaturan\UnggahMasterTemplate;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -29,7 +30,9 @@ use RuntimeException;
  * (DaftarTemplateMaster). Unggah template Word berpenanda lewat panel `form-unggah-master` (`bukaUnggah($pemilik?)` →
  * berkas dibaca seketika: penanda `${…}` terdaftar/tidak + saran (`analisis`, AnalisisTemplate) dan isi berpenanda
  * (`penanda`, PratinjauTemplate mode penanda) → `simpanUnggah()` lewat UnggahMasterTemplate dengan pemilik, catatan versi,
- * dan jadikan default pemilik × jenis — template pertama pemilik × jenis otomatis default, `adaDefault`).
+ * dan jadikan default pemilik × jenis — template pertama pemilik × jenis otomatis default, `adaDefault`). Template tersimpan
+ * diubah lewat formulir di barisnya (`ubahTemplate($id)` → `isianUbah` nama, catatan versi, default → `simpanUbah()`) atau
+ * langsung `jadikanTemplateDefault($id)` — keduanya lewat KelolaTemplateMaster.
  */
 #[Layout('layouts.app')]
 class TemplateMaster extends Component
@@ -72,6 +75,13 @@ class TemplateMaster extends Component
     /** Template yang baru disimpan (disorot di daftar). */
     #[Locked]
     public ?string $baru = null;
+
+    /** Template yang sedang diubah nama/catatan/default-nya; null = tertutup. */
+    #[Locked]
+    public ?string $diubah = null;
+
+    /** @var array{nama: string, catatan: string, default: bool} Isian formulir ubah. */
+    public array $isianUbah = ['nama' => '', 'catatan' => '', 'default' => false];
 
     public function mount(): void
     {
@@ -207,6 +217,80 @@ class TemplateMaster extends Component
         $this->baru = $master['id'];
         unset($this->data);
         $this->dispatch('notify', message: "Template “{$master['nama']}” tersimpan untuk ".mb_lcfirst(DaftarTemplateMaster::labelPemilik($master['leading'])).($master['is_default'] ? ' dan menjadi default '.$master['jenis'].'.' : '.'), type: 'success');
+    }
+
+    /** Buka formulir ubah nama, catatan versi, & default satu template. */
+    public function ubahTemplate(string $id): void
+    {
+        $master = app(TemplateDokumenRepository::class)->temukan($id);
+        if ($master === null || StubData::tahunAktif()['is_locked']) {
+            return;
+        }
+        $this->resetErrorBag();
+        $this->diubah = $id;
+        $this->isianUbah = ['nama' => (string) $master['nama'], 'catatan' => (string) ($master['catatan'] ?? ''), 'default' => (bool) $master['is_default']];
+    }
+
+    public function batalUbah(): void
+    {
+        $this->reset('diubah', 'isianUbah');
+        $this->resetErrorBag();
+    }
+
+    /** Simpan nama & catatan versi (KelolaTemplateMaster::ubah), lalu jadikan default bila dicentang. */
+    public function simpanUbah(): void
+    {
+        if ($this->diubah === null) {
+            return;
+        }
+        $this->resetErrorBag();
+
+        try {
+            $hasil = KelolaTemplateMaster::ubah($this->diubah, $this->isianUbah, StubData::currentUser());
+            $default = $this->isianUbah['default'] ? KelolaTemplateMaster::jadikanDefault($this->diubah, StubData::currentUser()) : ['berubah' => false];
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $kolom => $pesan) {
+                $this->addError("isianUbah.{$kolom}", $pesan[0]);
+            }
+
+            return;
+        } catch (AuthorizationException|RuntimeException $e) {
+            $this->batalUbah();
+            unset($this->data);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        $nama = $hasil['master']['nama'];
+        $this->batalUbah();
+        unset($this->data);
+        $this->dispatch('notify', ...match (true) {
+            $hasil['ringkasan'] === null && ! $default['berubah'] => ['message' => "Template “{$nama}” tidak berubah.", 'type' => 'info'],
+            default => ['message' => "Template “{$nama}” diperbarui".($default['berubah'] ? ' dan menjadi default '.$hasil['master']['jenis'].'.' : '.'), 'type' => 'success'],
+        });
+    }
+
+    /** Jadikan default pemilik × jenis langsung dari daftar (bukan `jadikanDefault`: nama itu properti formulir unggah). */
+    public function jadikanTemplateDefault(string $id): void
+    {
+        try {
+            $hasil = KelolaTemplateMaster::jadikanDefault($id, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+
+            return;
+        } catch (AuthorizationException|RuntimeException $e) {
+            unset($this->data);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        unset($this->data);
+        if ($hasil['berubah']) {
+            $this->dispatch('notify', message: "“{$hasil['master']['nama']}” kini default {$hasil['master']['jenis']} ".mb_lcfirst(DaftarTemplateMaster::labelPemilik($hasil['master']['leading'] ?? null)).($hasil['sebelumnya'] ? " menggantikan “{$hasil['sebelumnya']}”." : '.'), type: 'success');
+        }
     }
 
     /** @return array<string, list<mixed>> */

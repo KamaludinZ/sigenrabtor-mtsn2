@@ -21,6 +21,8 @@ final class RiwayatPengaturan
         'hapus_cover' => ['Hapus cover', 'template'],
         'unggah_master' => ['Unggah master KAK/TOR', 'template'],
         'hapus_master' => ['Hapus master KAK/TOR', 'template'],
+        'ubah_master' => ['Ubah nama & catatan versi master KAK/TOR', 'template'],
+        'ubah_default_master' => ['Ubah default master KAK/TOR', 'template'],
         'ubah_daftar_isi' => ['Ubah daftar isi', 'template'],
         'hapus_daftar_isi_khusus' => ['Kembalikan daftar isi ke bawaan', 'template'],
         'ubah_nomor_halaman' => ['Ubah nomor halaman', 'template'],

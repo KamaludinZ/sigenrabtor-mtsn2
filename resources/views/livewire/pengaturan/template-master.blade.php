@@ -128,7 +128,7 @@
                         </header>
                         <ul class="divide-y divide-stone-100">
                             @foreach ($kelompok['template'] as $t)
-                                <li @class(['flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:px-6', 'bg-brand-50/50' => $this->baru === $t['id']]) data-testid="template-master" data-id="{{ $t['id'] }}" data-status="{{ $t['aktif'] ? 'aktif' : 'nonaktif' }}" data-default="{{ $t['default'] ? 'ya' : 'tidak' }}" wire:key="template-{{ $t['id'] }}">
+                                <li @class(['flex flex-col gap-3 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-start sm:px-6', 'bg-brand-50/50' => $this->baru === $t['id']]) data-testid="template-master" data-id="{{ $t['id'] }}" data-status="{{ $t['aktif'] ? 'aktif' : 'nonaktif' }}" data-default="{{ $t['default'] ? 'ya' : 'tidak' }}" wire:key="template-{{ $t['id'] }}">
                                     <div class="min-w-0 flex-1">
                                         <p class="flex flex-wrap items-center gap-2">
                                             <span @class(['text-sm font-semibold', 'text-stone-900' => $t['aktif'], 'text-stone-500' => ! $t['aktif']])>{{ $t['nama'] }}</span>
@@ -168,11 +168,44 @@
                                         @if ($t['ada_berkas'])
                                             <a href="{{ $t['tautan_unduh'] }}" class="btn-ghost px-2.5 py-1 text-xs" data-testid="unduh-template-master"><x-ui.icon name="download" class="size-3.5" /> Unduh</a>
                                         @endif
-                                        @unless ($t['default'] || ! $t['aktif'])
-                                            <button type="button" class="btn-ghost px-2.5 py-1 text-xs" disabled title="Sedang disiapkan">Jadikan default <x-ui.segera /></button>
+                                        @unless ($data['terkunci'])
+                                            @unless ($t['default'] || ! $t['aktif'])
+                                                <button type="button" class="btn-ghost px-2.5 py-1 text-xs" wire:click="jadikanTemplateDefault('{{ $t['id'] }}')" wire:loading.attr="disabled" wire:target="jadikanTemplateDefault('{{ $t['id'] }}')" data-testid="jadikan-default"><x-ui.icon name="check" class="size-3.5" /> Jadikan default</button>
+                                            @endunless
+                                            @if ($this->diubah !== $t['id'])
+                                                <button type="button" class="btn-ghost px-2.5 py-1 text-xs" wire:click="ubahTemplate('{{ $t['id'] }}')" data-testid="ubah-template"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
+                                            @endif
                                         @endunless
                                         <button type="button" class="btn-ghost px-2.5 py-1 text-xs" disabled title="Sedang disiapkan">{{ $t['aktif'] ? 'Nonaktifkan' : 'Aktifkan' }} <x-ui.segera /></button>
                                     </div>
+                                    @if ($this->diubah === $t['id'])
+                                        {{-- Nama, catatan versi, & default (KelolaTemplateMaster); Enter simpan, Esc batal. --}}
+                                        <form wire:submit="simpanUbah" x-on:keydown.escape.prevent.stop="$wire.batalUbah()" class="w-full space-y-3 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 sm:order-last sm:basis-full sm:p-4" data-testid="form-ubah-template">
+                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                <x-ui.field label="Nama template" for="ubah-nama-{{ $t['id'] }}" error="isianUbah.nama">
+                                                    <input type="text" id="ubah-nama-{{ $t['id'] }}" wire:model="isianUbah.nama" maxlength="100" class="form-input text-sm" data-testid="ubah-nama-template" x-init="$el.focus()" @error('isianUbah.nama') aria-invalid="true" @enderror>
+                                                </x-ui.field>
+                                                <x-ui.field label="Catatan versi" for="ubah-catatan-{{ $t['id'] }}" error="isianUbah.catatan">
+                                                    <input type="text" id="ubah-catatan-{{ $t['id'] }}" wire:model="isianUbah.catatan" maxlength="{{ \App\Support\Pengaturan\UnggahMasterTemplate::MAKS_CATATAN }}" placeholder="mis. Versi 2 — dengan narasumber eksternal" class="form-input text-sm" data-testid="ubah-catatan-template" @error('isianUbah.catatan') aria-invalid="true" @enderror>
+                                                </x-ui.field>
+                                            </div>
+                                            @if ($t['default'])
+                                                <p class="flex items-center gap-1.5 text-xs text-brand-800"><x-ui.icon name="check-circle" class="size-3.5" /> Sudah default {{ $t['jenis'] }} {{ mb_lcfirst($kelompok['label']) }}. Pilih template lain sebagai default untuk menggantinya.</p>
+                                            @elseif ($t['aktif'])
+                                                <label class="flex items-start gap-2 text-sm text-stone-700">
+                                                    <input type="checkbox" wire:model="isianUbah.default" class="mt-0.5 size-4 rounded accent-brand-700" data-testid="ubah-default-template">
+                                                    <span>Jadikan default {{ $t['jenis'] }} {{ mb_lcfirst($kelompok['label']) }}<span class="block text-xs text-stone-500">Default lama tetap tersimpan sebagai pilihan.</span></span>
+                                                </label>
+                                            @endif
+                                            @error('isianUbah.default') <p class="form-error" role="alert">{{ $message }}</p> @enderror
+                                            <div class="flex justify-end gap-2">
+                                                <button type="button" class="btn-ghost text-sm" wire:click="batalUbah">Batal</button>
+                                                <button type="submit" class="btn-primary text-sm" wire:loading.attr="disabled" wire:target="simpanUbah" data-testid="simpan-ubah-template">
+                                                    <span wire:loading.remove wire:target="simpanUbah">Simpan</span><span wire:loading wire:target="simpanUbah">Menyimpan…</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>

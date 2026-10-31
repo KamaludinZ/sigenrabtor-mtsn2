@@ -6,6 +6,7 @@ use App\Contracts\RiwayatPengaturanRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Repositories\EloquentTemplateDokumenRepository;
 use App\Support\Dokumen\JenisDokumen;
+use App\Support\Pengaturan\KelolaTemplateMaster;
 use App\Support\Pengaturan\UnggahMasterTemplate;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -67,6 +68,17 @@ class UnggahTemplateLeadingTest extends TestCase
         $sisa = $this->defaultPerNama();
         $this->assertTrue($sisa['Umum reguler']);
         $this->assertSame(1, count(array_filter(array_intersect_key($sisa, array_flip(['TPM reguler', 'TPM narasumber'])))));
+
+        // Ubah nama/catatan & jadikan default lewat KelolaTemplateMaster (padanan tiruan & database).
+        $narasumber = collect(app(TemplateDokumenRepository::class)->semua(2026))->firstWhere('nama', 'TPM narasumber');
+        if ($narasumber['is_default']) {
+            $narasumber = collect(app(TemplateDokumenRepository::class)->semua(2026))->firstWhere('nama', 'TPM reguler');
+        }
+        KelolaTemplateMaster::jadikanDefault($narasumber['id'], self::ADMIN);
+        KelolaTemplateMaster::ubah($narasumber['id'], ['nama' => $narasumber['nama'].' baru', 'catatan' => 'Versi 3'], self::ADMIN);
+        $kini = app(TemplateDokumenRepository::class)->temukan($narasumber['id']);
+        $this->assertSame([true, $narasumber['nama'].' baru', 'Versi 3'], [$kini['is_default'], $kini['nama'], $kini['catatan']]);
+        $this->assertSame(1, count(array_filter(app(TemplateDokumenRepository::class)->semua(2026), fn (array $t) => $t['leading'] === '1.6' && $t['is_default'])));
 
         if ($database) {
             $this->assertSame('Versi 1 uji', DB::table('document_templates')->where('id', $tpm['id'])->value('catatan'));

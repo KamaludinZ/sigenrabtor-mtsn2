@@ -4,19 +4,25 @@ namespace Tests\Feature\Pengaturan;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PilihanTemplateRepository;
+use App\Contracts\RiwayatPengaturanRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Pengaturan\TemplateMaster;
 use App\Support\Dokumen\DaftarTemplateMaster;
 use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Pengaturan\KelolaTemplateMaster;
 use App\Support\Pengaturan\UnggahMasterTemplate;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Support\Docx;
 use Tests\TestCase;
 
 class TemplateMasterTest extends TestCase
 {
+    private const ADMIN = ['id' => 2, 'name' => 'Koordinator PUSKOM', 'role' => 'admin', 'leadings' => []];
+
     /**
      * Tiga master TA 2026: umum (default KAK+TOR), khusus leading 1.6 bercatatan, dan RAB umum yang dinonaktifkan —
      * atribut pemilik/catatan/aktif ditulis langsung ke berkas tiruan (penyimpanannya menyusul di task backend).
@@ -175,6 +181,72 @@ class TemplateMasterTest extends TestCase
             ->call('tutupUnggah')
             ->assertSet('unggahTerbuka', false)
             ->assertSet('berkas', null);
+    }
+
+    public function test_ubah_nama_versi_dan_default(): void
+    {
+        $id = $this->siapkan();
+        $repo = app(TemplateDokumenRepository::class);
+        $id['tpm2'] = $repo->tambah(2026, 'Master TPM ringkas', 'KAK+TOR', UploadedFile::fake()->createWithContent('tpm2.docx', Docx::isi(['${nama_kegiatan}'])), ['nama_kegiatan'], ['leading' => '1.6']);
+        $this->assertFalse($repo->temukan($id['tpm2'])['is_default']);
+
+        $hasil = KelolaTemplateMaster::ubah($id['umum'], ['nama' => '  Master   reguler 2026 ', 'catatan' => ' Versi 3 — tanpa narasumber '], self::ADMIN);
+        $this->assertSame('Nama: Master reguler → Master reguler 2026; Catatan versi: — → Versi 3 — tanpa narasumber', $hasil['ringkasan']);
+        $this->assertSame(['Master reguler 2026', 'Versi 3 — tanpa narasumber'], [$repo->temukan($id['umum'])['nama'], $repo->temukan($id['umum'])['catatan']]);
+        $this->assertSame('Master “Master reguler” (KAK+TOR) — '.$hasil['ringkasan'].'.', app(RiwayatPengaturanRepository::class)->semua()[0]['keterangan']);
+        $this->assertNull(KelolaTemplateMaster::ubah($id['umum'], ['nama' => 'Master reguler 2026', 'catatan' => 'Versi 3 — tanpa narasumber'], self::ADMIN)['ringkasan']);
+        $this->assertNull(KelolaTemplateMaster::ubah($id['umum'], ['nama' => 'Master reguler 2026', 'catatan' => ''], self::ADMIN)['master']['catatan']);
+
+        $default = KelolaTemplateMaster::jadikanDefault($id['tpm2'], self::ADMIN);
+        $this->assertSame([true, 'Master TPM narasumber'], [$default['berubah'], $default['sebelumnya']]);
+        $this->assertEquals(['Master TPM ringkas' => true, 'Master TPM narasumber' => false, 'Master reguler 2026' => true], array_intersect_key(array_column($repo->semua(2026), 'is_default', 'nama'), array_flip(['Master TPM ringkas', 'Master TPM narasumber', 'Master reguler 2026'])));
+        $this->assertStringStartsWith('Default KAK+TOR 1.6 · ', app(RiwayatPengaturanRepository::class)->semua()[0]['keterangan']);
+        $this->assertFalse(KelolaTemplateMaster::jadikanDefault($id['tpm2'], self::ADMIN)['berubah']);
+
+        foreach ([fn () => KelolaTemplateMaster::ubah($id['umum'], ['nama' => ' '], self::ADMIN), fn () => KelolaTemplateMaster::ubah($id['umum'], ['nama' => 'X', 'catatan' => str_repeat('a', 301)], self::ADMIN)] as $aksi) {
+            try {
+                $aksi();
+                $this->fail('Isian tidak sah ditolak.');
+            } catch (ValidationException $e) {
+                $this->assertNotEmpty(array_intersect(['nama', 'catatan'], array_keys($e->errors())));
+            }
+        }
+        $this->expectException(AuthorizationException::class);
+        KelolaTemplateMaster::jadikanDefault($id['umum'], ['role' => 'leading']);
+    }
+
+    public function test_form_ubah_di_daftar(): void
+    {
+        $this->withSession(['stub_role' => 'admin']);
+        $id = $this->siapkan();
+        $repo = app(TemplateDokumenRepository::class);
+        $id['tpm2'] = $repo->tambah(2026, 'Master TPM ringkas', 'KAK+TOR', UploadedFile::fake()->createWithContent('tpm2.docx', Docx::isi(['${nama_kegiatan}'])), ['nama_kegiatan'], ['leading' => '1.6']);
+
+        Livewire::test(TemplateMaster::class)
+            ->assertSeeHtml('data-testid="jadikan-default"')
+            ->call('ubahTemplate', $id['tpm2'])
+            ->assertSet('isianUbah', ['nama' => 'Master TPM ringkas', 'catatan' => '', 'default' => false])
+            ->assertSeeHtml('data-testid="form-ubah-template"')
+            ->assertSeeHtml('data-testid="ubah-default-template"')
+            ->set('isianUbah.nama', '')
+            ->call('simpanUbah')
+            ->assertHasErrors(['isianUbah.nama'])
+            ->set('isianUbah.nama', 'Master TPM ringkas v2')
+            ->set('isianUbah.catatan', 'Versi 2 — format ringkas')
+            ->set('isianUbah.default', true)
+            ->call('simpanUbah')
+            ->assertHasNoErrors()
+            ->assertSet('diubah', null)
+            ->assertDispatched('notify', message: 'Template “Master TPM ringkas v2” diperbarui dan menjadi default KAK+TOR.', type: 'success')
+            ->assertSee('Versi 2 — format ringkas')
+            ->call('ubahTemplate', $id['tpm2'])
+            ->call('simpanUbah')
+            ->assertDispatched('notify', message: 'Template “Master TPM ringkas v2” tidak berubah.', type: 'info')
+            ->call('jadikanTemplateDefault', $id['khusus'])
+            ->assertDispatched('notify', message: '“Master TPM narasumber” kini default KAK+TOR '.mb_lcfirst(DaftarTemplateMaster::labelPemilik('1.6')).' menggantikan “Master TPM ringkas v2”.', type: 'success')
+            ->call('jadikanTemplateDefault', 'tidak-ada')
+            ->assertDispatched('notify', message: KelolaTemplateMaster::PESAN_TIDAK_ADA, type: 'error');
+        $this->assertTrue($repo->temukan($id['khusus'])['is_default']);
     }
 
     public function test_tautan_dari_template_dokumen(): void

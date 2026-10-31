@@ -7,6 +7,7 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Master .docx tiruan: metadata di berkas JSON, berkas di folder senama (tanpa .json) pada disk "local" (privat; diunduh
@@ -55,6 +56,25 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
         $this->tulis($semua);
 
         return $id;
+    }
+
+    public function ubah(string $id, string $nama, ?string $catatan): void
+    {
+        $semua = $this->baca();
+        if (! collect($semua)->contains('id', $id)) {
+            throw new RuntimeException('Template tidak ditemukan.');
+        }
+        $this->tulis(array_map(fn (array $t) => $t['id'] === $id ? ['nama' => $nama, 'catatan' => $catatan, 'diperbarui_pada' => now()->toIso8601String()] + $t : $t, $semua));
+    }
+
+    public function jadikanDefault(string $id): void
+    {
+        $template = $this->temukan($id) ?? throw new RuntimeException('Template tidak ditemukan.');
+        $this->tulis(array_map(function (array $t) use ($template) {
+            $sama = $t['tahun'] === $template['tahun'] && $t['jenis'] === $template['jenis'] && $t['leading'] === $template['leading'];
+
+            return $sama ? ['is_default' => $t['id'] === $template['id']] + $t : $t;
+        }, $this->baca()));
     }
 
     public function hapus(string $id): void
