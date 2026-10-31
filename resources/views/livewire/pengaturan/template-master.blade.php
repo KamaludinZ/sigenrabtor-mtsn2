@@ -176,8 +176,44 @@
                                                 <button type="button" class="btn-ghost px-2.5 py-1 text-xs" wire:click="ubahTemplate('{{ $t['id'] }}')" data-testid="ubah-template"><x-ui.icon name="pencil" class="size-3.5" /> Ubah</button>
                                             @endif
                                         @endunless
-                                        <button type="button" class="btn-ghost px-2.5 py-1 text-xs" disabled title="Sedang disiapkan">{{ $t['aktif'] ? 'Nonaktifkan' : 'Aktifkan' }} <x-ui.segera /></button>
+                                        @unless ($data['terkunci'])
+                                            @if ($t['aktif'])
+                                                @if ($this->akanNonaktif !== $t['id'])
+                                                    <button type="button" class="btn-ghost px-2.5 py-1 text-xs text-red-700 hover:text-red-800" wire:click="mintaNonaktif('{{ $t['id'] }}')" data-testid="nonaktifkan-template"><x-ui.icon name="lock" class="size-3.5" /> Nonaktifkan</button>
+                                                @endif
+                                            @else
+                                                <button type="button" class="btn-ghost px-2.5 py-1 text-xs" wire:click="aktifkan('{{ $t['id'] }}')" wire:loading.attr="disabled" wire:target="aktifkan('{{ $t['id'] }}')" data-testid="aktifkan-template"><x-ui.icon name="check" class="size-3.5" /> Aktifkan</button>
+                                            @endif
+                                        @endunless
                                     </div>
+                                    @if ($this->akanNonaktif === $t['id'] && ($dampak = $this->dampakNonaktif))
+                                        {{-- Peringatan dampak menonaktifkan (KelolaTemplateMaster::dampak). --}}
+                                        <div class="w-full space-y-2 rounded-xl bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-200 sm:basis-full sm:p-4" role="alert" data-testid="konfirmasi-nonaktif-template"
+                                             data-dipilih="{{ count($dampak['dipilih']) }}" data-beralih="{{ count($dampak['beralih']) }}" data-aturan="{{ count($dampak['aturan']) + count($dampak['pilihan']) }}"
+                                             x-data x-on:keydown.escape.window="$wire.batalNonaktif()">
+                                            <p class="font-semibold">Nonaktifkan “{{ $t['nama'] }}”?</p>
+                                            <ul class="ml-4 list-disc space-y-1 text-xs">
+                                                <li>Template tidak muncul lagi di pilihan baru (dropdown kegiatan & pilihan default).</li>
+                                                @if ($dampak['default'])
+                                                    <li data-testid="dampak-default">Template ini default {{ $t['jenis'] }} {{ mb_lcfirst($kelompok['label']) }} — default {{ $dampak['pengganti'] ? 'pindah ke “'.$dampak['pengganti'].'”' : 'menjadi kosong (memakai template umum atau susunan baku)' }}.</li>
+                                                @endif
+                                                @if ($dampak['dipilih'] !== [])
+                                                    <li data-testid="dampak-dipilih">{{ count($dampak['dipilih']) }} kegiatan memilih template ini dan <span class="font-semibold">tetap memakainya</span>: {{ collect($dampak['dipilih'])->take(5)->pluck('nama')->implode(', ') }}{{ count($dampak['dipilih']) > 5 ? ', …' : '' }}.</li>
+                                                @endif
+                                                @if ($dampak['beralih'] !== [])
+                                                    <li data-testid="dampak-beralih">{{ count($dampak['beralih']) }} kegiatan memakainya sebagai default leading dan <span class="font-semibold">akan beralih</span>: {{ collect($dampak['beralih'])->take(5)->pluck('nama')->implode(', ') }}{{ count($dampak['beralih']) > 5 ? ', …' : '' }}.</li>
+                                                @endif
+                                                @if ($dampak['pilihan'] !== [])
+                                                    <li data-testid="dampak-pilihan">Masih ditunjuk aturan Format Seragam ({{ implode(', ', $dampak['pilihan']) }}) — tetap berlaku sampai aturannya diganti{{ $dampak['aturan'] !== [] ? ' ('.count($dampak['aturan']).' kegiatan)' : '' }}.</li>
+                                                @endif
+                                                <li>Dokumen lama yang memakainya tetap utuh; template bisa diaktifkan kembali kapan saja.</li>
+                                            </ul>
+                                            <div class="flex justify-end gap-2">
+                                                <button type="button" class="btn-ghost text-sm" wire:click="batalNonaktif">Batal</button>
+                                                <button type="button" class="btn-danger text-sm" wire:click="nonaktifkan" wire:loading.attr="disabled" wire:target="nonaktifkan" data-testid="ya-nonaktifkan-template">Ya, nonaktifkan</button>
+                                            </div>
+                                        </div>
+                                    @endif
                                     @if ($this->diubah === $t['id'])
                                         {{-- Nama, catatan versi, & default (KelolaTemplateMaster); Enter simpan, Esc batal. --}}
                                         <form wire:submit="simpanUbah" x-on:keydown.escape.prevent.stop="$wire.batalUbah()" class="w-full space-y-3 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200 sm:order-last sm:basis-full sm:p-4" data-testid="form-ubah-template">

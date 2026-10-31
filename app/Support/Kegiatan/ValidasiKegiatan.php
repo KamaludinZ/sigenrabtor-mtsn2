@@ -78,7 +78,9 @@ final class ValidasiKegiatan
             'format_dokumen' => ['nullable', Rule::in(array_keys(FormatKakTor::FORMAT))],
             // Template master pilihan kegiatan: hanya yang ada di dropdown (aktif, milik leading kegiatan atau umum, tahun kegiatan).
             'template_kak' => ['nullable', 'string', function (string $attribute, mixed $value, Closure $fail) use ($data) {
-                if (filled($value) && ! in_array($value, array_column(PilihanTemplate::pilihanKegiatan($data, TahunKegiatan::dari($data)), 'id'), true)) {
+                // Pilihan baru hanya template aktif (template nonaktif tidak muncul di pilihan baru).
+                $aktif = array_filter(PilihanTemplate::pilihanKegiatan(['template_kak' => null] + $data, TahunKegiatan::dari($data)), fn (array $t) => $t['aktif']);
+                if (filled($value) && ! in_array($value, array_column($aktif, 'id'), true)) {
                     $fail('Pilih template KAK/TOR milik leading kegiatan ini atau template umum yang aktif.');
                 }
             }],

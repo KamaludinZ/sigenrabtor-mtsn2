@@ -80,6 +80,17 @@ class UnggahTemplateLeadingTest extends TestCase
         $this->assertSame([true, $narasumber['nama'].' baru', 'Versi 3'], [$kini['is_default'], $kini['nama'], $kini['catatan']]);
         $this->assertSame(1, count(array_filter(app(TemplateDokumenRepository::class)->semua(2026), fn (array $t) => $t['leading'] === '1.6' && $t['is_default'])));
 
+        // Nonaktifkan default leading: default pindah ke template aktif lain; aktif kembali tanpa default lain → default.
+        $repo = app(TemplateDokumenRepository::class);
+        $defaultTpm = collect($repo->semua(2026))->first(fn (array $t) => $t['leading'] === '1.6' && $t['is_default']);
+        $lainTpm = collect($repo->semua(2026))->first(fn (array $t) => $t['leading'] === '1.6' && ! $t['is_default']);
+        KelolaTemplateMaster::ubahStatus($defaultTpm['id'], false, self::ADMIN);
+        $this->assertSame([false, false, true], [$repo->temukan($defaultTpm['id'])['aktif'], $repo->temukan($defaultTpm['id'])['is_default'], $repo->temukan($lainTpm['id'])['is_default']]);
+        KelolaTemplateMaster::ubahStatus($lainTpm['id'], false, self::ADMIN);
+        $this->assertSame(0, count(array_filter($repo->semua(2026), fn (array $t) => $t['leading'] === '1.6' && $t['is_default'])));
+        KelolaTemplateMaster::ubahStatus($defaultTpm['id'], true, self::ADMIN);
+        $this->assertTrue($repo->temukan($defaultTpm['id'])['is_default']);
+
         if ($database) {
             $this->assertSame('Versi 1 uji', DB::table('document_templates')->where('id', $tpm['id'])->value('catatan'));
             try {

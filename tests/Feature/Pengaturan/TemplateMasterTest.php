@@ -9,6 +9,7 @@ use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Pengaturan\TemplateMaster;
 use App\Support\Dokumen\DaftarTemplateMaster;
 use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\Pengaturan\KelolaTemplateMaster;
 use App\Support\Pengaturan\UnggahMasterTemplate;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -249,6 +250,58 @@ class TemplateMasterTest extends TestCase
             ->call('jadikanTemplateDefault', 'tidak-ada')
             ->assertDispatched('notify', message: KelolaTemplateMaster::PESAN_TIDAK_ADA, type: 'error');
         $this->assertTrue($repo->temukan($id['khusus'])['is_default']);
+    }
+
+    public function test_nonaktifkan_dengan_peringatan(): void
+    {
+        $this->withSession(['stub_role' => 'admin']);
+        $id = $this->siapkan();
+        $repo = app(TemplateDokumenRepository::class);
+        $id['ringkas'] = $repo->tambah(2026, 'Master TPM ringkas', 'KAK+TOR', UploadedFile::fake()->createWithContent('tpm2.docx', Docx::isi(['${nama_kegiatan}'])), ['nama_kegiatan'], ['leading' => '1.6']);
+        $kegiatan = app(KegiatanRepository::class);
+        $memilih = $kegiatan->simpan(['nama_kegiatan' => 'Rapat Evaluasi Mutu', 'leading' => '1.6', 'user_id' => 1, 'tahun_anggaran' => 2026, 'template_kak' => $id['khusus']]);
+
+        $dampak = KelolaTemplateMaster::dampak($id['khusus']);
+        $this->assertSame([true, 'Master TPM ringkas'], [$dampak['default'], $dampak['pengganti']]);
+        $this->assertSame([['id' => $memilih, 'nama' => 'Rapat Evaluasi Mutu']], $dampak['dipilih']);
+        $this->assertNotEmpty($dampak['beralih'], 'Contoh kegiatan leading 1.6 memakainya sebagai default leading.');
+        $this->assertNotContains($memilih, array_column($dampak['beralih'], 'id'));
+
+        Livewire::test(TemplateMaster::class)
+            ->assertSeeHtml('data-testid="nonaktifkan-template"')
+            ->call('mintaNonaktif', $id['khusus'])
+            ->assertSeeHtml('data-testid="konfirmasi-nonaktif-template"')
+            ->assertSeeHtml('data-dipilih="1"')
+            ->assertSee('default pindah ke “Master TPM ringkas”', false)
+            ->assertSeeHtml('data-testid="dampak-beralih"')
+            ->call('batalNonaktif')
+            ->assertDontSeeHtml('data-testid="konfirmasi-nonaktif-template"')
+            ->call('mintaNonaktif', $id['khusus'])
+            ->call('nonaktifkan')
+            ->assertDispatched('notify', message: '“Master TPM narasumber” dinonaktifkan — tidak muncul di pilihan baru; default kini “Master TPM ringkas”.', type: 'success')
+            ->assertSeeHtml('data-id="'.$id['khusus'].'" data-status="nonaktif" data-default="tidak"')
+            ->assertSeeHtml('data-testid="aktifkan-template"');
+
+        $this->assertSame([false, false, true], [$repo->temukan($id['khusus'])['aktif'], $repo->temukan($id['khusus'])['is_default'], $repo->temukan($id['ringkas'])['is_default']]);
+        $this->assertSame('Master “Master TPM narasumber” (KAK+TOR) dinonaktifkan — default pindah ke “Master TPM ringkas”.', app(RiwayatPengaturanRepository::class)->semua()[0]['keterangan']);
+
+        // Kegiatan yang memilihnya tetap memakainya; kegiatan lain beralih ke default baru dan tidak bisa memilihnya lagi.
+        $this->assertSame(['kegiatan', $id['khusus']], array_values(array_intersect_key(PilihanTemplate::untukKegiatan($kegiatan->temukan($memilih)), ['asal' => 1, 'kak' => 1])));
+        $this->assertFalse(collect(PilihanTemplate::pilihanKegiatan($kegiatan->temukan($memilih)))->firstWhere('id', $id['khusus'])['aktif']);
+        $lain = $kegiatan->simpan(['nama_kegiatan' => 'Supervisi Kelas', 'leading' => '1.6', 'user_id' => 1, 'tahun_anggaran' => 2026]);
+        $this->assertSame($id['ringkas'], PilihanTemplate::untukKegiatan($kegiatan->temukan($lain))['kak']);
+        $this->assertNotContains($id['khusus'], array_column(PilihanTemplate::pilihanKegiatan($kegiatan->temukan($lain)), 'id'));
+        try {
+            UbahDataKegiatan::ubah($lain, ['template_kak' => $id['khusus']], self::ADMIN);
+            $this->fail('Template nonaktif tidak bisa dipilih baru.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('template_kak', $e->errors());
+        }
+
+        Livewire::test(TemplateMaster::class)
+            ->call('aktifkan', $id['khusus'])
+            ->assertDispatched('notify', message: '“Master TPM narasumber” aktif kembali — muncul lagi di pilihan template.', type: 'success');
+        $this->assertSame([true, false], [$repo->temukan($id['khusus'])['aktif'], $repo->temukan($id['khusus'])['is_default']]);
     }
 
     public function test_tautan_dari_template_dokumen(): void

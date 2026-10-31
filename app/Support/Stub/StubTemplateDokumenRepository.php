@@ -77,6 +77,21 @@ class StubTemplateDokumenRepository implements TemplateDokumenRepository
         }, $this->baca()));
     }
 
+    public function ubahStatus(string $id, bool $aktif): void
+    {
+        $template = $this->temukan($id) ?? throw new RuntimeException('Template tidak ditemukan.');
+        $sama = fn (array $t) => $t['tahun'] === $template['tahun'] && $t['jenis'] === $template['jenis'] && $t['leading'] === $template['leading'];
+        $semua = array_map(fn (array $t) => $t['id'] === $id ? ['aktif' => $aktif, 'is_default' => $aktif && $t['is_default'], 'diperbarui_pada' => now()->toIso8601String()] + $t : $t, $this->baca());
+        if (! collect($semua)->contains(fn (array $t) => $sama($t) && $t['is_default'])) {
+            $calon = collect($semua)->filter(fn (array $t) => $sama($t) && $t['aktif'] && ($aktif || $t['id'] !== $id))
+                ->sortByDesc(fn (array $t) => [$t['id'] === $id, $t['diperbarui_pada']])->first();
+            if ($calon !== null) {
+                $semua = array_map(fn (array $t) => $t['id'] === $calon['id'] ? ['is_default' => true] + $t : $t, $semua);
+            }
+        }
+        $this->tulis($semua);
+    }
+
     public function hapus(string $id): void
     {
         $template = $this->temukan($id);

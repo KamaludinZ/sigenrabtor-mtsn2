@@ -162,7 +162,7 @@
             @foreach ($pilihanTemplate->groupBy(fn ($t) => $t['leading'] === null ? 'umum' : 'leading') as $kelompokTemplate => $daftarTemplate)
                 <optgroup label="{{ $kelompokTemplate === 'umum' ? 'Umum — semua leading' : 'Milik leading '.($this->dataKegiatan['leading'] ?? '') }}">
                     @foreach ($daftarTemplate as $t)
-                        <option value="{{ $t['id'] }}" @selected($pilihanSah && $t['id'] === $dipilihTemplate)>{{ $t['nama'] }} · {{ $t['jenis'] }}{{ $t['default'] ? ' (default)' : '' }}</option>
+                        <option value="{{ $t['id'] }}" @selected($pilihanSah && $t['id'] === $dipilihTemplate) @disabled(! $t['aktif'])>{{ $t['nama'] }} · {{ $t['jenis'] }}{{ $t['default'] ? ' (default)' : '' }}{{ $t['aktif'] ? '' : ' (nonaktif — tetap dipakai kegiatan ini)' }}</option>
                     @endforeach
                 </optgroup>
             @endforeach

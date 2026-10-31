@@ -49,6 +49,14 @@ interface TemplateDokumenRepository
      */
     public function jadikanDefault(string $id): void;
 
+    /**
+     * Aktifkan/nonaktifkan template. Nonaktif: default-nya dilepas dan pindah ke template aktif terbaru pemilik × jenis
+     * itu (bila ada); aktif kembali: menjadi default bila pemilik × jenis belum punya default.
+     *
+     * @throws \RuntimeException Template tidak ada.
+     */
+    public function ubahStatus(string $id, bool $aktif): void;
+
     /** Hapus template beserta berkasnya; default pemilik × jenis itu pindah ke template terbaru berikutnya. */
     public function hapus(string $id): void;
 }

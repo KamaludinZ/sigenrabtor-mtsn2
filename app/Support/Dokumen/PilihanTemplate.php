@@ -47,7 +47,7 @@ final class PilihanTemplate
 
         return array_values(array_map(fn (array $t) => [
             'id' => (string) $t['id'], 'nama' => (string) $t['nama'], 'jenis' => (string) $t['jenis'],
-            'label' => $t['nama'].' · '.$t['jenis'].($t['is_default'] ? (filled($t['leading'] ?? null) ? " (default {$t['leading']})" : ' (default)') : ''), 'default' => (bool) $t['is_default'], 'variabel' => count($t['variabel'] ?? []),
+            'label' => $t['nama'].' · '.$t['jenis'].($t['is_default'] ? (filled($t['leading'] ?? null) ? " (default {$t['leading']})" : ' (default)') : '').(($t['aktif'] ?? true) ? '' : ' (nonaktif)'), 'default' => (bool) $t['is_default'], 'variabel' => count($t['variabel'] ?? []),
         ], $daftar));
     }
 
@@ -271,22 +271,24 @@ final class PilihanTemplate
 
     /**
      * Pilihan template untuk satu kegiatan: master aktif keluarga KAK/TOR tahun itu milik leading kegiatan (default dulu,
-     * lalu nama) diikuti template umum (pemilik kosong) — dropdown "Template KAK/TOR" & aturan `template_kak`.
+     * lalu nama) diikuti template umum (pemilik kosong) — dropdown "Template KAK/TOR" & aturan `template_kak`. Pilihan
+     * tersimpan kegiatan yang kini nonaktif tetap ikut (`aktif` false): kegiatan yang sudah memilihnya tetap memakainya.
      *
      * @param  array<string, mixed>  $kegiatan
-     * @return list<array{id: string, nama: string, jenis: string, leading: string|null, catatan: string|null, default: bool}>
+     * @return list<array{id: string, nama: string, jenis: string, leading: string|null, catatan: string|null, default: bool, aktif: bool}>
      */
     public static function pilihanKegiatan(array $kegiatan, ?int $tahun = null): array
     {
         $tahun ??= (int) StubData::tahunAktif()['tahun'];
         $leading = filled($kegiatan['leading'] ?? null) ? (string) $kegiatan['leading'] : null;
+        $tersimpan = $kegiatan['template_kak'] ?? null;
         $daftar = array_values(array_filter(app(TemplateDokumenRepository::class)->semua($tahun), fn (array $t) => in_array($t['jenis'], self::JENIS_KAK, true)
-            && ($t['aktif'] ?? true) && (($t['leading'] ?? null) === null || ($leading !== null && $t['leading'] === $leading))));
+            && (($t['aktif'] ?? true) || $t['id'] === $tersimpan) && (($t['leading'] ?? null) === null || ($leading !== null && $t['leading'] === $leading))));
         usort($daftar, fn (array $a, array $b) => [($a['leading'] ?? null) === null, ! $a['is_default'], mb_strtolower($a['nama'])] <=> [($b['leading'] ?? null) === null, ! $b['is_default'], mb_strtolower($b['nama'])]);
 
         return array_map(fn (array $t) => [
             'id' => (string) $t['id'], 'nama' => (string) $t['nama'], 'jenis' => (string) $t['jenis'], 'leading' => $t['leading'] ?? null,
-            'catatan' => $t['catatan'] ?? null, 'default' => (bool) $t['is_default'],
+            'catatan' => $t['catatan'] ?? null, 'default' => (bool) $t['is_default'], 'aktif' => (bool) ($t['aktif'] ?? true),
         ], $daftar);
     }
 

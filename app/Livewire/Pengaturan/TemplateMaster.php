@@ -80,6 +80,10 @@ class TemplateMaster extends Component
     #[Locked]
     public ?string $diubah = null;
 
+    /** Template yang menunggu konfirmasi dinonaktifkan (peringatan dampak di barisnya). */
+    #[Locked]
+    public ?string $akanNonaktif = null;
+
     /** @var array{nama: string, catatan: string, default: bool} Isian formulir ubah. */
     public array $isianUbah = ['nama' => '', 'catatan' => '', 'default' => false];
 
@@ -291,6 +295,66 @@ class TemplateMaster extends Component
         if ($hasil['berubah']) {
             $this->dispatch('notify', message: "“{$hasil['master']['nama']}” kini default {$hasil['master']['jenis']} ".mb_lcfirst(DaftarTemplateMaster::labelPemilik($hasil['master']['leading'] ?? null)).($hasil['sebelumnya'] ? " menggantikan “{$hasil['sebelumnya']}”." : '.'), type: 'success');
         }
+    }
+
+    /** Tampilkan peringatan dampak sebelum menonaktifkan template (KelolaTemplateMaster::dampak). */
+    public function mintaNonaktif(string $id): void
+    {
+        $this->akanNonaktif = app(TemplateDokumenRepository::class)->temukan($id) !== null ? $id : null;
+        $this->reset('diubah');
+        unset($this->dampakNonaktif);
+    }
+
+    public function batalNonaktif(): void
+    {
+        $this->akanNonaktif = null;
+    }
+
+    /** @return array<string, mixed>|null */
+    #[Computed]
+    public function dampakNonaktif(): ?array
+    {
+        try {
+            return $this->akanNonaktif !== null ? KelolaTemplateMaster::dampak($this->akanNonaktif) : null;
+        } catch (RuntimeException) {
+            return null;
+        }
+    }
+
+    public function nonaktifkan(): void
+    {
+        if ($this->akanNonaktif === null) {
+            return;
+        }
+        $id = $this->akanNonaktif;
+        $this->akanNonaktif = null;
+        $this->ubahStatusTemplate($id, false);
+    }
+
+    public function aktifkan(string $id): void
+    {
+        $this->ubahStatusTemplate($id, true);
+    }
+
+    private function ubahStatusTemplate(string $id, bool $aktif): void
+    {
+        try {
+            $hasil = KelolaTemplateMaster::ubahStatus($id, $aktif, StubData::currentUser());
+        } catch (AuthorizationException|RuntimeException $e) {
+            unset($this->data);
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+
+        unset($this->data);
+        if (! $hasil['berubah']) {
+            return;
+        }
+        $nama = $hasil['master']['nama'];
+        $this->dispatch('notify', message: $aktif
+            ? "“{$nama}” aktif kembali".($hasil['master']['is_default'] ? ' dan menjadi default.' : ' — muncul lagi di pilihan template.')
+            : "“{$nama}” dinonaktifkan — tidak muncul di pilihan baru".($hasil['pengganti'] ? "; default kini “{$hasil['pengganti']}”." : '.'), type: 'success');
     }
 
     /** @return array<string, list<mixed>> */

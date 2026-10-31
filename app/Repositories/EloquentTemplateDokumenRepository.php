@@ -78,6 +78,19 @@ class EloquentTemplateDokumenRepository implements TemplateDokumenRepository
         });
     }
 
+    public function ubahStatus(string $id, bool $aktif): void
+    {
+        $template = (Str::isUuid($id) ? TemplateDokumen::query()->find($id) : null) ?? throw new RuntimeException('Template tidak ditemukan.');
+        DB::transaction(function () use ($template, $aktif) {
+            $pemilik = fn () => TemplateDokumen::query()->where('tahun_anggaran', $template->tahun_anggaran)->where('jenis', $template->jenis)
+                ->when($template->kode_leading === null, fn ($q) => $q->whereNull('kode_leading'), fn ($q) => $q->where('kode_leading', $template->kode_leading));
+            $template->update(['aktif' => $aktif, 'is_default' => $aktif && $template->is_default]);
+            if (! $pemilik()->where('is_default', true)->lockForUpdate()->exists()) {
+                $pemilik()->where('aktif', true)->orderByRaw('id = ? DESC', [$template->id])->orderByDesc('updated_at')->first()?->update(['is_default' => true]);
+            }
+        });
+    }
+
     public function hapus(string $id): void
     {
         $template = Str::isUuid($id) ? TemplateDokumen::query()->find($id) : null;
