@@ -152,7 +152,10 @@
         <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-master-tersimpan" data-testid="master-tersimpan">
             <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-stone-100 px-5 py-4 sm:px-6">
                 <h2 id="judul-master-tersimpan" class="text-base font-semibold text-stone-900">Master tersimpan</h2>
-                <p class="text-xs text-stone-500">Tahun Anggaran {{ $this->tahun() }} · {{ count($masters) }} template</p>
+                <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+                    <span>Tahun Anggaran {{ $this->tahun() }} · {{ count($masters) }} template</span>
+                    <a href="{{ route('pengaturan.template.master.index') }}" wire:navigate class="font-semibold text-brand-700 hover:text-brand-800" data-testid="ke-template-master">Kelola per leading →</a>
+                </p>
             </header>
             @if ($masters === [])
                 <div class="px-5 py-8 text-center sm:px-6" data-testid="master-kosong">

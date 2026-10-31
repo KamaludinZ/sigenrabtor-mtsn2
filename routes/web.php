@@ -162,6 +162,7 @@ use App\Livewire\Pengaturan\ProfilMadrasah as PengaturanProfilMadrasah;
 use App\Livewire\Pengaturan\Riwayat as PengaturanRiwayat;
 use App\Livewire\Pengaturan\TahunAnggaran as PengaturanTahunAnggaran;
 use App\Livewire\Pengaturan\TemplateDokumen as PengaturanTemplateDokumen;
+use App\Livewire\Pengaturan\TemplateMaster as PengaturanTemplateMaster;
 use App\Livewire\SaranAi\Riwayat as SaranAiRiwayat;
 use App\Support\Akun\Autentikasi;
 use App\Support\Akun\HakAkses;
@@ -341,6 +342,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::put('/ai/prompt/gaya', SimpanGayaBahasaAi::class)->name('ai.prompt.gaya');
     Route::put('/ai/prompt/{bagian}', SimpanPromptAi::class)->whereIn('bagian', array_keys(BagianAi::BAGIAN))->name('ai.prompt.simpan');
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
+    Route::get('/template/master', PengaturanTemplateMaster::class)->name('template.master.index');
     Route::get('/template/cover/{cover}/gambar', GambarCover::class)->whereUuid('cover')->name('template.cover.gambar');
     Route::get('/template/master/{template}/unduh', UnduhMasterTemplate::class)->whereUuid('template')->name('template.master.unduh');
 });
