@@ -81,7 +81,10 @@ class UnggahMasterTemplateTest extends TestCase
 
     public function test_aturan_berkas_dan_variabel(): void
     {
-        $this->assertSame(['berkas' => 'Perbaiki variabel yang tidak terdaftar di Word, lalu unggah ulang.'], $this->galat(fn () => UnggahMasterTemplate::simpan(2026, $this->docx('salah.docx', ['${nama_kegiaatan}']), 'Salah', 'KAK', self::ADMIN)));
+        $this->assertSame([
+            'berkas' => 'Perbaiki variabel yang tidak terdaftar di Word, lalu unggah ulang.',
+            'variabel.nama_kegiaatan' => '${nama_kegiaatan} tidak terdaftar — maksud Anda ${nama_kegiatan}?',
+        ], $this->galat(fn () => UnggahMasterTemplate::simpan(2026, $this->docx('salah.docx', ['${nama_kegiaatan}']), 'Salah', 'KAK', self::ADMIN)));
         $this->assertSame(['berkas' => 'Belum ada variabel ${…} di dokumen — tandai bagian yang diisi otomatis, mis. ${nama_kegiatan}.'], $this->galat(fn () => UnggahMasterTemplate::simpan(2026, $this->docx('polos.docx', ['Tanpa variabel.']), 'Polos', 'KAK', self::ADMIN)));
         $this->assertSame(['berkas' => 'Pilih dokumen Word .docx (bukan .doc atau PDF).'], $this->galat(fn () => UnggahMasterTemplate::simpan(2026, UploadedFile::fake()->create('kak.pdf', 10), 'PDF', 'KAK', self::ADMIN)));
         $this->assertStringStartsWith('Berkas bukan dokumen Word', $this->galat(fn () => UnggahMasterTemplate::simpan(2026, UploadedFile::fake()->createWithContent('rusak.docx', 'bukan zip'), 'Rusak', 'KAK', self::ADMIN))['berkas']);

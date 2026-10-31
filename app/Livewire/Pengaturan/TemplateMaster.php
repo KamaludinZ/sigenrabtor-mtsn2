@@ -7,6 +7,7 @@ use App\Support\Dokumen\AnalisisTemplate;
 use App\Support\Dokumen\DaftarTemplateMaster;
 use App\Support\Dokumen\PembacaTemplateDocx;
 use App\Support\Dokumen\PratinjauTemplate;
+use App\Support\Dokumen\ValidasiVariabelTemplate;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\KelolaTemplateMaster;
 use App\Support\Pengaturan\UnggahMasterTemplate;
@@ -137,7 +138,7 @@ class TemplateMaster extends Component
     /** Berkas baru langsung dibaca; nama bawaan dari nama berkas. */
     public function updatedBerkas(): void
     {
-        unset($this->analisis, $this->penanda);
+        unset($this->analisis, $this->penanda, $this->peringatanPenanda);
         $this->resetErrorBag('berkas');
         $this->validateOnly('berkas');
         if (($this->nama === '' || $this->nama === $this->namaDariBerkas) && $this->berkas !== null) {
@@ -152,7 +153,7 @@ class TemplateMaster extends Component
 
     public function updatedJenisBaru(): void
     {
-        unset($this->adaDefault);
+        unset($this->adaDefault, $this->peringatanPenanda);
     }
 
     /** Penanda ${…} di berkas dicocokkan dengan variabel terdaftar; null selama belum ada berkas sah. */
@@ -169,6 +170,26 @@ class TemplateMaster extends Component
             $this->addError('berkas', $e->errors()['berkas'][0]);
 
             return null;
+        }
+    }
+
+    /**
+     * Peringatan penanda (ValidasiVariabelTemplate: penanda daftar/tabel/blok tidak berdiri sendiri, RAB tanpa ${rab},
+     * penanda dianjurkan) — tidak menahan simpan.
+     *
+     * @return list<array{kunci: string, pesan: string}>
+     */
+    #[Computed]
+    public function peringatanPenanda(): array
+    {
+        if ($this->analisis === null) {
+            return [];
+        }
+
+        try {
+            return ValidasiVariabelTemplate::periksa($this->berkas->getRealPath(), $this->jenisBaru)['peringatan'];
+        } catch (RuntimeException) {
+            return [];
         }
     }
 

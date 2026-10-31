@@ -97,8 +97,12 @@
                                 </li>
                             @endforeach
                         </ul>
-                        @if (($dianjurkan = $analisis->dianjurkanBelumAda()) !== [])
-                            <p class="mt-2 text-xs text-stone-500" data-testid="penanda-dianjurkan">Dianjurkan tetapi belum ada: @foreach ($dianjurkan as $nama)<code class="rounded bg-stone-100 px-1">${{ '{' }}{{ $nama }}{{ '}' }}</code>@if (! $loop->last), @endif @endforeach</p>
+                        @if ($this->peringatanPenanda !== [])
+                            <ul class="mt-2 space-y-1 rounded-lg bg-gold-50 px-3 py-2 text-xs text-gold-800 ring-1 ring-gold-200" data-testid="peringatan-penanda">
+                                @foreach ($this->peringatanPenanda as $p)
+                                    <li class="flex items-start gap-1.5" data-kunci="{{ $p['kunci'] }}"><x-ui.icon name="alert" class="mt-px size-3.5 shrink-0" /> {{ $p['pesan'] }}</li>
+                                @endforeach
+                            </ul>
                         @endif
                     </section>
                     @if ($this->penanda)

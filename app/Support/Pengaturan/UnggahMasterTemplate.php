@@ -7,6 +7,7 @@ use App\Contracts\TahunAnggaranRepository;
 use App\Contracts\TemplateDokumenRepository;
 use App\Support\Dokumen\AnalisisTemplate;
 use App\Support\Dokumen\PembacaTemplateDocx;
+use App\Support\Dokumen\ValidasiVariabelTemplate;
 use App\Support\MasterKode;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
@@ -20,7 +21,8 @@ use RuntimeException;
  * dengan nama ≤ 100 karakter, jenis TemplateDokumenRepository::JENIS, pemilik (`leading` aktif; kosong = umum), catatan
  * versi ≤ MAKS_CATATAN, dan `default` pemilik × jenis (`rapikanAtribut()`) (`aturan()`/`pesan()`, berkunci berkas/nama/
  * jenis — dipakai juga tab KAK/TOR Pengaturan › Template Dokumen), variabel `${…}` dibaca PembacaTemplateDocx
- * (`periksa()`), dan hanya disimpan bila ada variabel dan semuanya terdaftar (AnalisisTemplate::bisaDisimpan). Template
+ * (`periksa()`), dan hanya disimpan bila ada variabel dan semuanya terdaftar (ValidasiVariabelTemplate: galat `berkas` +
+ * `variabel.{nama}` dengan saran ejaan; peringatan penanda tidak menahan simpan). Template
  * tahun anggaran yang terkunci hanya bisa dilihat. Riwayat `unggah_master`/`hapus_master`.
  */
 final class UnggahMasterTemplate
@@ -117,10 +119,16 @@ final class UnggahMasterTemplate
         $atribut = self::rapikanAtribut($atribut);
         $nama = trim((string) preg_replace('/\s+/u', ' ', $nama));
         Validator::make(['berkas' => $berkas, 'nama' => $nama, 'jenis' => $jenis] + $atribut, self::aturan(), self::pesan())->validate();
-        $analisis = self::periksa($berkas);
-        if ($pesan = self::pesanTidakBisaDisimpan($analisis)) {
-            throw ValidationException::withMessages(['berkas' => $pesan]);
+        try {
+            $validasi = ValidasiVariabelTemplate::periksa($berkas->getRealPath(), $jenis);
+        } catch (RuntimeException $e) {
+            throw ValidationException::withMessages(['berkas' => $e->getMessage()]);
         }
+        if (! $validasi['bisa_disimpan']) {
+            // Galat per penanda (`variabel.{nama}` + saran ejaan) menyertai galat berkas.
+            throw ValidationException::withMessages($validasi['galat']);
+        }
+        $analisis = $validasi['analisis'];
 
         $repo = app(TemplateDokumenRepository::class);
         $master = $repo->temukan($repo->tambah($tahun, $nama, $jenis, $berkas, $analisis->namaTerdaftar(), $atribut + [

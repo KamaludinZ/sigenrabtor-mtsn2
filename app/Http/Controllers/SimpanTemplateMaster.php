@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Dokumen\DaftarTemplateMaster;
+use App\Support\Dokumen\ValidasiVariabelTemplate;
 use App\Support\Pengaturan\UnggahMasterTemplate;
 use App\Support\Stub\StubData;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -14,7 +15,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Endpoint unggah template master (rute admin `pengaturan.template.master.simpan`, `POST /pengaturan/template/master`,
  * multipart: `berkas` .docx, `nama`, `jenis`, `leading` (kosong = umum), `catatan`, `default`): UnggahMasterTemplate::simpan
- * tahun aktif — penanda harus ada & terdaftar. 201 {pesan, template}; 422 {pesan, galat}; 403 tahun terkunci.
+ * tahun aktif — penanda harus ada & terdaftar. 201 {pesan, template, peringatan}; 422 {pesan, galat — `berkas` + `variabel.{nama}`
+ * per penanda tidak terdaftar beserta saran}; 403 tahun terkunci.
  */
 class SimpanTemplateMaster extends Controller
 {
@@ -31,6 +33,9 @@ class SimpanTemplateMaster extends Controller
             return response()->json(['pesan' => $e->getMessage()], 403);
         }
 
-        return response()->json(['pesan' => "Template “{$master['nama']}” tersimpan.", 'template' => DaftarTemplateMaster::baris($master['id'])], 201, ['Cache-Control' => 'no-store, private']);
+        // Peringatan penanda (tidak menahan simpan) untuk ditampilkan klien.
+        $peringatan = ValidasiVariabelTemplate::periksa($berkas->getRealPath(), $master['jenis'])['peringatan'];
+
+        return response()->json(['pesan' => "Template “{$master['nama']}” tersimpan.", 'template' => DaftarTemplateMaster::baris($master['id']), 'peringatan' => $peringatan], 201, ['Cache-Control' => 'no-store, private']);
     }
 }

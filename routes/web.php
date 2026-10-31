@@ -78,6 +78,7 @@ use App\Http\Controllers\PakaiModelAi;
 use App\Http\Controllers\PasangKunciFinal;
 use App\Http\Controllers\PerbaruiDokumen;
 use App\Http\Controllers\PeriksaCetakKegiatan;
+use App\Http\Controllers\PeriksaTemplateMaster;
 use App\Http\Controllers\PeriksaUlangImporKegiatan;
 use App\Http\Controllers\PilihPenyediaAi;
 use App\Http\Controllers\ProfilAkunSaya;
@@ -350,6 +351,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/template/master', PengaturanTemplateMaster::class)->name('template.master.index');
     Route::get('/template/master/data', DataTemplateMaster::class)->name('template.master.data');
     Route::post('/template/master', SimpanTemplateMaster::class)->name('template.master.simpan');
+    Route::post('/template/master/periksa', PeriksaTemplateMaster::class)->name('template.master.periksa');
     Route::get('/template/master/{template}', DetailTemplateMaster::class)->whereUuid('template')->name('template.master.detail');
     Route::patch('/template/master/{template}', UbahTemplateMaster::class)->whereUuid('template')->name('template.master.ubah');
     Route::delete('/template/master/{template}', HapusTemplateMaster::class)->whereUuid('template')->name('template.master.hapus');

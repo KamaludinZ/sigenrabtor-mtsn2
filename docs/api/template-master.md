@@ -65,7 +65,25 @@ Rute `pengaturan.template.master.simpan`, multipart:
 | `catatan` | Opsional, catatan versi satu baris ≤ 300. |
 | `default` | `1` = jadikan default pemilik × jenis (default lama dilepas); template pertama pemilik × jenis otomatis default. |
 
-201 `{pesan, template}`; 422 `{pesan, galat: {berkas|nama|jenis|leading|catatan: …}}`; 403 tahun anggaran terkunci.
+201 `{pesan, template, peringatan}`; 422 `{pesan, galat: {berkas|nama|jenis|leading|catatan: …, "variabel.{nama}": "${totl} tidak
+terdaftar — maksud Anda ${total}?"}}`; 403 tahun anggaran terkunci.
+
+## `POST /pengaturan/template/master/periksa` — periksa penanda tanpa menyimpan
+
+Rute `pengaturan.template.master.periksa`, multipart `berkas` (.docx) + `jenis`. Isi dari
+`App\Support\Dokumen\ValidasiVariabelTemplate::periksa()`. 200:
+
+```json
+{
+  "jenis": "KAK+TOR", "label_jenis": "KAK/TOR (gabungan)", "bisa_disimpan": false,
+  "variabel": [ { "nama": "totl", "jumlah": 1, "terdaftar": false, "saran": "total", "keterangan": null, "kelompok": null, "jenis": null } ],
+  "galat": { "berkas": "Perbaiki variabel yang tidak terdaftar di Word, lalu unggah ulang.", "variabel.totl": "${totl} tidak terdaftar — maksud Anda ${total}?" },
+  "peringatan": [ { "kunci": "sendiri.dasar_hukum", "pesan": "${dasar_hukum} (daftar) sebaiknya berdiri sendiri di paragrafnya — …" } ]
+}
+```
+
+Peringatan tidak menahan simpan: `sendiri.{nama}` (penanda daftar/tabel/blok/gambar berbagi paragraf dengan teks lain), `rab`
+(template RAB tanpa `${rab}`), `dianjurkan` (penanda identitas & angka yang belum dipakai). Berkas/jenis tidak sah → 422.
 
 ## `PATCH /pengaturan/template/master/{template}` — ubah
 
