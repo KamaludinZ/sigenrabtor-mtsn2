@@ -96,3 +96,36 @@ Kunci yang tidak dikirim tetap. 200 `{pesan, perubahan: ["Nama: … → …", "D
 
 Rute `pengaturan.template.master.hapus`. 200 `{pesan}`; 409 `{pesan, kegiatan: [{id, nama}]}` bila masih dipilih kegiatan
 (template yang sudah dipakai hanya dinonaktifkan); 403 tahun terkunci; 404.
+
+## `GET /pengaturan/template/variabel` — daftar variabel terdaftar
+
+Rute `pengaturan.template.variabel`. Isi dari `App\Support\Dokumen\DaftarVariabelTemplate::untuk()`.
+
+| Parameter | Keterangan |
+| --- | --- |
+| `ta` | Tahun anggaran untuk pemakaian; kosong = tahun aktif, tak terdaftar → 404. |
+| `kegiatan` | Opsional, id kegiatan contoh → `contoh` tiap variabel; tak ada → 404. |
+| `sumber` | Opsional, sumber dana kegiatan contoh (kosong = sumber pertama); tidak dipilih → 422 `galat.sumber`. |
+
+Jawaban 200:
+
+```json
+{
+  "tahun": 2026,
+  "jumlah": 37,
+  "contoh_kegiatan": { "id": 1, "nama": "Workshop …", "sumber": "Komite" },
+  "kelompok": [
+    {
+      "kunci": "kegiatan", "judul": "Kegiatan & tahun",
+      "variabel": [
+        { "nama": "tahun_anggaran", "penanda": "${tahun_anggaran}", "keterangan": "Tahun anggaran aktif", "jenis": "teks",
+          "berdiri_sendiri": false, "dianjurkan": true, "asal": "…", "dipakai": { "jumlah": 1, "template": ["Master reguler"] },
+          "contoh": "2026" }
+      ]
+    }
+  ]
+}
+```
+
+`berdiri_sendiri` = jenis daftar/tabel/blok/gambar (sebaiknya sendirian di paragrafnya); `contoh` teks, daftar/blok = list
+baris, tabel = ringkasan, null = belum ada datanya (atau tanpa kegiatan contoh).

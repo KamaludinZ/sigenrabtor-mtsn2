@@ -12,6 +12,7 @@ use App\Http\Controllers\DaftarPeran;
 use App\Http\Controllers\DaftarPermohonanAkun;
 use App\Http\Controllers\DaftarRiwayatDokumen;
 use App\Http\Controllers\DaftarTemplateTersedia;
+use App\Http\Controllers\DaftarVariabelTemplateMaster;
 use App\Http\Controllers\DataAgregasiMonitoring;
 use App\Http\Controllers\DataAkun;
 use App\Http\Controllers\DataArsipFinal;
@@ -350,6 +351,7 @@ Route::middleware(HanyaAdmin::class)->prefix('pengaturan')->name('pengaturan.')-
     Route::get('/template', PengaturanTemplateDokumen::class)->name('template.index');
     Route::get('/template/master', PengaturanTemplateMaster::class)->name('template.master.index');
     Route::get('/template/master/data', DataTemplateMaster::class)->name('template.master.data');
+    Route::get('/template/variabel', DaftarVariabelTemplateMaster::class)->name('template.variabel');
     Route::post('/template/master', SimpanTemplateMaster::class)->name('template.master.simpan');
     Route::post('/template/master/periksa', PeriksaTemplateMaster::class)->name('template.master.periksa');
     Route::get('/template/master/{template}', DetailTemplateMaster::class)->whereUuid('template')->name('template.master.detail');
