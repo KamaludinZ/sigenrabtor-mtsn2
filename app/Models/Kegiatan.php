@@ -27,6 +27,7 @@ class Kegiatan extends Model
             'bulan_pelaksanaan' => 'array',
             'kode_hilang' => 'array',
             'riwayat_kode' => 'array',
+            'riwayat_template' => 'array',
             'teks_khusus' => 'array',
             'dikunci_pada' => 'datetime',
             'konteks_diperbarui_pada' => 'datetime',

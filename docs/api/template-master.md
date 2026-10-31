@@ -160,6 +160,11 @@ tidak ada 404). Isi dari `App\Support\Dokumen\PilihanTemplateKegiatan::data()`, 
 }
 ```
 
+`dapat_diubah`/`alasan_terkunci` mengikuti `KunciTemplate::alasan()` — selama kegiatan Final pilihan template & format
+dikunci bersama dokumen final (`dikunci_final: true`) sampai admin membuka kunci. `riwayat` = perubahan pilihan template &
+format terbaru dulu `[{aksi: "ubah"|"kunci", label_aksi, pada, oleh, user_id, template_lama, template_baru, nama_lama,
+nama_baru, format_lama, format_baru, teks}]`.
+
 `berlaku.kak` null = susunan baku (tanpa master Word). `template.otomatis` = template yang dipakai bila `dipilih` kosong
 (aturan khusus leading Format Seragam → default template leading → pilihan per jenis kegiatan → bawaan). `pilihan` memuat
 template aktif milik leading kegiatan (default lebih dulu) lalu template umum; template nonaktif hanya muncul bila sedang
@@ -175,7 +180,7 @@ anggaran (format). Disimpan lewat `UbahDataKegiatan` (kolom `template_kak`, `for
 | --- | --- |
 | 200 | `{ pesan, diubah: ["format_dokumen", "template_kak"], …data GET }` (`diubah` kosong = tidak ada perubahan) |
 | 422 | `{ pesan, galat: { template | format } }` — template di luar pilihan/nonaktif, format tak dikenal, atau tanpa kiriman |
-| 403 | `{ pesan }` — bukan cakupan akun, status bukan Draf/Dikembalikan, atau tahun anggaran terkunci |
+| 403 | `{ pesan }` — bukan cakupan akun, status bukan Draf/Dikembalikan (Final: "Template & format dikunci bersama dokumen final … — minta admin membuka kunci …"), atau tahun anggaran terkunci |
 | 409 | `{ pesan, versi }` — `versi` usang (kegiatan diubah di tempat lain); `versi` = versi terbaru |
 | 404 | kegiatan tidak ada |
 

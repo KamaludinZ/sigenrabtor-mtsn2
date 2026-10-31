@@ -4,6 +4,7 @@ namespace App\Support\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Dokumen\KunciTemplate;
 use App\Support\Master\IkskPerSk;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Rab\SimpanSumberDana;
@@ -212,6 +213,8 @@ final class UbahDataKegiatan
         }
 
         $gabungan['kode_hilang'] = KodeHilang::sisa((array) ($tersimpan['kode_hilang'] ?? []), $gabungan);
+        // Pilihan template & format: siapa & kapan (KunciTemplate).
+        $gabungan = KunciTemplate::catat($tersimpan, $gabungan, 'ubah', $pengguna);
         $repo->simpan($gabungan, $id);
         $kegiatan = $repo->temukan($id);
 

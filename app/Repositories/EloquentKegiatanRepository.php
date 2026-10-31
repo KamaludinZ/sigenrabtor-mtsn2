@@ -55,6 +55,7 @@ class EloquentKegiatanRepository implements KegiatanRepository
         'template_kak' => 'kak_template_id',
         'kode_hilang' => 'kode_hilang',
         'riwayat_kode' => 'riwayat_kode',
+        'riwayat_template' => 'riwayat_template',
         'asal' => 'asal',
         'data_pagu_id' => 'data_pagu_id',
         'status' => 'status',
@@ -298,8 +299,8 @@ class EloquentKegiatanRepository implements KegiatanRepository
         if ($kegiatan->impor_id !== null) {
             $data['impor_id'] = $kegiatan->impor_id;
         }
-        // Format dokumen & template hanya ada bila dipilih untuk kegiatan itu (tanpa pilihan = otomatis, seperti tiruan).
-        foreach (['format_dokumen', 'template_kak'] as $pilihan) {
+        // Format dokumen, template, & riwayat pilihannya hanya ada bila pernah diisi (tanpa pilihan = otomatis, seperti tiruan).
+        foreach (['format_dokumen', 'template_kak', 'riwayat_template'] as $pilihan) {
             if ($data[$pilihan] === null) {
                 unset($data[$pilihan]);
             }

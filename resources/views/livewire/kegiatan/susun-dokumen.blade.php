@@ -173,8 +173,25 @@
                 · <span class="text-stone-600">{{ $catatanTemplate }}</span>
             @endif
         </span>
-        @if ($dipilihTemplate !== '' && ! $pilihanSah)
+        @if (\App\Support\Dokumen\KunciTemplate::terkunci($this->dataKegiatan))
+            <p class="flex w-full items-start gap-1.5 text-xs text-stone-600" data-testid="template-terkunci">
+                <x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-500" /> {{ \App\Support\Dokumen\KunciTemplate::alasan($this->dataKegiatan) }}
+            </p>
+        @elseif ($dipilihTemplate !== '' && ! $pilihanSah)
             <p class="w-full text-xs text-gold-700" data-testid="template-kak-tidak-berlaku">Template yang dipilih sebelumnya tidak tersedia lagi untuk leading ini (dinonaktifkan, dihapus, atau milik leading lain) — kini memakai pilihan otomatis.</p>
+        @endif
+        @if ($this->riwayatTemplate !== [])
+            <details class="w-full text-xs text-stone-600" data-testid="riwayat-template" data-jumlah="{{ count($this->riwayatTemplate) }}">
+                <summary class="cursor-pointer font-medium text-stone-700 hover:text-stone-900">Riwayat pilihan template ({{ count($this->riwayatTemplate) }})</summary>
+                <ol class="mt-1.5 space-y-1 border-l border-stone-200 pl-3">
+                    @foreach ($this->riwayatTemplate as $r)
+                        <li data-aksi="{{ $r['aksi'] }}">
+                            <span class="font-medium text-stone-800">{{ $r['label_aksi'] }}</span> — {{ $r['teks'] }}
+                            <span class="text-stone-500">{{ \App\Support\Format::tanggal(substr($r['pada'], 0, 10)) }} pukul {{ substr($r['pada'], 11, 5) }} oleh {{ $r['oleh'] }}</span>
+                        </li>
+                    @endforeach
+                </ol>
+            </details>
         @endif
     </div>
 

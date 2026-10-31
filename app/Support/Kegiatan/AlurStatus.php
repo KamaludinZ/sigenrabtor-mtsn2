@@ -5,6 +5,7 @@ namespace App\Support\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\Dokumen\KunciTemplate;
 use App\Support\Dokumen\StatusDokumen;
 use App\Support\Pemeriksaan\KeputusanPemeriksaan;
 use App\Support\Pengaturan\PengaturanBerubah;
@@ -199,6 +200,10 @@ final class AlurStatus
     public static function terapkan(array $kegiatan, string $aksi, StatusKegiatan $ke, array $pengguna, ?string $catatan = null): array
     {
         $id = (int) $kegiatan['id'];
+        if ($ke === StatusKegiatan::Final) {
+            // Template & format yang berlaku dibekukan bersama dokumen final (diubah lagi hanya sesudah admin membuka kunci).
+            $kegiatan = KunciTemplate::bekukan($kegiatan, $pengguna);
+        }
         $kegiatan['status'] = $ke->value;
         $entri = RiwayatStatus::entri($aksi, $ke, $pengguna, $catatan);
         if (in_array($aksi, PerbaikanKegiatan::AKSI, true)) {

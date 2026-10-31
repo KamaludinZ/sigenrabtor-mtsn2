@@ -2,6 +2,8 @@
 
 namespace App\Support\Dokumen;
 
+use App\Contracts\KegiatanRepository;
+use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use App\Support\Pengaturan\PengaturanBerubah;
@@ -14,7 +16,8 @@ use RuntimeException;
  * `kegiatan.template.pilihan`, padanan dropdown tab Susun KAK/TOR):
  * - `data($kegiatan)` = template & format yang berlaku (TemplateDipakai), pilihan template (PilihanTemplate::pilihanKegiatan:
  *   milik leading kegiatan + umum, yang nonaktif hanya pilihan tersimpan), pilihan tersimpan `template_kak`/`format_dokumen`,
- *   yang berlaku bila otomatis, pilihan format (FormatKakTor::pilihan), `dapat_diubah`/`alasan_terkunci`, `versi`;
+ *   yang berlaku bila otomatis, pilihan format (FormatKakTor::pilihan), `dapat_diubah`/`alasan_terkunci` (KunciTemplate::alasan
+ *   — Final: dikunci bersama dokumen final), `dikunci_final`, `riwayat` (KunciTemplate::riwayat: siapa & kapan), `versi`;
  * - `simpan($id, {template?, format?}, $pengguna, $versi?)` — kunci yang dikirim saja (null/'' = otomatis/ikut tahun) lewat
  *   UbahDataKegiatan (aturan ValidasiKegiatan, kunci status/tahun, bentrok versi) → {pesan, diubah, data}.
  */
@@ -43,8 +46,10 @@ final class PilihanTemplateKegiatan
                 'tahun' => FormatKakTor::tahun($tahun),
                 'pilihan' => FormatKakTor::pilihan($tahun),
             ],
-            'dapat_diubah' => UbahDataKegiatan::alasanTerkunci($kegiatan) === null,
-            'alasan_terkunci' => UbahDataKegiatan::alasanTerkunci($kegiatan),
+            'dapat_diubah' => KunciTemplate::alasan($kegiatan) === null,
+            'alasan_terkunci' => KunciTemplate::alasan($kegiatan),
+            'dikunci_final' => KunciTemplate::terkunci($kegiatan),
+            'riwayat' => KunciTemplate::riwayat($kegiatan),
             'versi' => UbahDataKegiatan::versi($kegiatan),
         ];
     }
@@ -61,6 +66,10 @@ final class PilihanTemplateKegiatan
      */
     public static function simpan(int $id, array $isian, array $pengguna, ?string $versi = null): array
     {
+        $tersimpan = app(KegiatanRepository::class)->temukan($id);
+        if ($tersimpan !== null && KunciTemplate::terkunci($tersimpan) && AksesKegiatan::bolehLihat($tersimpan, $pengguna)) {
+            throw new AuthorizationException((string) KunciTemplate::alasan($tersimpan));
+        }
         $kiriman = [];
         foreach (['template' => 'template_kak', 'format' => 'format_dokumen'] as $kunci => $kolom) {
             if (array_key_exists($kunci, $isian)) {

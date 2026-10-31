@@ -261,8 +261,9 @@ final class PilihanTemplate
         $tahun ??= (int) StubData::tahunAktif()['tahun'];
         $leading = filled($kegiatan['leading'] ?? null) ? (string) $kegiatan['leading'] : null;
         $hasil = self::berlakuUntuk(KonteksAi::tebakJenis((string) ($kegiatan['nama_kegiatan'] ?? '')), $leading, $tahun, $pilihan);
-        $dipilih = filled($kegiatan['template_kak'] ?? null) && in_array($kegiatan['template_kak'], array_column(self::pilihanKegiatan($kegiatan, $tahun), 'id'), true)
-            ? (string) $kegiatan['template_kak'] : null;
+        // Kegiatan Final memakai template yang dibekukan bersama dokumen finalnya (KunciTemplate), walau kini bukan pilihan.
+        $dipilih = KunciTemplate::berlaku($kegiatan) ?? (filled($kegiatan['template_kak'] ?? null) && in_array($kegiatan['template_kak'], array_column(self::pilihanKegiatan($kegiatan, $tahun), 'id'), true)
+            ? (string) $kegiatan['template_kak'] : null);
         $default = $dipilih === null && $hasil['asal'] !== 'leading' ? self::defaultLeading($leading, $tahun) : null;
 
         return match (true) {

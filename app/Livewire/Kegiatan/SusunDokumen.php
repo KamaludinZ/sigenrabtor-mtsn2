@@ -11,6 +11,7 @@ use App\Support\Dokumen\DrafDokumen;
 use App\Support\Dokumen\FormatKakTor;
 use App\Support\Dokumen\IsianSusun;
 use App\Support\Dokumen\JenisDokumen;
+use App\Support\Dokumen\KunciTemplate;
 use App\Support\Dokumen\PemeriksaanCetak;
 use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Dokumen\StatusCetak;
@@ -270,7 +271,7 @@ class SusunDokumen extends Component
     public function ubahFormat(string $format): void
     {
         abort_unless($format === '' || FormatKakTor::sah($format), 404);
-        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — formatnya hanya bisa dilihat.');
+        abort_unless($this->dapatDiubah(), 403, KunciTemplate::alasan($this->dataKegiatan) ?? 'Kegiatan ini terkunci — formatnya hanya bisa dilihat.');
         $this->isianTerbuka = null;
         $this->teksTerbuka = null;
 
@@ -293,7 +294,7 @@ class SusunDokumen extends Component
     public function ubahTemplateKak(string $id): void
     {
         abort_unless($id === '' || in_array($id, array_column($this->pilihanTemplate, 'id'), true), 404);
-        abort_unless($this->dapatDiubah(), 403, 'Kegiatan ini terkunci — templatenya hanya bisa dilihat.');
+        abort_unless($this->dapatDiubah(), 403, KunciTemplate::alasan($this->dataKegiatan) ?? 'Kegiatan ini terkunci — templatenya hanya bisa dilihat.');
 
         try {
             $hasil = UbahDataKegiatan::ubah($this->kegiatanId, ['template_kak' => $id === '' ? null : $id], StubData::currentUser(), UbahDataKegiatan::versi($this->dataKegiatan));
@@ -325,6 +326,12 @@ class SusunDokumen extends Component
      *
      * @return array<string, mixed>
      */
+    #[Computed]
+    public function riwayatTemplate(): array
+    {
+        return KunciTemplate::riwayat($this->dataKegiatan);
+    }
+
     #[Computed]
     public function templateBerlaku(): array
     {
