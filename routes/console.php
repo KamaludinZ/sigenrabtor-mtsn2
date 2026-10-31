@@ -3,6 +3,7 @@
 use App\Support\Akun\AturUlangSandi;
 use App\Support\Akun\DataAkun;
 use App\Support\Akun\SandiKonsol;
+use App\Support\Basisdata\PengamanDeploy;
 use App\Support\Basisdata\PindahAkun;
 use App\Support\Basisdata\PindahLeading;
 use App\Support\Basisdata\PindahMasterKode;
@@ -10,6 +11,7 @@ use App\Support\Basisdata\PindahPengaturanAi;
 use App\Support\Basisdata\PindahStrukturAnggaran;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Validation\ValidationException;
 
 Artisan::command('inspire', function () {
@@ -142,3 +144,57 @@ Artisan::command('sigenrabtor:atur-sandi {surel : Surel akun} {--nama= : Nama ad
 
     return 0;
 })->purpose('Atur sandi akun (atau buat admin pertama) dari konsol server — untuk instalasi tanpa mode demo');
+
+Artisan::command('sigenrabtor:siapkan-deploy', function () {
+    if (($masalah = PengamanDeploy::periksa()) !== []) {
+        foreach ($masalah as $pesan) {
+            $this->error($pesan);
+        }
+
+        return 1;
+    }
+    if (($alasan = PengamanDeploy::perluCadangan()) !== null) {
+        try {
+            $cadangan = PengamanDeploy::cadangan($alasan);
+        } catch (RuntimeException $e) {
+            $this->error($e->getMessage());
+            $this->error('Migrasi tidak dijalankan. Perbaiki penyebabnya, atau jalankan sekali dengan SIRABTOR_CADANGAN_PRA_MIGRASI=false bila sudah punya cadangan sendiri.');
+
+            return 1;
+        }
+        $this->info("Cadangan {$alasan} dibuat: storage/app/private/{$cadangan['folder']} (".implode(', ', array_keys($cadangan['berkas'])).').');
+    }
+    if ($this->call('migrate', ['--force' => true, '--no-interaction' => true]) !== 0) {
+        return 1;
+    }
+    $this->info('Instalasi '.PengamanDeploy::tandai().' siap.');
+
+    return 0;
+})->purpose('Periksa APP_KEY & pasangan volume/database, buat cadangan bila ada migrasi baru atau rilis berganti, lalu migrasi (dipanggil entrypoint kontainer)');
+
+Artisan::command('sigenrabtor:cadangan {--alasan=manual : Label set cadangan} {--daftar : Tampilkan set cadangan yang ada}', function () {
+    if ($this->option('daftar')) {
+        $this->table(['Set cadangan', 'Alasan', 'Dibuat', 'Berkas'], array_map(fn (array $c) => [
+            'storage/app/private/'.$c['folder'], $c['info']['alasan'] ?? '—', $c['info']['dibuat_pada'] ?? '—',
+            collect($c['info']['berkas'] ?? [])->map(fn (int $b, string $n) => $n.' '.number_format($b / 1024, 0, ',', '.').' KB')->implode(', ') ?: '—',
+        ], PengamanDeploy::daftar()));
+
+        return 0;
+    }
+    try {
+        $cadangan = PengamanDeploy::cadangan((string) $this->option('alasan'));
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return 1;
+    }
+    $this->info("Cadangan dibuat: storage/app/private/{$cadangan['folder']} (".implode(', ', array_keys($cadangan['berkas'])).').');
+
+    return 0;
+})->purpose('Cadangkan database (pg_dump) & data storage ke storage/app/private/cadangan, atau tampilkan daftarnya');
+
+// Cadangan harian otomatis (SIRABTOR_CADANGAN_HARIAN) — dijalankan pekerja penjadwal di kontainer.
+Schedule::command('sigenrabtor:cadangan --alasan=harian')
+    ->dailyAt((string) config('sigenrabtor.deploy.cadangan_jam', '01:30'))
+    ->when(fn () => (bool) config('sigenrabtor.deploy.cadangan_harian'))
+    ->withoutOverlapping(60);

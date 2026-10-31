@@ -5,6 +5,7 @@
 #   - Chromium headless  → PDF set dokumen (PembuatPdfChrome, SIRABTOR_CHROME)
 #   - LibreOffice nogui  → PDF RAB & Monitoring dari Excel (PengubahPdfLibreOffice, locale id_ID)
 #   - poppler-utils      → gabung PDF buku (pdfunite/pdfinfo)
+#   - postgresql-client-18 (PGDG) → cadangan otomatis sebelum migrasi & cadangan harian (pg_dump/pg_restore, PengamanDeploy)
 # Panggilan AI (Ollama/Claude/OpenAI/Gemini) memakai HTTP keluar biasa — tidak perlu paket tambahan.
 # Panduan: docs/deploy.md.
 
@@ -50,9 +51,17 @@ RUN npm run build && rm -f public/hot
 FROM dasar AS produksi
 
 ENV DEBIAN_FRONTEND=noninteractive
+# Klien PostgreSQL 18 dari repositori resmi PGDG (Debian bookworm hanya punya v15, yang tidak bisa mencadangkan server 18).
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
-        nginx supervisor ca-certificates curl locales \
+        nginx supervisor locales \
+        postgresql-client-18 \
         chromium \
         libreoffice-calc-nogui libreoffice-writer-nogui \
         poppler-utils \
@@ -75,7 +84,8 @@ COPY docker/php/www.conf /usr/local/etc/php-fpm.d/zz-sirabtor.conf
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/sirabtor.conf
 COPY docker/entrypoint.sh /usr/local/bin/sirabtor-entrypoint
-RUN chmod +x /usr/local/bin/sirabtor-entrypoint
+COPY docker/pulihkan.sh /usr/local/bin/sirabtor-pulihkan
+RUN chmod +x /usr/local/bin/sirabtor-entrypoint /usr/local/bin/sirabtor-pulihkan
 
 # Kode milik root (hanya-baca bagi www-data); hanya storage & bootstrap/cache yang bisa ditulis aplikasi.
 COPY --from=vendor /var/www/html /var/www/html
@@ -85,13 +95,21 @@ RUN mkdir -p storage/app/private storage/app/public storage/framework/cache/data
         storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-# Data aplikasi (berkas tiruan JSON, unggahan, arsip PDF, log) — wajib volume persisten.
+# Penanda rilis image: berganti setiap kode berubah → cadangan otomatis sebelum kontainer rilis baru memakai data
+# (PengamanDeploy::perluCadangan). Coolify mengisi SOURCE_COMMIT; build manual boleh tanpa.
+ARG SOURCE_COMMIT=""
+RUN printf '%s %s\n' "$(date -u +%Y%m%dT%H%M%SZ)" "${SOURCE_COMMIT:-lokal}" > /etc/sirabtor-rilis
+
+# Data aplikasi (berkas tiruan JSON, unggahan, arsip PDF, cadangan, log) — wajib volume persisten.
 VOLUME ["/var/www/html/storage"]
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8080/up || exit 1
+
+# SIGTERM diteruskan supervisord ke tiap proses (nginx & PHP-FPM berhenti dengan anggun, antrean menuntaskan pekerjaannya).
+STOPSIGNAL SIGTERM
 
 ENTRYPOINT ["sirabtor-entrypoint"]
 CMD ["supervisord", "-n", "-c", "/etc/supervisor/sirabtor.conf"]

@@ -5,14 +5,22 @@
 # Catatan Coolify: domain diarahkan ke layanan `app` port 8080 (isi kolom Domains dengan https://domain-anda:8080,
 # atau biarkan variabel SERVICE_FQDN_APP_8080 di bawah dibaca Coolify). Port tidak dipublikasikan ke host di berkas
 # ini — proksi Coolify menjangkaunya lewat jaringan Docker.
+#
+# Aman saat redeploy: JANGAN mengganti nama layanan (`app`, `db`) maupun volume (`sirabtor_storage`, `sirabtor_pgdata`)
+# — nama baru = volume baru yang kosong. Setiap kontainer `app` mulai, entrypoint memeriksa APP_KEY & pasangan
+# volume/database, mencadangkan data bila ada migrasi baru atau rilis berganti, lalu migrasi (docs/deploy.md bagian 6).
 
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-}
     image: sirabtor:latest
     restart: unless-stopped
+    # Beri waktu pekerja antrean menuntaskan pekerjaan (maks. 360 detik) & PHP-FPM/nginx berhenti anggun saat redeploy.
+    stop_grace_period: 6m30s
     environment:
       SERVICE_FQDN_APP_8080:
       APP_NAME: ${APP_NAME:-SIRABTOR}
@@ -47,6 +55,14 @@ services:
       SIRABTOR_CATAT_UNDUHAN: ${SIRABTOR_CATAT_UNDUHAN:-true}
       SIRABTOR_MIGRASI: ${SIRABTOR_MIGRASI:-1}
       SIRABTOR_TUNGGU_DB_DETIK: ${SIRABTOR_TUNGGU_DB_DETIK:-60}
+      # Pengaman redeploy & cadangan (storage/app/private/cadangan): sebelum migrasi/rilis baru, dan harian.
+      SIRABTOR_CADANGAN_PRA_MIGRASI: ${SIRABTOR_CADANGAN_PRA_MIGRASI:-true}
+      SIRABTOR_CADANGAN_HARIAN: ${SIRABTOR_CADANGAN_HARIAN:-true}
+      SIRABTOR_CADANGAN_JAM: ${SIRABTOR_CADANGAN_JAM:-01:30}
+      SIRABTOR_CADANGAN_SIMPAN: ${SIRABTOR_CADANGAN_SIMPAN:-7}
+      # Hanya untuk pemulihan yang disengaja — kembalikan ke false sesudah satu kali deploy.
+      SIRABTOR_IZINKAN_GANTI_APP_KEY: ${SIRABTOR_IZINKAN_GANTI_APP_KEY:-false}
+      SIRABTOR_IZINKAN_DATA_BARU: ${SIRABTOR_IZINKAN_DATA_BARU:-false}
       PHP_FPM_MAX_CHILDREN: ${PHP_FPM_MAX_CHILDREN:-10}
     expose:
       - "8080"
@@ -64,8 +80,11 @@ services:
       start_period: 90s
 
   db:
+    # Versi utama dikunci (18). Naik ke versi utama berikutnya butuh dump & restore, bukan sekadar mengganti tag.
     image: postgres:18-alpine
     restart: unless-stopped
+    # PostgreSQL menulis checkpoint sebelum berhenti — jangan dipotong 10 detik bawaan Docker.
+    stop_grace_period: 1m
     environment:
       POSTGRES_DB: ${DB_DATABASE:-sigenrabtor}
       POSTGRES_USER: ${DB_USERNAME:-sigenrabtor}

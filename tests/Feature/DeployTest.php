@@ -77,4 +77,46 @@ class DeployTest extends TestCase
             $this->assertStringContainsString($kunci, $contoh);
         }
     }
+
+    public function test_redeploy_aman(): void
+    {
+        $akar = base_path();
+        $dockerfile = (string) file_get_contents("{$akar}/Dockerfile");
+        $entrypoint = (string) file_get_contents("{$akar}/docker/entrypoint.sh");
+        $compose = (string) file_get_contents("{$akar}/docker-compose.prod.yml");
+        $supervisor = (string) file_get_contents("{$akar}/docker/supervisord.conf");
+
+        // pg_dump versi server (18) & penanda rilis untuk cadangan otomatis.
+        $this->assertStringContainsString('postgresql-client-18', $dockerfile);
+        $this->assertStringContainsString('postgres:18-alpine', $compose);
+        $this->assertStringContainsString('> /etc/sirabtor-rilis', $dockerfile);
+        $this->assertSame('/etc/sirabtor-rilis', config('sigenrabtor.deploy.berkas_rilis'));
+
+        // Entrypoint: tunggu database, lalu pengaman + cadangan + migrasi dalam satu kunci berkas di volume bersama.
+        $this->assertStringContainsString('pg_isready', $entrypoint);
+        $this->assertStringContainsString('flock -w 900 storage/app/private/deploy/.kunci php artisan sigenrabtor:siapkan-deploy', $entrypoint);
+        $this->assertStringNotContainsString('migrate --force', $entrypoint, 'Migrasi hanya lewat sigenrabtor:siapkan-deploy.');
+
+        // Berhenti anggun: waktu tenggang kontainer > waktu tunggu pekerja antrean > --timeout antrean.
+        preg_match('/stop_grace_period: (\d+)m(\d+)s/', $compose, $tenggang);
+        preg_match('/\[program:antrean\][^\[]*stopwaitsecs=(\d+)/s', $supervisor, $tungguAntrean);
+        $this->assertGreaterThan((int) $tungguAntrean[1], (int) $tenggang[1] * 60 + (int) $tenggang[2]);
+        $this->assertGreaterThan(360, (int) $tungguAntrean[1]);
+        $this->assertSame(2, substr_count($supervisor, 'stopsignal=QUIT'), 'nginx & PHP-FPM berhenti anggun.');
+
+        // Variabel pengaman tercantum di compose & contoh; skrip redeploy server biasa siap dijalankan.
+        $contoh = (string) file_get_contents("{$akar}/docker/env.produksi.contoh");
+        foreach (['SIRABTOR_CADANGAN_PRA_MIGRASI', 'SIRABTOR_CADANGAN_HARIAN', 'SIRABTOR_CADANGAN_SIMPAN', 'SIRABTOR_IZINKAN_GANTI_APP_KEY', 'SIRABTOR_IZINKAN_DATA_BARU'] as $kunci) {
+            $this->assertStringContainsString("{$kunci}:", $compose);
+            $this->assertStringContainsString("{$kunci}=", $contoh);
+        }
+        $this->assertStringContainsString('name: sirabtor', (string) file_get_contents("{$akar}/docker-compose.vps.yml"));
+        $this->assertTrue(is_executable("{$akar}/docker/redeploy.sh"));
+        $this->assertTrue(is_executable("{$akar}/docker/pulihkan.sh"));
+        $this->assertStringContainsString('COPY docker/pulihkan.sh /usr/local/bin/sirabtor-pulihkan', $dockerfile);
+        $pulihkan = (string) file_get_contents("{$akar}/docker/pulihkan.sh");
+        $this->assertLessThan(strpos($pulihkan, 'pg_restore --clean'), strpos($pulihkan, 'www "php artisan down'), 'Mode pemeliharaan sebelum memulihkan.');
+        $this->assertLessThan(strpos($pulihkan, 'www "php artisan down'), strpos($pulihkan, 'www "php artisan sigenrabtor:cadangan --alasan=pra-pemulihan'), 'Keadaan sekarang dicadangkan dulu.');
+        $this->assertStringContainsString('sigenrabtor:cadangan --alasan=pra-redeploy', (string) file_get_contents("{$akar}/docker/redeploy.sh"));
+    }
 }

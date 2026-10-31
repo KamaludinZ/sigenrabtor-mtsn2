@@ -1,6 +1,11 @@
 # Tambahan untuk server biasa (tanpa Coolify): buka port aplikasi di host, hanya untuk localhost — pasang proksi TLS
 # (nginx/Caddy) di depannya. Pakai bersama: docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml up -d --build
 # Ganti APP_BIND ke 0.0.0.0 hanya bila TLS ditangani perangkat lain.
+#
+# Nama proyek dikunci agar nama volume tetap (sirabtor_sirabtor_storage, sirabtor_sirabtor_pgdata) walau folder repositori
+# dipindah/diganti nama — nama proyek berbeda = volume baru yang kosong.
+name: sirabtor
+
 services:
   app:
     ports:

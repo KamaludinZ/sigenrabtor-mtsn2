@@ -150,6 +150,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Pengaman deploy & cadangan (App\Support\Basisdata\PengamanDeploy)
+    |--------------------------------------------------------------------------
+    |
+    | Dijalankan entrypoint kontainer lewat `sigenrabtor:siapkan-deploy` sebelum migrasi: APP_KEY & pasangan volume
+    | storage ↔ database diperiksa, cadangan dibuat bila ada migrasi baru atau rilis berganti, lalu migrasi. Cadangan
+    | (pg_dump + arsip storage/app) disimpan di storage/app/private/cadangan, `simpan` set terbaru dipertahankan;
+    | `harian` = cadangan terjadwal (penjadwal Laravel) pukul `jam`. `izinkan_*` hanya untuk pemulihan yang disengaja.
+    |
+    */
+
+    'deploy' => [
+        'cadangan_pra_migrasi' => (bool) env('SIRABTOR_CADANGAN_PRA_MIGRASI', true),
+        'cadangan_harian' => (bool) env('SIRABTOR_CADANGAN_HARIAN', false),
+        'cadangan_jam' => env('SIRABTOR_CADANGAN_JAM', '01:30'),
+        'cadangan_simpan' => (int) env('SIRABTOR_CADANGAN_SIMPAN', 7),
+        'pg_dump' => env('SIRABTOR_PG_DUMP', 'pg_dump'),
+        'tar' => env('SIRABTOR_TAR', 'tar'),
+        'batas_detik' => (int) env('SIRABTOR_CADANGAN_BATAS_DETIK', 900),
+        'berkas_rilis' => env('SIRABTOR_BERKAS_RILIS', '/etc/sirabtor-rilis'),
+        'izinkan_ganti_app_key' => (bool) env('SIRABTOR_IZINKAN_GANTI_APP_KEY', false),
+        'izinkan_data_baru' => (bool) env('SIRABTOR_IZINKAN_DATA_BARU', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Berkas "hot" Vite
     |--------------------------------------------------------------------------
     |
