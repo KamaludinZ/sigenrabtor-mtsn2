@@ -8,6 +8,7 @@ use App\Contracts\MatrikJadwalRepository;
 use App\Contracts\RabRepository;
 use App\Contracts\TahunAnggaranRepository;
 use App\Enums\StatusKegiatan;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
@@ -104,11 +105,13 @@ final class DuplikatKegiatan
         $sumberId = (int) $kegiatan['id'];
         $selisih = StubData::tahunAktif()['tahun'] - TahunKegiatan::dari($kegiatan);
 
-        $id = app(KegiatanRepository::class)->simpan($data + [
+        // Pilihan template ikut tersalin hanya di tahun yang sama (id template berlaku per tahun) — selain itu default leading.
+        $id = app(KegiatanRepository::class)->simpan(PilihanTemplate::isiAwal($data + [
+            'template_kak' => (int) $selisih === 0 ? ($kegiatan['template_kak'] ?? null) : null,
             'status' => 'draf',
             'riwayat_status' => [RiwayatStatus::entri('dibuat', StatusKegiatan::Draf, $pengguna, $keterangan ?? 'Diduplikat dari TA '.TahunKegiatan::dari($kegiatan).'.')],
             'duplikat_dari' => ['id' => $sumberId, 'tahun' => TahunKegiatan::dari($kegiatan)],
-        ]);
+        ]));
 
         $rab = app(RabRepository::class);
         foreach (AnggaranKegiatan::untuk($kegiatan) as $anggaran) {

@@ -6,6 +6,7 @@ use App\Contracts\ImporKegiatanRepository;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Impor\ImporBertahap;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\RiwayatStatus;
@@ -60,12 +61,12 @@ final class ProsesImporMassal
 
                 continue;
             }
-            $id = app(KegiatanRepository::class)->simpan($b['data'] + [
+            $id = app(KegiatanRepository::class)->simpan(PilihanTemplate::isiAwal($b['data'] + [
                 'asal' => $impor['jenis'] === 'perkin' ? 'impor_perkin' : 'impor_excel',
                 'impor_id' => $imporId,
                 'user_id' => $pengguna['id'] ?? null,
                 'riwayat_status' => [RiwayatStatus::entri('dibuat', StatusKegiatan::Draf, $pengguna, $sumber)],
-            ]);
+            ]));
             $repo->tandaiDibuat($imporId, $b['nomor_baris'], $id);
             $diproses[] = ['nomor_baris' => $b['nomor_baris'], 'status' => 'dibuat', 'pesan' => ['Dibuat sebagai Draf.'], 'kegiatan_id' => $id, 'tautan' => route('kegiatan.edit', ['kegiatan' => $id])];
         }

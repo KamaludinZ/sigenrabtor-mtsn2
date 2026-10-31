@@ -5,6 +5,7 @@ namespace App\Livewire\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Livewire\Impor\ImporBertahap;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Kegiatan\Impor\PemeriksaPerkin;
 use App\Support\Kegiatan\Impor\UnggahPerkin;
 use App\Support\Kegiatan\Impor\ValidasiImporMassal;
@@ -116,9 +117,9 @@ class ImporPerkin extends ImporBertahap
             return ['status' => $hasil['status'], 'pesan' => implode(' ', $hasil['pesan'])];
         }
 
-        $id = app(KegiatanRepository::class)->simpan($data + [
+        $id = app(KegiatanRepository::class)->simpan(PilihanTemplate::isiAwal($data + [
             'riwayat_status' => [RiwayatStatus::entri('dibuat', StatusKegiatan::Draf, StubData::currentUser(), "Diimpor dari cascade Perkin ({$this->namaBerkas}, sheet {$this->lembar}).")],
-        ]);
+        ]));
 
         return ['status' => 'berhasil', 'pesan' => 'Dibuat sebagai Draf.', 'tautan' => route('kegiatan.edit', ['kegiatan' => $id])];
     }

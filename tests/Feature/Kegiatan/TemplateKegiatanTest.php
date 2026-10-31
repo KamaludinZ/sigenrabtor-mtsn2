@@ -5,12 +5,14 @@ namespace Tests\Feature\Kegiatan;
 use App\Contracts\KegiatanRepository;
 use App\Contracts\PilihanTemplateRepository;
 use App\Contracts\TemplateDokumenRepository;
+use App\Livewire\Kegiatan\Form;
 use App\Livewire\Kegiatan\PratinjauDokumen;
 use App\Livewire\Kegiatan\SusunDokumen;
 use App\Support\Dokumen\DaftarTemplate;
 use App\Support\Dokumen\DataPratinjau;
 use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Dokumen\TemplateDipakai;
+use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
 use App\Support\Kegiatan\UbahDataKegiatan;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -196,5 +198,46 @@ class TemplateKegiatanTest extends TestCase
             ->assertJson(['dapat_diubah' => false, 'alasan_terkunci' => 'Kegiatan berstatus Diperiksa sehingga isiannya terkunci.']);
         $this->putJson(route('kegiatan.template.pilihan', ['kegiatan' => $diperiksa]), ['template' => $id['umum']])->assertForbidden()
             ->assertJsonPath('pesan', 'Kegiatan berstatus Diperiksa sehingga isiannya terkunci.');
+    }
+
+    public function test_default_leading_terisi_saat_kegiatan_dibuat(): void
+    {
+        $id = $this->siapkan();
+        $repo = app(KegiatanRepository::class);
+
+        // Default leading menjadi pilihan tersimpan; leading tanpa default / tanpa leading tetap kosong (otomatis).
+        $this->assertSame($id['tpm'], PilihanTemplate::isiAwal(['nama_kegiatan' => 'Rapat Evaluasi Mutu', 'leading' => '1.6'])['template_kak']);
+        $this->assertSame($id['kurikulum'], PilihanTemplate::isiAwal(['nama_kegiatan' => 'Rapat Evaluasi Mutu', 'leading' => '1.1'])['template_kak']);
+        $this->assertNull(PilihanTemplate::isiAwal(['nama_kegiatan' => 'Rapat Evaluasi Mutu', 'leading' => '1.3'])['template_kak']);
+        $this->assertNull(PilihanTemplate::isiAwal(['nama_kegiatan' => 'Rapat Evaluasi Mutu'])['template_kak']);
+        // Pilihan bawaan yang aktif & sah dipertahankan; nonaktif / milik leading lain diganti default.
+        $this->assertSame($id['narasumber'], PilihanTemplate::isiAwal(['leading' => '1.6', 'template_kak' => $id['narasumber']])['template_kak']);
+        $this->assertSame($id['tpm'], PilihanTemplate::isiAwal(['leading' => '1.6', 'template_kak' => $id['lama']])['template_kak']);
+        $this->assertSame($id['tpm'], PilihanTemplate::isiAwal(['leading' => '1.6', 'template_kak' => $id['kurikulum']])['template_kak']);
+
+        // Aturan khusus leading × jenis Format Seragam tetap dinamis: tidak dibekukan saat dibuat.
+        app(PilihanTemplateRepository::class)->simpan(2026, PilihanTemplate::rapikan(['jenis' => [], 'leading' => [['leading' => '1.6', 'jenis' => 'supervisi', 'kak' => $id['umum']]]]));
+        $this->assertNull(PilihanTemplate::isiAwal(['nama_kegiatan' => 'Supervisi Akademik Guru', 'leading' => '1.6'])['template_kak']);
+        $this->assertSame($id['tpm'], PilihanTemplate::isiAwal(['nama_kegiatan' => 'Workshop Kurikulum', 'leading' => '1.6'])['template_kak']);
+
+        // Formulir Data Kegiatan: kegiatan baru menyimpan default leading; mengganti default kemudian tidak mengubahnya.
+        $sebelum = array_column($repo->semua(), 'id');
+        Livewire::test(Form::class)
+            ->set('form.nama_kegiatan', 'Workshop Penguatan Mutu')
+            ->set('form.leading', '1.6')
+            ->call('saveDraft')
+            ->assertHasNoErrors();
+        $baru = $repo->temukan((int) collect(array_column($repo->semua(), 'id'))->diff($sebelum)->first());
+        $this->assertSame($id['tpm'], $baru['template_kak']);
+        app(TemplateDokumenRepository::class)->jadikanDefault($id['narasumber']);
+        $this->assertSame(['asal' => 'kegiatan', 'kak' => $id['tpm']], array_intersect_key(PilihanTemplate::untukKegiatan($repo->temukan($baru['id'])), ['asal' => 1, 'kak' => 1]));
+
+        // Duplikat di tahun yang sama membawa pilihan sumbernya; dari tahun lain memakai default leading tahun aktif.
+        $sumber = $repo->temukan($this->kegiatanBaru(['nama_kegiatan' => 'Workshop Narasumber', 'template_kak' => $id['umum']]));
+        $salin = DuplikatKegiatan::jalankan($sumber, self::LEADING, 'Disalin.');
+        $this->assertSame($id['umum'], $repo->temukan($salin['id'])['template_kak']);
+        $lalu = $repo->temukan($this->kegiatanBaru(['nama_kegiatan' => 'Workshop Lama', 'tahun_anggaran' => 2025, 'template_kak' => 'template-2025']));
+        $salin = DuplikatKegiatan::jalankan($lalu, self::LEADING);
+        $this->assertSame($id['narasumber'], $repo->temukan($salin['id'])['template_kak']);
     }
 }

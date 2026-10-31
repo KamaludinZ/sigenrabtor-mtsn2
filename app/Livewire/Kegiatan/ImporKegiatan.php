@@ -4,6 +4,7 @@ namespace App\Livewire\Kegiatan;
 
 use App\Contracts\KegiatanRepository;
 use App\Livewire\Impor\ImporBertahap;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Format;
 use App\Support\Kegiatan\Impor\PembacaImporKegiatan;
 use App\Support\Kegiatan\Impor\PemeriksaImporKegiatan;
@@ -60,7 +61,7 @@ class ImporKegiatan extends ImporBertahap
             return ['status' => $hasil['status'], 'pesan' => implode(' ', $hasil['pesan'])];
         }
 
-        $id = app(KegiatanRepository::class)->simpan($data);
+        $id = app(KegiatanRepository::class)->simpan(PilihanTemplate::isiAwal($data));
 
         return ['status' => 'berhasil', 'pesan' => 'Dibuat sebagai Draf.', 'tautan' => route('kegiatan.edit', ['kegiatan' => $id])];
     }

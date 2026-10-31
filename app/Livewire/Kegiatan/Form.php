@@ -8,6 +8,7 @@ use App\Contracts\KegiatanRepository;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Livewire\Forms\KegiatanForm;
+use App\Support\Dokumen\PilihanTemplate;
 use App\Support\Dokumen\SusunanKak;
 use App\Support\Format;
 use App\Support\Kegiatan\AksesKegiatan;
@@ -574,7 +575,7 @@ class Form extends Component
 
         if ($this->kegiatanId === null) {
             $this->catatRiwayat('dibuat', StatusKegiatan::Draf);
-            $id = $repo->simpan($this->dataUntukDisimpan());
+            $id = $repo->simpan(PilihanTemplate::isiAwal($this->dataUntukDisimpan()));
         } else {
             try {
                 UbahDataKegiatan::ubah($id = $this->kegiatanId, $this->form->dataUntukDisimpan(), StubData::currentUser());

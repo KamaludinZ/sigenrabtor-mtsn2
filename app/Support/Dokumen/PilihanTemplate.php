@@ -31,7 +31,10 @@ use Illuminate\Validation\ValidationException;
  *   default master milik leading kegiatan (`defaultLeading()`, asal `default_leading`) → per jenis → bawaan (null =
  *   susunan baku / cover default); cover tetap dari aturan Format Seragam;
  * - `pilihanKegiatan($kegiatan)` = isi dropdown template kegiatan: master aktif keluarga KAK/TOR tahun itu milik leading
- *   kegiatan (default dulu) lalu template umum.
+ *   kegiatan (default dulu) lalu template umum;
+ * - `isiAwal($data)` = data kegiatan baru dengan `template_kak` terisi saat dibuat (PRD "template terpilih otomatis terisi
+ *   dari template default leading"): pilihan bawaan yang masih aktif & sah dipertahankan, selain itu default leading
+ *   (`awalKegiatan()`) — kosong bila leading tanpa default atau aturan khusus leading Format Seragam yang berlaku.
  */
 final class PilihanTemplate
 {
@@ -293,6 +296,36 @@ final class PilihanTemplate
     }
 
     /** Master default aktif milik leading itu (keluarga KAK/TOR, urutan JENIS_KAK); null bila tidak ada. */
+    /**
+     * Template yang terisi otomatis saat kegiatan dibuat: default master milik leading kegiatan — hanya bila itu yang
+     * berlaku tanpa pilihan (aturan khusus leading × jenis Format Seragam lebih diutamakan dan tetap dinamis).
+     *
+     * @param  array<string, mixed>  $kegiatan
+     */
+    public static function awalKegiatan(array $kegiatan, ?int $tahun = null): ?string
+    {
+        $berlaku = self::untukKegiatan(['template_kak' => null] + $kegiatan, $tahun);
+
+        return $berlaku['asal'] === 'default_leading' ? $berlaku['kak'] : null;
+    }
+
+    /**
+     * Data kegiatan baru dengan `template_kak` siap disimpan: pilihan yang dibawa (mis. salinan kegiatan tahun yang sama)
+     * dipertahankan bila masih aktif & sah untuk leading-nya, selain itu `awalKegiatan()`. Tahun = `tahun_anggaran` data
+     * atau tahun aktif.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function isiAwal(array $data): array
+    {
+        $tahun = (int) ($data['tahun_anggaran'] ?? StubData::tahunAktif()['tahun']);
+        $dibawa = filled($data['template_kak'] ?? null) ? (string) $data['template_kak'] : null;
+        $sah = $dibawa !== null && collect(self::pilihanKegiatan($data, $tahun))->contains(fn (array $t) => $t['id'] === $dibawa && $t['aktif']);
+
+        return ['template_kak' => $sah ? $dibawa : self::awalKegiatan(['template_kak' => null] + $data, $tahun)] + $data;
+    }
+
     public static function defaultLeading(?string $leading, int $tahun): ?string
     {
         if ($leading === null) {
