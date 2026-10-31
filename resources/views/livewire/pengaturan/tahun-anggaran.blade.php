@@ -82,12 +82,12 @@
                     <h2 id="judul-semua-tahun" class="text-base font-semibold text-stone-900">Semua tahun anggaran</h2>
                     <p class="mt-0.5 text-sm text-stone-500">Pilih tahun yang dikerjakan saat ini. Tahun lalu biasanya dikunci agar dokumennya tidak berubah.</p>
                 </header>
-                <div class="hidden grid-cols-[6rem_8rem_minmax(0,1fr)_minmax(0,1fr)_9rem] gap-3 bg-stone-50 px-6 py-2 text-xs font-semibold text-stone-500 md:grid" aria-hidden="true">
+                <div class="hidden grid-cols-[6rem_8rem_minmax(0,1fr)_minmax(0,1fr)_11rem] gap-3 bg-stone-50 px-6 py-2 text-xs font-semibold text-stone-500 md:grid" aria-hidden="true">
                     <span>Tahun</span><span>Status</span><span>SK RKTM/RKAM</span><span>Master kode</span><span class="text-right">Aksi</span>
                 </div>
                 <ul class="divide-y divide-stone-100" aria-label="Daftar tahun anggaran">
                     @foreach ($this->daftar as $t)
-                        <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-5 py-3.5 md:grid-cols-[6rem_8rem_minmax(0,1fr)_minmax(0,1fr)_9rem] md:px-6"
+                        <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-5 py-3.5 md:grid-cols-[6rem_8rem_minmax(0,1fr)_minmax(0,1fr)_11rem] md:px-6"
                             data-testid="tahun-{{ $t['tahun'] }}" data-status="{{ $t['is_active'] ? 'aktif' : ($t['is_locked'] ? 'terkunci' : 'tidak-aktif') }}" wire:key="tahun-{{ $t['tahun'] }}">
                             <p class="flex items-center gap-2 text-base font-bold text-stone-900 tabular-nums">
                                 {{ $t['tahun'] }}
@@ -112,6 +112,12 @@
                                 {{ $t['master_tersedia'] ? $t['jumlah_rktm'].' kode RKTM' : 'belum diunggah' }}
                             </p>
                             <div class="col-start-2 row-span-3 row-start-1 flex flex-wrap items-center justify-end gap-1 md:col-start-auto md:row-span-1 md:row-start-auto">
+                                @unless ($t['is_locked'])
+                                    <button type="button" class="btn-ghost p-1.5" wire:click="bukaSalin({{ $t['tahun'] }})" data-testid="buka-salin-{{ $t['tahun'] }}"
+                                            title="Salin pengaturan ke {{ $t['tahun'] }}" aria-label="Salin master &amp; pengaturan tahun lain ke {{ $t['tahun'] }}">
+                                        <x-ui.icon name="copy" class="size-4 text-stone-500" />
+                                    </button>
+                                @endunless
                                 @if ($t['is_active'])
                                     <span class="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"><x-ui.icon name="check" class="size-4" /> Sedang aktif</span>
                                 @else
@@ -148,7 +154,7 @@
         <aside class="space-y-4">
             <form wire:submit="tambahTahun" class="rounded-2xl bg-white p-4 shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-tambah-tahun" data-testid="tambah-tahun">
                 <h2 id="judul-tambah-tahun" class="text-[11px] font-semibold tracking-wider text-stone-400 uppercase">Tambah tahun anggaran</h2>
-                <p class="mt-1 text-xs text-stone-500">Tahun baru tidak langsung aktif; isi master kode, pejabat, dan dasar hukumnya dulu, lalu aktifkan.</p>
+                <p class="mt-1 text-xs text-stone-500">Tahun baru tidak langsung aktif; salin atau isi master kode, pejabat, dan dasar hukumnya dulu, lalu aktifkan.</p>
                 <div class="mt-3 flex gap-2">
                     <label for="tahun-baru" class="sr-only">Tahun</label>
                     <input type="text" id="tahun-baru" wire:model="tahunBaru" inputmode="numeric" maxlength="4" placeholder="mis. {{ ($aktif['tahun'] ?? now()->year) + 1 }}"
@@ -166,10 +172,15 @@
                     <li class="flex items-start gap-2"><x-ui.icon name="check-circle" class="mt-px size-3.5 shrink-0 text-brand-600" /> Mengganti tahun tidak menghapus kegiatan &amp; dokumen tahun lain.</li>
                     <li class="flex items-start gap-2"><x-ui.icon name="lock" class="mt-px size-3.5 shrink-0 text-stone-400" /> Tahun terkunci hanya bisa dilihat; tahun aktif tidak bisa dikunci.</li>
                     <li class="flex items-start gap-2"><x-ui.icon name="trash" class="mt-px size-3.5 shrink-0 text-stone-400" /> Hanya tahun yang belum dipakai yang bisa dihapus.</li>
+                    <li class="flex items-start gap-2"><x-ui.icon name="copy" class="mt-px size-3.5 shrink-0 text-stone-400" /> Master &amp; pengaturan bisa disalin dari tahun lain; isian yang sudah ada tidak pernah tertimpa.</li>
                 </ul>
             </section>
         </aside>
     </div>
+
+    @if ($this->salinKe !== null)
+        @include('livewire.pengaturan.partials.salin-pengaturan')
+    @endif
 
     {{-- Konfirmasi ganti tahun aktif --}}
     @if ($calon)

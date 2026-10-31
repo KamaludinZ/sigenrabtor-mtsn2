@@ -54,6 +54,7 @@ final class RiwayatPengaturan
         'ubah_simulasi_ai' => ['Ubah simulasi kegagalan AI', 'ai'],
         'unggah_master_kode' => ['Unggah master kode', 'master'],
         'salin_master_kode' => ['Salin master kode dari tahun lain', 'master'],
+        'salin_pengaturan_tahun' => ['Salin pengaturan dari tahun lain', 'tahun'],
     ];
 
     /** Catat satu perubahan atas nama pengguna yang sedang masuk. */
