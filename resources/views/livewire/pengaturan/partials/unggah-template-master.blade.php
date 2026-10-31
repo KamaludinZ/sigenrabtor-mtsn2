@@ -10,7 +10,8 @@
 @php
     $analisis = $this->analisis;
     $tidakTerdaftar = $analisis?->tidakTerdaftar() ?? [];
-    $bisaSimpan = $analisis?->bisaDisimpan() ?? false;
+    $bisaSimpan = $this->validasi['bisa_disimpan'] ?? false;
+    $galatPenanda = $this->validasi['galat']['penanda'] ?? null;
     $adaDefault = $this->adaDefault;
 @endphp
 
@@ -72,6 +73,11 @@
             </div>
 
             @if ($analisis)
+                @if ($galatPenanda)
+                    <p class="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200" role="alert" data-testid="galat-penanda">
+                        <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> {{ $galatPenanda }}
+                    </p>
+                @endif
                 @if ($analisis->variabel === [])
                     <p class="flex items-start gap-2 rounded-lg bg-gold-50 px-3 py-2 text-sm text-gold-700 ring-1 ring-gold-200" role="alert" data-testid="tanpa-penanda">
                         <x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" />
@@ -160,7 +166,7 @@
                     <span wire:loading.remove wire:target="simpanUnggah">Simpan template</span><span wire:loading wire:target="simpanUnggah">Menyimpan…</span>
                 </button>
             @else
-                <button type="button" class="btn-primary" disabled wire:key="simpan-template-belum" data-testid="simpan-template-belum" title="{{ $analisis ? UnggahMasterTemplate::pesanTidakBisaDisimpan($analisis) : 'Pilih berkas .docx dulu' }}">
+                <button type="button" class="btn-primary" disabled wire:key="simpan-template-belum" data-testid="simpan-template-belum" title="{{ $analisis ? ($galatPenanda ?? UnggahMasterTemplate::pesanTidakBisaDisimpan($analisis)) : 'Pilih berkas .docx dulu' }}">
                     <x-ui.icon name="save" class="size-4" /> Simpan template
                 </button>
             @endif

@@ -138,7 +138,7 @@ class TemplateMaster extends Component
     /** Berkas baru langsung dibaca; nama bawaan dari nama berkas. */
     public function updatedBerkas(): void
     {
-        unset($this->analisis, $this->penanda, $this->peringatanPenanda);
+        unset($this->analisis, $this->penanda, $this->validasi, $this->peringatanPenanda);
         $this->resetErrorBag('berkas');
         $this->validateOnly('berkas');
         if (($this->nama === '' || $this->nama === $this->namaDariBerkas) && $this->berkas !== null) {
@@ -153,7 +153,7 @@ class TemplateMaster extends Component
 
     public function updatedJenisBaru(): void
     {
-        unset($this->adaDefault, $this->peringatanPenanda);
+        unset($this->adaDefault, $this->validasi, $this->peringatanPenanda);
     }
 
     /** Penanda ${…} di berkas dicocokkan dengan variabel terdaftar; null selama belum ada berkas sah. */
@@ -174,23 +174,30 @@ class TemplateMaster extends Component
     }
 
     /**
-     * Peringatan penanda (ValidasiVariabelTemplate: penanda daftar/tabel/blok tidak berdiri sendiri, RAB tanpa ${rab},
-     * penanda dianjurkan) — tidak menahan simpan.
+     * Hasil ValidasiVariabelTemplate berkas yang dipilih (galat yang menahan simpan — penanda tak terdaftar/tak tertutup —
+     * dan peringatan); null selama belum ada berkas sah.
      *
-     * @return list<array{kunci: string, pesan: string}>
+     * @return array{galat: array<string, string>, peringatan: list<array{kunci: string, pesan: string}>, bisa_disimpan: bool}|null
      */
     #[Computed]
-    public function peringatanPenanda(): array
+    public function validasi(): ?array
     {
         if ($this->analisis === null) {
-            return [];
+            return null;
         }
 
         try {
-            return ValidasiVariabelTemplate::periksa($this->berkas->getRealPath(), $this->jenisBaru)['peringatan'];
+            return array_intersect_key(ValidasiVariabelTemplate::periksa($this->berkas->getRealPath(), $this->jenisBaru), array_flip(['galat', 'peringatan', 'bisa_disimpan']));
         } catch (RuntimeException) {
-            return [];
+            return null;
         }
+    }
+
+    /** @return list<array{kunci: string, pesan: string}> Peringatan penanda (tidak menahan simpan). */
+    #[Computed]
+    public function peringatanPenanda(): array
+    {
+        return $this->validasi['peringatan'] ?? [];
     }
 
     /** Isi dokumen dengan penanda disorot (mode penanda). */
