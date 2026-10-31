@@ -77,7 +77,15 @@ final class DaftarModelAiHttp implements DaftarModelAi
             if (! is_string($nama) || str_contains(mb_strtolower($nama.' '.($detail['family'] ?? '')), 'embed') || str_contains((string) ($detail['family'] ?? ''), 'bert')) {
                 continue;
             }
-            $ciri = array_filter([is_string($detail['parameter_size'] ?? null) ? $detail['parameter_size'].' parameter' : null, is_string($detail['quantization_level'] ?? null) ? $detail['quantization_level'] : null]);
+            $ciri = array_filter([
+                is_string($detail['parameter_size'] ?? null) ? $detail['parameter_size'].' parameter' : null,
+                is_string($detail['quantization_level'] ?? null) ? $detail['quantization_level'] : null,
+                match (KemampuanModelAi::berpikirOllama($nama)) {
+                    false => 'model berpikir — mode berpikir dimatikan otomatis',
+                    'low' => 'selalu berpikir — jawaban lebih lambat',
+                    default => null,
+                },
+            ]);
             $model[] = [
                 'nama' => $nama,
                 'ukuran' => is_numeric($m['size'] ?? null) ? str_replace('.', ',', number_format($m['size'] / 1e9, 1)).' GB' : null,

@@ -82,6 +82,7 @@ class DaftarModelAiHttpTest extends TestCase
                 ['name' => 'qwen2.5:7b', 'size' => 4_683_087_332, 'details' => ['family' => 'qwen2', 'parameter_size' => '7.6B', 'quantization_level' => 'Q4_K_M']],
                 ['name' => 'nomic-embed-text:latest', 'size' => 274_302_450, 'details' => ['family' => 'nomic-bert']],
                 ['name' => 'llama3.1:8b', 'size' => 4_920_753_328, 'details' => []],
+                ['name' => 'qwen3:8b', 'size' => 5_225_387_923, 'details' => ['family' => 'qwen3', 'parameter_size' => '8.2B']],
             ]]),
             'api.openai.com/v1/models' => Http::response(['data' => [
                 ['id' => 'gpt-4.1', 'created' => 100], ['id' => 'text-embedding-3-large', 'created' => 300], ['id' => 'o4-mini', 'created' => 200],
@@ -98,7 +99,8 @@ class DaftarModelAiHttpTest extends TestCase
         $klien = new DaftarModelAiHttp;
 
         $ollama = $klien->daftar('ollama', ['base_url' => 'http://192.168.1.10:11434']);
-        $this->assertSame(['qwen2.5:7b', 'llama3.1:8b'], array_column($ollama, 'nama'), 'Model embedding dilewati.');
+        $this->assertSame(['qwen2.5:7b', 'llama3.1:8b', 'qwen3:8b'], array_column($ollama, 'nama'), 'Model embedding dilewati.');
+        $this->assertSame('Terpasang di server sekolah · 8.2B parameter · model berpikir — mode berpikir dimatikan otomatis.', $ollama[2]['keterangan']);
         $this->assertSame(['4,7 GB', 'Terpasang di server sekolah · 7.6B parameter · Q4_K_M.'], [$ollama[0]['ukuran'], $ollama[0]['keterangan']]);
 
         $openai = $klien->daftar('openai', $this->cloud());

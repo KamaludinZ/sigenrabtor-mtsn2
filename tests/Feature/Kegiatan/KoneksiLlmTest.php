@@ -248,6 +248,50 @@ class KoneksiLlmTest extends TestCase
         Sleep::assertSleptTimes(1);
     }
 
+    public function test_mode_berpikir_gemini_dan_ollama(): void
+    {
+        $kunci = Crypt::encryptString(self::KUNCI);
+        $okGemini = ['candidates' => [['content' => ['parts' => [['text' => '{"status":"ok"}']]], 'finishReason' => 'STOP']]];
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push($okGemini)
+                ->push(['error' => ['code' => 400, 'message' => 'Invalid JSON payload received. Unknown name "thinkingLevel" at \'generation_config.thinking_config\'', 'status' => 'INVALID_ARGUMENT']], 400)
+                ->push($okGemini)
+                ->push($okGemini)
+                ->push(['candidates' => [['content' => ['parts' => []], 'finishReason' => 'MAX_TOKENS']]]),
+            '192.168.1.10:11434/*' => Http::sequence()
+                ->push(['message' => ['role' => 'assistant', 'content' => '{"status":"ok"}', 'thinking' => ''], 'done_reason' => 'stop'])
+                ->push(['error' => 'registry.ollama.ai/library/qwen3:8b does not support thinking'], 400)
+                ->push(['message' => ['content' => "<think>\nmenimbang {\"bukan\": 1}\n</think>\n{\"status\":\"ok\"}"]])
+                ->push(['message' => ['content' => '{"status":"ok"}', 'thinking' => 'langkah 1…']]),
+        ]);
+        $klien = app(KlienLlm::class);
+        $tanya = function (string $penyedia, string $model) use ($klien, $kunci) {
+            $konfigurasi = $penyedia === 'ollama' ? ['model' => $model, 'base_url' => 'http://192.168.1.10:11434'] : ['model' => $model, 'ada_kunci' => true, 'kunci_akhir' => '6789', 'kunci_terenkripsi' => $kunci, 'base_url' => ''];
+            $this->atur(['penyedia' => [$penyedia => $konfigurasi]]);
+
+            return $klien->tanya($penyedia, 'Sistem', 'Pesan', ['suhu' => 0.4, 'maks_token' => 300]);
+        };
+        $dikirim = fn (string $host) => Http::recorded(fn (Request $r) => str_contains($r->url(), $host))->map(fn (array $p) => $p[0]->data())->values()->all();
+
+        // Gemini: 2.5 dibatasi anggaran berpikir, 3 ke atas lewat thinkingLevel (ditolak → dikirim ulang tanpanya), 2.0 tanpa pengaturan.
+        $this->assertSame(['{"status":"ok"}', '{"status":"ok"}', '{"status":"ok"}'], [$tanya('gemini', 'gemini-2.5-pro'), $tanya('gemini', 'gemini-3-flash'), $tanya('gemini', 'gemini-2.0-flash')]);
+        $gemini = array_column($dikirim('googleapis'), 'generationConfig');
+        $this->assertSame([['thinkingBudget' => KemampuanModelAi::ANGGARAN_BERPIKIR_GEMINI], 300 + KlienLlmHttp::CADANGAN_BERPIKIR], [$gemini[0]['thinkingConfig'], $gemini[0]['maxOutputTokens']]);
+        $this->assertSame([['thinkingLevel' => 'LOW'], false], [$gemini[1]['thinkingConfig'], isset($gemini[2]['thinkingConfig'])], 'thinkingLevel ditolak → dikirim ulang tanpa thinkingConfig.');
+        $this->assertSame([false, 300], [isset($gemini[3]['thinkingConfig']), $gemini[3]['maxOutputTokens']]);
+        // Token habis untuk berpikir sebelum ada teks → jawaban rusak (bukan galat lain).
+        $this->assertSame('jawaban_rusak', $this->gagal(fn () => $tanya('gemini', 'gemini-2.5-flash'))->jenis);
+
+        // Ollama: model biasa tanpa `think`; qwen3 dimatikan (server lama menolak → dikirim ulang tanpanya, pikiran di teks dibuang); gpt-oss "low".
+        $this->assertSame(['{"status":"ok"}', '{"status":"ok"}', '{"status":"ok"}'], [$tanya('ollama', 'qwen2.5:7b'), $tanya('ollama', 'qwen3:8b'), $tanya('ollama', 'gpt-oss:20b')]);
+        $ollama = $dikirim('11434');
+        $this->assertFalse(array_key_exists('think', $ollama[0]));
+        $this->assertSame([false, false], [$ollama[1]['think'], array_key_exists('think', $ollama[2])]);
+        $this->assertSame(['low', 300 + KlienLlmHttp::CADANGAN_BERPIKIR], [$ollama[3]['think'], $ollama[3]['options']['num_predict']]);
+        $this->assertSame([300, 300], [$ollama[0]['options']['num_predict'], $ollama[1]['options']['num_predict']]);
+    }
+
     public function test_kemampuan_model(): void
     {
         $suhu = fn (string $p, string $m) => KemampuanModelAi::terimaSuhu($p, $m);
@@ -262,7 +306,10 @@ class KoneksiLlmTest extends TestCase
         $this->assertSame([true, true, true, true, false, false], array_map(fn (string $m) => $pikir('claude', $m), ['claude-opus-5-5', 'claude-sonnet-5', 'claude-haiku-5-5', 'claude-fable-5-1', 'claude-opus-4-8', 'claude-3-haiku-20240307']));
         $this->assertSame([[true, false], [false, true], [false, true], [true, false]], array_map(fn (string $m) => [$suhu('openai', $m), $pikir('openai', $m)], ['gpt-4.1', 'o4-mini', 'gpt-5-mini', 'gpt-4o']));
         $this->assertSame([true, true, false], [$pikir('gemini', 'gemini-2.5-pro'), $pikir('gemini', 'models/gemini-3-flash'), $pikir('gemini', 'gemini-2.0-flash')]);
+        $this->assertSame([['thinkingBudget' => 1024], ['thinkingLevel' => 'LOW'], ['thinkingLevel' => 'LOW'], null], array_map(KemampuanModelAi::berpikirGemini(...), ['gemini-2.5-flash-lite', 'gemini-3-pro-preview', 'models/gemini-3.1-pro', 'gemini-2.0-flash']));
         $this->assertSame([true, false], [$suhu('ollama', 'qwen2.5:7b'), $pikir('ollama', 'qwen2.5:7b')]);
+        $this->assertSame([null, false, false, false, 'low'], array_map(KemampuanModelAi::berpikirOllama(...), ['llama3.1:8b', 'qwen3:8b', 'deepseek-r1:7b', 'library/qwq', 'gpt-oss:20b']));
+        $this->assertSame([false, true], [$pikir('ollama', 'qwen3:8b'), $pikir('ollama', 'gpt-oss:120b')]);
     }
 
     public function test_sambungan_tidak_membocorkan_kunci_dan_batas_permintaan_web(): void

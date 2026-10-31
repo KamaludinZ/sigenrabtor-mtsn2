@@ -23,7 +23,8 @@ final class PenyediaAi
         ],
         'gemini' => [
             'nama' => 'Gemini (Google)', 'jenis' => 'cloud', 'butuh_kunci' => true, 'base_url' => null,
-            'contoh_model' => 'nama model dari dasbor penyedia', 'kelebihan' => 'Cepat; kalimat lebih rapi.', 'kekurangan' => 'Berbayar per pemakaian; data kegiatan dikirim ke penyedia.',
+            'contoh_model' => 'mis. gemini-2.5-flash', 'kelebihan' => 'Cepat; ada tingkat gratis.',
+            'kekurangan' => 'Data kegiatan dikirim ke penyedia; di tingkat gratis dipakai Google untuk meningkatkan produk — aktifkan penagihan untuk data madrasah.',
         ],
     ];
 

@@ -339,55 +339,113 @@ sekali dengan `SIRABTOR_IZINKAN_DATA_BARU=true` lalu kembalikan `false`.
 ## 9. Integrasi AI
 
 Penyedia AI diatur admin di **Pengaturan › Pengaturan AI** (bukan variabel lingkungan) dan tersimpan di volume storage;
-kunci API dienkripsi dengan `APP_KEY`. Tanpa penyedia aktif aplikasi tetap berjalan dengan saran tiruan. Kontainer hanya
-butuh HTTPS keluar.
+kunci API dienkripsi dengan `APP_KEY`. Tanpa penyedia aktif aplikasi tetap berjalan dengan saran tiruan. Yang dikirim ke
+AI hanya bahan kalimat (isian & catatan konteks kegiatan) — NIP, nama pejabat, pagu, dan rincian RAB tidak pernah dikirim
+(daftarnya tampil di kartu *Data yang dikirim ke AI*).
 
-- **Cloud** (Claude, OpenAI, Gemini): tab *Penyedia* → kartu penyedia → model & kunci API → jadikan aktif (opsional
-  cadangan). Izinkan HTTPS keluar ke `api.anthropic.com`, `api.openai.com`, atau `generativelanguage.googleapis.com`.
+Langkah umum untuk penyedia mana pun:
+
+1. Tab *Penyedia* → atur penyedia (alamat/kunci API, model sementara), *Pakai sebagai* = Penyedia aktif → **Simpan**.
+2. Tab *Model & parameter* → **Muat daftar model** → **Pakai** pada model yang diinginkan (daftar diambil langsung dari
+   server/akun penyedia).
+3. Tab *Penyedia* → **Uji koneksi** → harus *Terhubung*. Uji koneksi mengirim satu permintaan kecil tanpa data kegiatan,
+   tidak memakai kuota harian pengguna, dan dibatasi 6 kali per menit per admin; hasilnya tampil sampai pengaturan diubah.
+4. Coba **Buat dengan AI** di tab Kalimat KAK satu kegiatan, lalu periksa Riwayat Saran AI.
+
+### Memilih penyedia
+
+| Penyedia | Biaya | Data kegiatan | Yang perlu disiapkan |
+| --- | --- | --- | --- |
+| Ollama (server sekolah) | Gratis (listrik & server) | Tidak keluar dari server | RAM ±8 GB untuk model 7B; tanpa GPU jawaban 30 detik–beberapa menit |
+| Claude (Anthropic) | Bayar per pemakaian | Dikirim ke Anthropic | Akun Claude Console + saldo |
+| OpenAI | Bayar per pemakaian | Dikirim ke OpenAI; menurut kebijakan OpenAI tidak dipakai melatih model kecuali Anda ikut serta, log disimpan maks. 30 hari untuk pemantauan penyalahgunaan | Akun platform OpenAI + saldo |
+| Gemini (Google) | Ada tingkat gratis & berbayar | **Tingkat gratis: isi permintaan & jawaban dipakai Google untuk meningkatkan produk dan bisa dibaca peninjau manusia.** Berbayar: tidak dipakai meningkatkan produk | Kunci Google AI Studio, **sebaiknya dengan penagihan (billing) aktif** |
+
+Untuk penyedia cloud, izinkan HTTPS keluar dari server ke `api.anthropic.com`, `api.openai.com`, atau
+`generativelanguage.googleapis.com`. Periksa ketentuan data terbaru tiap penyedia sebelum dipakai untuk data madrasah.
 
 ### Menyambungkan Claude (Anthropic)
 
 1. Di [Claude Console](https://platform.claude.com) buat **API key** khusus SIRABTOR (satu kunci per aplikasi, mudah
    dicabut) dan pasang **batas belanja bulanan** di Billing agar tagihan tidak melebihi anggaran madrasah.
-2. Pengaturan AI → tab *Penyedia* → **API cloud › Claude (Anthropic) › Atur**: tempel kunci (`sk-ant-…`), isi model
-   sementara (mis. `claude-sonnet-5-5`), *Pakai sebagai* = Penyedia aktif, lalu **Simpan**. Kunci disimpan terenkripsi
-   dan hanya 4 karakter terakhirnya yang tampil lagi.
-3. Tab *Model & parameter* → **Muat daftar model**: daftar diambil langsung dari akun Anthropic Anda (hanya model yang
-   boleh dipakai akun itu) beserta nama, ciri kecepatan/biaya, dan panjang konteksnya. Pilih **Pakai** pada model yang
-   diinginkan — pilihan model dan biayanya keputusan madrasah: Haiku paling hemat, Sonnet seimbang, Opus paling cermat.
-4. Kembali ke tab *Penyedia* → **Uji koneksi**. Aplikasi mengirim satu permintaan kecil tanpa data kegiatan; hasilnya
-   (*Terhubung* + lama jawaban, atau jenis galat + sarannya) tampil di kartu penyedia sampai pengaturan diubah lagi.
-   Uji koneksi tidak memakai kuota harian pengguna dan dibatasi 6 kali per menit per admin.
-5. Coba **Buat dengan AI** di tab Kalimat KAK satu kegiatan, lalu periksa Riwayat Saran AI.
+2. Pengaturan AI → *Penyedia* → **API cloud › Claude (Anthropic) › Atur**: tempel kunci (`sk-ant-…`), model sementara
+   (mis. `claude-sonnet-5-5`), Penyedia aktif → **Simpan**. Kunci disimpan terenkripsi; hanya 4 karakter terakhirnya
+   yang tampil lagi.
+3. **Muat daftar model** menampilkan model yang boleh dipakai akun Anda beserta ciri kecepatan/biaya dan panjang
+   konteksnya — pilihan model dan biayanya keputusan madrasah: Haiku paling hemat, Sonnet seimbang, Opus paling cermat.
+4. **Uji koneksi**. Batas waktu 60–120 detik sudah cukup.
 
-Yang sudah ditangani aplikasi sehingga tidak perlu diatur:
+### Menyambungkan OpenAI
 
-- **Parameter per model.** Claude generasi 4.7 ke atas (termasuk Opus/Sonnet/Haiku 5.5) menolak parameter
-  `temperature`, jadi pengaturan *Kreativitas* hanya dikirim ke model yang menerimanya. Model yang selalu berpikir
-  sebelum menjawab (Claude 5.x) diberi upaya berpikir rendah (`effort: low`) dan cadangan token agar jawaban tidak
-  terpotong. Bila penyedia tetap menolak parameter opsional, aplikasi membuangnya lalu mengirim ulang.
-- **Gangguan sementara.** Galat 429 (batas laju), 5xx, 529 (*overloaded*), dan koneksi putus dicoba ulang otomatis
-  paling banyak 2 kali dengan jeda (menghormati `Retry-After`), selama masih dalam batas waktu penyedia. Saldo habis,
-  kunci ditolak, dan model tidak ada tidak dicoba ulang.
-- **Batas waktu.** Seluruh permintaan AI (penyedia aktif + cadangan + percobaan ulang) dibatasi
-  `SIRABTOR_AI_BATAS_PERMINTAAN_DETIK` (bawaan 330, di bawah batas PHP/nginx 360) agar pengguna menerima pesan galat,
-  bukan halaman 504. Batas waktu Claude 60–120 detik sudah cukup.
-- **Pesan galat.** Kunci ditolak (401/403), saldo habis (*credit balance*), model tidak ada (404), penyedia sibuk
-  (5xx/529), dan permintaan ditolak (400 atau model menolak menjawab) masing-masing punya pesan untuk pengguna dan saran
-  untuk admin. Log aplikasi mencatat jenis galat dan *request-id* Anthropic — tidak pernah kunci API maupun isi prompt.
-- **Penyedia cadangan.** Pasang Ollama atau penyedia cloud lain sebagai *Penyedia cadangan*: bila Claude gagal, permintaan
-  langsung dialihkan, dan Claude yang sedang bermasalah dicoba terakhir selama jedanya berjalan.
-- **Ollama lokal** (data kegiatan tidak keluar dari server):
+1. Di [platform OpenAI](https://platform.openai.com/api-keys) buat **API key** khusus SIRABTOR (sebaiknya dalam satu
+   *project* tersendiri), isi saldo secukupnya, dan atur batas pemakaian/anggaran di pengaturan Billing & Limits akun.
+2. Pengaturan AI → *Penyedia* → **API cloud › OpenAI › Atur**: tempel kunci (`sk-…`), model sementara, Penyedia aktif
+   (atau cadangan) → **Simpan**. *Alamat API* biarkan kosong (alamat resmi); isi hanya bila madrasah memakai gateway yang
+   kompatibel dengan API OpenAI.
+3. **Muat daftar model** hanya menampilkan model obrolan (gpt-…, o…), terbaru dulu. Model penalaran (o-series, gpt-5)
+   ditandai: lebih lambat dan pengaturan *Kreativitas* tidak berlaku — aplikasi otomatis tidak mengirim `temperature`
+   dan memakai upaya penalaran rendah.
+4. **Uji koneksi**. Batas waktu 60–120 detik; model penalaran bisa butuh lebih lama.
 
-  ```bash
-  docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml -f docker-compose.ollama.yml up -d
-  docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml -f docker-compose.ollama.yml exec ollama ollama pull qwen2.5:7b
-  ```
+### Menyambungkan Gemini (Google)
 
-  (Di VPS tambahkan `:docker-compose.ollama.yml` ke `COMPOSE_FILE` agar ikut setiap redeploy.) Lalu di Pengaturan AI →
-  Ollama: alamat `http://ollama:11434`, model `qwen2.5:7b`, batas waktu 120–300 detik untuk CPU, jadikan aktif. Model
-  7B butuh RAM ±8 GB tanpa GPU; GPU NVIDIA: aktifkan blok `deploy` di `docker-compose.ollama.yml`. Di Coolify, Ollama
-  bisa dipasang sebagai *Service* — isi alamatnya dengan nama host internal layanan itu.
+1. Di [Google AI Studio](https://aistudio.google.com/apikey) buat **API key** untuk proyek khusus SIRABTOR, lalu
+   **aktifkan penagihan (billing)** untuk proyek itu — di tingkat gratis isi permintaan dan jawaban dipakai Google untuk
+   meningkatkan produk dan bisa dibaca peninjau manusia. Pasang batas anggaran di Google Cloud Billing.
+2. Pengaturan AI → *Penyedia* → **API cloud › Gemini (Google) › Atur**: tempel kunci (`AIza…`), model sementara (mis.
+   `gemini-2.5-flash`), Penyedia aktif (atau cadangan) → **Simpan**.
+3. **Muat daftar model** hanya menampilkan model Gemini yang bisa menyusun teks (`generateContent`).
+4. **Uji koneksi**. Gemini 2.5 ke atas selalu berpikir sebelum menjawab: aplikasi membatasinya (2.5: anggaran 1.024 token
+   berpikir; 3 ke atas: tingkat rendah) dan menambah cadangan token agar jawaban tidak terpotong.
+
+### Server sekolah (Ollama)
+
+Data kegiatan tidak keluar dari server. Pasang Ollama di server yang sama:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml -f docker-compose.ollama.yml up -d
+docker compose -f docker-compose.prod.yml -f docker-compose.vps.yml -f docker-compose.ollama.yml exec ollama ollama pull qwen2.5:7b
+```
+
+(Di VPS tambahkan `:docker-compose.ollama.yml` ke `COMPOSE_FILE` agar ikut setiap redeploy. Di Coolify, Ollama bisa
+dipasang sebagai *Service* — isi alamatnya dengan nama host internal layanan itu.) Lalu Pengaturan AI → *Server sekolah
+(Ollama) › Atur*: alamat `http://ollama:11434` (bukan `localhost` — itu kontainer aplikasi sendiri), model, batas waktu,
+Penyedia aktif → **Simpan** → **Uji koneksi**. Permintaan pertama sesudah server menyala lebih lama karena model dimuat ke
+memori.
+
+- **Model.** `qwen2.5:7b` (bahasa Indonesia cukup baik, RAM ±8 GB), `qwen2.5:3b` (lebih cepat tanpa GPU), `llama3.1:8b`,
+  `gemma2:9b`. **Muat daftar model** menampilkan model yang sudah diunduh beserta ukurannya; model embedding disembunyikan.
+- **Model berpikir** (`qwen3`, `deepseek-r1`, `qwq`, …): mode berpikirnya dimatikan otomatis (`think: false`). Ollama versi
+  lama yang belum mengenal pengaturan itu tetap berpikir — pikirannya dibuang dari jawaban, tetapi jawaban lebih lambat;
+  perbarui image Ollama bila begitu. `gpt-oss` selalu berpikir (diatur ke tingkat rendah) dan butuh RAM lebih besar.
+- **Batas waktu** 120–300 detik untuk CPU. GPU NVIDIA: aktifkan blok `deploy` di `docker-compose.ollama.yml`.
+
+### Penyedia aktif & cadangan
+
+Bila penyedia aktif gagal (server mati, kuota habis, kunci ditolak), permintaan langsung dialihkan ke *Penyedia
+cadangan*, dan penyedia yang sedang bermasalah dicoba terakhir selama jedanya berjalan. Pasangan yang disarankan:
+
+- **Ollama aktif + cloud cadangan** — gratis dan data tetap di madrasah sehari-hari; saat server sekolah bermasalah,
+  permintaan dikirim ke penyedia cloud (data ikut terkirim ke sana).
+- **Cloud aktif + Ollama cadangan** — kalimat lebih rapi & cepat; tetap jalan saat internet atau kuota cloud bermasalah.
+- **Dua penyedia cloud** (mis. Claude + OpenAI atau Gemini berbayar) — tanpa server AI sendiri.
+
+Seluruh permintaan satu klik (aktif + cadangan + percobaan ulang) dibatasi `SIRABTOR_AI_BATAS_PERMINTAAN_DETIK` (bawaan
+330, di bawah batas PHP/nginx 360). Bila Ollama aktif dengan batas waktu panjang, sisakan waktu untuk cadangan: mis.
+Ollama 200 detik + cloud 120 detik.
+
+### Yang sudah ditangani aplikasi
+
+- **Parameter per model.** *Kreativitas* (`temperature`) hanya dikirim ke model yang menerimanya — Claude generasi 4.7 ke
+  atas dan model penalaran OpenAI menolaknya. Model yang selalu berpikir (Claude 5.x, penalaran OpenAI, Gemini 2.5 ke
+  atas, `gpt-oss`) diberi upaya berpikir rendah dan cadangan token; mode berpikir model Ollama lain dimatikan. Parameter
+  opsional yang tetap ditolak penyedia dibuang, lalu permintaan dikirim ulang.
+- **Gangguan sementara.** Galat 429 (batas laju), 5xx, 529 (*overloaded*), dan koneksi putus dicoba ulang otomatis paling
+  banyak 2 kali dengan jeda (menghormati `Retry-After`) selama masih dalam batas waktu. Saldo habis, kunci ditolak, model
+  tidak ada, dan waktu tunggu yang sudah habis tidak dicoba ulang.
+- **Pesan galat.** Kunci ditolak (401/403), saldo/kuota habis, model tidak ada (404), penyedia sibuk (5xx/529), dan
+  permintaan ditolak (400, filter konten, atau model menolak menjawab) masing-masing punya pesan untuk pengguna dan saran
+  untuk admin. Log aplikasi mencatat jenis galat dan *request-id* penyedia — tidak pernah kunci API maupun isi prompt.
 
 ## 10. Pemeriksaan sesudah deploy/redeploy
 
@@ -412,10 +470,12 @@ Yang sudah ditangani aplikasi sehingga tidak perlu diatur:
 | Unduh PDF gagal "Chrome/Chromium tidak ditemukan" | Image bukan dari `Dockerfile` ini atau `SIRABTOR_CHROME` salah. |
 | Angka PDF RAB memakai koma Inggris | Locale `id_ID.UTF-8` belum dibuat (`locale -a`). |
 | Saran AI "tidak terhubung"/"waktu habis" | Alamat Ollama harus nama host jaringan Docker (`http://ollama:11434`), bukan `localhost`; model besar di CPU butuh batas waktu lebih lama. Server tanpa akses internet keluar tidak bisa memakai API cloud. |
-| Uji koneksi Claude "Kunci API ditolak" | Kunci salah/dicabut, atau `APP_KEY` berganti sejak kunci disimpan (kunci terenkripsi tidak bisa dibuka) — tempel ulang kunci di tab Penyedia. |
-| Uji koneksi "Kuota penyedia habis" | Saldo kredit Anthropic habis atau batas belanja tercapai (Console › Billing), atau batas laju akun terlampaui — coba lagi nanti. |
-| Uji koneksi "Model tidak ditemukan" | Nama model salah atau tidak tersedia untuk akun itu — pilih dari **Muat daftar model**. |
-| Uji koneksi "Permintaan ditolak penyedia" | Lihat log aplikasi (`Permintaan ke penyedia AI gagal.` + `rincian` & `permintaan` = request-id) untuk kode galatnya. |
+| Uji koneksi "Kunci API ditolak" | Kunci salah/dicabut, atau `APP_KEY` berganti sejak kunci disimpan (kunci terenkripsi tidak bisa dibuka) — tempel ulang kunci di tab Penyedia. Gemini: API Generative Language belum aktif untuk proyek kunci itu. |
+| Uji koneksi "Kuota penyedia habis" | Saldo/kredit habis atau batas belanja tercapai (Anthropic Console › Billing, OpenAI Billing & Limits, Google Cloud Billing), kuota tingkat gratis Gemini habis, atau batas laju akun terlampaui — coba lagi nanti. |
+| Uji koneksi "Model tidak ditemukan" | Nama model salah atau tidak tersedia untuk akun itu — pilih dari **Muat daftar model**. Ollama: model belum diunduh (`ollama pull …`). |
+| Uji koneksi "Permintaan ditolak penyedia" | Lihat log aplikasi (`Permintaan ke penyedia AI gagal.` + `rincian` & `permintaan` = request-id) untuk kode galatnya; coba model lain. |
+| Uji koneksi "Penyedia AI sedang sibuk" | Gangguan di server penyedia; untuk Ollama sering karena memori tidak cukup memuat model — pakai model lebih kecil (`qwen2.5:3b`) atau tambah RAM. |
+| Uji koneksi "Jawaban tidak terbaca" | Model terlalu kecil untuk format jawaban, atau batas token habis — naikkan *Panjang jawaban* di tab Model & parameter atau pakai model lain. |
 | Disk penuh | Kurangi `SIRABTOR_CADANGAN_SIMPAN`, pindahkan set lama ke luar server, `docker image prune` (bukan `volume prune`). |
 
 ## Catatan pengujian konfigurasi

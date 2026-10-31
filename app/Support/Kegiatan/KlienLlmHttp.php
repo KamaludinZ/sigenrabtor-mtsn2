@@ -15,7 +15,9 @@ use Illuminate\Support\Sleep;
  * `POST {alamat}/models/{model}:generateContent` (application/json).
  *
  * Bentuk permintaan mengikuti KemampuanModelAi: suhu hanya untuk model yang menerimanya; model yang selalu berpikir diberi
- * CADANGAN_BERPIKIR token + upaya berpikir rendah (Claude `output_config.effort`, OpenAI `reasoning_effort`). Parameter
+ * CADANGAN_BERPIKIR token + upaya berpikir rendah (Claude `output_config.effort`, OpenAI `reasoning_effort`, Gemini
+ * `thinkingConfig`, Ollama gpt-oss `think`); model Ollama yang bisa berpikir (qwen3, deepseek-r1, …) dikirim `think: false`
+ * dan pikiran yang tetap tertulis di teks (`<think>…</think>`, Ollama lama) dibuang. Parameter
  * opsional yang tetap ditolak model (galat 400 yang menyebut namanya) dibuang lalu permintaan dikirim ulang. Galat
  * sementara (COBA_ULANG_STATUS, koneksi putus) dicoba ulang paling banyak MAKS_COBA_ULANG kali dengan jeda berlipat
  * (Retry-After dihormati sampai JEDA_MAKS_DETIK) selama masih dalam batas waktu penyedia — kuota yang benar-benar habis
@@ -106,11 +108,12 @@ final class KlienLlmHttp implements KlienLlm
         $tanpaKosong = fn (array $isi) => array_filter($isi, fn (mixed $nilai) => $nilai !== null);
 
         return match ($penyedia) {
-            'ollama' => ['/api/chat', [
+            'ollama' => ['/api/chat', $tanpaKosong([
                 'model' => $model, 'stream' => false, 'format' => 'json',
+                'think' => KemampuanModelAi::berpikirOllama($model),
                 'messages' => [['role' => 'system', 'content' => $sistem], ['role' => 'user', 'content' => $pesan]],
                 'options' => ['temperature' => (float) $parameter['suhu'], 'num_predict' => $token],
-            ], []],
+            ]), ['think' => 'think']],
             'claude' => ['/messages', $tanpaKosong([
                 'model' => $model, 'max_tokens' => $token, 'temperature' => $suhu,
                 'output_config' => $berpikir ? ['effort' => self::UPAYA_BERPIKIR] : null,
@@ -126,8 +129,15 @@ final class KlienLlmHttp implements KlienLlm
             'gemini' => ['/models/'.rawurlencode($model).':generateContent', [
                 'systemInstruction' => ['parts' => [['text' => $sistem]]],
                 'contents' => [['role' => 'user', 'parts' => [['text' => $pesan]]]],
-                'generationConfig' => $tanpaKosong(['temperature' => $suhu, 'maxOutputTokens' => $token, 'responseMimeType' => 'application/json']),
-            ], ['temperature' => 'generationConfig.temperature', 'responsemimetype' => 'generationConfig.responseMimeType', 'response_mime_type' => 'generationConfig.responseMimeType']],
+                'generationConfig' => $tanpaKosong([
+                    'temperature' => $suhu, 'maxOutputTokens' => $token, 'responseMimeType' => 'application/json',
+                    'thinkingConfig' => KemampuanModelAi::berpikirGemini($model),
+                ]),
+            ], [
+                'temperature' => 'generationConfig.temperature', 'responsemimetype' => 'generationConfig.responseMimeType', 'response_mime_type' => 'generationConfig.responseMimeType',
+                'thinkingconfig' => 'generationConfig.thinkingConfig', 'thinking_config' => 'generationConfig.thinkingConfig', 'thinkingbudget' => 'generationConfig.thinkingConfig',
+                'thinking_budget' => 'generationConfig.thinkingConfig', 'thinkinglevel' => 'generationConfig.thinkingConfig', 'thinking_level' => 'generationConfig.thinkingConfig',
+            ]],
         };
     }
 
@@ -259,7 +269,8 @@ final class KlienLlmHttp implements KlienLlm
         $teks = fn (mixed $nilai) => is_string($nilai) ? $nilai : '';
 
         return match ($penyedia) {
-            'ollama' => $teks($jawaban->json('message.content')),
+            // Ollama lama (tanpa parameter `think`) menulis pikiran model di dalam teks: dibuang.
+            'ollama' => trim((string) preg_replace('#<think>.*?(?:</think>|$)#si', '', $teks($jawaban->json('message.content')))),
             'openai' => $teks($jawaban->json('choices.0.message.content')),
             'claude' => implode('', array_map(fn (mixed $blok) => is_array($blok) && ($blok['type'] ?? '') === 'text' ? $teks($blok['text'] ?? null) : '', (array) $jawaban->json('content', []))),
             'gemini' => implode('', array_map(fn (mixed $bagian) => is_array($bagian) && ! ($bagian['thought'] ?? false) ? $teks($bagian['text'] ?? null) : '', (array) $jawaban->json('candidates.0.content.parts', []))),
