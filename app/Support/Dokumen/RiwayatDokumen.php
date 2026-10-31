@@ -4,6 +4,7 @@ namespace App\Support\Dokumen;
 
 use App\Contracts\KegiatanRepository;
 use App\Contracts\RiwayatDokumenRepository;
+use App\Contracts\TemplateDokumenRepository;
 use App\Enums\StatusKegiatan;
 use App\Enums\SumberDana;
 use App\Support\Format;
@@ -109,6 +110,8 @@ final class RiwayatDokumen
             'nama_leading' => MasterKode::leading($entri['kode_leading'])['nama_unit'] ?? null,
             'ukuran_teks' => $entri['ukuran'] ? self::ukuran((int) $entri['ukuran']) : null,
             'tersedia' => $entri['kegiatan_id'] !== null && in_array((int) $entri['kegiatan_id'], $kegiatanAda, true),
+            // Template Word yang berlaku saat dokumen dibuat (dicatat CatatRiwayatDokumen; null = susunan baku/RAB/catatan lama).
+            'template_nama' => filled($entri['template'] ?? null) ? (app(TemplateDokumenRepository::class)->temukan((string) $entri['template'])['nama'] ?? null) : null,
         ];
     }
 

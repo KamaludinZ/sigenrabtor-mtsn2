@@ -37,6 +37,7 @@ Jawaban 200:
       "kegiatan_id": 2, "jenis": "RAB", "sumber": "DIPA", "format": "xlsx", "lembar": ["rab"],
       "label_jenis": "RAB", "label_format": "Excel",
       "nama_berkas": "RAB_Supervisi_Akademik_dan_Refleksi_Pembelajaran_DIPA_2026_DRAF.xlsx",
+      "template": null,
       "draf": true, "alasan_draf": ["Belum disetujui admin (status Draf)."],
       "server": true, "klien": true,
       "tautan": "/kegiatan/2/berkas/unduh?jenis=RAB&sumber=DIPA&format=xlsx"
@@ -46,6 +47,8 @@ Jawaban 200:
 ```
 
 Satu baris per jenis × sumber dana × format yang cocok. `server` false = gunakan penyusun peramban (`klien` true).
+`template` = template yang dipakai lembar berkas itu (`TemplateDipakai::teks`, mis. "Format 5 bab · template Word “TPM
+reguler” · cover “Cover TPM”"); null untuk berkas RAB saja.
 Galat: 404 kegiatan tidak ada, 403 di luar cakupan akun.
 
 ## `GET /kegiatan/{id}/berkas/unduh?format=&jenis=&sumber=` — unduh (`kegiatan.berkas.unduh`)

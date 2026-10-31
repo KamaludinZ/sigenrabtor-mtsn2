@@ -104,6 +104,7 @@ final class PemeriksaanCetak
             'alasan_draf' => array_map(fn (array $a) => $a + ['saran' => StatusCetak::SARAN[$a['kunci']]], $status->alasan),
             'tanda_air' => $status->draf ? StatusCetak::TANDA_AIR : null,
             'nama_berkas' => self::namaBerkas($cetak, $status->draf, self::NAMA[$jenis]),
+            'template' => TemplateDipakai::cetak($kegiatan, $sumber, JenisDokumen::ISI[$jenis]),
             'siap' => ! $status->draf && $lengkap && $kaidahGagal === [],
         ];
     }

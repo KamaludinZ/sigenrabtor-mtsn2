@@ -42,8 +42,21 @@ final class WordKakTor
 
         return D::tulis($bagian, [
             'judul' => (string) preg_replace('/\.pdf$/', '', (string) ($data['cetak']['nama_berkas'] ?? $data['nama_kegiatan'] ?? 'KAK-TOR')),
-            'deskripsi' => trim('KAK/TOR '.($data['nama_kegiatan'] ?? '')),
+            'deskripsi' => self::deskripsi($data),
         ]);
+    }
+
+    /**
+     * Keterangan dokumen (properti Word) — nama kegiatan + template yang dipakai (DataPratinjau `cetak.template`); kembaran
+     * `deskripsi()` word-kak.js.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function deskripsi(array $data): string
+    {
+        $template = $data['cetak']['template'] ?? null;
+
+        return trim('KAK/TOR '.($data['nama_kegiatan'] ?? '')).(filled($template) ? ' — '.$template : '');
     }
 
     /** @param  array<string, mixed>  $data */

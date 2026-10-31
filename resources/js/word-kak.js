@@ -262,10 +262,17 @@ export function susunDokumen(data) {
     return new Document({
         creator: 'SIRABTOR',
         title: String(data.cetak?.nama_berkas ?? data.nama_kegiatan ?? 'KAK-TOR').replace(/\.pdf$/, ''),
-        description: `KAK/TOR ${data.nama_kegiatan ?? ''}`.trim(),
+        description: deskripsi(data),
         styles: { default: { document: { run: { font: FONT, size: UKURAN } } } },
         sections: bagian,
     });
+}
+
+/** Keterangan dokumen (properti Word): nama kegiatan + template yang dipakai — kembaran WordKakTor::deskripsi(). */
+export function deskripsi(data) {
+    const template = data.cetak?.template;
+
+    return `KAK/TOR ${data.nama_kegiatan ?? ''}`.trim() + (template ? ` — ${template}` : '');
 }
 
 export async function susunWord(data) {

@@ -52,6 +52,12 @@
                     <dt class="text-xs font-semibold text-stone-500">Leading</dt>
                     <dd class="mt-0.5 text-stone-800">{{ $d['kode_leading'] !== '' ? $d['kode_leading'].($d['nama_leading'] ? ' · '.$d['nama_leading'] : '') : '—' }}</dd>
                 </div>
+                @if ($d['template_nama'] ?? null)
+                    <div>
+                        <dt class="text-xs font-semibold text-stone-500">Template Word</dt>
+                        <dd class="mt-0.5 text-stone-800" data-testid="template-riwayat">{{ $d['template_nama'] }}</dd>
+                    </div>
+                @endif
                 @if ($d['nomor_dokumen'])
                     <div>
                         <dt class="text-xs font-semibold text-stone-500">Nomor dokumen</dt>

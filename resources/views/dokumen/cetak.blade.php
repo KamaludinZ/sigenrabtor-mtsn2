@@ -12,6 +12,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {{-- Judul = nama berkas: "Simpan sebagai PDF" di dialog cetak memakai nama ini. --}}
     <title>{{ $judul }}</title>
+    @if ($template['teks'])
+        <meta name="description" content="{{ $template['teks'] }}">
+    @endif
     @fonts
     @vite(['resources/css/app.css'])
     <style>
@@ -44,6 +47,11 @@
                     <x-ui.icon name="chevron-right" class="size-3.5 rotate-180" /> Kembali ke pratinjau
                 </a>
                 <p class="mt-0.5 truncate font-mono text-xs text-stone-600" data-testid="nama-berkas-cetak">{{ $nama_berkas }}</p>
+                @if ($template['teks'])
+                    <p class="mt-0.5 flex items-center gap-1 truncate text-xs text-stone-500" data-testid="template-cetak" data-format="{{ $template['format']['kunci'] }}" data-template="{{ $template['kak']['id'] ?? '' }}">
+                        <x-ui.icon name="file-text" class="size-3.5 shrink-0" /> <span class="truncate">{{ $template['teks'] }}</span>
+                    </p>
+                @endif
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <nav class="flex flex-wrap items-center gap-1 text-xs" aria-label="Lembar yang dicetak">

@@ -57,7 +57,7 @@ final class DataPratinjau
             'sumber' => $kak->sumber,
             'daftar_sumber' => array_keys(AnggaranKegiatan::perSumber($kegiatan)),
             'lembar' => $lembar,
-            'template_dipakai' => TemplateDipakai::untuk($kegiatan, $kak->sumber, $kak->format),
+            'template_dipakai' => $dipakai = TemplateDipakai::untuk($kegiatan, $kak->sumber, $kak->format),
             'template' => ($master = PilihanTemplate::masterKak($kegiatan)) !== null ? ['kak' => $master['id'], 'nama' => $master['nama']] : ['kak' => null, 'nama' => null],
             'dapat_diubah' => $alasanTerkunci === null,
             'alasan_terkunci' => $alasanTerkunci,
@@ -68,6 +68,7 @@ final class DataPratinjau
                 'alasan_draf' => $cetak->saran(),
                 'nama_berkas' => CetakDokumen::namaBerkas($cetak, $lembar),
                 'tautan' => CetakDokumen::tautan($id, $kak->sumber, $lembar),
+                'template' => TemplateDipakai::teks($dipakai, $lembar),
             ],
             'daftar_isi' => array_values(array_filter(PenampilDokumen::isi($kak, $rab), fn (array $i) => in_array($i['lembar'], $lembar, true))),
             'dokumen' => [

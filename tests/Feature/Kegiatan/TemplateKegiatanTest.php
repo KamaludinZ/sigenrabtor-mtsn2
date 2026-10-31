@@ -8,9 +8,14 @@ use App\Contracts\TemplateDokumenRepository;
 use App\Livewire\Kegiatan\Form;
 use App\Livewire\Kegiatan\PratinjauDokumen;
 use App\Livewire\Kegiatan\SusunDokumen;
+use App\Support\Dokumen\CatatRiwayatDokumen;
+use App\Support\Dokumen\CetakDokumen;
 use App\Support\Dokumen\DaftarTemplate;
 use App\Support\Dokumen\DataPratinjau;
+use App\Support\Dokumen\Generasi\WordKakTor;
+use App\Support\Dokumen\PemeriksaanCetak;
 use App\Support\Dokumen\PilihanTemplate;
+use App\Support\Dokumen\RiwayatDokumen;
 use App\Support\Dokumen\TemplateDipakai;
 use App\Support\Kegiatan\Duplikat\DuplikatKegiatan;
 use App\Support\Kegiatan\UbahDataKegiatan;
@@ -239,5 +244,45 @@ class TemplateKegiatanTest extends TestCase
         $lalu = $repo->temukan($this->kegiatanBaru(['nama_kegiatan' => 'Workshop Lama', 'tahun_anggaran' => 2025, 'template_kak' => 'template-2025']));
         $salin = DuplikatKegiatan::jalankan($lalu, self::LEADING);
         $this->assertSame($id['narasumber'], $repo->temukan($salin['id'])['template_kak']);
+    }
+
+    public function test_nama_template_pada_data_cetak(): void
+    {
+        $id = $this->siapkan();
+        $kegiatanId = $this->kegiatanBaru(['template_kak' => $id['narasumber'], 'format_dokumen' => 'lima_bab', 'sumber_dana' => [['sumber' => 'Komite', 'pagu' => 2_000_000]]]);
+        $kegiatan = app(KegiatanRepository::class)->temukan($kegiatanId);
+        $teks = 'Format 5 bab · template Word “TPM narasumber”';
+
+        // Data halaman cetak: hanya bagian yang relevan dengan lembar yang dicetak.
+        $this->assertSame($teks, CetakDokumen::untuk($kegiatan, null, ['cover', 'kak', 'rab'])['template']['teks']);
+        $this->assertSame($id['narasumber'], CetakDokumen::untuk($kegiatan, null, ['kak'])['template']['kak']['id']);
+        $this->assertNull(CetakDokumen::untuk($kegiatan, null, ['rab'])['template']['teks']);
+        $this->get(route('kegiatan.cetak', ['kegiatan' => $kegiatanId, 'dokumen' => 'cover,kak']))->assertOk()
+            ->assertSeeHtml('data-testid="template-cetak" data-format="lima_bab" data-template="'.$id['narasumber'].'"')
+            ->assertSee($teks)
+            ->assertSeeHtml('<meta name="description" content="'.e($teks).'">');
+        $this->get(route('kegiatan.cetak', ['kegiatan' => $kegiatanId, 'dokumen' => 'rab']))->assertOk()->assertDontSeeHtml('data-testid="template-cetak"');
+
+        // Pemeriksaan cetak, katalog berkas, status cetak, pratinjau API, metadata Word.
+        $this->assertSame($teks, PemeriksaanCetak::periksa($kegiatan, 'KAK+TOR')['template']['teks']);
+        $this->assertNull(PemeriksaanCetak::periksa($kegiatan, 'RAB', 'Komite')['template']['teks']);
+        $berkas = collect($this->getJson(route('kegiatan.berkas', ['kegiatan' => $kegiatanId]))->assertOk()->json('berkas'));
+        $this->assertSame($teks, $berkas->first(fn (array $b) => $b['jenis'] === 'KAK+TOR' && $b['format'] === 'docx')['template']);
+        $this->assertNull($berkas->first(fn (array $b) => $b['jenis'] === 'RAB')['template']);
+        $this->getJson(route('kegiatan.status_cetak', ['kegiatan' => $kegiatanId]))->assertOk()->assertJsonPath('sumber.0.template', $teks);
+        $data = DataPratinjau::untuk($kegiatan, null, self::LEADING, ['cover', 'kak']);
+        $this->assertSame($teks, $data['cetak']['template']);
+        $this->assertStringEndsWith(' — '.$teks, WordKakTor::deskripsi($data));
+        $this->assertSame('KAK/TOR Rapat Evaluasi Mutu', WordKakTor::deskripsi(['nama_kegiatan' => 'Rapat Evaluasi Mutu', 'cetak' => ['template' => null]]));
+
+        // Riwayat Dokumen menampilkan nama template yang tercatat.
+        $catatan = CatatRiwayatDokumen::catat($kegiatan, 'KAK+TOR', null, 'docx', 'unduh', self::LEADING);
+        $this->assertSame('TPM narasumber', RiwayatDokumen::tampil($catatan)['template_nama']);
+        $this->assertNull(RiwayatDokumen::tampil(CatatRiwayatDokumen::catat($kegiatan, 'RAB', 'Komite', 'xlsx', 'unduh', self::LEADING))['template_nama']);
+
+        // Tanpa master Word: susunan baku.
+        UbahDataKegiatan::ubah($kegiatanId, ['template_kak' => null, 'format_dokumen' => null], self::LEADING);
+        $lain = app(KegiatanRepository::class)->temukan($this->kegiatanBaru(['leading' => '1.3']));
+        $this->assertSame('Format 9 bagian · susunan baku', CetakDokumen::untuk($lain, null, ['kak'])['template']['teks']);
     }
 }

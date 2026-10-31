@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\KegiatanRepository;
 use App\Support\Dokumen\StatusCetak;
+use App\Support\Dokumen\TemplateDipakai;
 use App\Support\Kegiatan\AksesKegiatan;
 use App\Support\Stub\StubData;
 use Illuminate\Http\JsonResponse;
@@ -30,7 +31,7 @@ class StatusCetakKegiatan extends Controller
             'kegiatan_id' => (int) $data['id'],
             'nama_kegiatan' => (string) ($data['nama_kegiatan'] ?? ''),
             'draf' => collect($semua)->contains(fn (StatusCetak $s) => $s->draf()),
-            'sumber' => array_map(fn (StatusCetak $s) => $s->untukJson(), $semua),
+            'sumber' => array_map(fn (StatusCetak $s) => $s->untukJson() + ['template' => TemplateDipakai::teks(TemplateDipakai::untuk($data, $s->sumber))], $semua),
         ], headers: ['Cache-Control' => 'no-store, private']);
     }
 }

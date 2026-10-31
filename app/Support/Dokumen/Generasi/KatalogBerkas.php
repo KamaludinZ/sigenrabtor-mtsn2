@@ -7,6 +7,7 @@ use App\Support\Dokumen\CetakDokumen;
 use App\Support\Dokumen\DokumenKegiatan;
 use App\Support\Dokumen\JenisDokumen;
 use App\Support\Dokumen\StatusCetak;
+use App\Support\Dokumen\TemplateDipakai;
 
 /**
  * Katalog berkas yang bisa dibuat untuk satu kegiatan (endpoint `kegiatan.berkas`): setiap jenis DokumenKegiatan::JENIS ×
@@ -26,6 +27,7 @@ final class KatalogBerkas
         $generator = app(GeneratorBerkasDokumen::class);
         $dipilih = array_values(array_unique(array_column($kegiatan['sumber_dana'] ?? [], 'sumber')));
         $cetak = [];
+        $dipakai = [];
         $katalog = [];
         foreach (array_keys(DokumenKegiatan::JENIS) as $jenis) {
             $sumberJenis = JenisDokumen::perluSumber($jenis) ? $dipilih : [$dipilih[0] ?? null];
@@ -41,6 +43,7 @@ final class KatalogBerkas
                         'label_jenis' => DokumenKegiatan::JENIS[$jenis],
                         'label_format' => FormatBerkas::label($format),
                         'nama_berkas' => GeneratorBerkasServer::nama($permintaan, $status),
+                        'template' => TemplateDipakai::teks($dipakai[$sumber ?? ''] ??= TemplateDipakai::untuk($kegiatan, $sumber), $permintaan->lembar),
                         'draf' => $draf->draf,
                         'alasan_draf' => array_column($draf->alasan, 'teks'),
                         'server' => $generator->mendukung($format),

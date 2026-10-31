@@ -13,6 +13,9 @@ use App\Support\Kegiatan\TahunKegiatan;
  *   DaftarTemplate) atau null = Word disusun dari susunan baku; `ada_berkas` false = berkasnya hilang (Word kembali ke
  *   susunan baku);
  * - `cover` = template cover (CoverDokumen::untukKegiatan) atau null = bingkai bawaan.
+ * `teks($dipakai, $lembar)` = satu kalimat untuk data cetak (halaman cetak, pemeriksaan cetak, katalog berkas, status
+ * cetak, pratinjau API, metadata Word, Riwayat Dokumen): "Format 5 bab · template Word “…” · cover “…”" — hanya bagian
+ * yang relevan dengan lembar yang dicetak (null bila tidak ada, mis. RAB saja).
  */
 final class TemplateDipakai
 {
@@ -51,5 +54,37 @@ final class TemplateDipakai
             ],
             'cover' => filled($cover['cover_id'] ?? null) && filled($cover['nama'] ?? null) ? ['id' => (string) $cover['cover_id'], 'nama' => (string) $cover['nama']] : null,
         ];
+    }
+
+    /**
+     * @param  array{format: array{kunci: string, label: string}, kak: array<string, mixed>|null, cover: array{id: string, nama: string}|null}  $dipakai
+     * @param  list<string>  $lembar  Lembar yang dicetak (CetakDokumen::LEMBAR).
+     */
+    public static function teks(array $dipakai, array $lembar = ['cover', 'kak', 'rab']): ?string
+    {
+        $bagian = [];
+        if (in_array('kak', $lembar, true)) {
+            $bagian[] = $dipakai['format']['label'];
+            $bagian[] = $dipakai['kak'] !== null && $dipakai['kak']['ada_berkas'] ? "template Word “{$dipakai['kak']['nama']}”" : 'susunan baku';
+        }
+        if (in_array('cover', $lembar, true) && $dipakai['cover'] !== null) {
+            $bagian[] = "cover “{$dipakai['cover']['nama']}”";
+        }
+
+        return $bagian === [] ? null : implode(' · ', $bagian);
+    }
+
+    /**
+     * Data cetak: template yang dipakai + `teks` untuk lembar itu.
+     *
+     * @param  array<string, mixed>  $kegiatan
+     * @param  list<string>  $lembar
+     * @return array<string, mixed>
+     */
+    public static function cetak(array $kegiatan, ?string $sumber, array $lembar, ?string $format = null): array
+    {
+        $dipakai = self::untuk($kegiatan, $sumber, $format);
+
+        return $dipakai + ['teks' => self::teks($dipakai, $lembar)];
     }
 }

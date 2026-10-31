@@ -83,6 +83,7 @@ final class CetakDokumen
             'nama_berkas' => $nama,
             'judul' => preg_replace('/\.pdf$/', '', $nama),
             'kaki' => $draf->draf ? self::kakiHalaman($draf, $waktu) : null,
+            'template' => TemplateDipakai::cetak($kegiatan, $kak->sumber, $lembar, $kak->format),
         ];
     }
 

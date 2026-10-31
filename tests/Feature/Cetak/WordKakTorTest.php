@@ -62,6 +62,7 @@ class WordKakTorTest extends TestCase
         $this->assertStringContainsString(' NUMPAGES ', $paket['word/footer2.xml']);
         $this->assertStringContainsString('DRAF — ', $paket['word/footer2.xml']);
         $this->assertStringContainsString('<dc:title>KAK-TOR_Review_RKJM', $paket['docProps/core.xml']);
+        $this->assertStringContainsString(' — Format 9 bagian · susunan baku</dc:description>', $paket['docProps/core.xml'], 'Template yang dipakai tercatat di properti dokumen.');
     }
 
     public function test_rab_dan_penulis_docx(): void
