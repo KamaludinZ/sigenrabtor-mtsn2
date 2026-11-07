@@ -839,8 +839,9 @@ test.describe('Pengaturan admin', () => {
         await panel.getByTestId('zona-berkas-master').dispatchEvent('drop', { dataTransfer: transfer });
         await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
         const sheet = panel.getByTestId('sheet-dikenali');
-        await expect(sheet.locator('[data-dikenali="ya"]')).toHaveCount(5);
+        await expect(sheet.locator('[data-dikenali="ya"]')).toHaveCount(6);
         await expect(sheet.locator('[data-jenis="rktm"]')).toContainText('sheet SNP');
+        await expect(sheet.locator('[data-jenis="rencana_aksi"]')).toContainText('sheet Perkin');
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         expect(overflow).toBeLessThanOrEqual(0);
         await panel.screenshot({ path: `storage/playwright/shots/master-unggah-${testInfo.project.name}.png` });
@@ -868,6 +869,8 @@ test.describe('Pengaturan admin', () => {
         await pratinjau.getByRole('tab', { name: /Budaya/ }).click();
         await expect(pratinjau.locator('li[data-status="tetap"]')).toHaveCount(5);
         await expect(pratinjau.locator('li[data-kode="2"]')).toContainText(/dipakai \d+ kegiatan/);
+        // Sheet Perkin tanpa kolom Rencana Aksi: rencana aksi tidak ikut diunggah (bukan galat).
+        await expect(pratinjau.getByRole('tab', { name: /Rencana Aksi/ })).toHaveCount(0);
         await panel.getByRole('button', { name: 'Kembali' }).click();
         await expect(panel.getByTestId('nama-berkas-master')).toHaveText('master-2026.xlsx');
 
