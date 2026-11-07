@@ -42,7 +42,8 @@ final class PemeriksaRktm
         $sebelum = ['snp' => '', 'kegiatan' => ''];
         for ($baris = $judul['baris'] + 1; $baris <= $lembar->getHighestDataRow(); $baris++) {
             $sel = fn (string $kunci) => trim((string) LembarExcel::nilaiSel($lembar, $judul['kolom'][$kunci].$baris));
-            [$mentah, $snp, $kegiatan, $sub] = [$sel('kode'), $sel('snp'), $sel('kegiatan'), $sel('sub_kegiatan')];
+            // Sel rumus kosong yang tampil "0" (lembar gabungan EDM ↔ RKTM) dianggap kosong.
+            [$mentah, $snp, $kegiatan, $sub] = array_map(fn (string $v) => $v === '0' ? '' : $v, [$sel('kode'), $sel('snp'), $sel('kegiatan'), $sel('sub_kegiatan')]);
             if ($mentah === '' && $sub === '') {
                 // Baris judul kelompok (mis. hanya SNP/kegiatan) menjadi isian untuk baris di bawahnya.
                 $sebelum = ['snp' => $snp !== '' ? $snp : $sebelum['snp'], 'kegiatan' => $kegiatan !== '' ? $kegiatan : $sebelum['kegiatan']];
@@ -53,6 +54,14 @@ final class PemeriksaRktm
             $snp = $snp !== '' ? $snp : $sebelum['snp'];
             $kegiatan = $kegiatan !== '' ? $kegiatan : $sebelum['kegiatan'];
             $kode = self::normalkanKode($mentah);
+            if ($kode === null && mb_strlen($mentah) <= 2 && $mentah === $sub && $sub === $kegiatan) {
+                continue; // Baris contoh/penanda (mis. "n" di semua kolom).
+            }
+            if ($kode === null && KolomMaster::judulKelompok($mentah, [$sub])) {
+                $sebelum = ['snp' => $mentah, 'kegiatan' => '']; // Judul standar, mis. "PENGEMBANGAN STANDAR ISI".
+
+                continue;
+            }
             $tampil = ['sub_kegiatan' => $sub, 'kegiatan' => $kegiatan, 'snp' => $snp];
             $pesan = array_values(array_filter([
                 $mentah === '' ? 'Kode RKTM kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat n.n.n (mis. 6.17.12) — format sel Teks agar tidak terbaca angka." : null),

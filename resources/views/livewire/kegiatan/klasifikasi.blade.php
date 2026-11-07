@@ -107,6 +107,33 @@
 
     <x-kegiatan.banner-kunci :kegiatan-id="$kegiatanId" :status="$this->status()->value" subjek="Kode" class="mt-4" />
 
+    {{-- Rencana aksi master yang cocok: tag kodenya bisa diisikan sekaligus (RencanaAksi::untukKegiatan). --}}
+    @if ($bisaUbah && ($saranRa = $this->saranRencanaAksi) !== [])
+        <section class="mt-4 rounded-xl bg-sky-50 px-4 py-3 ring-1 ring-sky-200" aria-labelledby="judul-saran-ra" data-testid="saran-rencana-aksi">
+            <h2 id="judul-saran-ra" class="flex items-center gap-2 text-sm font-semibold text-sky-900"><x-ui.icon name="sparkles" class="size-4" /> Kode dari rencana aksi TA {{ $tahunMaster }}</h2>
+            <ul class="mt-2 space-y-2">
+                @foreach ($saranRa as $ra)
+                    <li class="flex flex-col gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-sky-100 sm:flex-row sm:items-center sm:justify-between" data-kode-ra="{{ $ra['kode'] }}" wire:key="saran-ra-{{ $ra['kode'] }}">
+                        <div class="min-w-0 text-sm">
+                            <p class="font-medium text-stone-900">{{ $ra['kode'] }} · {{ $ra['uraian'] }}</p>
+                            <p class="mt-0.5 text-xs text-stone-600">
+                                {{ $ra['cocok'] === 'nama' ? 'Nama sama dengan kegiatan ini' : 'Kode RKTM sama' }} ·
+                                {{ implode(' · ', array_filter([
+                                    $ra['tag']['kode_leading'] ? 'Leading '.$ra['tag']['kode_leading'] : null,
+                                    $ra['tag']['kode_rktm'] ? 'RKTM '.$ra['tag']['kode_rktm'] : null,
+                                    $ra['tag']['kode_sk'], $ra['tag']['kode_iksk'],
+                                    $ra['tag']['kode_edm'] !== [] ? 'EDM '.implode(', ', $ra['tag']['kode_edm']) : null,
+                                    $ra['tag']['budaya_mutu'] !== [] ? '5BM '.implode(', ', $ra['tag']['budaya_mutu']) : null,
+                                ])) ?: 'Belum bertag kode' }}
+                            </p>
+                        </div>
+                        <button type="button" wire:click="pakaiTagRencanaAksi('{{ $ra['kode'] }}')" class="btn-secondary shrink-0 px-3 py-1.5 text-xs" data-testid="pakai-tag-{{ $ra['kode'] }}"><x-ui.icon name="check" class="size-3.5" /> Pakai tag ini</button>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+
     <div class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <fieldset @disabled(! $bisaUbah) class="min-w-0 space-y-6">
             {{-- 1. Leading --}}

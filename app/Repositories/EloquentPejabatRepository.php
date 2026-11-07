@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * Pejabat penanda tangan per tahun di PostgreSQL (tabel pejabat_penanda_tangan & aturan_mengetahui), padanan
+ * Pejabat penanda tangan per tahun di PostgreSQL (tabel pejabat_penanda_tangan, aturan_mengetahui, &
+ * tanggal_dokumen_leading), padanan
  * StubPejabatRepository: jabatan bawaan (StubPejabatRepository::bawaan — nama singkat madrasah & master leading aktif)
  * ditimpa baris tersimpan tahun itu; simpan = upsert satu peran (kepala/komite/leading per kode); blok "Mengetahui"
  * bawaan tampil untuk setiap sumber dana sampai diatur.
@@ -74,5 +75,27 @@ class EloquentPejabatRepository implements PejabatRepository
             $baris[] = ['tahun_anggaran' => $tahun, 'sumber_dana' => $sumber, 'tampil' => (bool) $tampil];
         }
         DB::table('aturan_mengetahui')->upsert($baris, ['tahun_anggaran', 'sumber_dana'], ['tampil']);
+    }
+
+    public function tanggalDokumen(int $tahun): array
+    {
+        $hasil = DB::table('tanggal_dokumen_leading')->where('tahun_anggaran', $tahun)->pluck('tanggal', 'kode_leading')
+            ->map(fn ($t) => substr((string) $t, 0, 10))->all();
+        uksort($hasil, 'version_compare');
+
+        return $hasil;
+    }
+
+    public function simpanTanggalDokumen(int $tahun, string $kodeLeading, ?string $tanggal): void
+    {
+        if ($tanggal === null || $tanggal === '') {
+            DB::table('tanggal_dokumen_leading')->where('tahun_anggaran', $tahun)->where('kode_leading', $kodeLeading)->delete();
+
+            return;
+        }
+        DB::table('tanggal_dokumen_leading')->upsert(
+            [['tahun_anggaran' => $tahun, 'kode_leading' => $kodeLeading, 'tanggal' => $tanggal, 'updated_at' => now()->format('Y-m-d H:i:s.uP')]],
+            ['tahun_anggaran', 'kode_leading'], ['tanggal', 'updated_at'],
+        );
     }
 }

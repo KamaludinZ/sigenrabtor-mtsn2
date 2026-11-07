@@ -3,8 +3,11 @@
 namespace App\Support\Master\Impor;
 
 use App\Contracts\MasterKodeRepository;
+use App\Support\Format;
 use App\Support\Impor\GagalBacaImpor;
 use App\Support\Master\JenisKode;
+use App\Support\Master\RencanaAksi;
+use App\Support\MasterKode;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\RiwayatPengaturan;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -25,10 +28,10 @@ use LogicException;
 final class SimpanMasterKode
 {
     /** Jenis yang sudah bisa disimpan dari unggahan (kini semua jenis JenisKode — berkas master lengkap pun bisa disimpan). */
-    public const DIDUKUNG = ['sk', 'iksk', 'rktm', 'edm', 'budaya'];
+    public const DIDUKUNG = ['sk', 'iksk', 'rktm', 'edm', 'budaya', 'rencana_aksi'];
 
     /** Jenis → bagian master (MasterKodeRepository::ganti). */
-    public const BAGIAN = ['sk' => 'kode_sk', 'iksk' => 'kode_iksk', 'rktm' => 'kode_rktm', 'edm' => 'kode_edm', 'budaya' => 'budaya_mutu'];
+    public const BAGIAN = ['sk' => 'kode_sk', 'iksk' => 'kode_iksk', 'rktm' => 'kode_rktm', 'edm' => 'kode_edm', 'budaya' => 'budaya_mutu', 'rencana_aksi' => 'rencana_aksi'];
 
     /** Status pratinjau yang ikut tersimpan. */
     private const TERSIMPAN = ['baru', 'berubah', 'tetap'];
@@ -54,6 +57,9 @@ final class SimpanMasterKode
             }
         }
 
+        if (isset($pratinjau['rencana_aksi']) && count(array_filter($pratinjau['rencana_aksi']['baris'], fn (array $b) => in_array($b['status'], self::TERSIMPAN, true))) > RencanaAksi::MAKS) {
+            $hasil[] = 'Rencana Aksi: lebih dari '.RencanaAksi::MAKS.' baris — bagi berkasnya.';
+        }
         if (isset($pratinjau['edm']) && $pratinjau['edm']['galat'] === null) {
             foreach (self::komponenEdm($pratinjau['edm']['baris'], $tahun) as $k) {
                 if ($k['nama'] === $k['huruf']) {
@@ -93,15 +99,19 @@ final class SimpanMasterKode
         }
 
         $master = [];
+        $lamaRa = array_column(JenisKode::baris('rencana_aksi', $tahun), null, 'kode');
         foreach ($hasil['pratinjau'] as $jenis => $item) {
             $master[self::BAGIAN[$jenis]] = array_values(array_map(
-                fn (array $b) => self::barisMaster($jenis, $b),
+                fn (array $b) => self::barisMaster($jenis, $b, $lamaRa),
                 array_filter($item['baris'], fn (array $b) => in_array($b['status'], self::TERSIMPAN, true)),
             ));
         }
         if (isset($hasil['pratinjau']['edm'])) {
             // Nama komponen per huruf ikut diganti: dari baris pertama huruf itu di berkas.
             $master['komponen_edm'] = array_column(self::komponenEdm($hasil['pratinjau']['edm']['baris'], $tahun), 'nama', 'huruf');
+            if (($relasi = self::relasiEdm($hasil['pratinjau']['edm']['baris'])) !== null) {
+                $master['relasi_edm_rktm'] = $relasi;
+            }
         }
         $repo = app(MasterKodeRepository::class);
         $repo->ganti($tahun, $master);
@@ -130,6 +140,7 @@ final class SimpanMasterKode
         }
         if (in_array('edm', $jenis, true)) {
             $data['komponen_edm'] = app(MasterKodeRepository::class)->komponenEdm($tahun);
+            $data['relasi_edm_rktm'] = app(MasterKodeRepository::class)->relasiEdmRktm($tahun);
         }
         ksort($data);
 
@@ -154,11 +165,12 @@ final class SimpanMasterKode
                 fn (array $s) => "Standar {$s['nomor']} {$s['snp']} — ".count($s['kegiatan'])." kegiatan, {$s['jumlah']} sub kegiatan",
                 self::strukturRktm($baris),
             )],
-            'edm' => ['judul' => 'Komponen yang tersimpan', 'butir' => array_map(
+            'edm' => ['judul' => 'Komponen yang tersimpan', 'butir' => [...array_map(
                 fn (array $k) => "{$k['huruf']} {$k['nama']} — {$k['jumlah']} indikator".($k['nama_lama'] !== null && $k['nama_lama'] !== $k['nama'] ? " (sebelumnya {$k['nama_lama']})" : ($k['nama_lama'] === null ? ' (komponen baru)' : '')),
                 self::komponenEdm($baris, $tahun),
-            )],
+            ), ...(($relasi = self::relasiEdm($baris)) !== null ? ['Relasi EDM ↔ RKTM: '.count($relasi).' pasangan ('.count(array_unique(array_column($relasi, 'kode_edm'))).' indikator)'] : [])]],
             'budaya' => ['judul' => 'Jumlah butir', 'butir' => [count(array_filter($baris, fn (array $b) => in_array($b['status'], self::TERSIMPAN, true))).' butir tersimpan (baku '.PemeriksaBudayaMutu::JUMLAH_BAKU.')']],
+            'rencana_aksi' => ['judul' => 'Rencana aksi per leading', 'butir' => self::ringkasanRencanaAksi($baris)],
             default => null,
         };
     }
@@ -265,13 +277,80 @@ final class SimpanMasterKode
     }
 
     /**
-     * Baris pratinjau → baris master jenisnya.
+     * Relasi EDM ↔ RKTM dari baris pratinjau EDM yang tersimpan (urut berkas); null bila berkas tidak memuat kolom Kode
+     * RKTM (relasi master tetap).
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @return list<array{kode_edm: string, kode_rktm: string}>|null
+     */
+    public static function relasiEdm(array $baris): ?array
+    {
+        $tersimpan = array_filter($baris, fn (array $b) => in_array($b['status'], self::TERSIMPAN, true));
+        if (array_filter($tersimpan, fn (array $b) => array_key_exists('rktm', $b['tampil'])) === []) {
+            return null;
+        }
+        $hasil = [];
+        foreach ($tersimpan as $b) {
+            foreach (PemeriksaEdm::daftarRktm((string) ($b['tampil']['rktm'] ?? '')) as $rktm) {
+                $hasil[] = ['kode_edm' => (string) $b['kode'], 'kode_rktm' => $rktm];
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Ringkasan rencana aksi tersimpan per leading (+ tanpa leading) beserta total anggaran.
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @return list<string>
+     */
+    private static function ringkasanRencanaAksi(array $baris): array
+    {
+        $per = [];
+        [$dipa, $komite] = [0, 0];
+        foreach ($baris as $b) {
+            if (! in_array($b['status'], self::TERSIMPAN, true)) {
+                continue;
+            }
+            $kode = (string) $b['tampil']['leading'];
+            $per[$kode] = ($per[$kode] ?? 0) + 1;
+            $dipa += (int) $b['tampil']['pagu_dipa'];
+            $komite += (int) $b['tampil']['pagu_komite'];
+        }
+        uksort($per, fn (string $a, string $b) => ($a === '') <=> ($b === '') ?: version_compare($a, $b));
+        $butir = array_map(fn (string $kode, int $n) => ($kode === '' ? 'Tanpa leading' : $kode.' '.(MasterKode::leading($kode)['nama_unit'] ?? ''))." — {$n} rencana aksi", array_keys($per), $per);
+        if ($per !== []) {
+            $butir[] = 'Anggaran DIPA '.Format::rupiah($dipa).' · Komite '.Format::rupiah($komite);
+        }
+
+        return $butir;
+    }
+
+    /**
+     * Baris pratinjau → baris master jenisnya. Rencana aksi membawa tag EDM & 5 Budaya Mutu manual dari rencana aksi lama
+     * yang dicocokkan (`cocok`).
      *
      * @param  array<string, mixed>  $b
+     * @param  array<string, array<string, mixed>>  $lamaRa  Kode → rencana aksi tersimpan.
      * @return array<string, mixed>
      */
-    private static function barisMaster(string $jenis, array $b): array
+    private static function barisMaster(string $jenis, array $b, array $lamaRa = []): array
     {
+        if ($jenis === 'rencana_aksi') {
+            $lama = $b['cocok'] !== null ? ($lamaRa[$b['cocok']] ?? null) : null;
+            $t = $b['tampil'];
+
+            return [
+                'kode' => $b['kode'], 'uraian' => $t['uraian'],
+                'kode_sk' => $t['kode_sk'] ?: null, 'kode_iksk' => $t['kode_iksk'] ?: null, 'kode_rktm' => $t['kode_rktm'] ?: null,
+                'unit' => $t['unit'] ?: null, 'kode_leading' => $t['leading'] ?: null,
+                'pagu_dipa' => (int) $t['pagu_dipa'], 'pagu_komite' => (int) $t['pagu_komite'],
+                'bulan' => RencanaAksi::bulanDariTeks($t['bulan']),
+                'kode_edm' => $lama['kode_edm'] ?? null, 'budaya_mutu' => array_values($lama['budaya_mutu'] ?? []),
+            ];
+        }
+
         return match ($jenis) {
             'sk' => ['kode' => $b['kode'], 'uraian' => $b['tampil']['uraian']],
             'iksk' => ['kode' => $b['kode'], 'kode_sk' => $b['tampil']['kode_sk'], 'uraian' => $b['tampil']['uraian']],

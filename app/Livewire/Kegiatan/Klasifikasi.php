@@ -11,6 +11,9 @@ use App\Support\Kegiatan\KunciKegiatan;
 use App\Support\Kegiatan\RingkasanKode;
 use App\Support\Kegiatan\SimpanKlasifikasi;
 use App\Support\Kegiatan\TahunKegiatan;
+use App\Support\Master\IkskPerSk;
+use App\Support\Master\JenisKode;
+use App\Support\Master\RencanaAksi;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Illuminate\Support\Facades\Route;
@@ -280,6 +283,67 @@ class Klasifikasi extends Component
         return KodeHilang::dari(array_merge($this->dataKegiatan, RingkasanKode::nilaiBaku($this->form->dataUntukDisimpan())));
     }
 
+    /**
+     * Rencana aksi master tahun kegiatan yang cocok (nama sama, lalu kode RKTM terpilih sama) — tag kodenya bisa diisikan
+     * sekaligus (RencanaAksi::untukKegiatan), maks. 3.
+     *
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function saranRencanaAksi(): array
+    {
+        $kegiatan = ['nama_kegiatan' => $this->dataKegiatan['nama_kegiatan'] ?? '', 'kode_rktm' => $this->form->kode_rktm];
+
+        return array_slice(RencanaAksi::untukKegiatan($kegiatan, $this->tahunMaster), 0, 3);
+    }
+
+    /**
+     * Isi isian kode dari tag rencana aksi $kode (hanya tag yang terisi & ada di master; leading hanya bila boleh dipilih
+     * akun ini; EDM & 5 Budaya Mutu = tag pertama). Belum tersimpan sampai Simpan.
+     */
+    public function pakaiTagRencanaAksi(string $kode): void
+    {
+        $this->pastikanDapatDiedit();
+        $ra = collect($this->saranRencanaAksi)->firstWhere('kode', $kode)
+            ?? collect(RencanaAksi::baris($this->tahunMaster))->firstWhere('kode', $kode);
+        if ($ra === null) {
+            return;
+        }
+
+        $tag = $ra['tag'];
+        $tahun = $this->tahunMaster;
+        $diisi = [];
+        $ada = fn (string $jenis, string|int|null $nilai) => $nilai !== null && MasterKode::cari(JenisKode::baris($jenis, $tahun), $nilai, JenisKode::DAFTAR[$jenis]['kunci']) !== null;
+        if ($tag['kode_leading'] !== null && MasterKode::cari(MasterKode::pilihanLeading(StubData::currentUser(), $this->form->leadingTersimpan()), $tag['kode_leading']) !== null) {
+            $this->form->leading = $tag['kode_leading'];
+            $diisi[] = 'leading';
+        }
+        if ($ada('rktm', $tag['kode_rktm'])) {
+            $this->form->kode_rktm = $tag['kode_rktm'];
+            $diisi[] = 'RKTM';
+        }
+        if ($ada('sk', $tag['kode_sk'])) {
+            $this->form->kode_sk = $tag['kode_sk'];
+            $this->form->kode_iksk = $ada('iksk', $tag['kode_iksk']) && IkskPerSk::induk($tag['kode_iksk'], $tahun) === $tag['kode_sk'] ? $tag['kode_iksk'] : null;
+            $diisi[] = $this->form->kode_iksk !== null ? 'SK & IKSK' : 'SK';
+        }
+        if (($edm = collect($tag['kode_edm'])->first(fn (string $k) => $ada('edm', $k))) !== null) {
+            $this->form->kode_edm = $edm;
+            $diisi[] = 'EDM';
+        }
+        if (($budaya = collect($tag['budaya_mutu'])->first(fn (int $n) => $ada('budaya', $n))) !== null) {
+            $this->form->budaya_mutu = $budaya;
+            $diisi[] = '5 Budaya Mutu';
+        }
+
+        $this->adaPerubahan = $this->isianBerubah() !== [];
+        $this->resetValidation();
+        unset($this->saranRencanaAksi);
+        $this->dispatch('notify', message: $diisi === []
+            ? "Rencana aksi {$kode} belum punya tag kode yang ada di master TA {$tahun}."
+            : "Kode dari rencana aksi {$kode} diisikan (".implode(', ', $diisi).') — periksa lalu simpan.', type: $diisi === [] ? 'info' : 'success');
+    }
+
     #[Computed]
     public function tahunAktif(): array
     {
@@ -297,7 +361,7 @@ class Klasifikasi extends Component
         $this->adaPerubahan = false;
         $this->bentrok = null;
         $this->resetValidation();
-        unset($this->riwayatKode, $this->ringkasanKode, $this->statusKode, $this->kelengkapan, $this->pratinjauHeader);
+        unset($this->riwayatKode, $this->ringkasanKode, $this->statusKode, $this->kelengkapan, $this->pratinjauHeader, $this->saranRencanaAksi);
     }
 
     private function validasiDiam(string $field): void

@@ -33,14 +33,14 @@ class ProsesBerkasMasterTest extends TestCase
     {
         $contoh = ProsesBerkasMaster::periksaBerkas($this->fixture('master-kode-contoh.xlsx'), BerkasMaster::SEMUA);
         $this->assertSame('master-kode-contoh.xlsx', $contoh['nama']);
-        $this->assertSame(['sk', 'iksk', 'rktm', 'edm', 'budaya'], array_keys(array_filter($contoh['sheet'])), 'Sheet tiap jenis dikenali.');
+        $this->assertSame(['sk', 'iksk', 'rktm', 'edm', 'budaya', 'rencana_aksi'], array_keys(array_filter($contoh['sheet'])), 'Sheet tiap jenis dikenali.');
 
         $csv = UploadedFile::fake()->createWithContent('rktm.csv', "Kode;SNP;Kegiatan;Sub Kegiatan\n1.1.1;Standar Isi;Kurikulum;Workshop\n");
         $this->assertSame(['rktm' => 'CSV'], ProsesBerkasMaster::periksaBerkas($csv, 'rktm')['sheet']);
         $this->assertSame(['CSV'], ProsesBerkasMaster::bacaBerkas($csv)['lembar'], 'Terbaca walau cakupannya belum dipilih.');
         $this->assertSame('Berkas CSV hanya untuk satu jenis kode. Pilih jenisnya, atau unggah berkas .xlsx berisi semua sheet.', $this->galat(fn () => ProsesBerkasMaster::periksaBerkas($csv, BerkasMaster::SEMUA)));
 
-        $this->assertSame('Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK & IKSK), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.', $this->galat(fn () => ProsesBerkasMaster::periksaBerkas($this->fixture('master-kode-asing.xlsx'), BerkasMaster::SEMUA)));
+        $this->assertSame('Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK, IKSK, & Rencana Aksi), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.', $this->galat(fn () => ProsesBerkasMaster::periksaBerkas($this->fixture('master-kode-asing.xlsx'), BerkasMaster::SEMUA)));
         $this->assertSame('Pilih berkas master kode.', $this->galat(fn () => ProsesBerkasMaster::bacaBerkas(null)));
         $this->assertSame('Pilih berkas Excel (.xlsx, .xls) atau CSV.', $this->galat(fn () => ProsesBerkasMaster::bacaBerkas(UploadedFile::fake()->create('master.pdf', 10, 'application/pdf'))));
         $this->assertSame('Ukuran berkas maksimal 5 MB.', $this->galat(fn () => ProsesBerkasMaster::bacaBerkas(UploadedFile::fake()->create('besar.xlsx', BerkasMaster::MAKS_KB + 1))));
@@ -52,7 +52,8 @@ class ProsesBerkasMasterTest extends TestCase
         $path = base_path('tests/fixtures/master-kode-contoh.xlsx');
         $hasil = ProsesBerkasMaster::proses($path, 'master-kode-contoh.xlsx', BerkasMaster::SEMUA, 2026, self::ADMIN);
 
-        $this->assertSame(PratinjauMaster::susun($path, 'master-kode-contoh.xlsx', $hasil['sheet'], 2026), $hasil['pratinjau'], 'Isi sama dengan pratinjau panel.');
+        $this->assertSame(PratinjauMaster::susun($path, 'master-kode-contoh.xlsx', $hasil['sheet'], 2026, BerkasMaster::OPSIONAL_SEMUA), $hasil['pratinjau'], 'Isi sama dengan pratinjau panel.');
+        $this->assertArrayNotHasKey('rencana_aksi', $hasil['pratinjau'], 'Sheet Perkin tanpa kolom Rencana Aksi: rencana aksi tidak diunggah (bukan galat).');
         foreach (array_keys(PratinjauMaster::STATUS) as $status) {
             $this->assertSame(array_sum(array_map(fn (array $i) => $i['ringkasan'][$status], $hasil['pratinjau'])), $hasil['ringkasan'][$status]);
         }

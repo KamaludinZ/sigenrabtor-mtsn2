@@ -32,11 +32,11 @@ class DaftarMasterKodeTest extends TestCase
     public function test_jenis_kode_jumlah_dan_pemakaian(): void
     {
         $jumlah = JenisKode::jumlah(2026);
-        $this->assertSame(['sk', 'iksk', 'rktm', 'edm', 'budaya'], array_keys($jumlah));
+        $this->assertSame(['sk', 'iksk', 'rktm', 'edm', 'budaya', 'rencana_aksi'], array_keys($jumlah));
         $this->assertSame(count(MasterKode::kodeSk(2026)), $jumlah['sk']);
         $this->assertSame(count(MasterKode::kodeRktm(2026)), $jumlah['rktm']);
         $this->assertSame(count(MasterKode::budayaMutu(2026)), $jumlah['budaya']);
-        $this->assertSame(['sk' => 0, 'iksk' => 0, 'rktm' => 0, 'edm' => 0, 'budaya' => 0], JenisKode::jumlah(2030));
+        $this->assertSame(['sk' => 0, 'iksk' => 0, 'rktm' => 0, 'edm' => 0, 'budaya' => 0, 'rencana_aksi' => 0], JenisKode::jumlah(2030));
 
         $kegiatan = [['kode_sk' => 'SK.10'], ['kode_sk' => 'SK.10', 'budaya_mutu' => 2], ['kode_sk' => null], ['kode_sk' => 'SK.11']];
         $this->assertSame(['SK.10' => 2, 'SK.11' => 1], JenisKode::pemakaian('sk', $kegiatan));

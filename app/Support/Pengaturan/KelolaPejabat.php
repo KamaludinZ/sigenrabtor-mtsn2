@@ -2,8 +2,10 @@
 
 namespace App\Support\Pengaturan;
 
+use App\Contracts\KegiatanRepository;
 use App\Contracts\PejabatRepository;
 use App\Contracts\TahunAnggaranRepository;
+use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\MasterKode;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -183,6 +185,89 @@ final class KelolaPejabat
     }
 
     /**
+     * Simpan tanggal dokumen lembar pengesahan satu leading aktif tahun $tahun (null/'' = dikosongkan) — dipakai kegiatan
+     * leading itu yang tanggal dokumennya sendiri kosong (TanggalPengesahan). Riwayat `ubah_tanggal_dokumen` hanya bila
+     * berubah.
+     *
+     * @param  array{role: string}  $pengguna
+     * @return array{tanggal: string|null, berubah: bool, kegiatan: int}
+     *
+     * @throws ValidationException Berkunci `tanggal` atau `leading`.
+     * @throws AuthorizationException Bukan admin atau tahun terkunci.
+     */
+    public static function simpanTanggalDokumen(int $tahun, string $kode, ?string $tanggal, array $pengguna): array
+    {
+        self::pastikanBoleh($tahun, $pengguna);
+        if (self::peran("leading:{$kode}") === null) {
+            throw ValidationException::withMessages(['leading' => 'Leading tidak dikenal atau nonaktif.']);
+        }
+        $tanggal = filled($tanggal) ? trim((string) $tanggal) : null;
+        if (($galat = TanggalPengesahan::galat($tanggal, $tahun)) !== null) {
+            throw ValidationException::withMessages(['tanggal' => $galat]);
+        }
+
+        $repo = app(PejabatRepository::class);
+        $lama = $repo->tanggalDokumen($tahun)[$kode] ?? null;
+        if ($lama !== $tanggal) {
+            $repo->simpanTanggalDokumen($tahun, $kode, $tanggal);
+            $teks = fn (?string $t) => TanggalPengesahan::teks($t) ?? '—';
+            RiwayatPengaturan::catat('ubah_tanggal_dokumen', 'Tanggal dokumen '.self::judul("leading:{$kode}")." TA {$tahun}: {$teks($lama)} → {$teks($tanggal)}");
+        }
+
+        return ['tanggal' => $tanggal, 'berubah' => $lama !== $tanggal, 'kegiatan' => self::kegiatanTanpaTanggal($tahun)[$kode] ?? 0];
+    }
+
+    /**
+     * Isi tanggal dokumen yang sama untuk semua leading aktif tahun $tahun; `timpa` false = hanya leading yang tanggalnya
+     * masih kosong.
+     *
+     * @param  array{role: string}  $pengguna
+     * @return int Jumlah leading yang berubah.
+     *
+     * @throws ValidationException Berkunci `tanggal`.
+     * @throws AuthorizationException
+     */
+    public static function simpanTanggalSemua(int $tahun, string $tanggal, array $pengguna, bool $timpa = false): int
+    {
+        self::pastikanBoleh($tahun, $pengguna);
+        $tanggal = trim($tanggal);
+        if ($tanggal === '' || ($galat = TanggalPengesahan::galat($tanggal, $tahun)) !== null) {
+            throw ValidationException::withMessages(['tanggal' => $galat ?? 'Pilih tanggal dokumen.']);
+        }
+        $repo = app(PejabatRepository::class);
+        $ada = $repo->tanggalDokumen($tahun);
+        $diubah = [];
+        foreach (MasterKode::leadings() as $l) {
+            if (($ada[$l['kode']] ?? null) !== $tanggal && ($timpa || ! isset($ada[$l['kode']]))) {
+                $repo->simpanTanggalDokumen($tahun, $l['kode'], $tanggal);
+                $diubah[] = $l['kode'];
+            }
+        }
+        if ($diubah !== []) {
+            RiwayatPengaturan::catat('ubah_tanggal_dokumen', "Tanggal dokumen TA {$tahun} = ".TanggalPengesahan::teks($tanggal).' untuk leading '.implode(', ', $diubah).'.');
+        }
+
+        return count($diubah);
+    }
+
+    /**
+     * Banyaknya kegiatan tahun $tahun per leading yang tanggal dokumennya sendiri kosong (memakai tanggal leading).
+     *
+     * @return array<string, int>
+     */
+    public static function kegiatanTanpaTanggal(int $tahun): array
+    {
+        $hasil = [];
+        foreach (app(KegiatanRepository::class)->semua() as $k) {
+            if (TahunKegiatan::dari($k) === $tahun && blank($k['tanggal_dokumen'] ?? null) && filled($k['leading'] ?? null)) {
+                $hasil[(string) $k['leading']] = ($hasil[(string) $k['leading']] ?? 0) + 1;
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
      * Data pejabat satu tahun untuk endpoint: terkunci, pejabat (NIP berformat), aturan "Mengetahui", saran salin, kurang,
      * dan temuan per peran (ValidasiPejabat::tahun).
      *
@@ -201,6 +286,7 @@ final class KelolaPejabat
             'komite' => $tampil($pejabat['komite']),
             'leading' => array_values(array_map(fn (string $kode, array $p) => ['kode' => $kode, 'nama_unit' => MasterKode::leading($kode)['nama_unit'] ?? $kode] + $tampil($p), array_keys($pejabat['leading']), $pejabat['leading'])),
             'mengetahui' => $repo->aturanMengetahui($tahun),
+            'tanggal_dokumen' => array_map(fn (string $t) => ['tanggal' => $t, 'teks' => TanggalPengesahan::teks($t)], $repo->tanggalDokumen($tahun)),
             'sumber_salin' => self::sumberSalin($tahun),
             'kurang' => array_values(array_filter([
                 $pejabat['kepala']['nama'] && $pejabat['kepala']['nip'] ? null : 'kepala',

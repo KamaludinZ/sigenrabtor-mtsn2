@@ -3,6 +3,7 @@
 namespace App\Support\Master\Impor;
 
 use App\Support\Impor\LembarExcel;
+use App\Support\Master\FormatKode;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -18,10 +19,10 @@ final class PemeriksaIksk
         'uraian' => ['uraian iksk', 'uraian indikator', 'indikator', 'uraian'],
     ];
 
-    /** "iksk 10.2", "IKSK10-2" → "IKSK 10.2"; null bila bukan kode IKSK. */
+    /** "iksk 10.2", "IKSK10-2" → "IKSK 10.2"; "IKSK 6708.1.4" → "IKSK.6708.1.4"; null bila bukan IKSK (FormatKode::iksk). */
     public static function normalkanKode(string $kode): ?string
     {
-        return preg_match('/^IKSK\s*(\d+)\s*[.\-]\s*(\d+)$/i', trim($kode), $cocok) ? 'IKSK '.((int) $cocok[1]).'.'.((int) $cocok[2]) : null;
+        return FormatKode::iksk($kode);
     }
 
     /**
@@ -35,19 +36,29 @@ final class PemeriksaIksk
 
         $hasil = [];
         $posisi = [];
+        // Tata letak cascade: SK yang tidak ditulis ulang di baris IKSK mengikuti SK terakhir di atasnya.
+        $cascade = (bool) ($judul['cascade'] ?? false);
+        $skTerakhir = '';
         for ($baris = $judul['baris'] + 1; $baris <= $lembar->getHighestDataRow(); $baris++) {
             $sel = fn (string $kunci) => trim((string) LembarExcel::nilaiSel($lembar, $judul['kolom'][$kunci].$baris));
             [$mentah, $skMentah, $uraian] = [$sel('kode'), $sel('kode_sk'), $sel('uraian')];
+            if ($cascade) {
+                $skTerakhir = $skMentah !== '' ? $skMentah : $skTerakhir;
+                $skMentah = $skMentah !== '' ? $skMentah : $skTerakhir;
+            }
             if ($mentah === '' && $uraian === '') {
                 continue; // Baris SK tanpa IKSK atau baris kosong.
             }
 
             $kode = self::normalkanKode($mentah);
+            if ($kode === null && KolomMaster::judulKelompok($mentah, [$uraian])) {
+                continue;
+            }
             $sk = PemeriksaSk::normalkanKode($skMentah);
             $tampil = ['kode_sk' => $sk ?? $skMentah, 'uraian' => $uraian];
             $pesan = array_values(array_filter([
-                $mentah === '' ? 'Kode IKSK kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat IKSK n.m (mis. IKSK 10.2)." : null),
-                $skMentah === '' ? 'Kode SK induk kosong.' : ($sk === null ? "SK induk \"{$skMentah}\" tidak berformat SK.n." : null),
+                $mentah === '' ? 'Kode IKSK kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat kode IKSK (mis. ".FormatKode::CONTOH_IKSK.').' : null),
+                $skMentah === '' ? 'Kode SK induk kosong.' : ($sk === null ? "SK induk \"{$skMentah}\" tidak berformat kode SK." : null),
                 $uraian === '' ? 'Uraian IKSK kosong.' : null,
                 ...KolomMaster::galatPanjang('iksk', ['uraian' => $uraian]),
             ]));
@@ -70,11 +81,9 @@ final class PemeriksaIksk
                 continue;
             }
 
-            $nomorSk = (int) substr($sk, 3);
-            $nomorIksk = (int) substr($kode, 5);
             $posisi[$kode] = count($hasil);
             $hasil[] = ['baris' => [$baris], 'kode' => $kode, 'tampil' => $tampil, 'status' => null,
-                'pesan' => $nomorSk === $nomorIksk ? [] : ["Nomor {$kode} tidak sejalan dengan SK induk {$sk} — periksa lagi."]];
+                'pesan' => FormatKode::sejalan($kode, $sk) ? [] : ["Nomor {$kode} tidak sejalan dengan SK induk {$sk} — periksa lagi."]];
         }
 
         return $hasil;

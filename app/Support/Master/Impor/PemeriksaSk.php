@@ -3,6 +3,7 @@
 namespace App\Support\Master\Impor;
 
 use App\Support\Impor\LembarExcel;
+use App\Support\Master\FormatKode;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -18,10 +19,10 @@ final class PemeriksaSk
         'uraian' => ['uraian sk', 'uraian sasaran kegiatan', 'sasaran kegiatan', 'nama sk', 'uraian'],
     ];
 
-    /** "sk 10", "SK10", "SK-10" → "SK.10"; null bila bukan kode SK. */
+    /** "sk 10", "SK10", "SK-10" → "SK.10"; "SK 6708.1" → "SK.6708.1"; null bila bukan kode SK (FormatKode::sk). */
     public static function normalkanKode(string $kode): ?string
     {
-        return preg_match('/^SK\s*[.\-]?\s*(\d+)$/i', trim($kode), $cocok) ? 'SK.'.((int) $cocok[1]) : null;
+        return FormatKode::sk($kode);
     }
 
     /**
@@ -45,8 +46,11 @@ final class PemeriksaSk
             }
 
             $kode = self::normalkanKode($mentah);
+            if ($kode === null && KolomMaster::judulKelompok($mentah, [$uraian])) {
+                continue; // Baris judul kelompok, mis. "BIDANG TATA KELOLA".
+            }
             $pesan = array_values(array_filter([
-                $mentah === '' ? 'Kode SK kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat SK.n (mis. SK.10)." : null),
+                $mentah === '' ? 'Kode SK kosong.' : ($kode === null ? "Kode \"{$mentah}\" tidak berformat kode SK (mis. ".FormatKode::CONTOH_SK.').' : null),
                 $uraian === '' ? 'Uraian SK kosong.' : null,
                 ...KolomMaster::galatPanjang('sk', ['uraian' => $uraian]),
             ]));

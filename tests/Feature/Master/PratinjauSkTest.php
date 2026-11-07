@@ -37,7 +37,8 @@ class PratinjauSkTest extends TestCase
         $this->assertSame('SK.9', PemeriksaSk::normalkanKode('SK-09'));
         $this->assertSame('SK.12', PemeriksaSk::normalkanKode('SK12'));
         $this->assertNull(PemeriksaSk::normalkanKode('IKSK 10.2'));
-        $this->assertNull(PemeriksaSk::normalkanKode('SK.10.1'));
+        $this->assertSame('SK.10.1', PemeriksaSk::normalkanKode('SK.10.1'), 'Kode bergaya Kemenag (FormatKode).');
+        $this->assertNull(PemeriksaSk::normalkanKode('SK.10.x'));
         $this->assertNull(PemeriksaSk::normalkanKode(''));
     }
 
@@ -60,7 +61,7 @@ class PratinjauSkTest extends TestCase
         $this->assertSame([
             ['baris' => [4, 5], 'kode' => 'SK.10', 'tampil' => ['uraian' => 'Layanan pendidikan'], 'status' => null, 'pesan' => []],
             ['baris' => [7], 'kode' => 'SK.10', 'tampil' => ['uraian' => 'Uraian lain'], 'status' => 'gagal', 'pesan' => ['Uraian berbeda dengan baris 4 untuk kode yang sama.']],
-            ['baris' => [8], 'kode' => 'SK.X', 'tampil' => ['uraian' => 'Kode salah'], 'status' => 'gagal', 'pesan' => ['Kode "SK.X" tidak berformat SK.n (mis. SK.10).']],
+            ['baris' => [8], 'kode' => 'SK.X', 'tampil' => ['uraian' => 'Kode salah'], 'status' => 'gagal', 'pesan' => ['Kode "SK.X" tidak berformat kode SK (mis. SK.10 atau SK.1.2133).']],
             ['baris' => [9], 'kode' => '', 'tampil' => ['uraian' => 'Tanpa kode'], 'status' => 'gagal', 'pesan' => ['Kode SK kosong.']],
             ['baris' => [10], 'kode' => 'SK.20', 'tampil' => ['uraian' => ''], 'status' => 'gagal', 'pesan' => ['Uraian SK kosong.']],
             ['baris' => [11], 'kode' => 'SK.21', 'tampil' => ['uraian' => 'Sasaran baru'], 'status' => null, 'pesan' => []],

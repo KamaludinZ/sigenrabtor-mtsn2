@@ -13,7 +13,8 @@ use RuntimeException;
 use stdClass;
 
 /**
- * Master kode per tahun di PostgreSQL (kode_sk, kode_iksk, kode_rktm, kode_edm, komponen_edm, budaya_mutu), padanan
+ * Master kode per tahun di PostgreSQL (kode_sk, kode_iksk, kode_rktm, kode_edm, komponen_edm, budaya_mutu, rencana_aksi,
+ * relasi_edm_rktm), padanan
  * StubMasterKodeRepository dengan bentuk data yang sama: baris urut `urutan` (urutan berkas), komponen EDM urut huruf,
  * budaya mutu urut nomor. Master satu jenis × tahun dibaca sekali per permintaan (MasterKode dipanggil berulang saat
  * render & validasi); tahun tanpa baris = belum diunggah (daftar kosong). `ganti()` mengganti bagian master satu tahun
@@ -31,6 +32,7 @@ class EloquentMasterKodeRepository implements MasterKodeRepository
             ->union(DB::table('kode_rktm')->select('tahun_anggaran'))
             ->union(DB::table('kode_edm')->select('tahun_anggaran'))
             ->union(DB::table('budaya_mutu')->select('tahun_anggaran'))
+            ->union(DB::table('rencana_aksi')->select('tahun_anggaran'))
             ->pluck('tahun_anggaran')->map(fn ($t) => (int) $t)->unique()->sort()->values()->all();
 
         return $tahun;
@@ -68,6 +70,24 @@ class EloquentMasterKodeRepository implements MasterKodeRepository
             ->orderBy('nomor')->get(['nomor', 'nama'])->map(fn ($b) => ['nomor' => (int) $b->nomor, 'nama' => $b->nama])->all();
     }
 
+    public function rencanaAksi(int $tahun): array
+    {
+        return $this->cache["rencana_aksi:{$tahun}"] ??= DB::table('rencana_aksi')->where('tahun_anggaran', $tahun)
+            ->orderBy('urutan')->orderBy('id')->get()->map(fn (object $r) => [
+                'kode' => $r->kode, 'uraian' => $r->uraian, 'kode_sk' => $r->kode_sk, 'kode_iksk' => $r->kode_iksk, 'kode_rktm' => $r->kode_rktm,
+                'unit' => $r->unit, 'kode_leading' => $r->kode_leading, 'pagu_dipa' => (int) $r->pagu_dipa, 'pagu_komite' => (int) $r->pagu_komite,
+                'bulan' => array_map('intval', json_decode($r->bulan, true)),
+                'kode_edm' => $r->kode_edm === null ? null : array_values(json_decode($r->kode_edm, true)),
+                'budaya_mutu' => array_map('intval', json_decode($r->budaya_mutu, true)),
+            ])->all();
+    }
+
+    public function relasiEdmRktm(int $tahun): array
+    {
+        return $this->cache["relasi_edm_rktm:{$tahun}"] ??= DB::table('relasi_edm_rktm')->where('tahun_anggaran', $tahun)
+            ->orderBy('urutan')->orderBy('id')->get(['kode_edm', 'kode_rktm'])->map(fn ($r) => (array) $r)->all();
+    }
+
     public function ganti(int $tahun, array $master): void
     {
         if (($asing = array_diff(array_keys($master), StubMasterKodeRepository::BAGIAN)) !== []) {
@@ -77,18 +97,26 @@ class EloquentMasterKodeRepository implements MasterKodeRepository
         try {
             DB::transaction(function () use ($tahun, $master) {
                 // IKSK dihapus sebelum SK-nya dan disisipkan sesudahnya (FK IKSK → SK tertunda sampai commit).
-                foreach (['kode_iksk', 'kode_sk', 'kode_rktm', 'kode_edm', 'komponen_edm', 'budaya_mutu'] as $tabel) {
+                foreach (['kode_iksk', 'kode_sk', 'kode_rktm', 'kode_edm', 'komponen_edm', 'budaya_mutu', 'rencana_aksi', 'relasi_edm_rktm'] as $tabel) {
                     if (array_key_exists($tabel, $master)) {
                         DB::table($tabel)->where('tahun_anggaran', $tahun)->delete();
                     }
                 }
-                foreach (['kode_sk', 'kode_iksk', 'kode_rktm', 'komponen_edm', 'kode_edm', 'budaya_mutu'] as $tabel) {
+                foreach (['kode_sk', 'kode_iksk', 'kode_rktm', 'komponen_edm', 'kode_edm', 'budaya_mutu', 'rencana_aksi', 'relasi_edm_rktm'] as $tabel) {
                     if (! array_key_exists($tabel, $master)) {
                         continue;
                     }
                     $baris = match ($tabel) {
                         'komponen_edm' => array_map(fn (string $huruf, string $nama) => ['huruf' => $huruf, 'nama' => $nama], array_keys($master[$tabel]), $master[$tabel]),
                         'budaya_mutu' => array_map(fn (array $b) => ['nomor' => (int) $b['nomor'], 'nama' => $b['nama']], $master[$tabel]),
+                        'rencana_aksi' => array_map(fn (array $b, int $i) => [
+                            'urutan' => $i + 1, 'kode' => $b['kode'], 'uraian' => $b['uraian'], 'kode_sk' => $b['kode_sk'] ?? null, 'kode_iksk' => $b['kode_iksk'] ?? null,
+                            'kode_rktm' => $b['kode_rktm'] ?? null, 'unit' => $b['unit'] ?? null, 'kode_leading' => $b['kode_leading'] ?? null,
+                            'pagu_dipa' => (int) ($b['pagu_dipa'] ?? 0), 'pagu_komite' => (int) ($b['pagu_komite'] ?? 0),
+                            'bulan' => json_encode(array_values(array_map('intval', $b['bulan'] ?? []))),
+                            'kode_edm' => ($b['kode_edm'] ?? null) === null ? null : json_encode(array_values($b['kode_edm'])),
+                            'budaya_mutu' => json_encode(array_values(array_map('intval', $b['budaya_mutu'] ?? []))),
+                        ], array_values($master[$tabel]), array_keys(array_values($master[$tabel]))),
                         default => array_map(fn (array $b, int $i) => ['urutan' => $i + 1] + $b, array_values($master[$tabel]), array_keys(array_values($master[$tabel]))),
                     };
                     foreach (array_chunk(array_map(fn (array $b) => ['tahun_anggaran' => $tahun] + $b, $baris), 500) as $potong) {

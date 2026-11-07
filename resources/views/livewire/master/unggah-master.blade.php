@@ -36,7 +36,8 @@
                 </div>
                 <p class="mt-1.5 text-xs text-stone-500">
                     @if ($cakupan === BerkasMaster::SEMUA)
-                        Satu berkas .xlsx dengan sheet Perkin (SK &amp; IKSK), SNP (RKTM), EDM, dan 5 Budaya Mutu — sheet yang tidak ada tidak mengubah jenisnya.
+                        Satu berkas .xlsx dengan sheet Perkin (SK, IKSK, &amp; Rencana Aksi), SNP (RKTM), EDM, dan 5 Budaya Mutu — sheet yang tidak ada tidak mengubah jenisnya. Berkas cascade Perkin asli (mis. sheet Perkin &amp; 5BM_SNP) juga dikenali.
+                        <a href="{{ route('master.template', ['ta' => $tahun]) }}" class="font-medium text-brand-800 underline-offset-2 hover:underline" data-testid="unggah-unduh-template">Unduh template</a>
                     @else
                         {{ JenisKode::DAFTAR[$cakupan]['asal'] }} Berkas .xlsx/.xls atau .csv.
                     @endif
@@ -158,7 +159,7 @@
                     <button type="button" wire:click="tutup" class="btn-ghost text-red-700 hover:bg-red-50">Batalkan</button>
                 @endunless
                 @if (! $this->bisaDisimpan())
-                    <button type="button" class="btn-primary" disabled title="Sedang disiapkan" wire:key="simpan-segera"><x-ui.icon name="save" class="size-4" /> Simpan master <x-ui.segera /></button>
+                    <button type="button" class="btn-primary" disabled title="Jenis ini belum bisa disimpan dari unggahan" wire:key="simpan-segera"><x-ui.icon name="save" class="size-4" /> Simpan master</button>
                 @elseif ($this->kendalaSimpan() === [])
                     <button type="button" wire:click="simpan" class="btn-primary" wire:key="simpan-siap" wire:loading.attr="disabled" wire:target="simpan" data-testid="simpan-master"><x-ui.icon name="save" class="size-4" /> Simpan master</button>
                 @else

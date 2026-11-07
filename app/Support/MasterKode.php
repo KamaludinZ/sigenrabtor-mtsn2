@@ -143,6 +143,26 @@ class MasterKode
     }
 
     /**
+     * Rencana aksi tahun itu beserta tag kodenya (RencanaAksi untuk tag efektif).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function rencanaAksi(?int $tahun = null): array
+    {
+        return self::repo()->rencanaAksi(self::tahun($tahun));
+    }
+
+    /**
+     * Relasi indikator EDM → kode RKTM yang direkomendasikan.
+     *
+     * @return list<array{kode_edm: string, kode_rktm: string}>
+     */
+    public static function relasiEdmRktm(?int $tahun = null): array
+    {
+        return self::repo()->relasiEdmRktm(self::tahun($tahun));
+    }
+
+    /**
      * Cari satu baris daftar berdasarkan kode.
      *
      * @param  list<array<string, mixed>>  $daftar

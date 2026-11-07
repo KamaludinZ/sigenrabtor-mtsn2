@@ -5,19 +5,41 @@
     $tahunAktif = \App\Support\Stub\StubData::tahunAktif()['tahun'];
     $tersedia = $this->tersedia();
     $jumlah = $this->jumlah;
-    $baris = $this->baris;
+    $semuaBaris = $jenis === 'rencana_aksi' ? $this->rencanaAksi : $this->baris;
+    $baris = $this->barisTampil();
     $pakai = $this->pemakaian;
     $info = JenisKode::DAFTAR[$jenis];
     $relasi = in_array($jenis, ['sk', 'iksk'], true) ? $this->relasiSk() : null;
     $komponen = $jenis === 'edm' ? $this->komponenEdm() : [];
-    $dipakaiTotal = count(array_filter($baris, fn ($b) => ($pakai[(string) $b[$info['kunci']]] ?? 0) > 0));
+    $dipakaiTotal = count(array_filter($semuaBaris, fn ($b) => ($pakai[(string) $b[$info['kunci']]] ?? 0) > 0));
 @endphp
 
 <div class="mx-auto max-w-7xl">
     <x-pengaturan.kepala judul="Master Kode"
-                         deskripsi="Kode SK, IKSK, RKTM, EDM, dan 5 Budaya Mutu per tahun anggaran — diunggah dari Excel lalu dipilih leading di Kode & Klasifikasi, tidak diketik bebas.">
+                         deskripsi="Kode SK, IKSK, RKTM, EDM, 5 Budaya Mutu, dan Rencana Aksi bertag per tahun anggaran — diunggah dari Excel lalu dipilih leading di Kode & Klasifikasi, tidak diketik bebas.">
         <x-slot:aksi>
-            <button type="button" class="btn-ghost" disabled title="Sedang disiapkan"><x-ui.icon name="download" class="size-4" /> Unduh template <x-ui.segera /></button>
+            {{-- Template Excel: kosong atau berisi master tahun yang dilihat (unggah ulang tanpa perubahan = semua "tetap"). --}}
+            <div class="relative" x-data="{ buka: false }" x-on:keydown.escape="buka = false; $refs.tombol.focus()" x-on:click.outside="buka = false">
+                <button type="button" x-ref="tombol" x-on:click="buka = ! buka" class="btn-ghost" x-bind:aria-expanded="buka" aria-haspopup="menu" data-testid="unduh-template-master">
+                    <x-ui.icon name="download" class="size-4" /> Unduh template <x-ui.icon name="chevron-down" class="size-3.5" />
+                </button>
+                <div x-show="buka" x-cloak x-transition.opacity role="menu" class="absolute right-0 z-20 mt-1 w-72 rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-stone-200" data-testid="menu-template-master">
+                    <a href="{{ route('master.template', ['ta' => $ta]) }}" role="menuitem" class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-stone-50" data-testid="template-kosong" x-on:click="buka = false">
+                        <x-ui.icon name="sheet" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                        <span><span class="block font-medium text-stone-900">Template kosong</span><span class="block text-xs text-stone-500">Sheet Perkin (SK, IKSK, Rencana Aksi), SNP, EDM, 5 Budaya Mutu + petunjuk</span></span>
+                    </a>
+                    @if ($tersedia)
+                        <a href="{{ route('master.template', ['ta' => $ta, 'isi' => 1]) }}" role="menuitem" class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-stone-50" data-testid="template-berisi" x-on:click="buka = false">
+                            <x-ui.icon name="database" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                            <span><span class="block font-medium text-stone-900">Berisi master TA {{ $ta }}</span><span class="block text-xs text-stone-500">Untuk memperbarui master: ubah isinya lalu unggah kembali</span></span>
+                        </a>
+                        <a href="{{ route('master.template', ['ta' => $ta, 'isi' => 1, 'cakupan' => $jenis]) }}" role="menuitem" class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-stone-50" data-testid="template-jenis" x-on:click="buka = false">
+                            <x-ui.icon name="file-text" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                            <span><span class="block font-medium text-stone-900">Hanya {{ $info['label'] }} TA {{ $ta }}</span><span class="block text-xs text-stone-500">Satu sheet, berisi master jenis ini</span></span>
+                        </a>
+                    @endif
+                </div>
+            </div>
             @if ($this->tahunTerkunci())
                 <button type="button" class="btn-primary" disabled title="Tahun terkunci — master hanya dilihat" wire:key="unggah-terkunci"><x-ui.icon name="lock" class="size-4" /> Unggah Excel</button>
             @else
@@ -83,10 +105,14 @@
                 </div>
             @endif
             <ol class="mx-auto mt-5 grid max-w-2xl gap-3 text-left text-sm sm:grid-cols-3">
-                @foreach (['Unduh template Excel master kode', 'Isi sheet Perkin, SNP, EDM, dan 5 Budaya Mutu', 'Unggah, periksa pratinjau, lalu simpan'] as $i => $langkah)
+                @foreach (['Unduh template Excel master kode', 'Isi sheet Perkin (SK, IKSK, Rencana Aksi), SNP, EDM, dan 5 Budaya Mutu', 'Unggah, periksa pratinjau, lalu simpan'] as $i => $langkah)
                     <li class="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2.5 ring-1 ring-stone-200">
                         <span class="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800">{{ $i + 1 }}</span>
-                        <span class="text-stone-700">{{ $langkah }}</span>
+                        @if ($i === 0)
+                            <a href="{{ route('master.template', ['ta' => $ta]) }}" class="font-medium text-brand-800 underline-offset-2 hover:underline" data-testid="langkah-unduh-template">{{ $langkah }}</a>
+                        @else
+                            <span class="text-stone-700">{{ $langkah }}</span>
+                        @endif
                     </li>
                 @endforeach
             </ol>
@@ -110,11 +136,40 @@
                         <h2 id="judul-jenis-master" class="text-base font-semibold text-stone-900">{{ $info['judul'] }}</h2>
                         <p class="mt-0.5 text-sm text-stone-500">{{ $info['asal'] }}</p>
                     </div>
-                    <p class="shrink-0 text-xs text-stone-500" data-testid="ringkasan-jenis">{{ count($baris) }} kode · {{ $dipakaiTotal }} dipakai kegiatan TA {{ $ta }}</p>
+                    <p class="shrink-0 text-xs text-stone-500" data-testid="ringkasan-jenis">{{ count($semuaBaris) }} {{ $jenis === 'rencana_aksi' ? 'rencana aksi' : 'kode' }} · {{ $dipakaiTotal }} dipakai kegiatan TA {{ $ta }}</p>
                 </header>
 
-                @if ($baris === [])
-                    <p class="border-t border-stone-100 px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="jenis-kosong">Belum ada kode {{ $info['label'] }} di master TA {{ $ta }}.</p>
+                @if ($semuaBaris !== [])
+                    <div class="flex flex-col gap-3 border-t border-stone-100 px-5 pt-4 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+                        <x-ui.kotak-cari model="cari" :nilai="$cari" wire:model.live.debounce.300ms="cari" label="Cari di {{ $info['label'] }}" placeholder="Cari kode atau uraian…"
+                                         :jumlah="count($baris)" :total="count($semuaBaris)" :satuan="$jenis === 'rencana_aksi' ? 'rencana aksi' : 'kode'" testid="cari-master" class="w-full lg:max-w-md" />
+                        @if ($jenis === 'rencana_aksi')
+                            @php
+                                $jumlahSaring = $this->jumlahSaringTag();
+                            @endphp
+                            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Saring tag rencana aksi" data-testid="saring-tag">
+                                @foreach (\App\Livewire\Master\Daftar::SARING_TAG as $kunci => $label)
+                                    <button type="button" wire:click="$set('saringTag', '{{ $kunci }}')" aria-pressed="{{ $saringTag === $kunci ? 'true' : 'false' }}" data-saring="{{ $kunci }}"
+                                            @class(['rounded-full px-2.5 py-1 text-xs font-semibold ring-1', 'bg-stone-900 text-white ring-stone-900' => $saringTag === $kunci, 'bg-white text-stone-700 ring-stone-300 hover:bg-stone-50' => $saringTag !== $kunci])>
+                                        {{ $label }} <span class="tabular-nums">{{ $jumlahSaring[$kunci] }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
+                @if ($semuaBaris === [])
+                    <p class="border-t border-stone-100 px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="jenis-kosong">
+                        Belum ada {{ $jenis === 'rencana_aksi' ? 'rencana aksi' : 'kode '.$info['label'] }} di master TA {{ $ta }}.
+                        @if ($jenis === 'rencana_aksi')
+                            <span class="mt-1 block text-xs">Unggah sheet Perkin berisi kolom Rencana Aksi (template master kode) — SK, IKSK, kode RKTM, unit, anggaran, dan bulannya langsung menjadi tag.</span>
+                        @endif
+                    </p>
+                @elseif ($baris === [])
+                    <p class="px-5 py-8 text-center text-sm text-stone-500 sm:px-6" data-testid="cari-master-kosong">Tidak ada yang cocok dengan pencarian/saringan ini.</p>
+                @elseif ($jenis === 'rencana_aksi')
+                    @include('livewire.master.partials.rencana-aksi')
                 @else
                     {{-- Layar lebar: tabel. --}}
                     <div class="hidden overflow-x-auto border-t border-stone-100 md:block">

@@ -14,6 +14,7 @@ use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Kegiatan\TeksKhusus;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PejabatBerlaku;
+use App\Support\Pengaturan\TanggalPengesahan;
 use App\Support\Pengaturan\TeksBakuTercetak;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\AnggaranSumber;
@@ -403,7 +404,8 @@ final readonly class SusunanKak
         $berlaku = PejabatBerlaku::tahun($tahun);
         $pejabat = $berlaku->pimpinan();
         $pembuat = $berlaku->pembuat($kegiatan);
-        $tanggal = Format::tanggal($kegiatan['tanggal_dokumen'] ?? null);
+        // Tanggal kegiatan sendiri, atau tanggal dokumen leading tahun susunan ini (TanggalPengesahan).
+        $tanggal = Format::tanggal(TanggalPengesahan::tanggal($kegiatan, $tahun ?? StubData::tahunAktif()['tahun']));
 
         if (! $tanggal) {
             $kosong('tanggal dokumen', 'identitas');

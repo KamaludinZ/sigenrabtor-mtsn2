@@ -10,6 +10,7 @@ use App\Support\Pengaturan\KelolaProfilMadrasah;
 use App\Support\Pengaturan\KesiapanPengaturan;
 use App\Support\Pengaturan\Nip;
 use App\Support\Pengaturan\TahunDipilih;
+use App\Support\Pengaturan\TanggalPengesahan;
 use App\Support\Pengaturan\ValidasiPejabat;
 use App\Support\Stub\StubData;
 use App\Support\Stub\StubPengaturan;
@@ -102,6 +103,9 @@ class ProfilMadrasah extends Component
     }
 
     /** Ganti tahun yang dilihat: formulir yang terbuka ditutup (isiannya milik tahun lain). */
+    /** Tanggal untuk "isi semua leading" (Y-m-d). */
+    public string $tanggalSemua = '';
+
     public function updatedTahunPejabat(): void
     {
         $this->rapikanTahunPejabat();
@@ -132,6 +136,66 @@ class ProfilMadrasah extends Component
 
         $tampil = array_keys(array_filter($this->mengetahui));
         $this->dispatch('notify', message: $tampil === [] ? 'Blok "Mengetahui" tidak ditampilkan di dokumen mana pun.' : 'Blok "Mengetahui" tampil di dokumen '.implode(' & ', $tampil).'.', type: 'success');
+    }
+
+    /**
+     * Tanggal dokumen lembar pengesahan per leading aktif tahun yang dilihat: tanggal (Y-m-d|null), teks, dan jumlah
+     * kegiatan tahun itu yang memakainya (tanggal dokumen kegiatannya sendiri kosong).
+     *
+     * @return list<array{kode: string, nama_unit: string, tanggal: string|null, teks: string|null, kegiatan: int}>
+     */
+    public function tanggalDokumenLeading(): array
+    {
+        $tahun = $this->tahunDilihat();
+        $tanggal = app(PejabatRepository::class)->tanggalDokumen($tahun);
+        $kegiatan = KelolaPejabat::kegiatanTanpaTanggal($tahun);
+
+        return array_map(fn (array $l) => [
+            'kode' => $l['kode'], 'nama_unit' => $l['nama_unit'], 'tanggal' => $tanggal[$l['kode']] ?? null,
+            'teks' => TanggalPengesahan::teks($tanggal[$l['kode']] ?? null), 'kegiatan' => $kegiatan[$l['kode']] ?? 0,
+        ], MasterKode::leadings());
+    }
+
+    /** Simpan tanggal dokumen satu leading untuk tahun yang dilihat ('' = dikosongkan). */
+    public function simpanTanggalDokumen(string $kode, ?string $tanggal = null): void
+    {
+        $this->resetErrorBag("tanggal_dokumen_{$kode}");
+        try {
+            $hasil = KelolaPejabat::simpanTanggalDokumen($this->tahunDilihat(), $kode, $tanggal, StubData::currentUser());
+        } catch (ValidationException $e) {
+            $this->addError("tanggal_dokumen_{$kode}", $e->validator->errors()->first());
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+        if ($hasil['berubah']) {
+            $leading = MasterKode::leading($kode)['nama_unit'] ?? $kode;
+            $this->dispatch('notify', message: $hasil['tanggal'] === null
+                ? "Tanggal dokumen {$kode} {$leading} dikosongkan — kegiatan memakai tanggal dokumennya sendiri."
+                : "Tanggal dokumen {$kode} {$leading}: ".TanggalPengesahan::teks($hasil['tanggal']).($hasil['kegiatan'] > 0 ? " — dipakai {$hasil['kegiatan']} kegiatan yang tanggal dokumennya kosong." : '.'), type: 'success');
+        }
+    }
+
+    /** Tanggal yang sama untuk semua leading aktif (hanya yang kosong, atau semua bila $timpa). */
+    public function isiTanggalSemua(bool $timpa = false): void
+    {
+        $this->resetErrorBag('tanggalSemua');
+        try {
+            $n = KelolaPejabat::simpanTanggalSemua($this->tahunDilihat(), $this->tanggalSemua, StubData::currentUser(), $timpa);
+        } catch (ValidationException $e) {
+            $this->addError('tanggalSemua', $e->validator->errors()->first());
+
+            return;
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+        $this->tanggalSemua = '';
+        $this->dispatch('notify', message: $n === 0 ? 'Semua leading sudah bertanggal — tidak ada yang diubah.' : "Tanggal dokumen diisikan untuk {$n} leading.", type: $n === 0 ? 'info' : 'success');
     }
 
     /**

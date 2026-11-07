@@ -24,6 +24,11 @@ class SkemaPengaturanTest extends TestCase
 
     private const MIGRASI = 'database/migrations/2026_10_28_000020_create_pengaturan_tables.php';
 
+    /** Rencana aksi & tanggal dokumen leading merujuk tahun_anggaran/leadings (000020) — dibatalkan lebih dulu. */
+    private const MIGRASI_RENCANA_AKSI = 'database/migrations/2026_11_07_000057_create_rencana_aksi_tables.php';
+
+    private const MIGRASI_TANGGAL_DOKUMEN = 'database/migrations/2026_11_07_000058_create_tanggal_dokumen_leading_table.php';
+
     /** Migrasi sesudahnya yang merujuk tahun_anggaran (jejak unggahan master): dibatalkan lebih dulu, dipasang lagi sesudahnya. */
     private const MIGRASI_MASTER = 'database/migrations/2026_10_28_000026_tighten_master_kode_and_unggahan.php';
 
@@ -251,6 +256,8 @@ class SkemaPengaturanTest extends TestCase
 
     public function test_migrasi_bisa_dibatalkan(): void
     {
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TANGGAL_DOKUMEN])->assertSuccessful();
+        $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_RENCANA_AKSI])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TEMPLATE_VARIABEL])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TEMPLATE_KEGIATAN])->assertSuccessful();
         $this->artisan('migrate:rollback', ['--path' => self::MIGRASI_TEMPLATE_CATATAN])->assertSuccessful();
@@ -293,6 +300,10 @@ class SkemaPengaturanTest extends TestCase
         $this->artisan('migrate', ['--path' => self::MIGRASI_TEMPLATE_CATATAN])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_TEMPLATE_KEGIATAN])->assertSuccessful();
         $this->artisan('migrate', ['--path' => self::MIGRASI_TEMPLATE_VARIABEL])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_RENCANA_AKSI])->assertSuccessful();
+        $this->artisan('migrate', ['--path' => self::MIGRASI_TANGGAL_DOKUMEN])->assertSuccessful();
+        $this->assertTrue(Schema::hasTable('rencana_aksi'));
+        $this->assertTrue(Schema::hasTable('tanggal_dokumen_leading'));
         $this->assertTrue(Schema::hasTable('activity_logs'));
         $this->assertTrue(Schema::hasTable('master_kode_unggahan'));
     }

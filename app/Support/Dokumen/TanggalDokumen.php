@@ -5,6 +5,7 @@ namespace App\Support\Dokumen;
 use App\Support\Format;
 use App\Support\Kegiatan\DataPelaksanaan;
 use App\Support\Kegiatan\JadwalPelaksanaan;
+use App\Support\Pengaturan\TanggalPengesahan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\MekanismePembayaran;
 use App\Support\Stub\StubData;
@@ -29,7 +30,7 @@ final class TanggalDokumen
         $mulai = $pelaksanaan->mulai;
         $selesai = $pelaksanaan->selesai();
         $laporan = self::tanggal($kegiatan['tanggal_laporan'] ?? null);
-        $dokumen = self::tanggal($kegiatan['tanggal_dokumen'] ?? null);
+        $dokumen = self::tanggal(TanggalPengesahan::tanggal($kegiatan, $tahun));
         $luarTahun = fn (?CarbonImmutable ...$t) => collect($t)->filter()->contains(fn (CarbonImmutable $x) => $x->year !== $tahun)
             ? [['jenis' => 'tahun', 'pesan' => "Di luar Tahun Anggaran {$tahun}."]] : [];
 

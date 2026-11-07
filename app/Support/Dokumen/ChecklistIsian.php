@@ -10,6 +10,7 @@ use App\Support\Kegiatan\JadwalKegiatan;
 use App\Support\Kegiatan\KelengkapanKode;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\Pengaturan\PejabatBerlaku;
+use App\Support\Pengaturan\TanggalPengesahan;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Rab\BatasPagu;
 use App\Support\Rab\MekanismePembayaran;
@@ -57,7 +58,8 @@ final class ChecklistIsian
             $butir('nama_kegiatan', 'Nama kegiatan', $isi('nama_kegiatan'), true),
             $butir('tujuan', 'Tujuan', $isi('tujuan')),
             ...($limaBab ? [] : [$butir('sasaran', 'Sasaran', $isi('sasaran'))]),
-            $butir('tanggal_dokumen', 'Tanggal dokumen (lembar pengesahan)', $isi('tanggal_dokumen')),
+            $butir('tanggal_dokumen', 'Tanggal dokumen (lembar pengesahan)', ($pengesahan = TanggalPengesahan::untuk($kegiatan, $tahun))['tanggal'] !== null, false,
+                $pengesahan['asal'] === 'leading' ? 'Memakai tanggal dokumen leading '.$pengesahan['leading'].': '.TanggalPengesahan::teks($pengesahan['tanggal']).'.' : null),
             $butir('tanggal_laporan', 'Tanggal pelaporan', $isi('tanggal_laporan')),
         ]];
 

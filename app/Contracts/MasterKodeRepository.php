@@ -50,9 +50,24 @@ interface MasterKodeRepository
     public function budayaMutu(int $tahun): array;
 
     /**
+     * Rencana aksi cascade Perkin tahun $tahun (urutan berkas) beserta tag kodenya. `kode_edm` null = tag EDM otomatis
+     * dari relasi EDM ↔ RKTM (RencanaAksi::tagEdm); `budaya_mutu` = nomor 5 Budaya Mutu yang ditandai admin.
+     *
+     * @return list<array{kode: string, uraian: string, kode_sk: string|null, kode_iksk: string|null, kode_rktm: string|null, unit: string|null, kode_leading: string|null, pagu_dipa: int, pagu_komite: int, bulan: list<int>, kode_edm: list<string>|null, budaya_mutu: list<int>}>
+     */
+    public function rencanaAksi(int $tahun): array;
+
+    /**
+     * Relasi indikator EDM → kode sub kegiatan RKTM yang direkomendasikan (sheet gabungan EDM ↔ RKTM), urutan berkas.
+     *
+     * @return list<array{kode_edm: string, kode_rktm: string}>
+     */
+    public function relasiEdmRktm(int $tahun): array;
+
+    /**
      * Ganti master tahun $tahun untuk bagian yang ada di $master — kunci `kode_sk`, `kode_iksk`, `kode_rktm`, `kode_edm`
-     * (baris berbentuk sama dengan metode bacanya; urutan = urutan berkas), `komponen_edm` (huruf → nama), `budaya_mutu` —
-     * seluruhnya atau tidak sama sekali. Bagian lain tahun itu tetap.
+     * (baris berbentuk sama dengan metode bacanya; urutan = urutan berkas), `komponen_edm` (huruf → nama), `budaya_mutu`,
+     * `rencana_aksi`, `relasi_edm_rktm` — seluruhnya atau tidak sama sekali. Bagian lain tahun itu tetap.
      *
      * @param  array<string, array<mixed>>  $master
      *

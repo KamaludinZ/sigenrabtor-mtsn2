@@ -42,4 +42,17 @@ interface PejabatRepository
      * @param  array<string, bool>  $aturan  Sumber dana → tampil.
      */
     public function simpanAturanMengetahui(int $tahun, array $aturan): void;
+
+    /**
+     * Tanggal dokumen lembar pengesahan per leading tahun $tahun (kode leading → Y-m-d), dipakai kegiatan leading itu yang
+     * tanggal dokumennya sendiri kosong (TanggalPengesahan). Leading tanpa tanggal tidak ada di daftar.
+     *
+     * @return array<string, string>
+     */
+    public function tanggalDokumen(int $tahun): array;
+
+    /**
+     * Simpan tanggal dokumen satu leading tahun $tahun; null = dikosongkan.
+     */
+    public function simpanTanggalDokumen(int $tahun, string $kodeLeading, ?string $tanggal): void;
 }

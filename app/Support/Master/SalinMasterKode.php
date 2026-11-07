@@ -23,7 +23,7 @@ use Illuminate\Validation\ValidationException;
 final class SalinMasterKode
 {
     /** Kelompok jenis yang disalin bersama. */
-    public const KELOMPOK = [['sk', 'iksk'], ['rktm'], ['edm'], ['budaya']];
+    public const KELOMPOK = [['sk', 'iksk'], ['rktm'], ['edm'], ['budaya'], ['rencana_aksi']];
 
     public static function sumber(int $tahun): ?int
     {
@@ -74,6 +74,7 @@ final class SalinMasterKode
             }
             if (in_array('edm', $kelompok, true)) {
                 $master['komponen_edm'] = $repo->komponenEdm($dari);
+                $master['relasi_edm_rktm'] = $repo->relasiEdmRktm($dari);
             }
         }
 

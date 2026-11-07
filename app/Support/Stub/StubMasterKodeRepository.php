@@ -16,7 +16,7 @@ use RuntimeException;
 class StubMasterKodeRepository implements MasterKodeRepository
 {
     /** Bagian master (kunci data & tabel). */
-    public const BAGIAN = ['kode_sk', 'kode_iksk', 'kode_rktm', 'kode_edm', 'komponen_edm', 'budaya_mutu'];
+    public const BAGIAN = ['kode_sk', 'kode_iksk', 'kode_rktm', 'kode_edm', 'komponen_edm', 'budaya_mutu', 'rencana_aksi', 'relasi_edm_rktm'];
 
     /** @var array<int, array<string, mixed>> */
     private array $cache = [];
@@ -69,6 +69,16 @@ class StubMasterKodeRepository implements MasterKodeRepository
     public function budayaMutu(int $tahun): array
     {
         return $this->data($tahun)['budaya_mutu'];
+    }
+
+    public function rencanaAksi(int $tahun): array
+    {
+        return $this->data($tahun)['rencana_aksi'];
+    }
+
+    public function relasiEdmRktm(int $tahun): array
+    {
+        return $this->data($tahun)['relasi_edm_rktm'];
     }
 
     public function ganti(int $tahun, array $master): void

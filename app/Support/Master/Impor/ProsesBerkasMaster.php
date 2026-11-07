@@ -88,7 +88,7 @@ final class ProsesBerkasMaster
             return 'Berkas CSV hanya untuk satu jenis kode. Pilih jenisnya, atau unggah berkas .xlsx berisi semua sheet.';
         }
         if (array_filter(BerkasMaster::kenali($lembar, $cakupan)) === []) {
-            return 'Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK & IKSK), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.';
+            return 'Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK, IKSK, & Rencana Aksi), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.';
         }
 
         return null;
@@ -113,7 +113,10 @@ final class ProsesBerkasMaster
         }
 
         $sheet = array_filter(BerkasMaster::kenali($lembar, $cakupan));
-        $pratinjau = PratinjauMaster::susun($path, $namaAsli, $sheet, $tahun);
+        $pratinjau = PratinjauMaster::susun($path, $namaAsli, $sheet, $tahun, $cakupan === BerkasMaster::SEMUA ? BerkasMaster::OPSIONAL_SEMUA : []);
+        if ($pratinjau === []) {
+            throw new GagalBacaImpor('Tidak ada sheet yang memuat kolom master kode. Gunakan template master kode.');
+        }
         $ringkasan = array_fill_keys(array_keys(PratinjauMaster::STATUS), 0);
         foreach ($pratinjau as $item) {
             foreach ($item['ringkasan'] as $status => $n) {

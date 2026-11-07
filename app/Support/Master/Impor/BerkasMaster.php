@@ -9,7 +9,8 @@ use Throwable;
 
 /**
  * Berkas unggahan master kode (PRD §14): batas berkas, cakupan unggahan (berkas master lengkap atau satu jenis), dan
- * pengenalan sheet per jenis dari nama sheet — sheet Perkin memuat SK & IKSK, SNP memuat RKTM, EDM, dan 5 Budaya Mutu.
+ * pengenalan sheet per jenis dari nama sheet — sheet Perkin memuat SK, IKSK, & Rencana Aksi, SNP memuat RKTM, EDM, dan
+ * 5 Budaya Mutu (nama sama persis lebih dulu, lalu nama yang mengandung katanya, mis. 5BM_SNP).
  */
 final class BerkasMaster
 {
@@ -25,7 +26,24 @@ final class BerkasMaster
         'rktm' => ['snp', 'rktm', 'kode rktm'],
         'edm' => ['edm', 'kode edm'],
         'budaya' => ['5 budaya mutu', 'budaya mutu', 'budaya'],
+        'rencana_aksi' => ['rencana aksi', 'perkin', 'cascade perkin', 'cascade'],
     ];
+
+    /**
+     * Cadangan bila tidak ada nama yang sama persis: nama sheet yang mengandung kata ini (berkas asli madrasah, mis.
+     * "5BM_SNP", "8SNP", "Perkin 2026"); sheet pertama yang cocok dipakai.
+     */
+    public const MENGANDUNG = [
+        'sk' => ['perkin'],
+        'iksk' => ['perkin'],
+        'rktm' => ['snp', 'rktm'],
+        'edm' => ['edm', '5bm', 'evaluasi diri'],
+        'budaya' => ['budaya'],
+        'rencana_aksi' => ['rencana aksi', 'perkin', 'cascade'],
+    ];
+
+    /** Jenis yang berbagi sheet dengan jenis lain pada berkas master lengkap: dilewati bila kolomnya tidak ada. */
+    public const OPSIONAL_SEMUA = ['rencana_aksi'];
 
     /**
      * Pilihan cakupan unggahan: kunci → label.
@@ -92,6 +110,16 @@ final class BerkasMaster
                 if (isset($kunci[$calon])) {
                     $hasil[$jenis] = $kunci[$calon];
                     break;
+                }
+            }
+            if ($hasil[$jenis] === null) {
+                foreach (self::MENGANDUNG[$jenis] as $kata) {
+                    foreach ($kunci as $nama => $asli) {
+                        if (str_contains(str_replace('_', ' ', $nama), $kata) || str_contains($nama, $kata)) {
+                            $hasil[$jenis] = $asli;
+                            break 2;
+                        }
+                    }
                 }
             }
             if ($hasil[$jenis] === null && $cakupan !== self::SEMUA && count($lembar) === 1) {

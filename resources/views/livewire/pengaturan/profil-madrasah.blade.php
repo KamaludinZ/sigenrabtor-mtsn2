@@ -253,6 +253,60 @@
                     <p class="border-t border-stone-100 px-5 py-3 text-xs text-stone-500 sm:px-6">Selama nama pejabat leading belum diisi, kolom "Pembuat" memakai nama akun leading yang menyusun kegiatan.</p>
                 </section>
 
+                {{-- Tanggal dokumen lembar pengesahan per leading: dipakai kegiatan yang tanggal dokumennya sendiri kosong. --}}
+                @php
+                    $tanggalLeading = $this->tanggalDokumenLeading();
+                    $kunciTahun = $this->tahunTerkunci();
+                @endphp
+                <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-tanggal-dokumen" data-testid="tanggal-dokumen-leading">
+                    <header class="flex flex-col gap-3 border-b border-stone-100 px-5 py-4 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
+                        <div class="min-w-0">
+                            <h2 id="judul-tanggal-dokumen" class="text-base font-semibold text-stone-900">Tanggal dokumen lembar pengesahan</h2>
+                            <p class="mt-0.5 text-sm text-stone-500">"{{ $profil['kota'] ?? '[Kota]' }}, [tanggal]" di lembar pengesahan KAK/TOR &amp; RAB tiap leading · TA {{ $taPejabat }}. Kegiatan yang mengisi tanggal dokumennya sendiri di Data Kegiatan tetap memakai tanggal itu.</p>
+                        </div>
+                        @unless ($kunciTahun)
+                            <form wire:submit="isiTanggalSemua" class="flex shrink-0 flex-wrap items-start gap-2" data-testid="isi-tanggal-semua">
+                                <div>
+                                    <label for="tanggal-semua" class="sr-only">Tanggal untuk semua leading</label>
+                                    <input type="date" id="tanggal-semua" wire:model="tanggalSemua" min="{{ $taPejabat - 1 }}-01-01" max="{{ $taPejabat }}-12-31" class="form-input py-1.5 text-sm" data-testid="tanggal-semua">
+                                    @error('tanggalSemua') <p class="form-error">{{ $message }}</p> @enderror
+                                </div>
+                                <button type="submit" class="btn-secondary px-3 py-1.5 text-xs">Isi leading yang kosong</button>
+                                <button type="button" wire:click="isiTanggalSemua(true)" class="btn-ghost px-3 py-1.5 text-xs" data-testid="timpa-tanggal-semua">Terapkan ke semua</button>
+                            </form>
+                        @endunless
+                    </header>
+                    <ul class="divide-y divide-stone-100">
+                        @foreach ($tanggalLeading as $t)
+                            <li class="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-tanggal-leading="{{ $t['kode'] }}" data-tanggal="{{ $t['tanggal'] ?? '' }}" wire:key="tanggal-leading-{{ $t['kode'] }}-{{ $t['tanggal'] ?? 'kosong' }}">
+                                <div class="min-w-0">
+                                    <p class="text-sm"><span class="font-mono text-xs text-stone-400">{{ $t['kode'] }}</span> <span class="font-medium text-stone-800">{{ $t['nama_unit'] }}</span></p>
+                                    <p class="mt-0.5 text-xs text-stone-500">
+                                        @if ($t['tanggal'])
+                                            Tercetak: {{ $profil['kota'] ?? '[Kota]' }}, {{ $t['teks'] }}
+                                        @else
+                                            Belum diatur — memakai tanggal dokumen tiap kegiatan
+                                        @endif
+                                        @if ($t['kegiatan'] > 0)
+                                            · {{ $t['kegiatan'] }} kegiatan tanpa tanggal sendiri{{ $t['tanggal'] ? ' memakai tanggal ini' : '' }}
+                                        @endif
+                                    </p>
+                                    @error('tanggal_dokumen_'.$t['kode']) <p class="form-error">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <label for="tanggal-{{ $t['kode'] }}" class="sr-only">Tanggal dokumen {{ $t['kode'] }} {{ $t['nama_unit'] }}</label>
+                                    <input type="date" id="tanggal-{{ $t['kode'] }}" value="{{ $t['tanggal'] ?? '' }}" min="{{ $taPejabat - 1 }}-01-01" max="{{ $taPejabat }}-12-31"
+                                           wire:change="simpanTanggalDokumen('{{ $t['kode'] }}', $event.target.value)" @disabled($kunciTahun)
+                                           class="form-input py-1.5 text-sm disabled:opacity-60" data-testid="tanggal-dokumen-{{ $t['kode'] }}">
+                                    @if ($t['tanggal'] && ! $kunciTahun)
+                                        <button type="button" wire:click="simpanTanggalDokumen('{{ $t['kode'] }}', '')" class="btn-ghost p-1.5" aria-label="Kosongkan tanggal dokumen {{ $t['kode'] }}" data-testid="kosongkan-tanggal-{{ $t['kode'] }}"><x-ui.icon name="x" class="size-3.5" /></button>
+                                    @endif
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </section>
+
                 {{-- Perbandingan antar-tahun: siapa menjabat tiap tahun; "berganti" bila beda dari tahun sebelumnya. --}}
                 <section class="rounded-2xl bg-white shadow-xs ring-1 ring-stone-200" aria-labelledby="judul-pejabat-per-tahun" data-testid="pejabat-per-tahun">
                     <header class="border-b border-stone-100 px-5 py-4 sm:px-6">

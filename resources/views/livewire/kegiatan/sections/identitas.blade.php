@@ -87,8 +87,14 @@
                  placeholder="mis. dokumen perencanaan yang handal dan akurat sesuai kebutuhan riil madrasah."
                  hint="Wajib untuk dokumen lengkap. Tercetak sebagai: “Terwujudnya {sasaran}”." />
 
+    @php
+        // Kosong = lembar pengesahan memakai tanggal dokumen leading tahun ini (Pengaturan › Pejabat), bila diatur.
+        $tanggalLeadingDok = $form->leading ? \App\Support\Pengaturan\TanggalPengesahan::leading((string) $form->leading, $tahunDok) : null;
+    @endphp
     <x-ui.field label="Tanggal dokumen" for="tanggal_dokumen" error="form.tanggal_dokumen"
-                :hint="\App\Support\Format::tanggal($form->tanggal_dokumen) ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_dokumen) : 'Tanggal pada lembar pengesahan.'">
+                :hint="\App\Support\Format::tanggal($form->tanggal_dokumen)
+                    ? 'Tercetak: '.\App\Support\Format::tanggal($form->tanggal_dokumen).($tanggalLeadingDok ? ' (mengganti tanggal leading '.\App\Support\Format::tanggal($tanggalLeadingDok).')' : '')
+                    : ($tanggalLeadingDok ? 'Kosong — lembar pengesahan memakai tanggal dokumen leading: '.\App\Support\Format::tanggal($tanggalLeadingDok).' (diatur admin). Isi bila kegiatan ini bertanggal lain.' : 'Tanggal pada lembar pengesahan.')">
         <input type="date" id="tanggal_dokumen" wire:model.live="form.tanggal_dokumen" class="form-input"
                min="{{ $tahunDok - 1 }}-01-01" max="{{ $mulaiDok?->toDateString() ?? $tahunDok.'-12-31' }}"
                @error('form.tanggal_dokumen') aria-invalid="true" aria-describedby="tanggal_dokumen-error" @enderror>

@@ -73,6 +73,26 @@ class StubPejabatRepository implements PejabatRepository
         $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 
+    public function tanggalDokumen(int $tahun): array
+    {
+        $tersimpan = $this->baca()[(string) $tahun]['tanggal_dokumen'] ?? [];
+        $hasil = array_filter(is_array($tersimpan) ? $tersimpan : [], fn ($t) => is_string($t) && $t !== '');
+        uksort($hasil, 'version_compare');
+
+        return array_map('strval', $hasil);
+    }
+
+    public function simpanTanggalDokumen(int $tahun, string $kodeLeading, ?string $tanggal): void
+    {
+        $semua = $this->baca();
+        if ($tanggal === null || $tanggal === '') {
+            unset($semua[(string) $tahun]['tanggal_dokumen'][$kodeLeading]);
+        } else {
+            $semua[(string) $tahun]['tanggal_dokumen'][$kodeLeading] = $tanggal;
+        }
+        $this->disk()->put($this->berkas(), json_encode($semua, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
     /**
      * Jabatan bawaan tiap peran (nama & NIP kosong).
      *

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Master\IkskPerSk;
 use App\Support\Master\JenisKode;
+use App\Support\Master\RencanaAksi;
 use App\Support\MasterKode;
 use App\Support\Stub\StubData;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,9 @@ class AmbilMasterKode extends Controller
             ? IkskPerSk::pilihan((string) $request->query('sk'), $tahun)
             : JenisKode::baris($jenis, $tahun);
 
+        if ($jenis === 'rencana_aksi') {
+            $baris = RencanaAksi::baris($tahun);
+        }
         if ($jenis === 'edm') {
             $komponen = MasterKode::komponenEdm($tahun);
             $baris = array_map(fn (array $b) => $b + ['nama_komponen' => $komponen[$b['komponen']] ?? null], $baris);
@@ -33,7 +37,7 @@ class AmbilMasterKode extends Controller
 
         $cari = mb_strtolower(trim((string) $request->query('cari', '')));
         if ($cari !== '') {
-            $baris = array_values(array_filter($baris, fn (array $b) => str_contains(mb_strtolower(implode(' ', array_map('strval', $b))), $cari)));
+            $baris = array_values(array_filter($baris, fn (array $b) => str_contains(mb_strtolower((string) json_encode(array_values($b), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)), $cari)));
         }
 
         return response()->json([

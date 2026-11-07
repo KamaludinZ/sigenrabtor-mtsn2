@@ -79,7 +79,7 @@ class PratinjauIkskTest extends TestCase
             ['baris' => [4], 'kode' => 'IKSK 10.2', 'tampil' => ['kode_sk' => 'SK.10', 'uraian' => 'Uraian lain'], 'status' => 'gagal', 'pesan' => ['SK induk atau uraian berbeda dengan baris 2 untuk kode yang sama.']],
             ['baris' => [5], 'kode' => 'IKSK 10.9', 'tampil' => ['kode_sk' => 'SK.11', 'uraian' => 'Nomor tidak sejalan'], 'status' => null, 'pesan' => ['Nomor IKSK 10.9 tidak sejalan dengan SK induk SK.11 — periksa lagi.']],
             ['baris' => [7], 'kode' => 'IKSK 12.1', 'tampil' => ['kode_sk' => '', 'uraian' => 'Tanpa SK'], 'status' => 'gagal', 'pesan' => ['Kode SK induk kosong.']],
-            ['baris' => [8], 'kode' => 'IKSK.12', 'tampil' => ['kode_sk' => 'SK.12', 'uraian' => 'Kode salah'], 'status' => 'gagal', 'pesan' => ['Kode "IKSK.12" tidak berformat IKSK n.m (mis. IKSK 10.2).']],
+            ['baris' => [8], 'kode' => 'IKSK.12', 'tampil' => ['kode_sk' => 'SK.12', 'uraian' => 'Kode salah'], 'status' => 'gagal', 'pesan' => ['Kode "IKSK.12" tidak berformat kode IKSK (mis. IKSK 10.2 atau IKSK.1.2133.1).']],
             ['baris' => [9], 'kode' => 'IKSK 13.1', 'tampil' => ['kode_sk' => 'SK.13', 'uraian' => ''], 'status' => 'gagal', 'pesan' => ['Uraian IKSK kosong.']],
         ], $baris);
 

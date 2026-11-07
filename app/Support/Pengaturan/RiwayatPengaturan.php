@@ -36,6 +36,7 @@ final class RiwayatPengaturan
         'ubah_pejabat' => ['Ubah pejabat penanda tangan', 'madrasah'],
         'salin_pejabat' => ['Salin pejabat dari tahun lain', 'madrasah'],
         'ubah_mengetahui' => ['Ubah blok Mengetahui', 'madrasah'],
+        'ubah_tanggal_dokumen' => ['Ubah tanggal dokumen leading', 'madrasah'],
         'ubah_dasar_hukum' => ['Ubah dasar hukum', 'madrasah'],
         'ubah_latar_belakang' => ['Ubah latar belakang baku', 'madrasah'],
         'ubah_sk_rktm' => ['Ubah SK RKTM/RKAM', 'madrasah'],
@@ -58,6 +59,7 @@ final class RiwayatPengaturan
         'ubah_simulasi_ai' => ['Ubah simulasi kegagalan AI', 'ai'],
         'unggah_master_kode' => ['Unggah master kode', 'master'],
         'salin_master_kode' => ['Salin master kode dari tahun lain', 'master'],
+        'ubah_tag_rencana_aksi' => ['Ubah tag rencana aksi', 'master'],
         'salin_pengaturan_tahun' => ['Salin pengaturan dari tahun lain', 'tahun'],
     ];
 

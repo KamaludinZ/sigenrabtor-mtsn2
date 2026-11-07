@@ -25,14 +25,15 @@ class UnggahMasterTest extends TestCase
 
     public function test_aturan_cakupan_pengenalan_sheet_dan_ukuran(): void
     {
-        $this->assertSame(['semua', 'sk', 'iksk', 'rktm', 'edm', 'budaya'], array_keys(BerkasMaster::cakupan()));
-        $this->assertSame(['sk', 'iksk', 'rktm', 'edm', 'budaya'], BerkasMaster::jenisUntuk('semua'));
+        $this->assertSame(['semua', 'sk', 'iksk', 'rktm', 'edm', 'budaya', 'rencana_aksi'], array_keys(BerkasMaster::cakupan()));
+        $this->assertSame(['sk', 'iksk', 'rktm', 'edm', 'budaya', 'rencana_aksi'], BerkasMaster::jenisUntuk('semua'));
         $this->assertSame(['rktm'], BerkasMaster::jenisUntuk('rktm'));
 
         $lembar = BerkasMaster::lembar(base_path('tests/fixtures/master-kode-contoh.xlsx'), 'master.xlsx');
         $this->assertSame(['Perkin', 'SNP', 'EDM', '5 Budaya Mutu'], $lembar);
-        $this->assertSame(['sk' => 'Perkin', 'iksk' => 'Perkin', 'rktm' => 'SNP', 'edm' => 'EDM', 'budaya' => '5 Budaya Mutu'], BerkasMaster::kenali($lembar, 'semua'));
-        $this->assertSame(['sk' => 'Perkin', 'iksk' => 'Perkin', 'rktm' => 'Kode RKTM', 'edm' => null, 'budaya' => ' budaya  mutu '], BerkasMaster::kenali(['Perkin', 'Kode RKTM', ' budaya  mutu '], 'semua'));
+        $this->assertSame(['sk' => 'Perkin', 'iksk' => 'Perkin', 'rktm' => 'SNP', 'edm' => 'EDM', 'budaya' => '5 Budaya Mutu', 'rencana_aksi' => 'Perkin'], BerkasMaster::kenali($lembar, 'semua'));
+        $this->assertSame(['sk' => 'Perkin', 'iksk' => 'Perkin', 'rktm' => 'Kode RKTM', 'edm' => null, 'budaya' => ' budaya  mutu ', 'rencana_aksi' => 'Perkin'], BerkasMaster::kenali(['Perkin', 'Kode RKTM', ' budaya  mutu '], 'semua'));
+        $this->assertSame(['sk' => 'Perkin 2026', 'iksk' => 'Perkin 2026', 'rktm' => '5BM_SNP', 'edm' => '5BM_SNP', 'budaya' => null, 'rencana_aksi' => 'Perkin 2026'], BerkasMaster::kenali(['5BM_SNP', 'Perkin 2026', '8SNP'], 'semua'), 'Nama yang mengandung kata sheet-nya.');
         $this->assertSame(['rktm' => 'Lembar1'], BerkasMaster::kenali(['Lembar1'], 'rktm'), 'Satu jenis dari berkas satu sheet memakai sheet itu.');
         $this->assertSame(['rktm' => null], BerkasMaster::kenali(['Lembar1', 'Lembar2'], 'rktm'));
         $this->assertSame(['CSV'], BerkasMaster::lembar('/tidak/dipakai.csv', 'rktm.csv'));
@@ -99,7 +100,7 @@ class UnggahMasterTest extends TestCase
             ->assertSet('cakupan', 'semua');
 
         $komponen->set('berkas', $this->berkas('master-kode-asing.xlsx'))
-            ->assertSet('galat', 'Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK & IKSK), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.')
+            ->assertSet('galat', 'Tidak ada sheet yang dikenali. Beri nama sheet Perkin (SK, IKSK, & Rencana Aksi), SNP (RKTM), EDM, dan 5 Budaya Mutu seperti template.')
             ->assertSeeHtml('data-jenis="sk" data-dikenali="tidak"');
 
         $komponen->set('berkas', UploadedFile::fake()->create('master.pdf', 10, 'application/pdf'))

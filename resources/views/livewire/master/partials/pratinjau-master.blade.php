@@ -99,7 +99,7 @@
                                 @if ($kolomLain !== [])
                                     <p class="mt-0.5 text-xs text-stone-600">
                                         @foreach ($kolomLain as $k => $label)
-                                            <span class="mr-2 inline-block" data-kolom="{{ $k }}">{{ $label }}: <span class="font-medium">{{ ($b['tampil'][$k] ?? '') !== '' ? $b['tampil'][$k] : '—' }}</span></span>
+                                            <span class="mr-2 inline-block" data-kolom="{{ $k }}">{{ $label }}: <span class="font-medium">{{ ($b['tampil'][$k] ?? '') === '' ? '—' : (str_starts_with($k, 'pagu_') ? \App\Support\Format::rupiah((int) $b['tampil'][$k]) : $b['tampil'][$k]) }}</span></span>
                                         @endforeach
                                     </p>
                                 @endif

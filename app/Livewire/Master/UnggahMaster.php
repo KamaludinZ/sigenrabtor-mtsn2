@@ -316,7 +316,7 @@ class UnggahMaster extends Component
         foreach (BerkasMaster::jenisUntuk($this->cakupan) as $jenis) {
             $kode = count(JenisKode::baris($jenis, $this->tahun));
             if ($kode > 0) {
-                $hasil[$jenis] = ['kode' => $kode, 'kegiatan' => array_sum(JenisKode::pemakaian($jenis, $kegiatan))];
+                $hasil[$jenis] = ['kode' => $kode, 'kegiatan' => array_sum(JenisKode::pemakaian($jenis, $kegiatan, $this->tahun))];
             }
         }
 

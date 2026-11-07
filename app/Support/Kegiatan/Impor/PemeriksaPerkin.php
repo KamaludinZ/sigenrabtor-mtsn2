@@ -3,6 +3,7 @@
 namespace App\Support\Kegiatan\Impor;
 
 use App\Support\Kegiatan\KodeHilang;
+use App\Support\Master\FormatKode;
 use App\Support\Master\IkskPerSk;
 use App\Support\Master\Impor\PemeriksaIksk;
 use App\Support\Master\Impor\PemeriksaSk;
@@ -138,10 +139,10 @@ final class PemeriksaPerkin
         $hasil = ['sk' => null, 'iksk' => null, 'gagal' => [], 'peringatan' => [], 'sk_induk' => false, 'dikosongkan' => []];
 
         if ($teksSk !== '' && $kodeSk === null) {
-            $hasil['gagal'][] = "Kode SK \"{$teksSk}\" tidak berformat SK.n (mis. SK.10).";
+            $hasil['gagal'][] = "Kode SK \"{$teksSk}\" tidak berformat kode SK (mis. ".FormatKode::CONTOH_SK.').';
         }
         if ($teksIksk !== '' && $kodeIksk === null) {
-            $hasil['gagal'][] = "Kode IKSK \"{$teksIksk}\" tidak berformat IKSK n.m (mis. IKSK 10.2).";
+            $hasil['gagal'][] = "Kode IKSK \"{$teksIksk}\" tidak berformat kode IKSK (mis. ".FormatKode::CONTOH_IKSK.').';
         }
         if ($hasil['gagal'] !== []) {
             return $hasil;

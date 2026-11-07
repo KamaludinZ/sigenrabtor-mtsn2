@@ -9,6 +9,7 @@ use App\Support\Kegiatan\KalimatKak;
 use App\Support\Kegiatan\MatrikTahapan;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PejabatBerlaku;
+use App\Support\Pengaturan\TanggalPengesahan;
 use App\Support\Pengaturan\TeksBakuTercetak;
 use App\Support\Rab\AnggaranKegiatan;
 use App\Support\Stub\StubData;
@@ -25,7 +26,7 @@ final class NilaiVariabel
     public const ASAL = [
         'nama_kegiatan' => 'Data Kegiatan › Nama kegiatan',
         'nama_kegiatan_cover' => 'Data Kegiatan › Nama kegiatan',
-        'tanggal_dokumen' => 'Data Kegiatan › Tanggal dokumen',
+        'tanggal_dokumen' => 'Data Kegiatan › Tanggal dokumen (kosong = tanggal leading di Pengaturan › Pejabat)',
         'tanggal_laporan' => 'Data Kegiatan › Pelaksanaan',
         'tujuan' => 'Data Kegiatan › Tujuan',
         'sasaran' => 'Data Kegiatan › Sasaran',
@@ -79,7 +80,7 @@ final class NilaiVariabel
             'tahun_anggaran' => (string) $tahun,
             'nama_kegiatan' => $nama,
             'nama_kegiatan_cover' => $teks('nama_kegiatan_cover') ?? ($nama ? mb_strtoupper($nama) : null),
-            'tanggal_dokumen' => Format::tanggal($kegiatan['tanggal_dokumen'] ?? null),
+            'tanggal_dokumen' => Format::tanggal(TanggalPengesahan::tanggal($kegiatan, $tahun)),
             'tanggal_laporan' => Format::tanggal($kegiatan['tanggal_laporan'] ?? null),
             'tujuan' => $teks('tujuan'),
             'sasaran' => $teks('sasaran'),

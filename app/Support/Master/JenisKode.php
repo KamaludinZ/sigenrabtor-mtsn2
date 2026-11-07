@@ -3,10 +3,12 @@
 namespace App\Support\Master;
 
 use App\Support\MasterKode;
+use App\Support\Stub\StubData;
 
 /**
- * Lima jenis master kode per tahun anggaran (PRD F7, §14): label, asal di Excel, kolom kegiatan yang memakainya, serta
- * baris & jumlahnya dari MasterKode. Dipakai halaman Master Kode (tab per jenis) dan kelak unggah Excel.
+ * Jenis master kode per tahun anggaran (PRD F7, §14) — lima kode yang dipilih kegiatan (SK, IKSK, RKTM, EDM, 5 Budaya
+ * Mutu) dan Rencana Aksi cascade Perkin (bertag kode-kode itu): label, asal di Excel, kolom kegiatan yang memakainya,
+ * serta baris & jumlahnya dari MasterKode. Dipakai halaman Master Kode (tab per jenis) dan unggah Excel.
  */
 final class JenisKode
 {
@@ -17,7 +19,11 @@ final class JenisKode
         'rktm' => ['label' => 'RKTM', 'judul' => 'Rencana Kerja Tahunan Madrasah (RKTM)', 'asal' => 'Sheet SNP — standar, kegiatan, dan sub kegiatan.', 'kolom_kegiatan' => 'kode_rktm', 'kunci' => 'kode'],
         'edm' => ['label' => 'EDM', 'judul' => 'Indikator Evaluasi Diri Madrasah (EDM)', 'asal' => 'Kode indikator (A1, B3, C1, …) & uraian, dikelompokkan per komponen.', 'kolom_kegiatan' => 'kode_edm', 'kunci' => 'kode'],
         'budaya' => ['label' => '5 Budaya Mutu', 'judul' => '5 Budaya Mutu', 'asal' => 'Daftar butir budaya mutu yang dipilih per kegiatan.', 'kolom_kegiatan' => 'budaya_mutu', 'kunci' => 'nomor'],
+        'rencana_aksi' => ['label' => 'Rencana Aksi', 'judul' => 'Rencana Aksi (cascade Perkin)', 'asal' => 'Sheet Perkin — rencana aksi per IKSK dengan kode RKTM, unit penerima mandat, anggaran, dan bulan; tag EDM otomatis dari relasi EDM ↔ RKTM.', 'kolom_kegiatan' => 'nama_kegiatan', 'kunci' => 'kode'],
     ];
+
+    /** Jenis yang dipilih langsung di isian kode kegiatan (selain Rencana Aksi). */
+    public const KODE_KEGIATAN = ['sk', 'iksk', 'rktm', 'edm', 'budaya'];
 
     /**
      * Baris master jenis $jenis tahun $tahun (bentuk sama dengan MasterKode).
@@ -32,6 +38,7 @@ final class JenisKode
             'rktm' => MasterKode::kodeRktm($tahun),
             'edm' => MasterKode::kodeEdm($tahun),
             'budaya' => MasterKode::budayaMutu($tahun),
+            'rencana_aksi' => MasterKode::rencanaAksi($tahun),
         };
     }
 
@@ -48,11 +55,16 @@ final class JenisKode
     /**
      * Banyaknya kegiatan yang memakai tiap kode jenis $jenis.
      *
+     * Rencana Aksi: kegiatan yang namanya sama dengan rencana aksi tahun $tahun (RencanaAksi::pemakaian).
+     *
      * @param  iterable<array<string, mixed>>  $kegiatan
      * @return array<string, int> Kode (atau nomor) → jumlah kegiatan.
      */
-    public static function pemakaian(string $jenis, iterable $kegiatan): array
+    public static function pemakaian(string $jenis, iterable $kegiatan, ?int $tahun = null): array
     {
+        if ($jenis === 'rencana_aksi') {
+            return RencanaAksi::pemakaian($kegiatan, $tahun ?? StubData::tahunAktif()['tahun']);
+        }
         $kolom = self::DAFTAR[$jenis]['kolom_kegiatan'];
         $jumlah = [];
         foreach ($kegiatan as $k) {
