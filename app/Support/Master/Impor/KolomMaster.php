@@ -23,7 +23,7 @@ final class KolomMaster
     public const KOLOM = [
         'sk' => ['kode' => ['Kode SK', true, null], 'uraian' => ['Uraian SK', true, 1000]],
         'iksk' => ['kode' => ['Kode IKSK', true, null], 'kode_sk' => ['Kode SK', true, null], 'uraian' => ['Uraian IKSK', true, 1000]],
-        'rktm' => ['kode' => ['Kode', true, null], 'snp' => ['SNP', true, 300], 'kegiatan' => ['Kegiatan', true, 500], 'sub_kegiatan' => ['Sub Kegiatan', true, 1000]],
+        'rktm' => ['kode' => ['Kode', true, null], 'snp' => ['SNP', false, 300], 'kegiatan' => ['Kegiatan', false, 500], 'sub_kegiatan' => ['Sub Kegiatan', true, 1000]],
         'edm' => ['kode' => ['Kode', true, null], 'uraian' => ['Uraian', true, 1000], 'komponen' => ['Komponen', false, 100], 'rktm' => ['Kode RKTM', false, null]],
         'budaya' => ['nomor' => ['No', false, null], 'nama' => ['Budaya Mutu', true, 150]],
         'rencana_aksi' => [
@@ -38,6 +38,8 @@ final class KolomMaster
 
     /** Kolom opsional yang tidak ada → catatan bawaan yang dipakai. */
     private const BAWAAN_OPSIONAL = [
+        'rktm.snp' => 'SNP diambil dari baris judul standar (mis. "PENGEMBANGAN STANDAR ISI") atau master',
+        'rktm.kegiatan' => 'nama kegiatan diambil dari kode n.n yang sama di berkas atau master',
         'edm.komponen' => 'nama komponen memakai master tahun itu',
         'edm.rktm' => false, // Relasi EDM ↔ RKTM opsional: tanpa kolom ini relasi master tetap (tanpa catatan).
         'budaya.nomor' => 'nomor mengikuti urutan baris',

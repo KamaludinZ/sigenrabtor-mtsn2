@@ -26,6 +26,12 @@
 @endphp
 
 <div class="mt-4 border-t border-stone-100" data-testid="rencana-aksi">
+    @if ($bisaUbah && ($rktmAsing = $this->jumlahRktmAsing()) > 0)
+        <div class="flex flex-col gap-2 border-b border-gold-200 bg-gold-50 px-5 py-3 text-sm text-gold-900 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-testid="rktm-asing-ra">
+            <p class="flex items-start gap-2"><x-ui.icon name="alert" class="mt-0.5 size-4 shrink-0" /> {{ $rktmAsing }} rencana aksi bertag kode RKTM yang tidak ada di master TA {{ $this->tahunDilihat() }} — kode RKTM berganti tiap tahun.</p>
+            <button type="button" wire:click="sesuaikanRktm" wire:loading.attr="disabled" wire:target="sesuaikanRktm" class="btn-secondary shrink-0 px-3 py-1.5 text-xs" data-testid="sesuaikan-rktm"><x-ui.icon name="sparkles" class="size-3.5" /> Sesuaikan otomatis</button>
+        </div>
+    @endif
     <ul class="divide-y divide-stone-100">
         @foreach ($baris as $ra)
             @php
@@ -121,6 +127,12 @@
                                     @endif
                                 </select>
                                 @error('isianTag.kode_leading') <p class="form-error">{{ $message }}</p> @enderror
+                                @if (filled($ra['unit'] ?? null) && ($unitSama = $this->jumlahUnitSama($ra['kode'])) > 0)
+                                    <label class="mt-1.5 flex items-start gap-2 text-xs text-stone-600">
+                                        <input type="checkbox" wire:model="isianTag.semua_unit" class="mt-0.5 size-3.5 rounded accent-brand-700" data-testid="tag-semua-unit">
+                                        Terapkan juga ke {{ $unitSama }} rencana aksi lain unit “{{ $ra['unit'] }}” (diingat untuk unggahan berikutnya)
+                                    </label>
+                                @endif
                             </div>
                         </div>
 

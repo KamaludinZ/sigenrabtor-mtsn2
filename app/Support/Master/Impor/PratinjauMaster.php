@@ -7,7 +7,9 @@ use App\Support\Impor\GagalBacaImpor;
 use App\Support\Impor\LembarExcel;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\JenisKode;
+use App\Support\Master\PetaRktm;
 use App\Support\Master\RencanaAksi;
+use App\Support\Master\SalinMasterKode;
 use App\Support\MasterKode;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -57,6 +59,12 @@ final class PratinjauMaster
                 $buku ??= LembarExcel::buka($path, $namaAsli)->getParent();
                 $lembar = $buku?->getSheetByName($namaSheet) ?? LembarExcel::buka($path, $namaAsli, $namaSheet);
                 [$lembar, $baca] = self::bacaLembar($lembar, $jenis, $tahun);
+                if ($jenis === 'rktm') {
+                    [$baca, $tambahan] = self::gabungSheetRktm($lembar, $baca, $tahun);
+                    foreach ($tambahan as $nama => $n) {
+                        $item['peringatan'][] = "{$n} kode RKTM dilengkapi dari sheet {$nama} (tidak ada di sheet {$lembar->getTitle()}).";
+                    }
+                }
                 if ($baca === [] && in_array($jenis, $opsional, true)) {
                     continue; // Jenis opsional tanpa satu baris pun di berkas (mis. sheet Perkin tanpa rencana aksi): tidak diubah.
                 }
@@ -67,6 +75,9 @@ final class PratinjauMaster
                 $item['baris'] = $jenis === 'rencana_aksi'
                     ? self::bandingkanRencanaAksi($baca, $tahun, $kegiatan)
                     : self::bandingkan($baca, $jenis, $tahun, JenisKode::pemakaian($jenis, $kegiatan, $tahun));
+                if ($jenis === 'rktm') {
+                    $item['baris'] = self::tandaiPindahRktm($item['baris']);
+                }
                 $item['peringatan'] = [...$item['peringatan'], ...KolomMaster::opsionalHilang(KolomMaster::judul($lembar, $jenis), $jenis)];
                 if ($jenis === 'rencana_aksi' && count($item['baris']) > RencanaAksi::MAKS) {
                     $item['peringatan'][] = 'Lebih dari '.RencanaAksi::MAKS.' rencana aksi — bagi menjadi beberapa tahun/berkas.';
@@ -106,7 +117,11 @@ final class PratinjauMaster
      */
     private static function bacaLembar(Worksheet $lembar, string $jenis, int $tahun): array
     {
-        $baca = fn ($l) => $jenis === 'edm' ? PemeriksaEdm::baca($l, MasterKode::komponenEdm($tahun)) : self::PEMBACA[$jenis]::baca($l);
+        $baca = fn ($l) => match ($jenis) {
+            'edm' => PemeriksaEdm::baca($l, MasterKode::komponenEdm($tahun)),
+            'rktm' => PemeriksaRktm::baca($l, self::rujukanRktm($tahun)),
+            default => self::PEMBACA[$jenis]::baca($l),
+        };
         try {
             return [$lembar, $baca($lembar)];
         } catch (GagalPratinjauMaster $e) {
@@ -128,6 +143,87 @@ final class PratinjauMaster
             }
             throw $e;
         }
+    }
+
+    /**
+     * Kode RKTM master yang hilang padahal nama sub kegiatannya ada di berkas dengan kode baru (penomoran ulang tahunan):
+     * baris hilang diberi saran kode penggantinya, baris baru diberi kode sebelumnya (PetaRktm::banding).
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @return list<array<string, mixed>>
+     */
+    public static function tandaiPindahRktm(array $baris): array
+    {
+        $ambil = fn (string $status) => array_values(array_map(
+            fn (array $b) => ['kode' => (string) $b['kode'], 'sub_kegiatan' => (string) $b['tampil']['sub_kegiatan']],
+            array_filter($baris, fn (array $b) => $b['status'] === $status),
+        ));
+        $pindah = PetaRktm::banding($ambil('hilang'), $ambil('baru'))['pindah'];
+        $keBaru = array_column($pindah, 'baru', 'lama');
+        $keLama = array_column($pindah, 'lama', 'baru');
+        foreach ($baris as $i => $b) {
+            if ($b['status'] === 'hilang' && isset($keBaru[$b['kode']])) {
+                $baris[$i]['pindah'] = $keBaru[$b['kode']];
+                $baris[$i]['pesan'][] = "Kemungkinan berganti kode menjadi {$keBaru[$b['kode']]} (nama sub kegiatan sama)".($b['dipakai'] > 0 ? ' — kegiatan pemakainya akan disarankan memakai kode itu.' : '.');
+            } elseif ($b['status'] === 'baru' && isset($keLama[$b['kode']])) {
+                $baris[$i]['pindah'] = $keLama[$b['kode']];
+                $baris[$i]['pesan'][] = "Sebelumnya kode {$keLama[$b['kode']]}.";
+            }
+        }
+
+        return $baris;
+    }
+
+    /**
+     * Master RKTM rujukan untuk melengkapi SNP & kegiatan yang tidak ditulis: tahun itu lalu tahun bermaster sebelumnya.
+     *
+     * @return list<array{kode: string, snp: string, kegiatan: string, sub_kegiatan: string}>
+     */
+    public static function rujukanRktm(int $tahun): array
+    {
+        $sebelum = SalinMasterKode::sumber($tahun);
+
+        return [...MasterKode::kodeRktm($tahun), ...($sebelum !== null ? MasterKode::kodeRktm($sebelum) : [])];
+    }
+
+    /**
+     * Gabungkan kode RKTM dari sheet RKTM lain di berkas yang sama (mis. 5BM_SNP hanya memuat kode yang terkait EDM,
+     * 8SNP memuat semua kode per leading): kode yang belum ada di sheet utama ditambahkan, lalu SNP & kegiatannya
+     * dilengkapi ulang dari seluruh baris (PemeriksaRktm::lengkapi).
+     *
+     * @param  list<array<string, mixed>>  $baris
+     * @return array{0: list<array<string, mixed>>, 1: array<string, int>} Baris gabungan & sheet → jumlah kode tambahan.
+     */
+    private static function gabungSheetRktm(Worksheet $utama, array $baris, int $tahun): array
+    {
+        $buku = $utama->getParent();
+        if ($buku === null) {
+            return [$baris, []];
+        }
+        $ada = array_flip(array_column($baris, 'kode'));
+        $tambahan = [];
+        foreach ($buku->getAllSheets() as $lain) {
+            $nama = mb_strtolower(str_replace('_', ' ', $lain->getTitle()));
+            $calon = in_array($nama, BerkasMaster::LEMBAR['rktm'], true) || collect(BerkasMaster::MENGANDUNG['rktm'])->contains(fn (string $k) => str_contains($nama, $k));
+            if ($lain === $utama || ! $calon) {
+                continue;
+            }
+            try {
+                $isi = PemeriksaRktm::baca($lain);
+            } catch (GagalPratinjauMaster) {
+                continue;
+            }
+            foreach ($isi as $b) {
+                if ($b['status'] !== 'gagal' && ! isset($ada[$b['kode']])) {
+                    $b['pesan'] = ["Dari sheet {$lain->getTitle()} baris {$b['baris'][0]}."];
+                    $baris[] = $b;
+                    $ada[$b['kode']] = true;
+                    $tambahan[$lain->getTitle()] = ($tambahan[$lain->getTitle()] ?? 0) + 1;
+                }
+            }
+        }
+
+        return [$tambahan === [] ? $baris : PemeriksaRktm::lengkapi($baris, self::rujukanRktm($tahun)), $tambahan];
     }
 
     /**
@@ -161,6 +257,16 @@ final class PratinjauMaster
             'bulan' => implode(', ', array_map('intval', (array) ($ra['bulan'] ?? []))),
         ];
 
+        // Unit yang belum cocok dengan leading memakai leading yang sudah diberikan admin untuk unit itu.
+        $belajar = function (array $b) use ($tahun): array {
+            if ($b['tampil']['leading'] === '' && $b['tampil']['unit'] !== '' && ($leading = RencanaAksi::leadingDariUnit($b['tampil']['unit'], $tahun)) !== null) {
+                $b['tampil']['leading'] = $leading;
+                $b['pesan'] = [...array_values(array_filter($b['pesan'], fn (string $p) => ! str_starts_with($p, 'Unit '))),
+                    "Leading {$leading} mengikuti rencana aksi lain ber-unit \"{$b['tampil']['unit']}\"."];
+            }
+
+            return $b;
+        };
         $dipakaiLama = [];
         $hasil = [];
         foreach ($baris as $b) {
@@ -182,6 +288,7 @@ final class PratinjauMaster
                 $i = null;
             }
             if ($i === null) {
+                $b = $belajar($b);
                 $b['status'] = 'baru';
                 $hasil[] = $b;
 
@@ -197,6 +304,7 @@ final class PratinjauMaster
                         && ! ($tag === 'kode_rktm' && str_starts_with($p, 'Tanpa kode RKTM'))));
                 }
             }
+            $b = $belajar($b);
             $b['cocok'] = $lama[$i]['kode'];
             $b['status'] = $sebelum === $b['tampil'] ? 'tetap' : 'berubah';
             $b['lama'] = $b['status'] === 'berubah' ? $sebelum : null;

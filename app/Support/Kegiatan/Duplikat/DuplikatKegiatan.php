@@ -16,6 +16,7 @@ use App\Support\Kegiatan\KodeHilang;
 use App\Support\Kegiatan\RiwayatStatus;
 use App\Support\Kegiatan\TahunKegiatan;
 use App\Support\Master\IkskPerSk;
+use App\Support\Master\PetaRktm;
 use App\Support\MasterKode;
 use App\Support\Pagu\DataPagu;
 use App\Support\Pengaturan\TautanAkunLeading;
@@ -34,7 +35,7 @@ final class DuplikatKegiatan
         'tahun' => ['Tahun anggaran', 'Menjadi TA {tahun}; cover, judul, dasar hukum, dan tanggal mengikuti tahun itu.'],
         'status' => ['Status', 'Dimulai sebagai Draf — riwayat pemeriksaan, arsip final, dan kunci tidak ikut.'],
         'pejabat' => ['Penanda tangan', 'Memakai pejabat TA {tahun} (Kepala, Ketua Komite, pejabat leading).'],
-        'kode' => ['Kode master', 'Dicocokkan ke master TA {tahun}; kode yang tidak ada lagi dikosongkan untuk dipilih ulang.'],
+        'kode' => ['Kode master', 'Dicocokkan ke master TA {tahun}; kode RKTM yang berganti nomor mengikuti nama sub kegiatannya, kode lain yang tidak ada lagi dikosongkan untuk dipilih ulang.'],
         'jadwal' => ['Tanggal & jadwal', 'Tanggal mulai, laporan, dan dokumen digeser ke tahun {tahun}; bulan jadwal & matrik tetap.'],
         'anggaran' => ['Pagu & RAB', 'Rincian RAB disalin; pagu diambil dari Data Pagu TA {tahun} bila namanya sama.'],
     ];
@@ -68,6 +69,13 @@ final class DuplikatKegiatan
         // Kode yang tidak ada di master tahun aktif dikosongkan; kode lamanya dicatat sebagai penanda (KodeHilang).
         $data['kode_hilang'] = [];
         foreach (KodeHilang::tidakAdaDi($data, $tahun) as ['kolom' => $kolom, 'label' => $label, 'kode' => $kode]) {
+            // Kode RKTM yang dinomori ulang: pakai kode bernama sub kegiatan sama di master tahun aktif (PetaRktm).
+            if ($kolom === 'kode_rktm' && ($pengganti = PetaRktm::pengganti($kode, $tahun, TahunKegiatan::dari($kegiatan))) !== null) {
+                $data[$kolom] = $pengganti;
+                $catatan[] = ['jenis' => 'kode', 'teks' => "{$label} {$kode} TA ".TahunKegiatan::dari($kegiatan)." menjadi {$pengganti} di TA {$tahun} (nama sub kegiatan sama)."];
+
+                continue;
+            }
             $data[$kolom] = null;
             $data['kode_hilang'][$kolom] = KodeHilang::catatan($kode, 'duplikat', TahunKegiatan::dari($kegiatan));
             $catatan[] = ['jenis' => 'kode', 'teks' => "{$label} {$kode} tidak ada di master TA {$tahun} — pilih ulang."];

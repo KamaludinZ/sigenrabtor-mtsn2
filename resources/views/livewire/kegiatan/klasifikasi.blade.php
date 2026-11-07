@@ -85,7 +85,7 @@
     @endif
 
     <x-kode.status-kelengkapan :status="$this->statusKode" class="mt-4" />
-    <x-kode.penanda-hilang :hilang="$kodeHilang" class="mt-4" />
+    <x-kode.penanda-hilang :hilang="$kodeHilang" :aksi="$bisaUbah ? 'pakaiPengganti' : null" class="mt-4" />
 
     @if ($bentrok)
         <div class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-900 ring-1 ring-red-200" role="alert" data-testid="banner-bentrok">

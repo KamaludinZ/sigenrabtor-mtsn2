@@ -283,6 +283,21 @@ class Klasifikasi extends Component
         return KodeHilang::dari(array_merge($this->dataKegiatan, RingkasanKode::nilaiBaku($this->form->dataUntukDisimpan())));
     }
 
+    /** Pakai kode RKTM pengganti (KodeHilang `pengganti`, nama sub kegiatan sama) — belum tersimpan sampai Simpan. */
+    public function pakaiPengganti(string $kolom, string $kode): void
+    {
+        $this->pastikanDapatDiedit();
+        if ($kolom !== 'kode_rktm' || MasterKode::cari(MasterKode::kodeRktm($this->tahunMaster), $kode) === null) {
+            return;
+        }
+        $lama = $this->form->kode_rktm;
+        $this->form->kode_rktm = $kode;
+        $this->adaPerubahan = $this->isianBerubah() !== [];
+        $this->resetErrorBag('form.kode_rktm');
+        unset($this->saranRencanaAksi);
+        $this->dispatch('notify', message: "Kode RKTM {$lama} diganti {$kode} (nama sub kegiatan sama) — periksa lalu simpan.", type: 'success');
+    }
+
     /**
      * Rencana aksi master tahun kegiatan yang cocok (nama sama, lalu kode RKTM terpilih sama) — tag kodenya bisa diisikan
      * sekaligus (RencanaAksi::untukKegiatan), maks. 3.

@@ -65,11 +65,14 @@ class PratinjauRktmTest extends TestCase
         $this->assertSame(['Kode RKTM kosong.'], $baris[7]['pesan']);
 
         $kosong = PemeriksaRktm::baca($this->lembar([self::JUDUL, ['1.1.1', '', '', 'Tanpa SNP & kegiatan']]));
-        $this->assertSame(['Standar (SNP) kosong.', 'Kegiatan kosong.'], $kosong[0]['pesan']);
+        $this->assertSame('gagal', $kosong[0]['status']);
+        $this->assertSame(['Nama kegiatan 1.1 belum ada di berkas maupun master — tercetak "Kegiatan 1.1"; isi kolom Kegiatan bila perlu.', 'Standar (SNP) kosong.'], $kosong[0]['pesan']);
+        $rujukan = PemeriksaRktm::baca($this->lembar([self::JUDUL, ['1.1.1', '', '', 'Tanpa SNP & kegiatan']]), [['kode' => '1.1.9', 'snp' => 'STANDAR ISI', 'kegiatan' => 'Kurikulum', 'sub_kegiatan' => 'x']]);
+        $this->assertSame([null, ['sub_kegiatan' => 'Tanpa SNP & kegiatan', 'kegiatan' => 'Kurikulum', 'snp' => 'STANDAR ISI'], ['snp' => 'rujukan', 'kegiatan' => 'rujukan']], [$rujukan[0]['status'], $rujukan[0]['tampil'], $rujukan[0]['asal']], 'SNP & kegiatan dari master rujukan (n.n sama).');
 
         $this->expectException(GagalPratinjauMaster::class);
-        $this->expectExceptionMessage('Kolom wajib "SNP" dan "Kegiatan" tidak ditemukan di baris judul sheet SNP (baris 1) — judul yang dikenali SNP: "snp", "standar snp", "standar nasional pendidikan"; Kegiatan: "kegiatan", "program".');
-        PemeriksaRktm::baca($this->lembar([['Kode', 'Uraian'], ['1.1.1', 'x']]));
+        $this->expectExceptionMessage('Kolom wajib "Sub Kegiatan" tidak ditemukan di baris judul sheet SNP (baris 1) — judul yang dikenali Sub Kegiatan: "sub kegiatan", "subkegiatan", "uraian sub kegiatan".');
+        PemeriksaRktm::baca($this->lembar([['Kode', 'Catatan'], ['1.1.1', 'x']]));
     }
 
     public function test_bandingkan_dan_tampil_di_komponen(): void

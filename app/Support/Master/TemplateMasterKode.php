@@ -44,8 +44,10 @@ final class TemplateMasterKode
     /**
      * @throws InvalidArgumentException Cakupan tidak dikenal.
      */
-    public static function buat(int $tahun, string $cakupan = BerkasMaster::SEMUA, bool $isi = false): Spreadsheet
+    public static function buat(int $tahun, string $cakupan = BerkasMaster::SEMUA, bool $isi = false, ?int $dari = null): Spreadsheet
     {
+        // Titik awal tahun baru: isi master tahun $dari (kode RKTM dll. biasanya berubah — sunting lalu unggah ke $tahun).
+        $sumber = $isi ? ($dari ?? $tahun) : $tahun;
         if (! array_key_exists($cakupan, BerkasMaster::cakupan())) {
             throw new InvalidArgumentException("Cakupan template [{$cakupan}] tidak dikenal.");
         }
@@ -53,16 +55,16 @@ final class TemplateMasterKode
 
         $buku = new Spreadsheet;
         $buku->getProperties()->setCreator('SIRABTOR')->setTitle("Master kode TA {$tahun}")->setDescription('Template master kode — unggah di Master Kode.');
-        self::petunjuk($buku->getActiveSheet(), $tahun, $sheet);
+        self::petunjuk($buku->getActiveSheet(), $tahun, $sheet, $isi && $dari !== null && $dari !== $tahun ? $dari : null);
         foreach ($sheet as $nama) {
             $lembar = $buku->createSheet()->setTitle($nama);
             self::judul($lembar, $nama);
             if ($isi) {
                 self::tulis($lembar, match ($nama) {
-                    'Perkin' => self::barisPerkin($tahun),
-                    'SNP' => array_map(fn (array $r) => [$r['kode'], $r['snp'], $r['kegiatan'], $r['sub_kegiatan']], MasterKode::kodeRktm($tahun)),
-                    'EDM' => self::barisEdm($tahun),
-                    '5 Budaya Mutu' => array_map(fn (array $b) => [$b['nomor'], $b['nama']], MasterKode::budayaMutu($tahun)),
+                    'Perkin' => self::barisPerkin($sumber),
+                    'SNP' => array_map(fn (array $r) => [$r['kode'], $r['snp'], $r['kegiatan'], $r['sub_kegiatan']], MasterKode::kodeRktm($sumber)),
+                    'EDM' => self::barisEdm($sumber),
+                    '5 Budaya Mutu' => array_map(fn (array $b) => [$b['nomor'], $b['nama']], MasterKode::budayaMutu($sumber)),
                 }, $nama);
             }
         }
@@ -71,11 +73,11 @@ final class TemplateMasterKode
         return $buku;
     }
 
-    public static function namaBerkas(int $tahun, string $cakupan = BerkasMaster::SEMUA, bool $isi = false): string
+    public static function namaBerkas(int $tahun, string $cakupan = BerkasMaster::SEMUA, bool $isi = false, ?int $dari = null): string
     {
         $jenis = $cakupan === BerkasMaster::SEMUA ? 'Kode' : str_replace([' ', '/'], '_', JenisKode::DAFTAR[$cakupan]['label']);
 
-        return ($isi ? 'Master_' : 'Template_Master_').$jenis."_TA{$tahun}.xlsx";
+        return ($isi ? 'Master_' : 'Template_Master_').$jenis."_TA{$tahun}".($isi && $dari !== null && $dari !== $tahun ? "_dari_TA{$dari}" : '').'.xlsx';
     }
 
     /**
@@ -231,11 +233,12 @@ final class TemplateMasterKode
     }
 
     /** @param  list<string>  $sheet */
-    private static function petunjuk(Worksheet $lembar, int $tahun, array $sheet): void
+    private static function petunjuk(Worksheet $lembar, int $tahun, array $sheet, ?int $dari = null): void
     {
         $lembar->setTitle('Petunjuk');
         $teks = [
             ["Template master kode — Tahun Anggaran {$tahun}", true],
+            ...($dari !== null ? [["Berisi master TA {$dari} sebagai titik awal: kode RKTM, SK/IKSK, dan rencana aksi biasanya berubah tiap tahun — tambah, ubah, atau hapus barisnya sesuai TA {$tahun}. Kode yang berganti nomor dengan nama sub kegiatan sama dikenali otomatis.", false]] : []),
             ['Isi sheet di berkas ini lalu unggah di menu Master Kode › Unggah Excel. Isi berkas dipratinjau dulu dan baru menjadi master setelah disimpan.', false],
             ['Jangan mengganti nama sheet maupun judul kolom di baris pertama. Sheet yang tidak diperlukan boleh dibiarkan kosong atau dihapus.', false],
             ['', false],
@@ -249,7 +252,11 @@ final class TemplateMasterKode
                 '• Unit/Tim Penerima Mandat dicocokkan dengan leading (nama unit atau jabatan). Anggaran ditulis angka rupiah tanpa titik.',
                 '• Kolom bulan Jan–Des: tandai X pada bulan pelaksanaan.',
             ],
-            'SNP' => ['SNP — RKTM: Kode sub kegiatan n.n.n (format sel Teks), Standar (SNP), Kegiatan, dan Sub Kegiatan.'],
+            'SNP' => [
+                'SNP — RKTM: Kode sub kegiatan n.n.n (format sel Teks), Standar (SNP), Kegiatan, dan Sub Kegiatan.',
+                '• Kode RKTM boleh berbeda dari tahun lalu: daftar baru diterima apa adanya. Kode yang berganti nomor dengan nama sub kegiatan sama dikenali otomatis (kegiatan pemakainya disarankan memakai kode baru).',
+                '• SNP & Kegiatan boleh dikosongkan: SNP mengikuti baris judul standar ("PENGEMBANGAN STANDAR ISI") di atasnya, Kegiatan mengikuti kode n.n yang sama atau master tahun lalu. Daftar RKTM per leading (No | kode sub kegiatan | Penanggung Jawab | Program/Kegiatan) juga diterima.',
+            ],
             'EDM' => ['EDM — Kode indikator (A1, B3, …), nama Komponen, Uraian indikator, dan Kode RKTM yang direkomendasikan (pisahkan dengan koma).'],
             '5 Budaya Mutu' => ['5 Budaya Mutu — No (1–5) dan nama butir budaya mutu.'],
         ];

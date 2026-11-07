@@ -1,9 +1,10 @@
-@props(['hilang' => [], 'tautan' => null])
+@props(['hilang' => [], 'tautan' => null, 'aksi' => null])
 
 {{--
     Penanda kode master yang hilang (App\Support\Kegiatan\KodeHilang::dari): daftar kode yang tidak ada di master tahun
     kegiatan atau dikosongkan saat diduplikat/diimpor, dengan tautan "Pilih ulang" ke bagian kodenya. $tautan = URL
-    halaman Kode & Klasifikasi bila ditampilkan di halaman lain (null = jangkar di halaman ini).
+    halaman Kode & Klasifikasi bila ditampilkan di halaman lain (null = jangkar di halaman ini). Kode RKTM yang dinomori
+    ulang membawa `pengganti` (PetaRktm, nama sub kegiatan sama): $aksi = metode Livewire (kolom, kode) untuk memakainya.
 --}}
 @if ($hilang !== [])
     <section {{ $attributes->class(['rounded-xl bg-gold-50 px-4 py-3 ring-1 ring-gold-200']) }} role="status" aria-labelledby="judul-kode-hilang" data-testid="penanda-kode-hilang">
@@ -19,7 +20,14 @@
                         <span class="font-mono text-xs text-gold-700 line-through" title="Kode lama">{{ $h['kode'] }}</span>
                         <span class="text-stone-600">{{ $h['sebab'] }}.</span>
                     </span>
-                    <a href="{{ ($tautan ?? '').'#'.$h['jangkar'] }}" @if ($tautan) wire:navigate @endif class="shrink-0 text-xs font-semibold text-brand-700 hover:text-brand-800">Pilih ulang</a>
+                    <span class="flex shrink-0 items-center gap-3">
+                        @if (($h['pengganti'] ?? null) && $aksi)
+                            <button type="button" wire:click="{{ $aksi }}('{{ $h['kolom'] }}', '{{ $h['pengganti'] }}')" class="text-xs font-semibold text-brand-700 hover:text-brand-800" data-testid="pakai-pengganti-{{ $h['kolom'] }}">Pakai {{ $h['pengganti'] }}</button>
+                        @elseif ($h['pengganti'] ?? null)
+                            <span class="text-xs text-stone-600" data-testid="saran-pengganti-{{ $h['kolom'] }}">Kemungkinan pengganti: <span class="font-mono font-semibold">{{ $h['pengganti'] }}</span></span>
+                        @endif
+                        <a href="{{ ($tautan ?? '').'#'.$h['jangkar'] }}" @if ($tautan) wire:navigate @endif class="text-xs font-semibold text-brand-700 hover:text-brand-800">Pilih ulang</a>
+                    </span>
                 </li>
             @endforeach
         </ul>

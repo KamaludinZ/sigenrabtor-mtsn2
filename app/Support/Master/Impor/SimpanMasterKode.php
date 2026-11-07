@@ -6,7 +6,9 @@ use App\Contracts\MasterKodeRepository;
 use App\Support\Format;
 use App\Support\Impor\GagalBacaImpor;
 use App\Support\Master\JenisKode;
+use App\Support\Master\PetaRktm;
 use App\Support\Master\RencanaAksi;
+use App\Support\Master\SalinMasterKode;
 use App\Support\MasterKode;
 use App\Support\Pengaturan\PengaturanBerubah;
 use App\Support\Pengaturan\RiwayatPengaturan;
@@ -117,6 +119,15 @@ final class SimpanMasterKode
         $repo->ganti($tahun, $master);
 
         $ringkasan = array_map(fn (array $item) => $item['ringkasan'], $hasil['pratinjau']);
+        // Kode RKTM yang dinomori ulang (nama sub kegiatan sama) dicatat bersama unggahan: dasar saran kode pengganti
+        // kegiatan yang masih memakai kode lama (PetaRktm::pengganti) walau master lamanya sudah diganti.
+        if (isset($hasil['pratinjau']['rktm'])) {
+            $pindah = array_values(array_map(fn (array $b) => ['lama' => (string) $b['kode'], 'baru' => (string) $b['pindah']],
+                array_filter($hasil['pratinjau']['rktm']['baris'], fn (array $b) => $b['status'] === 'hilang' && isset($b['pindah']))));
+            if ($pindah !== []) {
+                $ringkasan['rktm']['pindah'] = $pindah;
+            }
+        }
         $id = $repo->catatUnggahan([
             'tahun' => $tahun, 'cakupan' => $cakupan, 'nama_berkas' => $namaAsli, 'ringkasan' => $ringkasan,
             'user_id' => $pengguna['id'] ?? null, 'pengguna' => $pengguna['name'] ?? 'Admin',
@@ -161,10 +172,10 @@ final class SimpanMasterKode
                 fn (array $s) => "{$s['kode_sk']} — {$s['jumlah']} indikator".($s['uraian_sk'] === null ? ' · SK induk tidak ada di master' : ''),
                 self::indukIksk($baris, $tahun),
             )],
-            'rktm' => ['judul' => 'Struktur standar (SNP)', 'butir' => array_map(
+            'rktm' => ['judul' => 'Struktur standar (SNP)', 'butir' => [...array_map(
                 fn (array $s) => "Standar {$s['nomor']} {$s['snp']} — ".count($s['kegiatan'])." kegiatan, {$s['jumlah']} sub kegiatan",
                 self::strukturRktm($baris),
-            )],
+            ), ...self::bandingTahunRktm($baris, $tahun)]],
             'edm' => ['judul' => 'Komponen yang tersimpan', 'butir' => [...array_map(
                 fn (array $k) => "{$k['huruf']} {$k['nama']} — {$k['jumlah']} indikator".($k['nama_lama'] !== null && $k['nama_lama'] !== $k['nama'] ? " (sebelumnya {$k['nama_lama']})" : ($k['nama_lama'] === null ? ' (komponen baru)' : '')),
                 self::komponenEdm($baris, $tahun),
@@ -173,6 +184,29 @@ final class SimpanMasterKode
             'rencana_aksi' => ['judul' => 'Rencana aksi per leading', 'butir' => self::ringkasanRencanaAksi($baris)],
             default => null,
         };
+    }
+
+    /**
+     * Perbandingan RKTM berkas dengan master tahun bermaster sebelumnya (kode RKTM dinomori ulang tiap tahun): jumlah
+     * tetap, berganti kode (nama sub kegiatan sama), baru, dan tidak ada lagi (PetaRktm::banding). Kosong bila tidak ada
+     * tahun sebelumnya.
+     *
+     * @param  list<array<string, mixed>>  $baris  Baris pratinjau RKTM.
+     * @return list<string>
+     */
+    public static function bandingTahunRktm(array $baris, int $tahun): array
+    {
+        $sebelum = SalinMasterKode::sumber($tahun);
+        if ($sebelum === null || $sebelum > $tahun) {
+            return [];
+        }
+        $berkas = array_values(array_map(fn (array $b) => ['kode' => (string) $b['kode'], 'sub_kegiatan' => (string) $b['tampil']['sub_kegiatan']],
+            array_filter($baris, fn (array $b) => in_array($b['status'], self::TERSIMPAN, true))));
+        $banding = PetaRktm::banding(MasterKode::kodeRktm($sebelum), $berkas);
+        $contoh = array_slice(array_map(fn (array $p) => "{$p['lama']} → {$p['baru']}", $banding['pindah']), 0, 5);
+
+        return ["Dibanding TA {$sebelum}: {$banding['tetap']} tetap, ".count($banding['pindah']).' berganti kode'.($contoh !== [] ? ' ('.implode(', ', $contoh).(count($banding['pindah']) > 5 ? ', …' : '').')' : '')
+            .', '.count($banding['ganti_nama']).' berganti nama, '.count($banding['baru']).' baru, '.count($banding['hilang']).' tidak ada lagi'];
     }
 
     /**

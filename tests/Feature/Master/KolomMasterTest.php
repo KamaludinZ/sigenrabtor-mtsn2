@@ -26,7 +26,7 @@ class KolomMasterTest extends TestCase
             $this->pratinjau('sk', "Kode SK;Keterangan\nSK.1;Sasaran\n")['galat'],
         );
         $this->assertSame(
-            'Kolom wajib "Kegiatan" dan "Sub Kegiatan" tidak ditemukan di baris judul sheet Worksheet (baris 2) — judul yang dikenali Kegiatan: "kegiatan", "program"; Sub Kegiatan: "sub kegiatan", "subkegiatan", "uraian sub kegiatan".',
+            'Kolom wajib "Sub Kegiatan" tidak ditemukan di baris judul sheet Worksheet (baris 2) — judul yang dikenali Sub Kegiatan: "sub kegiatan", "subkegiatan", "uraian sub kegiatan".',
             $this->pratinjau('rktm', "RKTM MTsN 2 Kota Malang\nKode;SNP;Catatan\n1.1.1;Standar Isi;-\n")['galat'],
             'Baris judul terdekat = baris dengan kolom wajib terbanyak.',
         );

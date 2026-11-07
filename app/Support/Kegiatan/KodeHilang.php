@@ -2,6 +2,7 @@
 
 namespace App\Support\Kegiatan;
 
+use App\Support\Master\PetaRktm;
 use App\Support\MasterKode;
 
 /**
@@ -73,7 +74,7 @@ final class KodeHilang
      * kegiatan (`master`), lalu kode yang dikosongkan saat diduplikat/diimpor dan kolomnya masih kosong.
      *
      * @param  array<string, mixed>  $kegiatan
-     * @return list<array{kolom: string, label: string, kode: string, asal: string, tahun_asal: int|null, jangkar: string, sebab: string, teks: string}>
+     * @return list<array{kolom: string, label: string, kode: string, asal: string, tahun_asal: int|null, jangkar: string, sebab: string, teks: string, pengganti: string|null}>
      */
     public static function dari(array $kegiatan): array
     {
@@ -95,6 +96,8 @@ final class KodeHilang
             $hasil[] = [
                 'kolom' => $kolom, 'label' => $label, 'kode' => $c['kode'], 'asal' => $c['asal'], 'tahun_asal' => $c['tahun'], 'jangkar' => $jangkar,
                 'sebab' => $sebab, 'teks' => "{$label} {$c['kode']} {$sebab} — pilih kode pengganti.",
+                // Kode RKTM dinomori ulang tiap tahun: pengganti bernama sub kegiatan sama di master tahun kegiatan.
+                'pengganti' => $kolom === 'kode_rktm' ? PetaRktm::pengganti($c['kode'], $tahun, $c['asal'] === 'duplikat' ? $c['tahun'] : null) : null,
             ];
         }
 

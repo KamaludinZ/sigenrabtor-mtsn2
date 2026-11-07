@@ -53,6 +53,37 @@ final class RencanaAksi
         return count($calon) === 1 ? $calon[0]['kode'] : null;
     }
 
+    /** Unit → kunci pembanding (huruf kecil, tanpa spasi & tanda baca). */
+    public static function kunciUnit(string $unit): string
+    {
+        return (string) preg_replace('/[^a-z0-9]/', '', mb_strtolower($unit));
+    }
+
+    /**
+     * Leading yang sudah diberikan admin untuk unit yang sama pada rencana aksi tahun itu, lalu tahun bermaster
+     * sebelumnya (satu leading saja; lebih dari satu = ambigu → null). Dipakai unggahan untuk unit yang tidak cocok
+     * dengan nama/jabatan leading (mis. "Tim Manajemen Mutu").
+     */
+    public static function leadingDariUnit(string $unit, int $tahun): ?string
+    {
+        $kunci = self::kunciUnit($unit);
+        if ($kunci === '') {
+            return null;
+        }
+        $sebelum = SalinMasterKode::sumber($tahun);
+        foreach (array_filter([$tahun, $sebelum !== null && $sebelum < $tahun ? $sebelum : null]) as $t) {
+            $leading = array_values(array_unique(array_filter(array_map(
+                fn (array $ra) => self::kunciUnit((string) ($ra['unit'] ?? '')) === $kunci ? ($ra['kode_leading'] ?? null) : null,
+                MasterKode::rencanaAksi($t),
+            ))));
+            if (count($leading) === 1 && MasterKode::cari(MasterKode::leadings(), $leading[0]) !== null) {
+                return $leading[0];
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Kode EDM yang merekomendasikan kode RKTM $kodeRktm (relasi EDM ↔ RKTM tahun itu).
      *

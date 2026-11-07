@@ -28,6 +28,12 @@
                         <x-ui.icon name="sheet" class="mt-0.5 size-4 shrink-0 text-brand-700" />
                         <span><span class="block font-medium text-stone-900">Template kosong</span><span class="block text-xs text-stone-500">Sheet Perkin (SK, IKSK, Rencana Aksi), SNP, EDM, 5 Budaya Mutu + petunjuk</span></span>
                     </a>
+                    @if (($sumberTemplate = \App\Support\Master\SalinMasterKode::sumber($ta)) !== null && $sumberTemplate < $ta)
+                        <a href="{{ route('master.template', ['ta' => $ta, 'isi' => 1, 'dari' => $sumberTemplate]) }}" role="menuitem" class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-stone-50" data-testid="template-dari-sebelumnya" x-on:click="buka = false">
+                            <x-ui.icon name="copy" class="mt-0.5 size-4 shrink-0 text-brand-700" />
+                            <span><span class="block font-medium text-stone-900">Berisi master TA {{ $sumberTemplate }} (titik awal)</span><span class="block text-xs text-stone-500">Kode berubah tiap tahun: sunting untuk TA {{ $ta }} lalu unggah</span></span>
+                        </a>
+                    @endif
                     @if ($tersedia)
                         <a href="{{ route('master.template', ['ta' => $ta, 'isi' => 1]) }}" role="menuitem" class="flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-stone-50" data-testid="template-berisi" x-on:click="buka = false">
                             <x-ui.icon name="database" class="mt-0.5 size-4 shrink-0 text-brand-700" />

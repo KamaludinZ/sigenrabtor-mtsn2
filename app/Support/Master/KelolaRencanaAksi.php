@@ -153,6 +153,78 @@ final class KelolaRencanaAksi
     }
 
     /**
+     * Sesuaikan tag RKTM rencana aksi yang kodenya tidak ada di master tahun itu (kode dinomori ulang): pengganti lewat
+     * nama sub kegiatan kode lama di tahun lain, atau nama rencana aksi = nama sub kegiatan (PetaRktm::pengganti). Tag
+     * EDM otomatis ikut kode baru. Riwayat `ubah_tag_rencana_aksi` bila ada yang berubah.
+     *
+     * @param  array{role: string}  $pengguna
+     * @return array{diubah: list<array{kode: string, lama: string, baru: string}>, tersisa: int, versi: string}
+     *
+     * @throws AuthorizationException
+     */
+    public static function sesuaikanRktm(int $tahun, array $pengguna): array
+    {
+        self::pastikanBoleh($tahun, $pengguna);
+        $semua = MasterKode::rencanaAksi($tahun);
+        $ada = array_column(MasterKode::kodeRktm($tahun), 'kode', 'kode');
+        $diubah = [];
+        $tersisa = 0;
+        foreach ($semua as $i => $ra) {
+            $kode = $ra['kode_rktm'] ?? null;
+            if ($kode === null || isset($ada[$kode])) {
+                continue;
+            }
+            $baru = PetaRktm::pengganti($kode, $tahun) ?? PetaRktm::pengganti($kode, $tahun, nama: $ra['uraian']);
+            if ($baru === null) {
+                $tersisa++;
+
+                continue;
+            }
+            $semua[$i]['kode_rktm'] = $baru;
+            $diubah[] = ['kode' => $ra['kode'], 'lama' => $kode, 'baru' => $baru];
+        }
+        if ($diubah !== []) {
+            app(MasterKodeRepository::class)->ganti($tahun, ['rencana_aksi' => $semua]);
+            RiwayatPengaturan::catat('ubah_tag_rencana_aksi', "Tag RKTM rencana aksi TA {$tahun} disesuaikan: ".implode(', ', array_map(fn (array $d) => "{$d['kode']} {$d['lama']} → {$d['baru']}", $diubah)));
+        }
+
+        return ['diubah' => $diubah, 'tersisa' => $tersisa, 'versi' => self::versi($tahun)];
+    }
+
+    /**
+     * Terapkan leading ke semua rencana aksi tahun itu yang unitnya sama (tanpa beda huruf/spasi/tanda baca) — unit di
+     * berkas Perkin diatur admin; unggahan berikutnya mengingatnya lewat RencanaAksi::leadingDariUnit.
+     *
+     * @param  array{role: string}  $pengguna
+     * @return int Jumlah rencana aksi yang berubah.
+     *
+     * @throws AuthorizationException
+     * @throws ValidationException Berkunci `kode_leading`.
+     */
+    public static function terapkanLeadingUnit(int $tahun, string $unit, ?string $leading, array $pengguna): int
+    {
+        self::pastikanBoleh($tahun, $pengguna);
+        if ($leading !== null && MasterKode::cari(MasterKode::leadings(), $leading) === null) {
+            throw ValidationException::withMessages(['kode_leading' => 'Pilih leading yang aktif.']);
+        }
+        $kunci = RencanaAksi::kunciUnit($unit);
+        $semua = MasterKode::rencanaAksi($tahun);
+        $n = 0;
+        foreach ($semua as $i => $ra) {
+            if ($kunci !== '' && RencanaAksi::kunciUnit((string) ($ra['unit'] ?? '')) === $kunci && ($ra['kode_leading'] ?? null) !== $leading) {
+                $semua[$i]['kode_leading'] = $leading;
+                $n++;
+            }
+        }
+        if ($n > 0) {
+            app(MasterKodeRepository::class)->ganti($tahun, ['rencana_aksi' => $semua]);
+            RiwayatPengaturan::catat('ubah_tag_rencana_aksi', "Leading {$n} rencana aksi unit \"{$unit}\" TA {$tahun} → ".($leading ?? '—'));
+        }
+
+        return $n;
+    }
+
+    /**
      * "Label: lama → baru" untuk tiap tag yang berubah.
      *
      * @param  array<string, mixed>  $lama

@@ -176,7 +176,7 @@ class Daftar extends Component
         $this->versiTag = KelolaRencanaAksi::versi($this->tahunDilihat());
         $this->isianTag = [
             'kode_sk' => (string) ($ra['kode_sk'] ?? ''), 'kode_iksk' => (string) ($ra['kode_iksk'] ?? ''), 'kode_rktm' => (string) ($ra['kode_rktm'] ?? ''),
-            'kode_leading' => (string) ($ra['kode_leading'] ?? ''), 'edm_otomatis' => ! is_array($ra['kode_edm']),
+            'kode_leading' => (string) ($ra['kode_leading'] ?? ''), 'semua_unit' => false, 'edm_otomatis' => ! is_array($ra['kode_edm']),
             'kode_edm' => $ra['tag']['kode_edm'], 'budaya_mutu' => array_map('strval', $ra['tag']['budaya_mutu']),
         ];
     }
@@ -232,9 +232,46 @@ class Daftar extends Component
             return;
         }
 
+        $unit = (string) ($hasil['rencana_aksi']['unit'] ?? '');
+        $sekaligus = 0;
+        if (($this->isianTag['semua_unit'] ?? false) && $unit !== '') {
+            $sekaligus = KelolaRencanaAksi::terapkanLeadingUnit($tahun, $unit, $hasil['rencana_aksi']['kode_leading'] ?? null, StubData::currentUser());
+        }
+
         unset($this->rencanaAksi);
         $this->reset('tagTerbuka', 'isianTag', 'versiTag');
-        $this->dispatch('notify', message: $hasil['pesan'], type: $hasil['berubah'] ? 'success' : 'info');
+        $this->dispatch('notify', message: $hasil['pesan'].($sekaligus > 0 ? " Leading juga diterapkan ke {$sekaligus} rencana aksi lain unit \"{$unit}\"." : ''), type: $hasil['berubah'] || $sekaligus > 0 ? 'success' : 'info');
+    }
+
+    /** Banyaknya rencana aksi lain tahun ini yang unitnya sama dengan rencana aksi $kode. */
+    public function jumlahUnitSama(string $kode): int
+    {
+        $ra = collect($this->rencanaAksi)->firstWhere('kode', $kode);
+        $kunci = RencanaAksi::kunciUnit((string) ($ra['unit'] ?? ''));
+
+        return $kunci === '' ? 0 : count(array_filter($this->rencanaAksi, fn (array $r) => $r['kode'] !== $kode && RencanaAksi::kunciUnit((string) ($r['unit'] ?? '')) === $kunci));
+    }
+
+    /** Tag RKTM rencana aksi yang kodenya tidak ada di master tahun ini disesuaikan lewat nama sub kegiatan (PetaRktm). */
+    public function sesuaikanRktm(): void
+    {
+        try {
+            $hasil = KelolaRencanaAksi::sesuaikanRktm($this->tahunDilihat(), StubData::currentUser());
+        } catch (AuthorizationException $e) {
+            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+
+            return;
+        }
+        unset($this->rencanaAksi);
+        $n = count($hasil['diubah']);
+        $this->dispatch('notify', message: ($n === 0 ? 'Tidak ada kode RKTM yang bisa dicocokkan otomatis' : "{$n} tag RKTM disesuaikan ke kode baru (nama sub kegiatan sama)")
+            .($hasil['tersisa'] > 0 ? " — {$hasil['tersisa']} masih perlu dipilih manual." : '.'), type: $n === 0 ? 'info' : 'success');
+    }
+
+    /** Banyaknya rencana aksi bertag RKTM yang kodenya tidak ada di master tahun ini. */
+    public function jumlahRktmAsing(): int
+    {
+        return count(array_filter($this->rencanaAksi, fn (array $r) => $r['tag']['kode_rktm'] !== null && in_array($r['tag']['kode_rktm'], $r['asing'], true)));
     }
 
     /**
